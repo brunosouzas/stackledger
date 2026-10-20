@@ -12,7 +12,9 @@ import { component, journey, positions, set, viewOf } from './map-helpers.js';
 import { licence, settings, checkFiles } from './helpers.js';
 import { applyView, resolveHidden } from '../../src/views.js';
 export const elements=new Set('svg title desc g path line rect circle ellipse polygon polyline text tspan'.split(' '));
-export const attributes=new Set('xmlns role viewBox width height x y x1 y1 x2 y2 cx cy r rx ry d points fill stroke stroke-width stroke-linecap stroke-linejoin stroke-dasharray opacity fill-opacity stroke-opacity font-family font-size font-weight text-anchor dominant-baseline data-ref'.split(' '));
+export const attributes=new Set('xmlns role viewBox width height x y x1 y1 x2 y2 cx cy r rx ry d points fill stroke stroke-width stroke-linecap stroke-linejoin stroke-dasharray opacity fill-opacity stroke-opacity font-family font-size font-weight text-anchor dominant-baseline data-ref data-line data-zone'.split(' '));
+// The only attributes that may carry catalogue text (Safe SVG text).
+const textAttributes=new Set(['data-ref','data-line','data-zone']);
 const docs=()=>[component('a'),component('b'),journey('ship',['a','b']),positions({a:[0,0],b:[4,0]})];
 const geometry=(documents=docs(),view:'full'|'staff'='full',date='2027-06-01')=>layoutMap(buildMapModel(viewOf(documents,view),date));
 // U+FFFD is required output for invalid XML characters; the parser warns on this valid character.
@@ -84,5 +86,34 @@ test('Zone titles are readable in both themes',()=>{
  for(const theme of Object.values(themes)){
   const doc=parseSvg(renderSvg(g,theme));const title=Array.from(doc.getElementsByTagName('text')).find(e=>e.textContent===zone.title)!;
   expect(contrast(title.getAttribute('fill')!,theme.background)).toBeGreaterThanOrEqual(4.5);
+ }
+});
+test('Hostile titles in data attributes',()=>{
+ const zoneName='Fin<&\"\'>';
+ const docs=[set(set(component('a'),'metadata.title',hostile),'metadata.labels',{'stackledger/zone':zoneName}),component('b'),set(journey('ship',['a','b']),'metadata.title',hostile),set(positions({a:[0,0],b:[4,0]}),'spec.zones',[{name:zoneName,title:hostile,color:'#ABCDEF'}])];
+ const g=geometry(docs);expect(g.zones).toHaveLength(1);
+ for(const theme of Object.values(themes)){
+  const doc=safe(renderSvg(g,theme));
+  for(const e of Array.from(doc.getElementsByTagName('*')))for(const a of Array.from(e.attributes))if(!textAttributes.has(a.name))expect(a.value,a.name).not.toMatch(/[<>&"']|script|javascript/i);
+  const station=Array.from(doc.getElementsByTagName('g')).find(e=>e.getAttribute('data-ref')==='component:a')!;
+  expect(station.getAttribute('data-zone')).toBe(zoneName.toLowerCase());
+ }
+});
+test('Interchange in a zone',()=>{
+ const docs=[set(component('xero'),'metadata.labels',{'stackledger/zone':'Finance'}),component('stripe'),component('expensify'),
+  journey('invoice',['stripe','xero'],'6'),journey('expenses',['expensify','xero'],'7'),
+  set(positions({stripe:[0,0],xero:[3,0],expensify:[3,3]}),'spec.zones',[{name:'Finance',title:'Zone 2 · Finance',color:'#9B0056'}])];
+ const g=geometry(docs),doc=safe(renderSvg(g,themes.light));
+ const groups=Array.from(doc.getElementsByTagName('g'));
+ const station=groups.find(e=>e.getAttribute('data-ref')==='component:xero')!;
+ expect(station.getAttribute('data-line')).toBe('line:invoice line:expenses');
+ expect(station.getAttribute('data-zone')).toBe('finance');
+ // Stations outside a drawn zone carry no data-zone; every stroke, badge and legend entry names its line.
+ expect(groups.find(e=>e.getAttribute('data-ref')==='component:stripe')!.hasAttribute('data-zone')).toBe(false);
+ expect(groups.find(e=>e.getAttribute('data-ref')==='component:stripe')!.getAttribute('data-line')).toBe('line:invoice');
+ for(const ref of ['line:invoice','line:expenses']){
+  const strokes=groups.filter(e=>e.getAttribute('data-ref')===ref);expect(strokes).toHaveLength(1);expect(strokes[0]!.getAttribute('data-line')).toBe(ref);
+  // Two terminal badges and one legend entry per line, besides the stroke.
+  expect(groups.filter(e=>e.getAttribute('data-line')===ref&&!e.hasAttribute('data-ref'))).toHaveLength(3);
  }
 });

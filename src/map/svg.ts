@@ -1,6 +1,8 @@
 /** Render plain geometry as a self-contained, safe SVG. Call renderSvg(geometry, themes.light).
  * Text has one escaping path; geometry has no external resources, IDs, links or CSS.
  * Every visual choice comes from Theme data. Invalid colours/nonfinite geometry throw.
+ * Strokes, stations, labels, terminal badges and legend entries carry data-line (and stations
+ * and labels data-zone) for the site's map script; those values are escaped like text.
  */
 import type { MapGeometry, Marker, Badge, StationGeometry } from './layout.js';
 import type { Point } from './model.js';
@@ -29,7 +31,7 @@ function painter(theme: Theme) {
   const shiftBox = (box: Box): Box => ({ ...box, x: box.x + theme.shadow.dx, y: box.y + theme.shadow.dy });
   const shift = (point: Point): Point => [point[0] + theme.shadow.dx, point[1] + theme.shadow.dy];
 
-  const badge = (item: Badge): string => [
+  const badge = (item: Omit<Badge, 'line'>): string => [
     theme.shadow.enabled ? rect(shiftBox(item.box), { fill: theme.shadow.color, rx: 3 }) : '',
     rect(item.box, { fill: item.color, rx: 3 }),
     text(item.text, item.point[0], item.point[1] + 4.5, { fill: theme.badgeText, 'font-size': 12, 'font-weight': 700, 'text-anchor': 'middle' }),
@@ -89,10 +91,17 @@ function lineGroup(stroke: Stroke, theme: Theme, paint: Painter): string {
   const path = (paintColor: string, width: number): string =>
     tag('path', { d, fill: 'none', stroke: paintColor, 'stroke-width': width, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
   const casing = theme.casing.enabled ? path(theme.casing.color, theme.lineWidth + theme.casing.extraWidth) : '';
-  return tag('g', { 'data-ref': stroke.ref }, paint.title(stroke.title) + casing + path(stroke.color, theme.lineWidth));
+  return tag('g', { 'data-ref': stroke.ref, 'data-line': stroke.ref }, paint.title(stroke.title) + casing + path(stroke.color, theme.lineWidth));
 }
 
-function stationGroup(station: StationGeometry, lines: Stroke[], theme: Theme, paint: Painter): string {
+/** data-line (the station's lines, in line order) and data-zone (only for a drawn zone), shared by a station and its label. */
+function stationData(station: StationGeometry, drawnZones: ReadonlySet<string>): Attributes {
+  const attrs: Attributes = { 'data-line': station.lines.join(' ') };
+  if (station.zone !== undefined && drawnZones.has(station.zone)) attrs['data-zone'] = station.zone;
+  return attrs;
+}
+
+function stationGroup(station: StationGeometry, lines: Stroke[], data: Attributes, theme: Theme, paint: Painter): string {
   const lineColor = lines.find(line => line.ref === station.lines[0])!.color;
   const shadow = theme.shadow.enabled ? paint.marker(station.marker, station.deprecated, lineColor, true) : '';
   const mark = shadow + paint.marker(station.marker, station.deprecated, lineColor);
@@ -101,13 +110,13 @@ function stationGroup(station: StationGeometry, lines: Stroke[], theme: Theme, p
     : '';
   const ring = station.renewal ? paint.circle(station.point, 15, { fill: 'none', stroke: theme.renewal, 'stroke-width': 3 }) : '';
   const licence = station.licencePoint ? paint.licence(station.licencePoint, station.licence === 'hollow') : '';
-  return tag('g', { 'data-ref': station.ref }, paint.title(station.title) + suggested + ring + mark + licence);
+  return tag('g', { 'data-ref': station.ref, ...data }, paint.title(station.title) + suggested + ring + mark + licence);
 }
 
-function labelsLayer(geometry: MapGeometry, theme: Theme, paint: Painter): string {
+function labelsLayer(geometry: MapGeometry, drawnZones: ReadonlySet<string>, theme: Theme, paint: Painter): string {
   return geometry.labels.map(label => {
     const station = geometry.stations.find(item => item.ref === label.ref)!;
-    const attrs = { fill: station.deprecated ? theme.muted : theme.text, 'font-weight': station.lines.length > 1 ? 700 : 500 };
+    const attrs = { fill: station.deprecated ? theme.muted : theme.text, 'font-weight': station.lines.length > 1 ? 700 : 500, ...stationData(station, drawnZones) };
     return label.rows.map((row, i) => paint.text(row, label.box.x, label.box.y + 13 + i * 17, attrs)).join('');
   }).join('');
 }
@@ -140,9 +149,10 @@ function legendLayer(geometry: MapGeometry, theme: Theme, paint: Painter): strin
     // The same badge width as on the map; the sample and title move right of wider badges.
     const box: Box = { x: panel.x + 18, y: y - 15, w: badgeWidth(item.badge), h: 20 };
     const right = box.x + box.w;
-    parts.push(paint.badge({ point: [box.x + box.w / 2, y - 5], box, text: item.badge, color: item.color }));
-    parts.push(paint.line([right + 18, y - 5], [right + 47, y - 5], { stroke: item.color, 'stroke-width': theme.lineWidth }));
-    parts.push(paint.text(item.title, right + 60, y));
+    const entry = paint.badge({ point: [box.x + box.w / 2, y - 5], box, text: item.badge, color: item.color })
+      + paint.line([right + 18, y - 5], [right + 47, y - 5], { stroke: item.color, 'stroke-width': theme.lineWidth })
+      + paint.text(item.title, right + 60, y);
+    parts.push(tag('g', { 'data-line': item.ref }, entry));
     y += 30;
   }
   y += 18;
@@ -159,8 +169,12 @@ function legendLayer(geometry: MapGeometry, theme: Theme, paint: Painter): strin
 export function renderSvg(geometry: MapGeometry, theme: Theme): string {
   const paint = painter(theme);
   const background = paint.rect(geometry.viewBox, { fill: theme.background });
-  const lines = geometry.lines.map(stroke => lineGroup(stroke, theme, paint)).join('') + geometry.badges.map(paint.badge).join('');
-  const stations = geometry.stations.map(station => stationGroup(station, geometry.lines, theme, paint)).join('');
+  const drawnZones = new Set(geometry.zones.map(zone => zone.name.toLowerCase()));
+  const badges = geometry.badges.map(badge => tag('g', { 'data-line': badge.line }, paint.badge(badge))).join('');
+  const lines = geometry.lines.map(stroke => lineGroup(stroke, theme, paint)).join('') + badges;
+  const stations = geometry.stations
+    .map(station => stationGroup(station, geometry.lines, stationData(station, drawnZones), theme, paint))
+    .join('');
   const empty = geometry.lines.length ? '' : paint.text('No journeys yet', geometry.frame.x + 32, geometry.frame.y + 64, { 'font-size': 22 });
   const layers = [
     background,
@@ -168,7 +182,7 @@ export function renderSvg(geometry: MapGeometry, theme: Theme): string {
     zonesLayer(geometry.zones, theme, paint),
     lines,
     stations,
-    labelsLayer(geometry, theme, paint) + empty,
+    labelsLayer(geometry, drawnZones, theme, paint) + empty,
     headerLayer(geometry, theme, paint),
     legendLayer(geometry, theme, paint),
   ].map(content => tag('g', {}, content)).join('\n');
