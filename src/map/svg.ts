@@ -6,7 +6,7 @@ import type { MapGeometry, Marker, Badge } from './layout.js';
 import type { Point } from './model.js';
 import type { Theme } from './themes.js';
 import type { Box } from './labels.js';
-import { tag, escapeXml, number, color, type Attributes } from './xml.js';
+import { tag, escapeXml, number, color, tint, type Attributes } from './xml.js';
 export { escapeXml } from './xml.js';
 export function renderSvg(geometry:MapGeometry,theme:Theme):string{
   const g=geometry,t=theme;
@@ -36,7 +36,7 @@ export function renderSvg(geometry:MapGeometry,theme:Theme):string{
     if(z.hull.length===1)shape=circle(z.hull[0]!,z.padding,{fill:z.color});
     else if(z.hull.length===2)shape=line(z.hull[0]!,z.hull[1]!,{stroke:z.color,'stroke-width':z.padding*2,'stroke-linecap':'round'});
     else shape=tag('polygon',{points:z.hull.map(p=>p.map(number).join(',')).join(' '),fill:z.color,stroke:z.color,'stroke-width':z.padding*2,'stroke-linejoin':'round'});
-    return tag('g',{opacity:t.zoneOpacity},shape)+text(z.title,z.titleBox.x,z.titleBox.y+13,{fill:z.color,'font-weight':700});
+    return tag('g',{opacity:t.zoneOpacity},shape)+text(z.title,z.titleBox.x,z.titleBox.y+13,{fill:tint(z.color,t.zoneTitleTint),'font-weight':700});
   }).join('');
   const lines=g.lines.map(l=>{
     const d=l.points.map((p,i)=>`${i?'L':'M'}${number(p[0])},${number(p[1])}`).join(' ');

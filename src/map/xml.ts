@@ -9,6 +9,14 @@ export function escapeXml(text:string):string{
 }
 export function number(value:number):string{if(!Number.isFinite(value))throw new Error('SVG geometry must be finite');return String(Math.round(value*100)/100);}
 export function color(value:string):string{if(!/^(?:#[0-9a-fA-F]{6}|none)$/.test(value))throw new Error('SVG colour must be #RRGGBB or none');return value;}
+/** Mix a #RRGGBB colour with white; amount 0 returns it unchanged, 1 returns white. */
+export function tint(value:string,amount:number):string{
+  if(!/^#[0-9a-fA-F]{6}$/.test(value))throw new Error('SVG colour must be #RRGGBB or none');
+  if(!(amount>=0 && amount<=1))throw new Error('Tint amount must be between 0 and 1');
+  if(amount===0)return value;
+  const channels=[1,3,5].map(i=>Math.round(parseInt(value.slice(i,i+2),16)*(1-amount)+255*amount));
+  return '#'+channels.map(c=>c.toString(16).padStart(2,'0').toUpperCase()).join('');
+}
 export type Attributes=Record<string,string|number>;
 export function tag(name:string,attrs:Attributes={},children?:string):string{
   if(!elements.has(name))throw new Error('Unsupported SVG element');

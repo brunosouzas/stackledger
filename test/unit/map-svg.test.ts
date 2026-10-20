@@ -48,3 +48,13 @@ test('Staff ignores hidden fields and the date',()=>{
  for(const fields of variants)for(const value of [fields.renewsOn,fields.paidBy,fields.vaultItem,fields.note])expect(first).not.toContain(value);
 });
 test('Cross-document errors with repeated consecutive stops still produce a map',()=>{for(const stops of [['a','a'],['a','a','b'],['a','b','b'],['a','b','a']]){const g=geometry([component('a'),component('b'),journey('ship',stops),positions({a:[0,0],b:[3,0]})]);expect(g.lines).toHaveLength(1);expect(g.stations).toHaveLength(new Set(stops).size);safe(renderSvg(g,themes.light));}});
+test('Zone titles are readable in both themes',()=>{
+ const luminance=(hex:string)=>{const [r,g,b]=[1,3,5].map(i=>{const c=parseInt(hex.slice(i,i+2),16)/255;return c<=0.03928?c/12.92:((c+0.055)/1.055)**2.4;});return 0.2126*r!+0.7152*g!+0.0722*b!;};
+ const contrast=(a:string,b:string)=>{const [x,y]=[luminance(a),luminance(b)].sort((p,q)=>q-p);return (x!+0.05)/(y!+0.05);};
+ const zone={name:'finance',title:'Zone 2 · Finance',color:'#9B0056'};
+ const g=geometry([set(component('a'),'metadata.labels',{'stackledger/zone':'finance'}),component('b'),journey('ship',['a','b']),set(positions({a:[0,0],b:[4,0]}),'spec.zones',[zone])]);
+ for(const theme of Object.values(themes)){
+  const doc=parseSvg(renderSvg(g,theme));const title=Array.from(doc.getElementsByTagName('text')).find(e=>e.textContent===zone.title)!;
+  expect(contrast(title.getAttribute('fill')!,theme.background)).toBeGreaterThanOrEqual(4.5);
+ }
+});
