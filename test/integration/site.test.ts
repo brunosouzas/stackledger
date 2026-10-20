@@ -203,7 +203,7 @@ test('Diagram alternative', () => {
 test('Without JavaScript (table present)', () => {
   const html = read(example.full, 'software/index.html');
   const rows = /<tbody>([\s\S]*?)<\/tbody>/.exec(html)![1]!.match(/<tr>/g) ?? [];
-  expect(rows).toHaveLength(17 + 13);
+  expect(rows).toHaveLength(17 + 14);
   expect(html).not.toMatch(/<tr[^>]*hidden/);
   expect(html).toMatch(/data-list-tools hidden/);
 });
@@ -282,7 +282,8 @@ test('Page content', () => {
   const html = read(example.full, 'reports/index.html');
   const recurring = /<table data-report="recurring">([\s\S]*?)<\/table>/.exec(html)![1]!;
   expect(recurring).toContain('<th scope="col" class="amount">Per month</th><th scope="col" class="amount">Per year</th>');
-  expect(recurring).toContain('<tr><td>GBP</td><td class="amount">120.00</td><td class="amount">1440.00</td><td class="amount">0</td></tr>');
+  expect(recurring).toContain('<tr><td>GBP</td><td class="amount">131.50</td><td class="amount">1578.00</td><td class="amount">1</td></tr>');
+  expect(recurring).toContain('<tr><td>USD</td><td class="amount">94.00</td><td class="amount">1128.00</td><td class="amount">0</td></tr>');
   expect(html).toMatch(/<a class="btn" href="\.\.\/renewals\.ics" download="renewals\.ics">/);
   // Each licence links to its page.
   expect(html).toContain('<a href="../licences/licence-github/">');

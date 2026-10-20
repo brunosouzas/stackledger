@@ -28,4 +28,4 @@ Levels: U unit, I integration (CLI or built files), B browser (Playwright). Ever
 
 ## 4. Documentation
 
-- [ ] 4.1 `docs/reports.md` (rules, JSON shape, calendar notes), `cost` meaning in `docs/catalogue-format.md`, `docs/site.md`, README Usage row and a Reports screenshot, roadmap row 5 wording, `skills/stackledger/SKILL.md` and AGENTS.md if they list commands. Example licences in `examples/northwind/` cover monthly, yearly, one-off, `to-buy`, an unknown cost and two currencies.
+- [x] 4.1 `docs/reports.md` (rules, JSON shape, calendar notes), `cost` meaning in `docs/catalogue-format.md`, `docs/site.md`, README Usage row and a Reports screenshot, roadmap row 5 wording, `skills/stackledger/SKILL.md` and AGENTS.md if they list commands. Example licences in `examples/northwind/` cover monthly, yearly, one-off, `to-buy`, an unknown cost and two currencies.

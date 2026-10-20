@@ -71,7 +71,7 @@ for (const site of ['full', 'staff']) {
     const prefix = `/${site}/`;
     const watched = await watch(page, prefix);
     const paths = await crawl(page, prefix);
-    // Map, list, journeys list, 17 components, 13 licences and 7 journeys.
+    // Map, list, journeys list, reports, 17 components, 14 licences and 7 journeys.
     expect(paths.length).toBeGreaterThanOrEqual(40);
     for (const kind of ['software/', 'licences/', 'journeys/']) expect(paths.some(path => path.startsWith(prefix + kind) && path !== prefix + kind)).toBe(true);
     for (const path of paths) {
