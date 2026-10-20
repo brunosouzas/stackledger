@@ -23,7 +23,7 @@ When `--help` is among the arguments, the command SHALL print usage on stdout an
 - **THEN** the exit code is 2 and nothing is written
 
 ### Requirement: Safe output folder
-After resolving symbolic links, the output folder SHALL be refused, with exit 2 and no change, when it is the catalogue folder, inside it, contains it, or is a non-empty folder without the marker `.stackledger-build`: a regular file with fixed content, no date or version. It SHALL also be refused when `full`, `staff`, `_headers`, `robots.txt` or the marker is a symbolic link.
+After resolving symbolic links, the output folder SHALL be refused, with exit 2 and no change, when it is the catalogue folder, inside it, contains it, or is a non-empty folder without the marker `.stackledger-build`: a regular file with fixed content, no date or version. It SHALL also be refused when `full`, `staff`, `_headers`, `robots.txt`, the marker or a `.stackledger-tmp-*` entry is a symbolic link, or a `.stackledger-tmp-*` entry is a file.
 
 #### Scenario: Output inside the catalogue
 - **WHEN** `--out` is `./catalogue/site`
