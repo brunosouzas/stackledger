@@ -2,7 +2,6 @@
  * Run npm test. Differential catalogues prove the hidden/date paths actually affect full output.
  */
 import { test, expect } from 'vitest';
-import { DOMParser } from '@xmldom/xmldom';
 import { renderSvg, escapeXml } from '../../src/map/svg.js';
 import { themes } from '../../src/map/themes.js';
 import { tag } from '../../src/map/xml.js';
@@ -11,20 +10,11 @@ import { layoutMap } from '../../src/map/layout.js';
 import { component, journey, positions, set, viewOf } from './map-helpers.js';
 import { licence, settings, checkFiles } from './helpers.js';
 import { applyView, resolveHidden } from '../../src/views.js';
-export const elements=new Set('svg title desc g path line rect circle ellipse polygon polyline text tspan'.split(' '));
-export const attributes=new Set('xmlns role viewBox width height x y x1 y1 x2 y2 cx cy r rx ry d points fill stroke stroke-width stroke-linecap stroke-linejoin stroke-dasharray opacity fill-opacity stroke-opacity font-family font-size font-weight text-anchor dominant-baseline data-ref data-line data-zone'.split(' '));
+import { attributes, parseSvg, safe } from './svg-helpers.js';
 // The only attributes that may carry catalogue text (Safe SVG text).
 const textAttributes=new Set(['data-ref','data-line','data-zone']);
 const docs=()=>[component('a'),component('b'),journey('ship',['a','b']),positions({a:[0,0],b:[4,0]})];
 const geometry=(documents=docs(),view:'full'|'staff'='full',date='2027-06-01')=>layoutMap(buildMapModel(viewOf(documents,view),date));
-// U+FFFD is required output for invalid XML characters; the parser warns on this valid character.
-export function parseSvg(svg:string){return new DOMParser({onError:(level,message)=>{if(level!=='warning' || message!=='Unicode replacement character detected, source encoding issues?')throw new Error(`${level}: ${message}`);}}).parseFromString(svg,'image/svg+xml');}
-export function safe(svg:string){
- const doc=parseSvg(svg);expect(doc.documentElement.tagName).toBe('svg');expect(doc.documentElement.getAttribute('xmlns')).toBe('http://www.w3.org/2000/svg');expect(doc.documentElement.getAttribute('role')).toBe('img');
- expect(svg).not.toMatch(/<!DOCTYPE|<!ENTITY|<\?/i);
- for(const element of Array.from(doc.getElementsByTagName('*'))){expect(elements.has(element.tagName),element.tagName).toBe(true);for(const attr of Array.from(element.attributes)){expect(attributes.has(attr.name),attr.name).toBe(true);if(['fill','stroke'].includes(attr.name))expect(attr.value).toMatch(/^(?:#[0-9A-Fa-f]{6}|none)$/);expect(attr.value).not.toMatch(/url\(/i);}}
- return doc;
-}
 test('No lines',()=>{const doc=safe(renderSvg(geometry([]),themes.light));expect(doc.documentElement.textContent).toContain('No journeys yet');});
 test('Allowed names only',()=>{const g=geometry(),doc=safe(renderSvg(g,themes.light));const refs=Array.from(doc.getElementsByTagName('*')).map(e=>e.getAttribute('data-ref')).filter(Boolean);expect(refs.sort()).toEqual(['component:a','component:b','line:ship']);expect(doc.getElementsByTagName('title').length).toBe(4);});
 const hostile='<script>&"\' ]]> javascript: \u0001 \uFFFE';

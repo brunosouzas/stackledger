@@ -26,7 +26,7 @@ Levels: U unit, I integration (built files or CLI), B browser (Playwright). Ever
 ## 2. Map engine and diagrams
 
 - [x] 2.1 `data-line` and `data-zone` in the map engine and its allow-list; unit tests (`test/unit/map-svg.test.ts`) for the `metro-map` delta scenarios.
-- [ ] 2.2 `src/map/neighbourhood.ts` and `src/map/strip.ts`; unit tests (`test/unit/map-diagrams.test.ts`) for the diagram parts of `Neighbourhood diagram` and `Journey pages`, plus the safe-SVG checks.
+- [x] 2.2 `src/map/neighbourhood.ts` and `src/map/strip.ts`; unit tests (`test/unit/map-diagrams.test.ts`) for the diagram parts of `Neighbourhood diagram` and `Journey pages`, plus the safe-SVG checks.
 
 ## 3. Astro site
 
