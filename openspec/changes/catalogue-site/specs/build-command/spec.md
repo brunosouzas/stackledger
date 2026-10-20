@@ -42,18 +42,22 @@ After resolving symbolic links, the output folder SHALL be refused, with exit 2 
 - **THEN** the exit code is 2 and the link's target is untouched
 
 ### Requirement: Interrupted publication
-Publication steps SHALL be recorded in a journal inside the staging folder. When a failure before the commit cannot be undone, the command exits 1 and keeps the staging folder. The next build SHALL first finish that undo, or exit 1 naming the staging folder and delete nothing; only staging folders with no unfinished journal are removed.
+Publication SHALL create the staging folder's `old/` before its first rename. When a failure before the commit cannot be undone, the command exits 1, keeps the staging folder and says how to restore by hand. A later build SHALL exit 1, naming it and changing nothing, while any staging folder with `old/` exists; staging folders without `old/` are removed, never following links.
 
-#### Scenario: Undo finished by the next build
-- **WHEN** an undo fails and the command runs again
-- **THEN** the previous sites are back in place before the new build starts
+#### Scenario: Undo failed
+- **WHEN** an undo fails
+- **THEN** the exit code is 1, the staging folder is kept and stderr names it and the manual steps in `docs/site.md`
 
-#### Scenario: Undo impossible
-- **WHEN** the unfinished undo cannot be completed
-- **THEN** the exit code is 1, stderr names the staging folder and nothing is deleted
+#### Scenario: Next build after a failed undo
+- **WHEN** the command runs again while that staging folder exists
+- **THEN** the exit code is 1, stderr names the staging folder and nothing changes
+
+#### Scenario: Stale staging before publication
+- **WHEN** a staging folder without `old/` was left by a crashed build
+- **THEN** the next build removes it and succeeds
 
 ### Requirement: Output folder identity
-The command SHALL record the output folder's real path and file identity after validation and check them again before creating staging, before each publication or undo rename and before every removal; a mismatch SHALL stop the command with exit 1 and no further change, also after the commit.
+The command SHALL record the output folder's real path and file identity after validation and check them again immediately before creating staging, before every publication or undo rename and before every removal; a mismatch SHALL stop the command with exit 1 and no further change, also after the commit.
 
 #### Scenario: Folder swapped during a build
 - **WHEN** the output folder is replaced by a symbolic link to another folder during the build
