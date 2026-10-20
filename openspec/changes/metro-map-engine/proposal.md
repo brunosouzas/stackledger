@@ -22,7 +22,7 @@ The metro map is the reason stackledger exists: lines are journeys, stations are
 
 ### Modified Capabilities
 
-None. The catalogue already has `Line`, `MapLayout`, zones and the warnings for unplaced stops.
+- `mcp-server`: the global help scenario now lists `map` too. The catalogue needs no change: it already has `Line`, `MapLayout`, zones and the warnings for unplaced stops.
 
 ## Impact
 
@@ -42,7 +42,7 @@ None. The catalogue already has `Line`, `MapLayout`, zones and the warnings for 
 ## Implicit requirements
 
 - **Errors and invalid input:** requirement. The map is drawn from the documents the views serve, so a catalogue with errors still produces a map from its valid parts; usage and folder errors exit 2. A hop the router cannot route is drawn as a straight segment and reported.
-- **Limits:** requirement. The engine draws 200 stations and 20 lines within 5 seconds on CI hardware; the grid around the stations is bounded so routing always ends.
+- **Limits:** requirement. The engine draws 200 stations and 20 lines within 5 seconds on CI hardware; each hop is routed inside the box of its two ends widened by three cells, so a typo such as `[100000, 3]` cannot make routing explode.
 - **Repetition and idempotency:** requirement. The same view, options and date produce byte-identical SVG. Adding a line or a station never moves a placed station.
 - **Concurrency:** n/a. A pure function over in-memory data.
 - **Security:** requirement. The SVG is meant to be embedded in a web page, so every catalogue text is escaped, the SVG has no scripts, no event attributes, no external references and no links, and the `staff` map shows nothing derived from hidden fields.

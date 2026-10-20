@@ -22,46 +22,47 @@ flowchart LR
     geometry --> svg["renderSvg(theme)"]
 ```
 
-- `src/map/model.ts`: `buildMapModel(view, date)` picks stations, lines (stops reduced to served components), zones, positions and markers. It reads only the view, so hidden fields cannot reach the map.
-- `src/map/layout.ts`: suggestions, routing, bundles, labels, zone hulls, legend. Output is plain data (`MapGeometry`): station points, hop polylines per line with offsets, label boxes, hull polygons, unrouted hops and suggestions.
+- `src/map/model.ts`: `buildMapModel(view, date)` picks drawn lines (in line order, stops reduced to served components, lines with fewer than two stops dropped), stations, usable positions (first key wins, first in file keeps a shared cell), zones and markers. It reads only the view, so hidden fields cannot reach the map; in `staff` it ignores the date entirely.
+- `src/map/layout.ts`: suggestions, routing, parallel offsets, labels, zone hulls, legend. Output is plain data (`MapGeometry`): station points, polylines per line with offsets, label boxes, hull polygons, unrouted hops and suggestions.
 - `src/map/svg.ts`: `renderSvg(geometry, theme)` writes the SVG text.
 
-Tests assert on geometry (angles, collisions, positions) instead of parsing SVG; a smaller set checks the SVG itself (safety, determinism, theme). The website will use the geometry to add interactivity.
+Tests assert on geometry (angles, collisions, positions) and a smaller set checks the SVG itself (safety, determinism, themes). The website will use the geometry to add interactivity.
 
-### D2. Grid and coordinates
+### D2. Map units
 
-One grid cell is 64 units; station `[c, r]` is drawn at `(PAD + 64c, TOP + 64r)`. Routing runs on the grid points of the bounding box of all stations plus two cells, which bounds A* and guarantees termination.
+Grid point `[c, r]` is `(64c, 64r)` in map units; padding, header and legend live in the `viewBox`, which is computed from the extent of the drawing. Numbers are rounded to two decimals when written, so output is stable across platforms.
 
 ### D3. Routing
 
-A* per hop over grid points, eight directions, cost = length + bend penalty (by turn angle) + penalty for reusing a grid edge used by another hop that does not connect the same stations + penalty for crossing another hop diagonally. Cells holding other stations are blocked. Hops are routed in a fixed order (lines by code then name, hops in stop order), and a hop shared by several lines is routed once (D4). The spike's direction-preference at stations, which keeps a line straight through a station, is kept.
+A* per hop over grid points inside the bounding box of the hop's two ends widened by three cells, eight directions, with a binary heap. Cost = length + turn penalty (0 for straight, small for 45°, larger for 90°; sharper turns forbidden) + a crossing penalty for running diagonally across another route, and a small discount for reusing an edge already used by other hops, which pulls lines into tidy corridors as the spike did. Points holding stations other than the hop's ends are blocked. Hops are routed in line order, each hop key once (D4). The spike's preference for keeping a line straight through a station is kept.
 
-### D4. Bundles
+### D4. Parallel lines per grid edge
 
-The key of a hop is the unordered pair of station references. Lines with the same key share the route and get parallel offsets around the centre line, ordered by code then name, with a canonical side so the order does not flip with direction. Bundle-crossing minimisation is not attempted (spike risk noted; fixed order is predictable).
+After routing, every grid edge records the lines using it, whichever hop they come from. Each line gets an offset on that edge: lines in line order, left to right when walking the edge from its end whose coordinates sort first, so two lines never coincide and the order does not flip with direction. Where a line's offset changes between consecutive edges, the corner joins the two offset segments. Bundle-crossing minimisation is not attempted; the fixed order is predictable.
 
 ### D5. Labels
 
-Eight candidates around the station (right, left, above, below, then the diagonals), a box size from a fixed per-character width table, so layout does not depend on installed fonts. Station discs, label boxes and line segments are obstacles; each station is placed in reference order, picking the first candidate with zero overlap, else the least overlap. Text is wrapped at word boundaries to at most two lines of 18 characters, the rest cut with an ellipsis.
+Eight candidates (right, left, above, below, then diagonals), box sizes from a fixed per-character width table so layout does not depend on installed fonts. Obstacles: other labels, station markers, terminal badges, zone titles, and every line segment as a rectangle as wide as its stroke. Stations are labelled interchanges first (more lines first), then by reference, as the spike did. First candidate with zero overlap wins, else least intersected area, ties to the earlier candidate. Text: two rows of 18 code points, wrapped at spaces, cuts end with `…`; the full text goes in the station's `title`.
 
 ### D6. Suggested positions
 
-As in the spec: mean of placed neighbours, nearest free cell by octile distance, ties by row then column, assigned in reference order. The suggestion lives only in the output; stackledger never writes it back.
+As in the spec. Placed and already-suggested neighbours both count, each once; octile distance; ties by row then column; free cells exclude every stored key, drawn or not. The suggestion lives only in the output; stackledger never writes it back.
 
 ### D7. Markers and the date
 
-`buildMapModel` receives the map date (the command's `--date`, default local date). A renewal ring needs `renewsOn` and `status` in the view; in `staff` with defaults `renewsOn` is absent, so the code path cannot add a ring. A test compares staff SVGs across catalogues that differ only in hidden fields.
+Solid marker for `active` or `to-confirm` licences, hollow for `to-buy`; one fixed glyph. The renewal ring is computed only in `full`, inclusive window of 30 days. A test draws two catalogues that differ in every default-hidden field with different dates in `staff` and asserts identical bytes, and asserts the `full` outputs differ so the test is known to exercise the path.
 
 ### D8. SVG safety
 
-All catalogue text goes through one `escapeXml` function; attributes built only from validated values (colours match `#RRGGBB`, references match the name pattern). No `href` of any kind; interactivity comes later from the website's own script, which can use `data-ref`. Tests check the SVG with a small XML well-formedness check (no new dependency) plus a scan for forbidden tokens.
+One `escapeXml` for all catalogue text (`& < > " '`, characters outside XML 1.0 replaced by U+FFFD). Element and attribute names come from fixed allow-lists; no `href`, `style`, `id` or `on*` attribute. Catalogue text appears only in text nodes and in `data-ref` (built from validated names). Colours are written only after matching `#RRGGBB`. Tests parse the SVG with a real XML parser added as a **development** dependency (no runtime dependency) and walk every element and attribute against the allow-lists, on a hostile fixture.
 
 ### D9. Command
 
-`stackledger map` reuses the `mcp` command's folder checks and views. SVG to stdout, everything else to stderr, exit 0 even when the catalogue has errors (the map is a view, `validate` is the gate).
+`stackledger map` reuses the folder checks and views of `mcp`. SVG to stdout, everything else to stderr, exit 0 even when the catalogue has errors: the map is a view, `validate` is the gate. stderr lines are for the person running the command and may name catalogue items.
 
 ## Risks / Trade-offs
 
-- **Label quality at crowded interchanges.** The fixed-candidate approach can still overlap when every candidate is taken; the fallback is least overlap. The owner can move stations.
-- **Bundle order crossings.** A fixed order can make bundles cross at interchanges; accepted for predictability.
+- **Label quality at crowded interchanges.** When every candidate overlaps, least overlap wins; the owner can move stations.
+- **Bundle order crossings.** A fixed order can make parallel lines cross at interchanges; accepted for predictability.
+- **Route changes.** Routes are recomputed on every draw and may change when lines change; only station positions are promised to be stable.
 - **Text width estimate.** Without measuring fonts, boxes are approximate; a generous width table keeps overlaps rare.
