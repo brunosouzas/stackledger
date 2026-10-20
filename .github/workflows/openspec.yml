@@ -1,0 +1,41 @@
+name: OpenSpec
+
+# Merge gate for OpenSpec changes: every active change and spec must pass strict
+# validation, and every archived change must have all its tasks done. The
+# archive's "Change must have a Why section" warning is informational and does
+# not fail either command.
+#
+# Actions are pinned by commit SHA, with the tag in a comment.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  OPENSPEC_TELEMETRY: "0"
+  DO_NOT_TRACK: "1"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+
+      - name: Install OpenSpec 1.14.1
+        run: npm install -g --ignore-scripts @fission-ai/openspec@1.14.1
+
+      - name: openspec validate --all --strict
+        run: openspec validate --all --strict --no-interactive
+
+      - name: openspec validate --archived
+        run: openspec validate --archived --no-interactive

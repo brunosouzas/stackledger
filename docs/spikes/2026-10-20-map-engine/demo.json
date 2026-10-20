@@ -1,0 +1,43 @@
+{
+  "title": "Software map",
+  "subtitle": "Northwind Studio (fictitious) · map-engine spike · 2026-10-20",
+  "zones": [
+    {"id": "finance", "label": "Zone 2 · Finance", "color": "#9B0056",
+     "stations": ["xero", "stripe", "expensify", "gusto"]}
+  ],
+  "lines": [
+    {"id": "ship", "code": "1", "label": "Ship a feature", "color": "#7B3FE4",
+     "stops": ["linear", "vscode", "github", "actions", "vercel"]},
+    {"id": "design", "code": "2", "label": "Design review", "color": "#0098D4",
+     "stops": ["figma", "loom", "slack", "linear"]},
+    {"id": "support", "code": "3", "label": "Answer a customer", "color": "#00A88F",
+     "stops": ["intercom", "notion", "slack", "linear"]},
+    {"id": "onboard", "code": "4", "label": "Onboard a hire", "color": "#00782A",
+     "stops": ["gusto", "google", "onepass", "slack", "notion"]},
+    {"id": "secrets", "code": "5", "label": "Rotate a secret", "color": "#DC241F",
+     "stops": ["onepass", "doppler", "actions", "vercel"]},
+    {"id": "invoice", "code": "6", "label": "Send an invoice", "color": "#EE7C0E",
+     "stops": ["stripe", "xero", "google"]},
+    {"id": "expenses", "code": "7", "label": "Claim expenses", "color": "#B36305",
+     "stops": ["expensify", "xero"]}
+  ],
+  "stations": [
+    {"id": "linear", "label": "Linear", "at": [8, 3], "licence": "paid"},
+    {"id": "vscode", "label": "VS Code", "at": [11, 3]},
+    {"id": "github", "label": "GitHub", "at": [13, 3], "licence": "paid", "renewsInDays": 12},
+    {"id": "actions", "label": "GitHub Actions", "at": [15, 5]},
+    {"id": "vercel", "label": "Vercel", "at": [18, 5], "licence": "paid"},
+    {"id": "figma", "label": "Figma", "at": [2, 2], "licence": "paid"},
+    {"id": "loom", "label": "Loom", "at": [4, 2], "status": "closed"},
+    {"id": "slack", "label": "Slack", "at": [6, 5], "licence": "paid"},
+    {"id": "intercom", "label": "Intercom", "at": [1, 8], "licence": "paid"},
+    {"id": "notion", "label": "Notion", "at": [4, 8], "licence": "paid"},
+    {"id": "gusto", "label": "Gusto", "at": [11, 11], "licence": "paid"},
+    {"id": "google", "label": "Google Workspace", "at": [9, 9], "licence": "paid"},
+    {"id": "onepass", "label": "1Password", "at": [11, 7], "licence": "paid", "renewsInDays": 25},
+    {"id": "doppler", "label": "Doppler", "at": [13, 7], "licence": "planned"},
+    {"id": "stripe", "label": "Stripe", "at": [5, 12]},
+    {"id": "xero", "label": "Xero", "at": [7, 12], "licence": "paid"},
+    {"id": "expensify", "label": "Expensify", "at": [9, 13], "licence": "paid"}
+  ]
+}

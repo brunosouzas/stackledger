@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1696" height="1096" viewBox="0 0 1696 1096" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<rect width="100%" height="70" fill="#000f9f"/>
+<text x="50" y="46" fill="#fff" font-size="30" font-weight="700">Software map</text>
+<text x="350" y="44" fill="#c9d3ff" font-size="13">Northwind Studio (fictitious) · map-engine spike · 2026-10-20</text>
+<rect x="50" y="94" width="1346" height="982" fill="none" stroke="#d6e4f5" stroke-width="1.5"/>
+<text x="162.16666666666669" y="108" fill="#6b6f76" font-size="11" text-anchor="middle">1</text>
+<line x1="274.33333333333337" y1="94" x2="274.33333333333337" y2="1076" stroke="#d6e4f5" stroke-width="1"/>
+<text x="386.50000000000006" y="108" fill="#6b6f76" font-size="11" text-anchor="middle">2</text>
+<line x1="498.6666666666667" y1="94" x2="498.6666666666667" y2="1076" stroke="#d6e4f5" stroke-width="1"/>
+<text x="610.8333333333334" y="108" fill="#6b6f76" font-size="11" text-anchor="middle">3</text>
+<line x1="723" y1="94" x2="723" y2="1076" stroke="#d6e4f5" stroke-width="1"/>
+<text x="835.1666666666666" y="108" fill="#6b6f76" font-size="11" text-anchor="middle">4</text>
+<line x1="947.3333333333334" y1="94" x2="947.3333333333334" y2="1076" stroke="#d6e4f5" stroke-width="1"/>
+<text x="1059.5" y="108" fill="#6b6f76" font-size="11" text-anchor="middle">5</text>
+<line x1="1171.6666666666667" y1="94" x2="1171.6666666666667" y2="1076" stroke="#d6e4f5" stroke-width="1"/>
+<text x="1283.8333333333335" y="108" fill="#6b6f76" font-size="11" text-anchor="middle">6</text>
+<text x="58" y="216.75" fill="#6b6f76" font-size="11">A</text>
+<line x1="50" y1="339.5" x2="1396" y2="339.5" stroke="#d6e4f5" stroke-width="1"/>
+<text x="58" y="462.25" fill="#6b6f76" font-size="11">B</text>
+<line x1="50" y1="585" x2="1396" y2="585" stroke="#d6e4f5" stroke-width="1"/>
+<text x="58" y="707.75" fill="#6b6f76" font-size="11">C</text>
+<line x1="50" y1="830.5" x2="1396" y2="830.5" stroke="#d6e4f5" stroke-width="1"/>
+<text x="58" y="953.25" fill="#6b6f76" font-size="11">D</text>
+<g opacity="0.09"><polygon points="410,878 794,814 666,942" fill="#9B0056" stroke="#9B0056" stroke-width="90" stroke-linejoin="round"/></g>
+<text x="390" y="828" fill="#9B0056" font-size="12" font-weight="700" letter-spacing="1">ZONE 2 · FINANCE</text>
+<path d="M602.0,302.0 L919.0,302.0 Q922.0,302.0 924.1,304.1 L1043.6,423.6 Q1045.8,425.8 1048.8,425.8 L1242.0,425.8" fill="none" stroke="#ffffff" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M218.0,238.0 L343.0,238.0 Q346.0,238.0 348.1,240.1 L391.0,283.0 Q410.0,302.0 410.0,328.9 L410.0,339.1 Q410.0,366.0 429.0,385.0 L468.9,424.9 Q471.0,427.0 473.1,424.9 L599.0,299.0" fill="none" stroke="#ffffff" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M154.0,622.0 L347.3,622.0 Q350.3,622.0 350.3,619.0 L350.3,574.6 Q350.3,547.7 369.3,528.7 L465.9,432.1 Q468.0,430.0 471.0,430.0 L477.0,430.0 Q480.0,430.0 482.1,427.9 L605.0,305.0" fill="none" stroke="#ffffff" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M794.0,814.0 L668.1,688.1 Q666.0,686.0 668.1,683.9 L791.9,560.1 Q794.0,558.0 791.9,555.9 L685.0,449.0 Q666.0,430.0 639.1,430.0 L483.0,430.0 Q480.0,430.0 477.9,432.1 L360.7,549.3 Q341.8,568.3 341.8,595.1 L341.8,622.0" fill="none" stroke="#ffffff" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M794.0,558.0 L919.0,558.0 Q922.0,558.0 924.1,555.9 L1043.6,436.4 Q1045.8,434.3 1048.8,434.3 L1242.0,434.3" fill="none" stroke="#ffffff" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M410.0,878.0 L535.0,878.0 Q538.0,878.0 540.1,875.9 L647.0,769.0 Q666.0,750.0 666.0,723.1 L666.0,686.0" fill="none" stroke="#ffffff" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M666.0,942.0 L628.9,942.0 Q602.0,942.0 583.0,923.0 L538.0,878.0" fill="none" stroke="#ffffff" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M602.0,302.0 L919.0,302.0 Q922.0,302.0 924.1,304.1 L1043.6,423.6 Q1045.8,425.8 1048.8,425.8 L1242.0,425.8" fill="none" stroke="#7B3FE4" stroke-width="7" stroke-linejoin="round" stroke-linecap="butt"/>
+<path d="M218.0,238.0 L343.0,238.0 Q346.0,238.0 348.1,240.1 L391.0,283.0 Q410.0,302.0 410.0,328.9 L410.0,339.1 Q410.0,366.0 429.0,385.0 L468.9,424.9 Q471.0,427.0 473.1,424.9 L599.0,299.0" fill="none" stroke="#0098D4" stroke-width="7" stroke-linejoin="round" stroke-linecap="butt"/>
+<path d="M154.0,622.0 L347.3,622.0 Q350.3,622.0 350.3,619.0 L350.3,574.6 Q350.3,547.7 369.3,528.7 L465.9,432.1 Q468.0,430.0 471.0,430.0 L477.0,430.0 Q480.0,430.0 482.1,427.9 L605.0,305.0" fill="none" stroke="#00A88F" stroke-width="7" stroke-linejoin="round" stroke-linecap="butt"/>
+<path d="M794.0,814.0 L668.1,688.1 Q666.0,686.0 668.1,683.9 L791.9,560.1 Q794.0,558.0 791.9,555.9 L685.0,449.0 Q666.0,430.0 639.1,430.0 L483.0,430.0 Q480.0,430.0 477.9,432.1 L360.7,549.3 Q341.8,568.3 341.8,595.1 L341.8,622.0" fill="none" stroke="#00782A" stroke-width="7" stroke-linejoin="round" stroke-linecap="butt"/>
+<path d="M794.0,558.0 L919.0,558.0 Q922.0,558.0 924.1,555.9 L1043.6,436.4 Q1045.8,434.3 1048.8,434.3 L1242.0,434.3" fill="none" stroke="#DC241F" stroke-width="7" stroke-linejoin="round" stroke-linecap="butt"/>
+<path d="M410.0,878.0 L535.0,878.0 Q538.0,878.0 540.1,875.9 L647.0,769.0 Q666.0,750.0 666.0,723.1 L666.0,686.0" fill="none" stroke="#EE7C0E" stroke-width="7" stroke-linejoin="round" stroke-linecap="butt"/>
+<path d="M666.0,942.0 L628.9,942.0 Q602.0,942.0 583.0,923.0 L538.0,878.0" fill="none" stroke="#B36305" stroke-width="7" stroke-linejoin="round" stroke-linecap="butt"/>
+<rect x="569" y="293" width="18" height="18" rx="3" fill="#7B3FE4"/><text x="578" y="306.5" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">1</text>
+<rect x="1257" y="416.75" width="18" height="18" rx="3" fill="#7B3FE4"/><text x="1266" y="430.25" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">1</text>
+<rect x="185" y="229" width="18" height="18" rx="3" fill="#0098D4"/><text x="194" y="242.5" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">2</text>
+<rect x="606.9653589284343" y="273.02423343148" width="18" height="18" rx="3" fill="#0098D4"/><text x="615.9653589284343" y="286.52423343148" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">2</text>
+<rect x="121" y="613" width="18" height="18" rx="3" fill="#00A88F"/><text x="130" y="626.5" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">3</text>
+<rect x="612.97576656852" y="279.0346410715657" width="18" height="18" rx="3" fill="#00A88F"/><text x="621.97576656852" y="292.5346410715657" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">3</text>
+<rect x="801.9705627484772" y="821.9705627484772" width="18" height="18" rx="3" fill="#00782A"/><text x="810.9705627484772" y="835.4705627484772" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">4</text>
+<rect x="332.75" y="637" width="18" height="18" rx="3" fill="#00782A"/><text x="341.75" y="650.5" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">4</text>
+<rect x="761" y="549" width="18" height="18" rx="3" fill="#DC241F"/><text x="770" y="562.5" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">5</text>
+<rect x="1257" y="425.25" width="18" height="18" rx="3" fill="#DC241F"/><text x="1266" y="438.75" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">5</text>
+<rect x="377" y="869" width="18" height="18" rx="3" fill="#EE7C0E"/><text x="386" y="882.5" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">6</text>
+<rect x="657" y="653" width="18" height="18" rx="3" fill="#EE7C0E"/><text x="666" y="666.5" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">6</text>
+<rect x="681" y="933" width="18" height="18" rx="3" fill="#B36305"/><text x="690" y="946.5" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">7</text>
+<rect x="512.0294372515228" y="852.0294372515228" width="18" height="18" rx="3" fill="#B36305"/><text x="521.0294372515228" y="865.5294372515228" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">7</text>
+<line x1="598.9947961799571" y1="298.9947961799572" x2="605.0052038200429" y2="305.0052038200428" stroke="#111111" stroke-width="17" stroke-linecap="round"/>
+<line x1="598.9947961799571" y1="298.9947961799572" x2="605.0052038200429" y2="305.0052038200428" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/>
+<line x1="794" y1="299.5" x2="794" y2="292.5" stroke="#7B3FE4" stroke-width="6"/>
+<line x1="923.7677669529663" y1="300.2322330470336" x2="928.7175144212722" y2="295.2824855787278" stroke="#7B3FE4" stroke-width="6"/>
+<circle cx="922" cy="302" r="14" fill="none" stroke="#F5A300" stroke-width="3"/>
+<line x1="1050" y1="425.75" x2="1050" y2="434.25" stroke="#111111" stroke-width="17" stroke-linecap="round"/>
+<line x1="1050" y1="425.75" x2="1050" y2="434.25" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/>
+<line x1="1242" y1="425.75" x2="1242" y2="434.25" stroke="#111111" stroke-width="17" stroke-linecap="round"/>
+<line x1="1242" y1="425.75" x2="1242" y2="434.25" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/>
+<line x1="218" y1="235.5" x2="218" y2="228.5" stroke="#0098D4" stroke-width="6"/>
+<line x1="347.7677669529664" y1="236.23223304703365" x2="352.7175144212722" y2="231.2824855787278" stroke="#a9adb3" stroke-width="6"/>
+<line x1="470.9947961799572" y1="426.9947961799572" x2="477.0052038200428" y2="433.0052038200428" stroke="#111111" stroke-width="17" stroke-linecap="round"/>
+<line x1="470.9947961799572" y1="426.9947961799572" x2="477.0052038200428" y2="433.0052038200428" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/>
+<line x1="154" y1="619.5" x2="154" y2="612.5" stroke="#00A88F" stroke-width="6"/>
+<line x1="350.25" y1="622" x2="341.75" y2="622" stroke="#111111" stroke-width="17" stroke-linecap="round"/>
+<line x1="350.25" y1="622" x2="341.75" y2="622" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/>
+<line x1="792.2322330470337" y1="815.7677669529663" x2="787.2824855787278" y2="820.7175144212722" stroke="#00782A" stroke-width="6"/>
+<line x1="666" y1="686" x2="666" y2="686" stroke="#111111" stroke-width="17" stroke-linecap="round"/>
+<line x1="666" y1="686" x2="666" y2="686" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/>
+<line x1="794" y1="558" x2="794" y2="558" stroke="#111111" stroke-width="17" stroke-linecap="round"/>
+<line x1="794" y1="558" x2="794" y2="558" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/>
+<circle cx="794" cy="558" r="14" fill="none" stroke="#F5A300" stroke-width="3"/>
+<line x1="923.7677669529663" y1="559.7677669529663" x2="928.7175144212722" y2="564.7175144212722" stroke="#DC241F" stroke-width="6"/>
+<circle cx="922" cy="558" r="13" fill="none" stroke="#111111" stroke-width="1.6" stroke-dasharray="3 3"/>
+<line x1="410" y1="875.5" x2="410" y2="868.5" stroke="#EE7C0E" stroke-width="6"/>
+<line x1="538" y1="878" x2="538" y2="878" stroke="#111111" stroke-width="17" stroke-linecap="round"/>
+<line x1="538" y1="878" x2="538" y2="878" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/>
+<line x1="666" y1="939.5" x2="666" y2="932.5" stroke="#B36305" stroke-width="6"/>
+<text x="563.9901127419186" y="307.2" fill="#111111" font-size="13" font-weight="700" text-anchor="end">Linear<tspan fill="#C9971C" font-weight="800"> £</tspan></text>
+<text x="453.9947961799572" y="435.2" fill="#111111" font-size="13" font-weight="700" text-anchor="end">Slack<tspan fill="#C9971C" font-weight="800"> £</tspan></text>
+<text x="1067" y="394.8" fill="#111111" font-size="13" font-weight="700" text-anchor="start">GitHub</text>
+<text x="1067" y="410.40000000000003" fill="#111111" font-size="13" font-weight="700" text-anchor="start">Actions</text>
+<text x="1242" y="406.15" fill="#111111" font-size="13" font-weight="700" text-anchor="middle">Vercel<tspan fill="#C9971C" font-weight="800"> £</tspan></text>
+<text x="367.25" y="627.2" fill="#111111" font-size="13" font-weight="700" text-anchor="start">Notion<tspan fill="#C9971C" font-weight="800"> £</tspan></text>
+<text x="649" y="683.4" fill="#111111" font-size="13" font-weight="700" text-anchor="end">Google</text>
+<text x="649" y="699" fill="#111111" font-size="13" font-weight="700" text-anchor="end">Workspace<tspan fill="#C9971C" font-weight="800"> £</tspan></text>
+<text x="807.6" y="541.8" fill="#111111" font-size="13" font-weight="700" text-anchor="start">1Password<tspan fill="#C9971C" font-weight="800"> £</tspan><tspan fill="#D98200" font-size="10" font-weight="700"> 25d</tspan></text>
+<text x="555" y="883.2" fill="#111111" font-size="13" font-weight="700" text-anchor="start">Xero<tspan fill="#C9971C" font-weight="800"> £</tspan></text>
+<text x="794" y="282.4" fill="#111111" font-size="13" font-weight="500" text-anchor="middle">VS Code</text>
+<text x="939" y="307.2" fill="#111111" font-size="13" font-weight="500" text-anchor="start">GitHub<tspan fill="#C9971C" font-weight="800"> £</tspan><tspan fill="#D98200" font-size="10" font-weight="700"> 12d</tspan></text>
+<text x="218" y="218.4" fill="#111111" font-size="13" font-weight="500" text-anchor="middle">Figma<tspan fill="#C9971C" font-weight="800"> £</tspan></text>
+<text x="363" y="243.2" fill="#a9adb3" font-size="13" font-weight="500" text-anchor="start" font-style="italic">Loom</text>
+<text x="154" y="602.4" fill="#111111" font-size="13" font-weight="500" text-anchor="middle">Intercom<tspan fill="#C9971C" font-weight="800"> £</tspan></text>
+<text x="777" y="819.2" fill="#111111" font-size="13" font-weight="500" text-anchor="end">Gusto<tspan fill="#C9971C" font-weight="800"> £</tspan></text>
+<text x="939" y="563.2" fill="#111111" font-size="13" font-weight="500" text-anchor="start">Doppler<tspan fill="#C9971C" font-weight="800"> £</tspan></text>
+<text x="410" y="858.4" fill="#111111" font-size="13" font-weight="500" text-anchor="middle">Stripe</text>
+<text x="666" y="922.4" fill="#111111" font-size="13" font-weight="500" text-anchor="middle">Expensify<tspan fill="#C9971C" font-weight="800"> £</tspan></text>
+<text x="1426" y="124" fill="#000f9f" font-size="16" font-weight="700">Lines (journeys)</text>
+<rect x="1426" y="134" width="16" height="16" rx="3" fill="#7B3FE4"/><text x="1434" y="147" fill="#fff" font-size="11" font-weight="700" text-anchor="middle">1</text>
+<line x1="1450" y1="142" x2="1490" y2="142" stroke="#7B3FE4" stroke-width="7"/><text x="1500" y="147" fill="#111111" font-size="13">Ship a feature</text>
+<rect x="1426" y="158" width="16" height="16" rx="3" fill="#0098D4"/><text x="1434" y="171" fill="#fff" font-size="11" font-weight="700" text-anchor="middle">2</text>
+<line x1="1450" y1="166" x2="1490" y2="166" stroke="#0098D4" stroke-width="7"/><text x="1500" y="171" fill="#111111" font-size="13">Design review</text>
+<rect x="1426" y="182" width="16" height="16" rx="3" fill="#00A88F"/><text x="1434" y="195" fill="#fff" font-size="11" font-weight="700" text-anchor="middle">3</text>
+<line x1="1450" y1="190" x2="1490" y2="190" stroke="#00A88F" stroke-width="7"/><text x="1500" y="195" fill="#111111" font-size="13">Answer a customer</text>
+<rect x="1426" y="206" width="16" height="16" rx="3" fill="#00782A"/><text x="1434" y="219" fill="#fff" font-size="11" font-weight="700" text-anchor="middle">4</text>
+<line x1="1450" y1="214" x2="1490" y2="214" stroke="#00782A" stroke-width="7"/><text x="1500" y="219" fill="#111111" font-size="13">Onboard a hire</text>
+<rect x="1426" y="230" width="16" height="16" rx="3" fill="#DC241F"/><text x="1434" y="243" fill="#fff" font-size="11" font-weight="700" text-anchor="middle">5</text>
+<line x1="1450" y1="238" x2="1490" y2="238" stroke="#DC241F" stroke-width="7"/><text x="1500" y="243" fill="#111111" font-size="13">Rotate a secret</text>
+<rect x="1426" y="254" width="16" height="16" rx="3" fill="#EE7C0E"/><text x="1434" y="267" fill="#fff" font-size="11" font-weight="700" text-anchor="middle">6</text>
+<line x1="1450" y1="262" x2="1490" y2="262" stroke="#EE7C0E" stroke-width="7"/><text x="1500" y="267" fill="#111111" font-size="13">Send an invoice</text>
+<rect x="1426" y="278" width="16" height="16" rx="3" fill="#B36305"/><text x="1434" y="291" fill="#fff" font-size="11" font-weight="700" text-anchor="middle">7</text>
+<line x1="1450" y1="286" x2="1490" y2="286" stroke="#B36305" stroke-width="7"/><text x="1500" y="291" fill="#111111" font-size="13">Claim expenses</text>
+<text x="1426" y="330" fill="#000f9f" font-size="16" font-weight="700">Symbols</text>
+<line x1="1438" y1="356" x2="1438" y2="356" stroke="#111111" stroke-width="17" stroke-linecap="round"/><line x1="1438" y1="356" x2="1438" y2="356" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/>
+<text x="1466" y="360" fill="#111111" font-size="13">Interchange (several journeys)</text>
+<text x="1432" y="389" fill="#C9971C" font-size="15" font-weight="800">£</text>
+<text x="1466" y="388" fill="#111111" font-size="13">Paid licence</text>
+<circle cx="1438" cy="412" r="10" fill="none" stroke="#F5A300" stroke-width="3"/>
+<text x="1466" y="416" fill="#111111" font-size="13">Renews within 30 days</text>
+<circle cx="1438" cy="440" r="10" fill="none" stroke="#111111" stroke-width="1.6" stroke-dasharray="3 3"/>
+<text x="1466" y="444" fill="#111111" font-size="13">Planned purchase</text>
+<text x="1426" y="473" fill="#a9adb3" font-size="13" font-style="italic">Name</text>
+<text x="1466" y="472" fill="#111111" font-size="13">Closed station (removed)</text>
+</svg>
