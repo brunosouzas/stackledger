@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the catalogue softwaremetro reads: the YAML documents in one folder that describe software items, licences, journeys and the map layout, and the rules that make a catalogue valid.
+Defines the catalogue stackledger reads: the YAML documents in one folder that describe software items, licences, journeys and the map layout, and the rules that make a catalogue valid.
 
 ## ADDED Requirements
 
@@ -51,10 +51,10 @@ Every document SHALL have `apiVersion`, `kind` and `metadata.name`. A name SHALL
 - **THEN** it gets an error on `metadata.name`
 
 ### Requirement: Supported kinds
-A document SHALL be one of: `backstage.io/v1alpha1` `Component`; `backstage.io/v1alpha1` `Resource`; `softwaremetro/v1alpha1` `Line`; `softwaremetro/v1alpha1` `MapLayout`. Any other `apiVersion` and `kind` pair SHALL be an error, except the kinds of the next requirement.
+A document SHALL be one of: `backstage.io/v1alpha1` `Component`; `backstage.io/v1alpha1` `Resource`; `stackledger/v1alpha1` `Line`; `stackledger/v1alpha1` `MapLayout`. Any other `apiVersion` and `kind` pair SHALL be an error, except the kinds of the next requirement.
 
 #### Scenario: Unsupported pair
-- **WHEN** a document has `apiVersion: softwaremetro/v1alpha1` and `kind: Component`
+- **WHEN** a document has `apiVersion: stackledger/v1alpha1` and `kind: Component`
 - **THEN** it gets an error naming the supported pairs for `Component`
 
 ### Requirement: Ignored Backstage kinds
@@ -162,10 +162,10 @@ A component that is a stop of a line but has no position SHALL get a warning say
 - **THEN** every stop gets the warning, and there is no error
 
 ### Requirement: Zones
-A `MapLayout` MAY declare `spec.zones`, each with a unique `name`, a `title` and a `color` as `#RRGGBB`. A component joins a zone with the label `softwaremetro/zone: <zone name>`. A zone label SHALL name a declared zone.
+A `MapLayout` MAY declare `spec.zones`, each with a unique `name`, a `title` and a `color` as `#RRGGBB`. A component joins a zone with the label `stackledger/zone: <zone name>`. A zone label SHALL name a declared zone.
 
 #### Scenario: Undeclared zone
-- **WHEN** a component has the label `softwaremetro/zone: finance` and no zone `finance` is declared
+- **WHEN** a component has the label `stackledger/zone: finance` and no zone `finance` is declared
 - **THEN** it gets an error on that label
 
 ### Requirement: No secrets in the catalogue

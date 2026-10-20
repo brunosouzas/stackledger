@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Defines how `softwaremetro validate` checks a catalogue folder from the command line and reports the result to a person or a pipeline.
+Defines how `stackledger validate` checks a catalogue folder from the command line and reports the result to a person or a pipeline.
 
 ## ADDED Requirements
 
 ### Requirement: Command input
-`softwaremetro validate [folder]` SHALL check the catalogue in `folder`, or in the current folder when none is given. It SHALL only read files.
+`stackledger validate [folder]` SHALL check the catalogue in `folder`, or in the current folder when none is given. It SHALL only read files.
 
 #### Scenario: Default folder
 - **WHEN** the command runs with no argument inside a catalogue folder

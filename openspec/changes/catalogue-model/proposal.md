@@ -6,9 +6,9 @@ Every later feature (the metro map, the software list, item pages, licence repor
 
 ## What Changes
 
-- Define the catalogue: the YAML files in one folder that softwaremetro reads. It accepts a subset of the Backstage descriptor format (`Component` for software items, `Resource` with `spec.type: licence` for licences) plus two kinds of its own: `Line` (a journey: an ordered list of components) and `MapLayout` (grid positions of stations and the zones).
+- Define the catalogue: the YAML files in one folder that stackledger reads. It accepts a subset of the Backstage descriptor format (`Component` for software items, `Resource` with `spec.type: licence` for licences) plus two kinds of its own: `Line` (a journey: an ordered list of components) and `MapLayout` (grid positions of stations and the zones).
 - Other Backstage kinds (`System`, `API`, `Group`, `User`, `Domain`, `Location`, `Template`) are counted and ignored, so a folder that also feeds a Backstage instance can be read as it is.
-- Add the `softwaremetro validate [folder]` command. It reads every YAML file in the folder, checks the rules in the specs and prints each problem with its file, line and field. It exits 0 when there is no error, 1 when there is at least one, and 2 when it cannot run (for example, the folder does not exist). `--json` prints the same result as JSON.
+- Add the `stackledger validate [folder]` command. It reads every YAML file in the folder, checks the rules in the specs and prints each problem with its file, line and field. It exits 0 when there is no error, 1 when there is at least one, and 2 when it cannot run (for example, the folder does not exist). `--json` prints the same result as JSON.
 - Add the npm package skeleton (TypeScript, Node.js 22 or later), the test setup and a CI job that runs the tests.
 
 ## Capabilities
@@ -16,7 +16,7 @@ Every later feature (the metro map, the software list, item pages, licence repor
 ### New Capabilities
 
 - `catalogue`: what a catalogue is, which documents it accepts, which fields each kind has, how entities reference each other, and which rules make a catalogue valid.
-- `validate-command`: the command-line behaviour of `softwaremetro validate`: input, output in text and JSON, exit codes and ordering.
+- `validate-command`: the command-line behaviour of `stackledger validate`: input, output in text and JSON, exit codes and ordering.
 
 ### Modified Capabilities
 
@@ -56,4 +56,4 @@ None. The decisions taken without Bruno are in `design.md`.
 - `README.md`: a short "Catalogue format" section with one example per kind and the `validate` command.
 - `docs/catalogue-format.md` (new): every kind and field, with its rule.
 - `docs/roadmap.md`: mark change 1 delivered when it merges.
-- Brain vault: `10-personal/projects/softwaremetro/_index.md`, status line.
+- Brain vault: `10-personal/projects/stackledger/_index.md`, status line.

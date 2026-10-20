@@ -12,16 +12,16 @@ The repository has no code yet. The model follows Bruno's existing register in h
 
 ## Decisions
 
-### D1. Our own kinds use `apiVersion: softwaremetro/v1alpha1`
+### D1. Our own kinds use `apiVersion: stackledger/v1alpha1`
 
-Alternatives: (a) express journeys and positions with Backstage kinds and annotations, for example a `System` per journey with an ordered annotation; (b) a separate non-Backstage file such as `softwaremetro.yaml`.
+Alternatives: (a) express journeys and positions with Backstage kinds and annotations, for example a `System` per journey with an ordered annotation; (b) a separate non-Backstage file such as `stackledger.yaml`.
 Chosen: two kinds with their own `apiVersion`. They stay in the same folder and the same descriptor shape, so one parser and one error format serve everything. (a) bends Backstage semantics: a `System` has no order, and positions in annotations would spread one layout over every component file. (b) would need a second format and a second set of errors.
 Trade-off: a Backstage instance pointed at the same folder logs unknown kinds. The documented fix is a Backstage location rule that allows only `Component` and `Resource`, or keeping `Line` and `MapLayout` files in a subfolder that Backstage does not read.
 
 ### D2. Zones are labels on components, declared in the layout
 
 Alternatives: a `Zone` kind; Backstage `spec.system`.
-Chosen: `metadata.labels["softwaremetro/zone"]` with the zone list in `MapLayout`. Labels are the Backstage mechanism for filtering, and a zone is a drawing concern (title and colour), so it lives with the layout. `spec.system` already means "parts that cooperate" in Backstage and would clash with a company that uses it.
+Chosen: `metadata.labels["stackledger/zone"]` with the zone list in `MapLayout`. Labels are the Backstage mechanism for filtering, and a zone is a drawing concern (title and colour), so it lives with the layout. `spec.system` already means "parts that cooperate" in Backstage and would clash with a company that uses it.
 
 ### D3. YAML parser: `yaml` (eemeli, ISC)
 
@@ -40,7 +40,7 @@ Chosen: `node:util` `parseArgs` with `strict: true`, which rejects unknown optio
 
 ### D6. Package and tooling
 
-One npm package, `softwaremetro`, ESM, TypeScript compiled with `tsc` to `dist/`, `bin` entry `softwaremetro`. Node.js 22 or later (`engines`). Tests with vitest: unit tests per rule with in-memory documents, and integration tests that run the built CLI on fixture folders under `test/fixtures/` (fictitious data only). The integration tests use real files and symbolic links in a temporary folder for the link and size rules. The CI job runs `npm ci`, `npm run build` and `npm test` on Node 22, 24 and 26 (26 is where the offline check of D7 runs in full). Versions are pinned in `package-lock.json`; GitHub Actions are pinned by commit SHA, as in the existing OpenSpec workflow.
+One npm package, `stackledger`, ESM, TypeScript compiled with `tsc` to `dist/`, `bin` entry `stackledger`. Node.js 22 or later (`engines`). Tests with vitest: unit tests per rule with in-memory documents, and integration tests that run the built CLI on fixture folders under `test/fixtures/` (fictitious data only). The integration tests use real files and symbolic links in a temporary folder for the link and size rules. The CI job runs `npm ci`, `npm run build` and `npm test` on Node 22, 24 and 26 (26 is where the offline check of D7 runs in full). Versions are pinned in `package-lock.json`; GitHub Actions are pinned by commit SHA, as in the existing OpenSpec workflow.
 
 ### D7. Offline proof
 

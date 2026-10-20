@@ -2,7 +2,7 @@
 
 ## 1. Package skeleton and CI
 
-- [ ] 1.1 Create `package.json` (name `softwaremetro`, ESM, `bin`, `engines.node >=22`, scripts `build`, `test`), `tsconfig.json`, and add `yaml`, `zod`, `typescript`, `vitest` and `@types/node` with exact versions in `package-lock.json`; verify `npm ci && npm run build` succeeds and `node dist/cli.js --help` prints usage.
+- [ ] 1.1 Create `package.json` (name `stackledger`, ESM, `bin`, `engines.node >=22`, scripts `build`, `test`), `tsconfig.json`, and add `yaml`, `zod`, `typescript`, `vitest` and `@types/node` with exact versions in `package-lock.json`; verify `npm ci && npm run build` succeeds and `node dist/cli.js --help` prints usage.
 - [ ] 1.2 Add `.github/workflows/test.yml` running `npm ci`, `npm run build` and `npm test` on Node 22, 24 and 26, actions pinned by commit SHA; verify the job passes on the draft pull request.
 
 ## 2. Reading files
@@ -21,7 +21,7 @@
 
 ## 4. The validate command
 
-- [ ] 4.1 Implement `softwaremetro validate` with text output and exit codes. Prove "Default folder", "Warnings only", "One error", "Missing folder", "Unknown option", "Error line" and "Clean catalogue" in `test/integration/cli.test.ts` (integration, runs the built CLI on `test/fixtures/`).
+- [ ] 4.1 Implement `stackledger validate` with text output and exit codes. Prove "Default folder", "Warnings only", "One error", "Missing folder", "Unknown option", "Error line" and "Clean catalogue" in `test/integration/cli.test.ts` (integration, runs the built CLI on `test/fixtures/`).
 - [ ] 4.2 Implement `--json` and ordering. Prove "JSON for a pipeline" and "Two runs" in `test/integration/cli.test.ts` (integration).
 - [ ] 4.3 Prove "Read-only" and "Offline run" in `test/integration/sandbox.test.ts` (integration, Node permission model as in design D7; the network part is skipped with a message where `--allow-net` does not exist).
 - [ ] 4.4 Add `test/fixtures/demo/`, a valid catalogue of a fictitious company with every kind, and verify `node dist/cli.js validate test/fixtures/demo` exits 0 with 0 errors.
