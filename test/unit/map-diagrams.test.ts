@@ -138,3 +138,18 @@ test('Neighbourhood without relations keeps placeholders level with the item', (
   for (const rect of placeholders) expect(Number(rect.getAttribute('y'))).toBe(centre.y);
   expect(Array.from(doc.getElementsByTagName('text')).filter(text => text.textContent === 'Nothing')).toHaveLength(2);
 });
+
+test('A strip stop is clickable between its marker and its label', () => {
+  const view = viewOf([component('linear'), component('slack'), journey('ship', ['linear', 'slack'], '1')], 'staff');
+  const model = buildMapModel(view, '');
+  const svg = renderStrip(strip(model, model.lines[0]!), themes.light);
+  const stop = groups(svg).find(group => group.getAttribute('data-ref') === 'component:linear')!;
+  const hit = stop.getElementsByTagName('rect')[0]!;
+  const circle = stop.getElementsByTagName('circle')[0]!;
+  const label = stop.getElementsByTagName('text')[0]!;
+  expect(hit.getAttribute('fill-opacity')).toBe('0');
+  const top = Number(hit.getAttribute('y'));
+  const bottom = top + Number(hit.getAttribute('height'));
+  expect(top).toBeLessThan(Number(circle.getAttribute('cy')) - Number(circle.getAttribute('r')));
+  expect(bottom).toBeGreaterThan(Number(label.getAttribute('y')));
+});

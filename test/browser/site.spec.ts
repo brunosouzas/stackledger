@@ -1,0 +1,260 @@
+/** Browser checks of the built Northwind sites (catalogue-site task 5.1), served under /full/ and
+ * /staff/ of one origin by test/browser/serve.mjs. Run npm run test:browser (Chromium).
+ *
+ * Every page of both sites is opened under the fixed CSP: no policy violation (DOM event and console),
+ * no failed request, no request outside the page's site prefix and none to another origin. Then the
+ * interactions of the catalogue-site spec: zoom, reset, pan, zone filter, line highlight, station
+ * links (click and Enter), diagram links, search, nothing matches, the remembered theme, and the
+ * map and table without JavaScript. Data is the fictitious example in examples/northwind.
+ */
+import { expect, test, type Page } from '@playwright/test';
+
+declare global {
+  interface Window { cspViolations: string[] }
+}
+
+interface Watch { problems: string[] }
+
+/** Record CSP violations, failed or off-prefix requests, HTTP errors and console errors of a page. */
+async function watch(page: Page, prefix: string): Promise<Watch> {
+  const origin = new URL(test.info().project.use.baseURL!).origin;
+  const result: Watch = { problems: [] };
+  // Init scripts run through the DevTools protocol, so the page's own CSP does not block them.
+  await page.addInitScript(() => {
+    window.cspViolations = [];
+    document.addEventListener('securitypolicyviolation', event => {
+      window.cspViolations.push(`${event.violatedDirective} ${event.blockedURI}`);
+    });
+  });
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.protocol === 'data:') return;
+    if (url.origin !== origin) result.problems.push(`external request ${request.url()}`);
+    else if (!url.pathname.startsWith(prefix)) result.problems.push(`request outside ${prefix}: ${url.pathname}`);
+  });
+  page.on('requestfailed', request => result.problems.push(`failed request ${request.url()}: ${request.failure()?.errorText}`));
+  page.on('response', response => {
+    if (response.status() >= 400) result.problems.push(`HTTP ${response.status()} ${response.url()}`);
+  });
+  page.on('console', message => {
+    if (message.type() === 'error' || /Content Security Policy/i.test(message.text())) result.problems.push(`console: ${message.text()}`);
+  });
+  page.on('pageerror', error => result.problems.push(`page error: ${error.message}`));
+  return result;
+}
+
+const violations = (page: Page) => page.evaluate(() => window.cspViolations);
+
+/** Every page of one site, found by following its own links from the map page. */
+async function crawl(page: Page, prefix: string): Promise<string[]> {
+  const seen = new Set<string>([prefix]);
+  const queue = [prefix];
+  while (queue.length) {
+    const path = queue.shift()!;
+    await page.goto(path);
+    const links = await page.locator('a[href]').evaluateAll(anchors => anchors.map(anchor => (anchor as HTMLAnchorElement).href));
+    for (const link of links) {
+      const url = new URL(link);
+      if (url.pathname.startsWith(prefix) && url.pathname.endsWith('/') && !seen.has(url.pathname)) {
+        seen.add(url.pathname);
+        queue.push(url.pathname);
+      }
+    }
+  }
+  return [...seen].sort();
+}
+
+for (const site of ['full', 'staff']) {
+  test(`Pages work under the policy and stay in /${site}/ (Two sites on one host)`, async ({ page }) => {
+    test.setTimeout(120_000);
+    const prefix = `/${site}/`;
+    const watched = await watch(page, prefix);
+    const paths = await crawl(page, prefix);
+    // Map, list, journeys list, 17 components, 13 licences and 7 journeys.
+    expect(paths.length).toBeGreaterThanOrEqual(40);
+    for (const kind of ['software/', 'licences/', 'journeys/']) expect(paths.some(path => path.startsWith(prefix + kind) && path !== prefix + kind)).toBe(true);
+    for (const path of paths) {
+      await page.goto(path);
+      await page.waitForLoadState('networkidle');
+      expect(await violations(page), path).toEqual([]);
+      // The page script ran (the theme switch is shown by it).
+      await expect(page.locator('[data-theme-switch]'), path).toBeVisible();
+    }
+    expect(watched.problems).toEqual([]);
+  });
+}
+
+test('The violation detector works (positive control)', async ({ page }) => {
+  await watch(page, '/full/');
+  await page.goto('/full/');
+  await page.evaluate(() => document.body.setAttribute('style', 'color: red'));
+  await expect.poll(() => violations(page)).toContainEqual(expect.stringMatching(/^style-src/));
+});
+
+/** viewBox of the light map as numbers. */
+async function viewBox(page: Page): Promise<number[]> {
+  const value = await page.locator('.map-canvas.themed-light svg').getAttribute('viewBox');
+  return (value ?? '').split(' ').map(Number);
+}
+
+test.describe('Map page', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/full/');
+  });
+
+  test('Zoom', async ({ page }) => {
+    const initial = await viewBox(page);
+    await page.getByRole('button', { name: 'Zoom in' }).click();
+    await page.getByRole('button', { name: 'Zoom in' }).click();
+    const zoomed = await viewBox(page);
+    expect(zoomed[2]).toBeCloseTo(initial[2]! / 1.25 / 1.25, 1);
+    await page.getByRole('button', { name: 'Zoom out' }).click();
+    expect((await viewBox(page))[2]).toBeCloseTo(initial[2]! / 1.25, 1);
+    await page.getByRole('button', { name: 'Reset' }).click();
+    expect(await viewBox(page)).toEqual(initial);
+  });
+
+  test('Pan', async ({ page }) => {
+    const initial = await viewBox(page);
+    const frame = await page.locator('[data-map]').boundingBox();
+    // Near the top-left corner of the frame, which is inside the viewport.
+    const start = { x: frame!.x + 40, y: frame!.y + 60 };
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(start.x + 120, start.y - 60, { steps: 6 });
+    await page.mouse.up();
+    const moved = await viewBox(page);
+    expect(moved[0]).toBeLessThan(initial[0]!);
+    expect(moved[1]).toBeGreaterThan(initial[1]!);
+    expect(page.url()).toMatch(/\/full\/$/);
+  });
+
+  test('Highlight a line', async ({ page }) => {
+    const dimmed = page.locator('.map-canvas.themed-light svg .is-dimmed');
+    const chip = page.locator('[data-map-lines] button[data-line="line:ship"]');
+    await chip.click();
+    await expect(chip).toHaveAttribute('aria-pressed', 'true');
+    expect(await dimmed.count()).toBeGreaterThan(0);
+    // Nothing on the ship line is dimmed; every other line's stroke is.
+    expect(await page.locator('.map-canvas.themed-light svg .is-dimmed[data-line~="line:ship"]').count()).toBe(0);
+    await expect(page.locator('.map-canvas.themed-light svg g[data-ref="line:design"]')).toHaveClass(/is-dimmed/);
+    await chip.click();
+    await expect(chip).toHaveAttribute('aria-pressed', 'false');
+    await expect(dimmed).toHaveCount(0);
+  });
+
+  test('Zone filter', async ({ page }) => {
+    const svg = page.locator('.map-canvas.themed-light svg');
+    await page.locator('[data-zone-filter]').selectOption('finance');
+    const inZone = svg.locator('g[data-ref^="component:"][data-zone="finance"]');
+    expect(await inZone.count()).toBeGreaterThan(0);
+    expect(await svg.locator('g[data-ref^="component:"][data-zone="finance"].is-dimmed').count()).toBe(0);
+    await expect(svg.locator('g[data-ref="component:github"]')).toHaveClass(/is-dimmed/);
+    // A line with no stop in the zone is dimmed; one with a stop there is not.
+    await expect(svg.locator('g[data-ref="line:ship"]')).toHaveClass(/is-dimmed/);
+    await expect(svg.locator('g[data-ref="line:invoice"]')).not.toHaveClass(/is-dimmed/);
+    await page.locator('[data-zone-filter]').selectOption('');
+    await expect(svg.locator('.is-dimmed')).toHaveCount(0);
+  });
+
+  test('Station link (click)', async ({ page }) => {
+    await page.locator('.map-canvas.themed-light svg g[data-ref="component:slack"]').click();
+    await expect(page).toHaveURL(/\/full\/software\/slack\/$/);
+    await expect(page.locator('h1')).toHaveText('Slack');
+  });
+
+  test('Station link (Enter)', async ({ page }) => {
+    const station = page.locator('.map-canvas.themed-light svg g[data-ref="component:slack"]');
+    await expect(station).toHaveAttribute('role', 'link');
+    await station.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/full\/software\/slack\/$/);
+  });
+});
+
+test.describe('Diagram links', () => {
+  test('Neighbourhood box (click and Enter)', async ({ page }) => {
+    await page.goto('/full/software/slack/');
+    const box = page.locator('.diagram.themed-light svg g[data-ref="resource:licence-slack"]');
+    await box.click();
+    await expect(page).toHaveURL(/\/full\/licences\/licence-slack\/$/);
+    await page.goBack();
+    await page.locator('.diagram.themed-light svg g[data-ref="resource:licence-slack"]').focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/full\/licences\/licence-slack\/$/);
+  });
+
+  test('Journey strip stop and interchange badge', async ({ page }) => {
+    await page.goto('/staff/journeys/ship/');
+    await page.locator('.diagram.themed-light svg g[data-ref="component:linear"]').click();
+    await expect(page).toHaveURL(/\/staff\/software\/linear\/$/);
+    await page.goBack();
+    const badge = page.locator('.diagram.themed-light svg g[data-ref^="line:"]:not([data-ref="line:ship"])').first();
+    const ref = await badge.getAttribute('data-ref');
+    await badge.click();
+    await expect(page).toHaveURL(new RegExp(`/staff/journeys/${ref!.slice('line:'.length)}/$`));
+  });
+});
+
+test.describe('Software list', () => {
+  const visibleRows = (page: Page) => page.locator('[data-software] tbody tr:visible');
+
+  test('Search', async ({ page }) => {
+    await page.goto('/full/software/');
+    const total = await visibleRows(page).count();
+    await page.locator('[data-search]').fill('north');
+    for (const text of await visibleRows(page).allTextContents()) expect(text.toLowerCase()).toContain('north');
+    for (const text of await page.locator('[data-software] tbody tr:not(:visible)').allTextContents()) expect(text.toLowerCase()).not.toContain('north');
+    // Case is ignored, and a narrower term hides rows.
+    await page.locator('[data-search]').fill('GIT');
+    const git = await visibleRows(page).allTextContents();
+    expect(git.length).toBeGreaterThan(0);
+    expect(git.length).toBeLessThan(total);
+    for (const text of git) expect(text.toLowerCase()).toContain('git');
+    await expect(page.locator('[data-count]')).toHaveText(`${git.length} of ${total} items shown.`);
+  });
+
+  test('Filters', async ({ page }) => {
+    await page.goto('/full/software/');
+    await page.locator('select[data-filter="kind"]').selectOption('licence');
+    const kinds = await page.locator('[data-software] tbody tr:visible td[data-column="kind"]').allTextContents();
+    expect(kinds.length).toBeGreaterThan(0);
+    expect(new Set(kinds)).toEqual(new Set(['licence']));
+  });
+
+  test('Nothing matches', async ({ page }) => {
+    await page.goto('/full/software/');
+    await page.locator('[data-search]').fill('zzz-no-such-item');
+    await expect(visibleRows(page)).toHaveCount(0);
+    await expect(page.locator('[data-no-match]')).toBeVisible();
+    await expect(page.locator('[data-no-match]')).toHaveText('No item matches.');
+  });
+});
+
+test('Theme remembered', async ({ page }) => {
+  await page.goto('/full/');
+  await expect(page.locator('.map-canvas.themed-light')).toBeVisible();
+  await page.locator('[data-theme-switch]').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.goto('/full/software/slack/');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('[data-theme-switch]')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.diagram.themed-dark')).toBeVisible();
+  await expect(page.locator('.diagram.themed-light')).toBeHidden();
+});
+
+test.describe('Without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('The map and the full table are shown', async ({ page }) => {
+    await page.goto('/staff/');
+    await expect(page.locator('.map-canvas.themed-light svg')).toBeVisible();
+    await expect(page.locator('[data-map-tools]')).toBeHidden();
+    await expect(page.locator('[data-map-lines]')).toBeVisible();
+    await page.goto('/staff/software/');
+    const rows = page.locator('[data-software] tbody tr');
+    expect(await rows.count()).toBeGreaterThan(20);
+    await expect(page.locator('[data-software] tbody tr:visible')).toHaveCount(await rows.count());
+    await expect(page.locator('[data-list-tools]')).toBeHidden();
+  });
+});

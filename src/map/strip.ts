@@ -25,6 +25,7 @@ const MIN_SPACING = 150;
 const LABEL_WIDTH = 170;
 const BADGE_HEIGHT = 20;
 const BADGE_GAP = 4;
+const STOP_HIT_MIN_WIDTH = 32;
 
 /** Plain input for one drawn line: its stops with the other drawn lines that stop there, in line order. */
 export function strip(model: MapModel, line: MapLine): Strip {
@@ -74,9 +75,13 @@ function stopGroup(input: Strip, stop: StripStop, x: number, theme: Theme): stri
   const marker = interchange
     ? tag('circle', { cx: x, cy: LINE_Y, r: 10, fill: theme.station, stroke: theme.outline, 'stroke-width': 3 })
     : tag('circle', { cx: x, cy: LINE_Y, r: 7, fill: theme.station, stroke: input.color, 'stroke-width': 4 });
-  const label = tag('text', { x, y: LINE_Y + 36, fill: theme.text, 'font-size': 13, 'font-weight': interchange ? 700 : 500, 'text-anchor': 'middle' }, escapeXml(fit(stop.title)));
+  const title = fit(stop.title);
+  const label = tag('text', { x, y: LINE_Y + 36, fill: theme.text, 'font-size': 13, 'font-weight': interchange ? 700 : 500, 'text-anchor': 'middle' }, escapeXml(title));
+  // An invisible area over the marker and its label, so a click between them still opens the stop.
+  const hitWidth = Math.max(STOP_HIT_MIN_WIDTH, textWidth(title) + 16);
+  const hit = tag('rect', { x: x - hitWidth / 2, y: LINE_Y - 14, width: hitWidth, height: 56, fill: theme.background, 'fill-opacity': 0 });
   const lines = [input.ref, ...stop.interchanges.map(item => item.ref)].join(' ');
-  return tag('g', { 'data-ref': stop.ref, 'data-line': lines }, tag('title', {}, escapeXml(stop.title)) + marker + label);
+  return tag('g', { 'data-ref': stop.ref, 'data-line': lines }, tag('title', {}, escapeXml(stop.title)) + hit + marker + label);
 }
 
 export function renderStrip(input: Strip, theme: Theme): string {
