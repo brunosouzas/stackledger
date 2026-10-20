@@ -12,9 +12,9 @@
  * restored and the staging folder removed. A failure to remove the staging folder after the commit
  * is a warning, with exit 0. stderr holds the build report only; stdout stays empty.
  *
- * Test-only hook: STACKLEDGER_TEST_FAIL=prepare | step:<n> | cleanup injects a failure while
- * preparing, at the n-th publication rename, or when removing the staging folder after the commit.
- * test/integration/build.test.ts uses it to prove the rollback; it is not a user option.
+ * Tests inject failures through the optional `faults` argument of buildCommand (BuildFaults), from
+ * test/integration/build-with-faults.mjs; src/cli.ts never passes it, and the command reads no
+ * environment variable, so a user cannot trigger a fault.
  */
 import { randomBytes } from 'node:crypto';
 import { lstatSync, mkdirSync, readdirSync, realpathSync, rmSync, statSync } from 'node:fs';
@@ -28,7 +28,6 @@ import { prepareBuild, type PreparedBuild } from './build.js';
 import { MARKER_NAME } from './policy.js';
 import { publish, removeStaleStaging, STAGING_PREFIX } from './publish.js';
 
-const TEST_HOOK = 'STACKLEDGER_TEST_FAIL';
 const PROXY_REMINDER = 'Serve both folders only behind an identity-aware proxy: full/ for the people allowed to see costs, staff/ for everyone else.';
 
 /** True when `child` is `parent` or inside it (both real, absolute paths). */
@@ -85,11 +84,14 @@ function checkOutput(out: string, catalogue: string): string {
   return target;
 }
 
-/** The test-only failure hook, read once per build. */
-function testHook(): { prepare: boolean; step?: number; cleanup: boolean } {
-  const value = process.env[TEST_HOOK] ?? '';
-  const step = /^step:(\d+)$/.exec(value)?.[1];
-  return { prepare: value === 'prepare', ...(step === undefined ? {} : { step: Number(step) }), cleanup: value === 'cleanup' };
+/** Failures a test can inject into one build, to prove the undo and the cleanup. The CLI passes none. */
+export interface BuildFaults {
+  /** Throw while preparing the sites, before anything is published. */
+  prepare?: boolean;
+  /** Make the n-th publication rename (1-based) throw instead of renaming. */
+  step?: number;
+  /** Throw when removing the staging folder after the commit. */
+  cleanup?: boolean;
 }
 
 const plural = (count: number, word: string) => `${count} ${count === 1 ? word : `${word}s`}`;
@@ -106,7 +108,7 @@ function report(prepared: PreparedBuild, out: string, warnings: string[]): strin
   return lines.join('\n') + '\n';
 }
 
-export async function buildCommand(args: string[]): Promise<void> {
+export async function buildCommand(args: string[], faults: BuildFaults = {}): Promise<void> {
   const { values, positionals } = parseArgs({
     args,
     strict: true,
@@ -126,16 +128,15 @@ export async function buildCommand(args: string[]): Promise<void> {
   const out = resolve(values.out);
   const target = checkOutput(out, catalogue);
 
-  const hook = testHook();
   mkdirSync(target, { recursive: true });
   removeStaleStaging(target);
   const staging = join(target, `${STAGING_PREFIX}${randomBytes(8).toString('hex')}`);
   mkdirSync(staging);
   let prepared: PreparedBuild;
   try {
-    if (hook.prepare) throw new Error('injected failure while preparing');
+    if (faults.prepare) throw new Error('injected failure while preparing');
     prepared = await prepareBuild(loaded, staging, date);
-    publish(target, staging, hook.step);
+    publish(target, staging, faults.step);
   } catch (error) {
     // An undo that failed keeps the staging folder: it holds the previous entries.
     if (error instanceof InternalError) throw error;
@@ -151,7 +152,7 @@ export async function buildCommand(args: string[]): Promise<void> {
   // Committed: the new sites are in place. Removing the old entries is best effort.
   const warnings: string[] = [];
   try {
-    if (hook.cleanup) throw new Error('injected failure while removing the staging folder');
+    if (faults.cleanup) throw new Error('injected failure while removing the staging folder');
     rmSync(staging, { recursive: true, force: true });
   } catch (error) {
     warnings.push(`Warning: the build is published, but ${staging} could not be removed (${(error as Error).message}); the next build removes it`);

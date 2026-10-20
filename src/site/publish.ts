@@ -8,8 +8,8 @@
  * was. Renames stay on one filesystem because the staging folder is inside the output folder.
  *
  * Test-only hook: `failAt` makes the n-th rename (1-based) throw instead of renaming, so the
- * integration tests can prove the undo at every step. The command sets it only from the
- * STACKLEDGER_TEST_FAIL environment variable (see command.ts); nothing else uses it.
+ * integration tests can prove the undo at every step. Only the tests' BuildFaults set it (see
+ * command.ts); the CLI never does.
  *
  * What can go wrong: an undo rename can itself fail (for example a folder made read-only during
  * the build). Then the error says where the previous entries are, and the staging folder is kept.

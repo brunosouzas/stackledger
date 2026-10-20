@@ -2,8 +2,8 @@
  * Build first with npm run build. Each case runs the real command in a child process; folders live
  * in one temporary directory removed after the file. Heavy cases run concurrently.
  *
- * Failures at every publication step use the test-only STACKLEDGER_TEST_FAIL hook documented in
- * src/site/command.ts. Catalogues are fictitious.
+ * Failures at every publication step are injected through build-with-faults.mjs, a test-only entry
+ * point that passes BuildFaults (src/site/command.ts) to the command. Catalogues are fictitious.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { execFile, spawnSync } from 'node:child_process';
@@ -14,17 +14,24 @@ import { dirname, join } from 'node:path';
 import { component, layout, licence, line, set } from '../unit/helpers.js';
 import { yaml } from './mcp-helpers.js';
 import { cli, root } from './helpers.js';
+import type { BuildFaults } from '../../src/site/command.js';
 
 const DATE = '2027-06-01';
 const PROXY = /identity-aware proxy/;
 
 interface Result { status: number; stdout: string; stderr: string; ms: number }
 
-/** Run the built CLI asynchronously, so several builds can run at the same time. */
-function build(args: string[], options: { env?: Record<string, string>; flags?: string[] } = {}): Promise<Result> {
+const faultEntry = join(root, 'test', 'integration', 'build-with-faults.mjs');
+
+interface BuildOptions { env?: Record<string, string>; flags?: string[]; faults?: BuildFaults }
+
+/** Run the built CLI asynchronously, so several builds can run at the same time. With `faults`, run
+ * the test-only entry point instead, which passes them to the command. */
+function build(args: string[], options: BuildOptions = {}): Promise<Result> {
   const start = performance.now();
+  const entry = options.faults ? [faultEntry, JSON.stringify(options.faults)] : [cli];
   return new Promise(resolve => {
-    execFile(process.execPath, [...(options.flags ?? []), cli, ...args],
+    execFile(process.execPath, [...(options.flags ?? []), ...entry, ...args],
       { env: { ...process.env, NODE_OPTIONS: '', ...options.env }, timeout: 180_000, maxBuffer: 64 * 1024 * 1024 },
       (error, stdout, stderr) => {
         const status = error ? (typeof error.code === 'number' ? error.code : -1) : 0;
@@ -264,13 +271,13 @@ describe('Atomic replace', () => {
 
     // A rebuild over an earlier build renames 10 times: old then new, for staff, full, _headers,
     // robots.txt and the marker. The tenth rename (the marker) is the commit point.
-    const steps = ['prepare', ...Array.from({ length: 10 }, (_, i) => `step:${i + 1}`)];
-    test.concurrent.each(steps)('Failure leaves the old site (%s)', async step => {
+    const steps: [string, BuildFaults][] = [['prepare', { prepare: true }], ...Array.from({ length: 10 }, (_, i): [string, BuildFaults] => [`step ${i + 1}`, { step: i + 1 }])];
+    test.concurrent.each(steps)('Failure leaves the old site (%s)', async (_, faults) => {
       const out = fresh('fail');
       cpSync(seed, out, { recursive: true });
       const before = snapshot(out);
       const other = writeFolder(fresh('other'), smallCatalogue([component('extra')]));
-      const result = await build(['build', other, '--out', out, '--date', '2031-01-01'], { env: { STACKLEDGER_TEST_FAIL: step } });
+      const result = await build(['build', other, '--out', out, '--date', '2031-01-01'], { faults });
       expect(result.status, result.stderr).toBe(1);
       expect(result.stderr).toMatch(/^stackledger build: internal error: injected failure/);
       expect(staging(out)).toEqual([]);
@@ -280,7 +287,7 @@ describe('Atomic replace', () => {
     test.concurrent('There is no eleventh step: the marker rename is the last one', async () => {
       const out = fresh('eleven');
       cpSync(seed, out, { recursive: true });
-      const result = await build(['build', catalogue, '--out', out, '--date', DATE], { env: { STACKLEDGER_TEST_FAIL: 'step:11' } });
+      const result = await build(['build', catalogue, '--out', out, '--date', DATE], { faults: { step: 11 } });
       expect(result.status, result.stderr).toBe(0);
       expect(snapshot(out)).toEqual(snapshot(seed));
     }, 120_000);
@@ -288,7 +295,7 @@ describe('Atomic replace', () => {
     test.concurrent('A cleanup failure after the commit is a warning', async () => {
       const out = fresh('cleanup');
       cpSync(seed, out, { recursive: true });
-      const result = await build(['build', catalogue, '--out', out, '--date', DATE], { env: { STACKLEDGER_TEST_FAIL: 'cleanup' } });
+      const result = await build(['build', catalogue, '--out', out, '--date', DATE], { faults: { cleanup: true } });
       expect(result.status, result.stderr).toBe(0);
       expect(result.stderr).toMatch(/Warning: the build is published, but .*\.stackledger-tmp-\w+ could not be removed/);
       expect(lines(result.stderr).at(-1)).toMatch(PROXY);
@@ -300,6 +307,13 @@ describe('Atomic replace', () => {
     }, 120_000);
   });
 });
+
+test.concurrent('The shipped CLI ignores the old STACKLEDGER_TEST_FAIL variable', async () => {
+  const out = fresh('no-env-hook');
+  const result = await build(['build', catalogue, '--out', out, '--date', DATE], { env: { STACKLEDGER_TEST_FAIL: 'prepare' } });
+  expect(result.status, result.stderr).toBe(0);
+  expect(existsSync(join(out, 'full', 'index.html'))).toBe(true);
+}, 120_000);
 
 test('Documented', () => {
   const text = readFileSync(join(root, 'docs', 'site.md'), 'utf8').replace(/\s+/g, ' ');
