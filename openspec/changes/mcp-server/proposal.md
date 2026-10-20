@@ -41,7 +41,7 @@ People already work with AI agents, and the main user of stackledger uses one ev
 
 ## Implicit requirements
 
-- **Errors and invalid input:** requirement. Usage errors stop the command before serving, with exit 2. A tool with a bad argument or an unknown item returns a tool error, not a crash. A catalogue with errors is still served from its usable documents, and every tool result says how many errors the catalogue has.
+- **Errors and invalid input:** requirement. Usage errors stop the command before serving, with exit 2. A tool with a bad argument or an unknown item returns a tool error, not a crash. A catalogue with errors is still served from its usable documents, and in the `full` view every tool result says how many errors and warnings the catalogue has.
 - **Limits:** requirement. `find_items` returns at most 200 items (default 50); `impact` stops at 500 items; `renewals` accepts 0 to 366 days. Results that hit a limit say so.
 - **Repetition and idempotency:** requirement. Tools only read; the same call on unchanged files gives the same result, sorted.
 - **Concurrency:** n/a. Each call reads the folder on its own; the server keeps no state between calls.

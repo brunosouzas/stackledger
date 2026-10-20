@@ -43,10 +43,14 @@ In the `full` view the server SHALL offer the tools `find_items`, `get_item`, `i
 
 #### Scenario: Read-only hint
 - **WHEN** a client lists the tools
-- **THEN** every tool has the read-only annotation set
+- **THEN** every tool has the read-only annotation set and an output schema
 
 ### Requirement: Served documents
-Each tool call SHALL read and check the folder again. It SHALL serve only documents that passed every document check, the secret scan included, and are not later duplicates. A document whose only errors come from cross-document rules SHALL still be served. A secret-scan warning does not stop a document from being served.
+Each tool call SHALL read and check the folder again. It SHALL serve only documents that passed every document check, the secret scan included, and are not later duplicates. A document whose only errors come from cross-document rules other than the duplicate-name rule SHALL still be served. A secret-scan warning does not stop a document from being served.
+
+#### Scenario: Licence with an invalid cost
+- **WHEN** a licence has `cost: -5` and a component lists it
+- **THEN** `find_items` does not return the licence in either view, and `get_item` for the component has it in `unresolved`
 
 #### Scenario: Edit between calls
 - **WHEN** a component is added to the folder between two `find_items` calls
@@ -69,7 +73,7 @@ Each tool call SHALL read and check the folder again. It SHALL serve only docume
 - **THEN** the component is still returned, with `component:ghost` in `unresolved`
 
 ### Requirement: Items
-The items a tool can return SHALL be components, licences, lines and resources that are not licences. A resource that is not a licence SHALL be returned only as `ref`, `kind: resource` and `type`; none of its other fields is ever returned. `MapLayout` and `Settings` documents are not items.
+The items a tool can return SHALL be components, licences, lines and resources that are not licences. A resource that is not a licence is served once it passes the name step, and SHALL be returned only as `ref`, `kind: resource` and `type`, where `type` is given only when it is 1 to 63 ASCII letters, digits, `-`, `_` and `.`. `MapLayout` and `Settings` documents are not items. Only a component's `spec.dependsOn` creates a dependency.
 
 #### Scenario: Database resource
 - **WHEN** a `Resource` named `orders-db` has `spec.type: database` and `spec.owner: group:data`
@@ -91,7 +95,7 @@ A successful result SHALL be one JSON object, returned as text content and as st
 - **THEN** both results are byte for byte equal
 
 ### Requirement: Tool errors
-A tool error SHALL be a result marked as an error, with one text content giving the reason and no structured content. Arguments of the wrong type, out of range or missing SHALL be tool errors, not protocol errors. A tool error SHALL NOT contain a catalogue value, and the server SHALL keep running after it.
+A tool error SHALL be a result marked as an error, with one text content giving the reason and no structured content. Arguments of the wrong type, out of range or missing SHALL be tool errors, not protocol errors. A tool error SHALL NOT contain a catalogue value other than the arguments of the call, and the server SHALL keep running after it.
 
 #### Scenario: Folder removed while serving
 - **WHEN** the folder is deleted after the server started and a tool is called
@@ -117,14 +121,14 @@ A tool argument that names an item SHALL accept `component:<name>`, `resource:<n
 - **THEN** the call returns a tool error
 
 ### Requirement: References in results
-Results SHALL write references with the kind in lower case and the name as written in the catalogue. Lists of references SHALL be sorted by name by Unicode code point, ties by kind in the order component, resource, line, unless a requirement says otherwise.
+Results SHALL write references with the kind in lower case and the name as written in the catalogue. Lists of references, and lists of objects with a `ref`, SHALL be sorted by name by Unicode code point, ties by kind in the order component, resource, line, unless a requirement says otherwise. "By reference" in these specs means this order.
 
 #### Scenario: Sorted dependants
 - **WHEN** components `Zed`, `alpha` and `beta` list `resource:licence-editor`
 - **THEN** `get_item` for it has `dependants` `component:Zed`, `component:alpha`, `component:beta`
 
 ### Requirement: find_items
-`find_items` SHALL accept optional `query`, `kind` (`component`, `licence`, `resource` or `line`), `zone` and `limit` (1 to 200, default 50) and return the items matching every given filter. `query` matches, ignoring case, part of the name, title, description, a tag, or a visible licence string field. `zone` matches the `stackledger/zone` label, ignoring case, so it returns components only.
+`find_items` SHALL accept optional `query`, `kind` (`component`, `licence`, `resource` or `line`), `zone` and `limit` (1 to 200, default 50) and return the items matching every given filter. `query` matches, ignoring case, part of the name, title, description, a tag, or a visible licence string field; for a resource that is not a licence, only the name. `zone` matches the `stackledger/zone` label, ignoring case. Items are sorted by reference before the limit applies.
 
 #### Scenario: Search by vendor
 - **WHEN** a licence has `vendor: Northwind Studio` and `find_items` is called with `query: northwind`
@@ -136,7 +140,11 @@ Results SHALL write references with the kind in lower case and the name as writt
 
 #### Scenario: Limit reached
 - **WHEN** 60 components match and `limit` is 50
-- **THEN** 50 items are returned, `total` is 60 and `truncated` is true
+- **THEN** the first 50 by reference are returned, `total` is 60 and `truncated` is true
+
+#### Scenario: Description of a database is not searched
+- **WHEN** resource `orders-db` has `spec.type: database` and `metadata.description: nightly backup`, and `find_items` is called with `query: backup`
+- **THEN** no item is returned
 
 #### Scenario: Limit out of range
 - **WHEN** `find_items` is called with `limit: 500`
@@ -150,7 +158,7 @@ Each item SHALL have `ref`, `kind` and, when present and visible, `title`, `type
 - **THEN** its item has those five values
 
 ### Requirement: get_item
-`get_item` SHALL accept `ref`. For a component or licence it SHALL return the document as it is in the view (`metadata` and `spec`), `dependsOn` (matching items, in file order), `unresolved` (the other references in `spec.dependsOn`, as written, in file order), `dependants` and `lines` (lines that stop at it); for a component also `zone`. Every list SHALL be present, empty when there is nothing.
+`get_item` SHALL accept `ref`. For a component or licence it SHALL return the document as it is in the view (`metadata` and `spec`), `dependants` and `lines` (lines that stop at it). For a component it SHALL also return `zone`, `dependsOn` (matching items, in file order) and `unresolved` (the other references in `spec.dependsOn`, as written, in file order). Every list SHALL be present, empty when there is nothing.
 
 #### Scenario: Licence used by two components
 - **WHEN** components `editor` and `forge` list `resource:licence-editor`
@@ -160,8 +168,8 @@ Each item SHALL have `ref`, `kind` and, when present and visible, `title`, `type
 - **WHEN** the view is `staff` and `get_item` is called for a licence
 - **THEN** its `spec.licence` has no hidden field
 
-### Requirement: get_item for a line
-For a line, `get_item` SHALL return the document and `stops`, its references in file order.
+### Requirement: get_item for a line or other resource
+For a line, `get_item` SHALL return the document and `stops`, its references in file order. For a resource that is not a licence it SHALL return `ref`, `kind`, `type` when given, and `dependants`.
 
 #### Scenario: Line stops
 - **WHEN** line `ship` stops at `forge` and then `editor`
@@ -261,7 +269,7 @@ The server SHALL NOT create, change or delete any file and SHALL NOT open networ
 - **THEN** every line the server wrote on stdout parses as a JSON-RPC message
 
 ### Requirement: Logs
-The server SHALL write to stderr one line when it starts, with the absolute folder, the view and the number of tools, and one line for each tool error, with the tool name and the reason. No log line SHALL contain a catalogue value.
+The server SHALL write to stderr one line when it starts, with the absolute folder, the view and the number of tools, and one line for each tool error, with the tool name and the reason. No log line SHALL contain a catalogue value other than the arguments of the call.
 
 #### Scenario: Start line
 - **WHEN** the server starts with `--view staff`

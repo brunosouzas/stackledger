@@ -23,8 +23,8 @@ flowchart LR
     view --> tools
 ```
 
-- `validateLoaded` gains `served`: documents that passed every document check (secret scan included) and are not later duplicates, plus the non-licence resources reduced to `ref` and `type`. Today `entities` holds documents before the secret scan and before duplicate removal, so the server never reads `entities` directly.
-- `src/views.ts`: `resolveHidden(catalogue)` reads the earliest `Settings` document and returns the hidden list (default, the valid list, or default plus every allowed name when the document has any error); `applyView(served, view, hidden)` returns deep copies. In `staff`, a licence is rebuilt from an allow-list (apiVersion, kind, listed metadata, `spec.type`, `spec.owner`, `spec.dependsOn`, visible `spec.licence` fields) instead of deleting hidden keys, so a misplaced field cannot pass. Every consumer gets data only through `applyView`.
+- `validateLoaded` gains `served`: documents that passed every document check (secret scan included) and are not later duplicates, plus the non-licence resources that passed the name step, reduced to `ref` and a `type` matching the name pattern (they skip the field step and the secret scan, so nothing else of theirs is ever read). Today `entities` holds documents before the secret scan and before duplicate removal, so the server never reads `entities` directly.
+- `src/views.ts`: `resolveHidden(catalogue)` returns the hidden list: every allowed licence field when any `Settings`-like document (kind compared ignoring case) or `stackledger.yaml`/`.yml` has an error (fail closed); otherwise the valid list of the earliest `Settings`, or the default. `applyView(served, view, hidden)` returns deep copies. In `staff`, components and licences are rebuilt from allow-lists instead of deleting keys, so a field written in the wrong place cannot pass. A licence keeps no `spec.dependsOn` (unchecked on licences); only a component's `spec.dependsOn` creates a dependency. Every consumer gets data only through `applyView`.
 - `src/graph.ts`: indexes by reference, `dependsOn`, `dependants`, `linesAt`, `impact` (breadth-first search with a visited set, cap 500), `gaps`. Pure functions over view entities; the website will reuse them.
 - `src/mcp.ts`: the server, tool registration per view and the result envelope.
 
@@ -38,7 +38,7 @@ Alternative rejected: filtering hidden fields in each tool's output. One forgott
 
 Each tool returns one JSON object as text content and as `structuredContent`, with an `outputSchema`. Agents read JSON reliably and tests can compare objects. Lists are sorted (by reference, or as each requirement says), so the same call on the same files gives the same bytes.
 
-Tool input schemas are permissive (types only, no ranges), and each handler checks ranges, dates and references itself and returns `isError: true` with a plain reason. This keeps out-of-range values as tool errors whatever the SDK version does with schema failures. In `staff`, `catalogue` carries only `view`: error counts can come from hidden fields.
+Tool input schemas declare every argument optional and untyped beyond a description, and each handler checks presence, types, ranges, dates and references itself and returns `isError: true` with a plain reason. This keeps out-of-range values as tool errors whatever the SDK version does with schema failures. In `staff`, `catalogue` carries only `view`: error counts can come from hidden fields.
 
 ### D4. Read the folder on every call
 
@@ -50,7 +50,7 @@ No cache and no watcher. A personal or small-company catalogue is under a few hu
 
 ### D6. Settings as a new kind
 
-The hidden-field list must live in the catalogue repository (ADR 7). A `Settings` document of `apiVersion: stackledger/v1alpha1` keeps one file format and reuses the loader, positions and error reporting. Its schema is strict. The name `stackledger.yaml` is a convention only, so the loader stays "every YAML file in the folder". An invalid `Settings` hides the default list plus every allowed name it mentions, so a typo never hides less than the owner asked for. A second `Settings` follows the `MapLayout` rule: a same-name duplicate gets only the duplicate-name error.
+The hidden-field list must live in the catalogue repository (ADR 7). A `Settings` document of `apiVersion: stackledger/v1alpha1` keeps one file format and reuses the loader, positions and error reporting. Its schema is strict. The name `stackledger.yaml` is a convention only, so the loader stays "every YAML file in the folder". Any error in a `Settings` document, or in `stackledger.yaml`, makes the `staff` view hide every licence field until it is fixed: a typo can never hide less than the owner asked for. A second `Settings` follows the `MapLayout` rule: a same-name duplicate gets only the duplicate-name error.
 
 ### D6b. Folder required for `mcp`
 
