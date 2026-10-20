@@ -50,6 +50,8 @@ People already work with AI agents, and the main user of stackledger uses one ev
 
 ## Open questions
 
+Both answered by the owner on 2026-10-20: the default view is `full`, and `note` is hidden in `staff` by default.
+
 1. **Default view when `--view` is omitted.** Recommended: `full`, because whoever runs the server locally already reads the catalogue folder, which is the `full` view by [ADR 2](../../../docs/adr/0002-catalogue-in-backstage-format-in-its-own-repository.md). The alternative, `staff` by default, is safer when a company hands the command to staff, at the cost of one flag for the owner.
 2. **Is `note` hidden in `staff` by default?** Recommended: yes. Notes often mention prices or renewal terms. ADR 7 lists the other fields; this adds `note`.
 
