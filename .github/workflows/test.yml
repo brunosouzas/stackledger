@@ -24,6 +24,8 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      # Timing checks run alone, after the suite, so elapsed time is meaningful.
+      - run: npm run test:perf
   browser:
     # Playwright (Chromium) on the built Northwind sites served under /full/ and /staff/; see test/browser/.
     runs-on: ubuntu-latest

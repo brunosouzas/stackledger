@@ -172,6 +172,14 @@ describe('Usage errors', () => {
     expect(snapshot(base)).toEqual(before);
   });
 
+  test('Date too late for the report window', async () => {
+    const out = fresh('late-date');
+    const result = await build(['build', catalogue, '--out', out, '--date', '9999-12-01']);
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('no later than 9999-12-30');
+    expect(existsSync(out)).toBe(false);
+  });
+
   test('Every usage error prints a reason and usage, and creates or changes nothing', async () => {
     const out = join(base, 'never');
     const file = join(base, 'catalogue', 'catalog-info.yaml');

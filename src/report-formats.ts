@@ -103,7 +103,7 @@ function numbers(owner: string) {
   return (amount: Amount | null): number | null => {
     if (amount === null) return null;
     const value = jsonNumber(amount);
-    if (value === undefined) throw new AmountTooLarge(`An amount of ${owner} cannot be written exactly as a JSON number`);
+    if (value === undefined) throw new AmountTooLarge(plain(`An amount of ${owner} cannot be written exactly as a JSON number`));
     return value;
   };
 }

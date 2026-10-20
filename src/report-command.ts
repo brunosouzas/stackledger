@@ -17,7 +17,7 @@ import { buildGraph, isDate, localDate } from './graph.js';
 import { calendarNamespace, renderCalendar } from './ics.js';
 import { problemCounts } from './map/command.js';
 import { AmountTooLarge, formatCsv, formatJson, formatText } from './report-formats.js';
-import { buildReport, MAX_DAYS, type Report } from './reports.js';
+import { buildReport, LAST_WINDOW_DATE, MAX_DAYS, windowFits, type Report } from './reports.js';
 import { siteTitle } from './site/data.js';
 import { loadFolder } from './source.js';
 import { validateLoaded, type Catalogue } from './validate.js';
@@ -47,6 +47,7 @@ function parseReportArgs(args: string[]): ReportArgs {
   const daysText = values.days ?? String(DEFAULT_DAYS);
   const days = WHOLE_NUMBER.test(daysText) ? Number(daysText) : Number.NaN;
   if (!(days >= 0 && days <= MAX_DAYS)) throw new Error(`--days must be a whole number from 0 to ${MAX_DAYS}`);
+  if (!windowFits(date, days)) throw new Error(`--date plus --days must be no later than ${LAST_WINDOW_DATE}`);
   const format = values.format ?? 'text';
   if (!REPORT_FORMATS.includes(format as ReportFormat)) throw new Error(`Unknown format; allowed formats: ${REPORT_FORMATS.join(', ')}`);
   return { folder, date, days, format: format as ReportFormat };

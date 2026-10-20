@@ -64,6 +64,17 @@ export interface ReportOptions {
 }
 
 export const MAX_DAYS = 366;
+
+/** The last day a window may reach: a calendar event ends the day after its date, and
+ * 9999-12-31 has no next day in YYYY-MM-DD. */
+export const LAST_WINDOW_DATE = '9999-12-30';
+
+/** Whether a window of `days` from `date` ends by LAST_WINDOW_DATE (dates compare as text). */
+export function windowFits(date: string, days: number): boolean {
+  if (date > LAST_WINDOW_DATE) return false;
+  const end = new Date(Date.parse(`${date}T00:00:00.000Z`) + days * 86_400_000).toISOString().slice(0, 10);
+  return isDate(end) && end <= LAST_WINDOW_DATE;
+}
 const COUNTED = new Set(['active', 'to-confirm']);
 const PLANNED = 'to-buy';
 const MONTHS = 12n;
@@ -243,6 +254,7 @@ function licenceRow(licence: Costed, zones: string[]): LicenceRow {
 export function buildReport(graph: Graph, date: string, days: number, options: ReportOptions = {}): Report {
   if (!isDate(date)) throw new Error('The report date must be a real YYYY-MM-DD date');
   if (!Number.isInteger(days) || days < 0 || days > MAX_DAYS) throw new Error(`The window must be from 0 to ${MAX_DAYS} days`);
+  if (!windowFits(date, days)) throw new Error(`The window must end no later than ${LAST_WINDOW_DATE}`);
   const ownerLabel = options.ownerLabel ?? ((owner: string) => owner);
   const declared = declaredZones(graph);
   const licences = [...graph.items.values()]

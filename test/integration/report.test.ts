@@ -53,19 +53,6 @@ function csvRows(text: string): string[][] {
   return rows;
 }
 
-/** Run the CLI and measure the time it needs: the user and system CPU time it reports on exit
- * (through file descriptor 3, so stdout and stderr stay as they are). The elapsed time is shown
- * too, but not asserted: the other test files build sites at the same time and can stretch it far
- * beyond what the command costs on its own. */
-function measured(args: string[]) {
-  const onExit = 'data:text/javascript,import { writeSync } from "node:fs"; process.on("exit", () => writeSync(3, JSON.stringify(process.cpuUsage())));';
-  const started = performance.now();
-  const result = spawnSync(process.execPath, ['--import', onExit, cli, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe', 'pipe'], env: { ...process.env, NODE_OPTIONS: '' }, timeout: 60_000 });
-  const wallMs = performance.now() - started;
-  const usage = JSON.parse(String(result.output[3])) as { user: number; system: number };
-  return { status: result.status, stdout: result.stdout, stderr: result.stderr, wallMs, cpuMs: (usage.user + usage.system) / 1000 };
-}
-
 test('Default options', async () => {
   const path = fixture();
   const result = run(['report', path]);
@@ -199,21 +186,30 @@ test('One error', () => {
   expect(result.stdout).toContain('resource:licence-a');
 });
 
-test('Large catalogue', () => {
-  const documents = Array.from({ length: 300 }, (_, i) => lic(`licence-${String(i).padStart(3, '0')}`, {
-    cycle: ['monthly', 'yearly', 'one-off', 'none'][i % 4], cost: ((i * 731) % 50000) / 100, currency: ['GBP', 'EUR', 'USD'][i % 3],
-    status: ['active', 'to-confirm', 'to-buy', 'cancelled'][i % 4], renewsOn: `2027-${String((i % 12) + 1).padStart(2, '0')}-15`,
-  }));
-  const path = catalogueOf(...documents);
-  for (const format of ['text', 'json', 'csv', 'ics']) {
-    const [first, second] = [measured(['report', path, '--date', DATE, '--format', format]), measured(['report', path, '--date', DATE, '--format', format])];
-    expect(first.status, first.stderr).toBe(0);
-    expect(first.stderr).toBe('');
-    expect(second.stdout, format).toBe(first.stdout);
-    console.info(`report-command: 300 licences, ${format}: ${Math.round(first.cpuMs)} ms of CPU, ${Math.round(first.wallMs)} ms elapsed`);
-    expect(first.cpuMs, format).toBeLessThan(2000);
+// 'Large catalogue' measures elapsed time, so it runs alone: test/perf/report.perf.test.ts.
+
+test('Window past the last date', () => {
+  // A renewal's calendar event ends the next day, so the window must end by 9999-12-30.
+  for (const [date, days] of [['9999-12-31', '0'], ['9999-10-01', '91']]) {
+    const result = run(['report', fixture(), '--date', date, '--days', days]);
+    expect(result.status, date).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toContain('no later than 9999-12-30');
   }
-}, 120_000);
+  expect(run(['report', fixture(), '--date', '9999-10-01', '--days', '90', '--format', 'ics']).status).toBe(0);
+});
+
+test('Hostile label in an internal error', () => {
+  const path = catalogueOf(
+    lic('licence-big', { cycle: 'monthly', cost: 1e15, currency: 'GBP', paidBy: 'pay\nfake line\u001b[31m' }),
+    lic('licence-cent', { cycle: 'monthly', cost: 0.01, currency: 'GBP', paidBy: 'pay\nfake line\u001b[31m' }),
+  );
+  const result = run(['report', path, '--date', DATE, '--format', 'json']);
+  expect(result.status).toBe(1);
+  expect(result.stdout).toBe('');
+  expect(result.stderr.trimEnd().split('\n')).toHaveLength(1);
+  expect(result.stderr).not.toContain('\u001b');
+});
 
 test('Empty report', () => {
   const path = catalogueOf(component('editor'));
