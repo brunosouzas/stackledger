@@ -1,5 +1,6 @@
 /** Read-only map command. Called by src/cli.ts; run node dist/cli.js map <folder>.
- * Usage/root failures throw before stdout; recoverable catalogue errors are diagnostics.
+ * Usage/root failures throw before stdout; layout/render failures throw InternalError (exit 1).
+ * Recoverable catalogue errors are diagnostics.
  * stdout is exactly one SVG and one newline. No catalogue file is ever changed.
  */
 import { parseArgs } from 'node:util';
@@ -12,6 +13,7 @@ import { buildMapModel } from './model.js';
 import { layoutMap } from './layout.js';
 import { renderSvg } from './svg.js';
 import { themes } from './themes.js';
+import { internal } from '../errors.js';
 
 const plural = (count: number, word: string): string => `${count} ${count === 1 ? word : `${word}s`}`;
 
@@ -36,9 +38,16 @@ export async function mapCommand(args: string[]): Promise<void> {
   const catalogue = validateLoaded(loaded);
   const theme = themes[themeName];
   const served = applyView(catalogue.served, view as ViewName, resolveHidden(catalogue));
-  const geometry = layoutMap(buildMapModel(served, date), theme.lineWidth);
   // Render before publishing bytes: unexpected geometry errors must leave stdout empty.
-  const svg = renderSvg(geometry, theme);
+  // Arguments and the folder are checked above, so a failure here is a bug, not a usage error.
+  let geometry: ReturnType<typeof layoutMap>;
+  let svg: string;
+  try {
+    geometry = layoutMap(buildMapModel(served, date), theme.lineWidth);
+    svg = renderSvg(geometry, theme);
+  } catch (error) {
+    throw internal('map', error);
+  }
 
   const diagnostics: string[] = [];
   const { errors, warnings } = catalogue.summary;
