@@ -24,6 +24,78 @@ Early design. Nothing is released. The scope is in [docs/roadmap.md](docs/roadma
 
 stackledger never stores secrets, needs no server or database, sends no telemetry and only reads the machines it inspects.
 
+## Catalogue format
+
+`stackledger validate` checks a local folder of YAML files: Backstage `Component` software items and `Resource` licences, plus `Line` journeys and a `MapLayout`. The [format reference](docs/catalogue-format.md) describes every field, references, warnings and Backstage location rules. Keep real inventory in its own private repository; the example below is fictitious.
+
+Build and check a catalogue with Node.js 22 or later:
+
+```sh
+npm ci
+npm run build
+npm test
+node dist/cli.js validate /path/to/catalogue
+node dist/cli.js validate /path/to/catalogue --json
+```
+
+The npm executable is `stackledger validate [folder]`; without a folder it checks the current directory. Exit 0 means no errors (warnings allowed), 1 means catalogue errors, and 2 means usage/folder failure. Validation only reads, makes no network calls and sends no telemetry. The package is not yet published to npm.
+
+Save this self-contained example as `catalogue.yaml` in a separate folder:
+
+```yaml
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: editor
+spec:
+  type: tool
+  lifecycle: active
+  owner: user:alex
+  dependsOn: [resource:licence-editor]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: forge
+spec:
+  type: service
+  lifecycle: active
+  owner: group:delivery
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-editor
+spec:
+  type: licence
+  owner: user:alex
+  licence:
+    vendor: Northwind Studio
+    status: active
+    cycle: yearly
+    cost: 120
+    currency: GBP
+    renewsOn: 2027-06-30
+    vaultItem: Northwind Editor subscription
+---
+apiVersion: stackledger/v1alpha1
+kind: Line
+metadata:
+  name: ship
+spec:
+  color: '#4466FF'
+  stops: [component:editor, component:forge]
+---
+apiVersion: stackledger/v1alpha1
+kind: MapLayout
+metadata:
+  name: northwind
+spec:
+  stations:
+    component:editor: [0, 0]
+    component:forge: [2, 0]
+```
+
 ## Licence
 
 [Apache-2.0](LICENSE)

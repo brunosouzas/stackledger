@@ -29,7 +29,7 @@
 
 ## 5. Documentation
 
-- [ ] 5.1 Write `docs/catalogue-format.md` (every kind and field with its rule, the Backstage location rule from design D1, and the advice to run a secret scanner such as gitleaks) and a "Catalogue format" section in `README.md`; verify each YAML example in them passes `node dist/cli.js validate` when copied into a temporary folder (checked by `test/integration/docs.test.ts`).
+- [x] 5.1 Write `docs/catalogue-format.md` (every kind and field with its rule, the Backstage location rule from design D1, and the advice to run a secret scanner such as gitleaks) and a "Catalogue format" section in `README.md`; verify each YAML example in them passes `node dist/cli.js validate` when copied into a temporary folder (checked by `test/integration/docs.test.ts`).
 
 ## Workflow follow-up
 
