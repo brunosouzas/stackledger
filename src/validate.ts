@@ -3,6 +3,8 @@
  * Run npm test for rule scenarios; validation only reads and never resolves remote references.
  */
 import { z } from 'zod';
+import { reference, type Reference } from './identity.js';
+export { reference, type Reference } from './identity.js';
 import { isMap, isScalar, type Node } from 'yaml';
 import { name, schemas, type Entity, type Component, type Licence, type Line, type MapLayout, type Settings } from './schema.js';
 import { scanSecrets } from './secrets.js';
@@ -26,14 +28,6 @@ function spec(entity: Identified): Record<string, unknown> { return object(entit
 function metadata(entity: Identified): Record<string, unknown> { return object(entity.source.value.metadata); }
 function strings(value: unknown): string[] { return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []; }
 function identityKey(kind: string, entityName: string): string { return `${kind.toLowerCase()}:${entityName.toLowerCase()}`; }
-export interface Reference { kind: string; namespace: string; name: string; key: string }
-/** Catalogue reference syntax; kind, namespace and name lower-cased, key is kind:name. */
-export function reference(value: string): Reference | undefined {
-  const match = /^([A-Za-z][A-Za-z0-9]*):(?:([A-Za-z0-9._-]+)\/)?([A-Za-z0-9][A-Za-z0-9._-]*)$/.exec(value);
-  if (!match) return;
-  const kind = match[1]!.toLowerCase(), namespace = match[2]?.toLowerCase() ?? 'default', name = match[3]!.toLowerCase();
-  return { kind, namespace, name, key: identityKey(kind, name) };
-}
 function schemaProblems(source: Source, issues: z.core.$ZodIssue[]): Problem[] {
   const seen = new Set<string>();
   return issues.flatMap(issue => {

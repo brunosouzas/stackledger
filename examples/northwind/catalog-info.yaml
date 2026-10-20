@@ -1,0 +1,610 @@
+# Fictitious Northwind Studio inventory. No real subscriptions or people.
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: linear
+  title: Linear
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind
+  dependsOn:
+    - resource:licence-linear
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: vscode
+  title: VS Code
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: github
+  title: GitHub
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind
+  dependsOn:
+    - resource:licence-github
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: actions
+  title: GitHub Actions
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: vercel
+  title: Vercel
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind
+  dependsOn:
+    - resource:licence-vercel
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: figma
+  title: Figma
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind
+  dependsOn:
+    - resource:licence-figma
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: loom
+  title: Loom
+spec:
+  type: tool
+  lifecycle: deprecated
+  owner: group:northwind
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: slack
+  title: Slack
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind
+  dependsOn:
+    - resource:licence-slack
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: intercom
+  title: Intercom
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind
+  dependsOn:
+    - resource:licence-intercom
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: notion
+  title: Notion
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind
+  dependsOn:
+    - resource:licence-notion
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: gusto
+  title: Gusto
+  labels:
+    stackledger/zone: finance
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind
+  dependsOn:
+    - resource:licence-gusto
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: google
+  title: Google Workspace
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind
+  dependsOn:
+    - resource:licence-google
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: onepass
+  title: 1Password
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind
+  dependsOn:
+    - resource:licence-onepass
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: doppler
+  title: Doppler
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind
+  dependsOn:
+    - resource:licence-doppler
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: stripe
+  title: Stripe
+  labels:
+    stackledger/zone: finance
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: xero
+  title: Xero
+  labels:
+    stackledger/zone: finance
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind
+  dependsOn:
+    - resource:licence-xero
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: expensify
+  title: Expensify
+  labels:
+    stackledger/zone: finance
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind
+  dependsOn:
+    - resource:licence-expensify
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-linear
+spec:
+  type: licence
+  owner: group:northwind
+  licence:
+    vendor: Northwind Software (fictitious)
+    status: active
+    cycle: yearly
+    cost: 120
+    currency: GBP
+    renewsOn: 2028-01-01
+    seats: 3
+    paidBy: Northwind Studio
+    vaultItem: Fictitious Linear subscription
+    note: Synthetic example, no real subscription
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-github
+spec:
+  type: licence
+  owner: group:northwind
+  licence:
+    vendor: Northwind Software (fictitious)
+    status: active
+    cycle: yearly
+    cost: 120
+    currency: GBP
+    renewsOn: 2027-06-13
+    seats: 3
+    paidBy: Northwind Studio
+    vaultItem: Fictitious GitHub subscription
+    note: Synthetic example, no real subscription
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-vercel
+spec:
+  type: licence
+  owner: group:northwind
+  licence:
+    vendor: Northwind Software (fictitious)
+    status: active
+    cycle: yearly
+    cost: 120
+    currency: GBP
+    renewsOn: 2028-01-01
+    seats: 3
+    paidBy: Northwind Studio
+    vaultItem: Fictitious Vercel subscription
+    note: Synthetic example, no real subscription
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-figma
+spec:
+  type: licence
+  owner: group:northwind
+  licence:
+    vendor: Northwind Software (fictitious)
+    status: active
+    cycle: yearly
+    cost: 120
+    currency: GBP
+    renewsOn: 2028-01-01
+    seats: 3
+    paidBy: Northwind Studio
+    vaultItem: Fictitious Figma subscription
+    note: Synthetic example, no real subscription
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-slack
+spec:
+  type: licence
+  owner: group:northwind
+  licence:
+    vendor: Northwind Software (fictitious)
+    status: active
+    cycle: yearly
+    cost: 120
+    currency: GBP
+    renewsOn: 2028-01-01
+    seats: 3
+    paidBy: Northwind Studio
+    vaultItem: Fictitious Slack subscription
+    note: Synthetic example, no real subscription
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-intercom
+spec:
+  type: licence
+  owner: group:northwind
+  licence:
+    vendor: Northwind Software (fictitious)
+    status: active
+    cycle: yearly
+    cost: 120
+    currency: GBP
+    renewsOn: 2028-01-01
+    seats: 3
+    paidBy: Northwind Studio
+    vaultItem: Fictitious Intercom subscription
+    note: Synthetic example, no real subscription
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-notion
+spec:
+  type: licence
+  owner: group:northwind
+  licence:
+    vendor: Northwind Software (fictitious)
+    status: active
+    cycle: yearly
+    cost: 120
+    currency: GBP
+    renewsOn: 2028-01-01
+    seats: 3
+    paidBy: Northwind Studio
+    vaultItem: Fictitious Notion subscription
+    note: Synthetic example, no real subscription
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-gusto
+spec:
+  type: licence
+  owner: group:northwind
+  licence:
+    vendor: Northwind Software (fictitious)
+    status: active
+    cycle: yearly
+    cost: 120
+    currency: GBP
+    renewsOn: 2028-01-01
+    seats: 3
+    paidBy: Northwind Studio
+    vaultItem: Fictitious Gusto subscription
+    note: Synthetic example, no real subscription
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-google
+spec:
+  type: licence
+  owner: group:northwind
+  licence:
+    vendor: Northwind Software (fictitious)
+    status: active
+    cycle: yearly
+    cost: 120
+    currency: GBP
+    renewsOn: 2028-01-01
+    seats: 3
+    paidBy: Northwind Studio
+    vaultItem: Fictitious Google Workspace subscription
+    note: Synthetic example, no real subscription
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-onepass
+spec:
+  type: licence
+  owner: group:northwind
+  licence:
+    vendor: Northwind Software (fictitious)
+    status: active
+    cycle: yearly
+    cost: 120
+    currency: GBP
+    renewsOn: 2027-06-26
+    seats: 3
+    paidBy: Northwind Studio
+    vaultItem: Fictitious 1Password subscription
+    note: Synthetic example, no real subscription
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-doppler
+spec:
+  type: licence
+  owner: group:northwind
+  licence:
+    vendor: Northwind Software (fictitious)
+    status: to-buy
+    cycle: yearly
+    cost: 120
+    currency: GBP
+    renewsOn: 2028-01-01
+    seats: 3
+    paidBy: Northwind Studio
+    vaultItem: Fictitious Doppler subscription
+    note: Synthetic example, no real subscription
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-xero
+spec:
+  type: licence
+  owner: group:northwind
+  licence:
+    vendor: Northwind Software (fictitious)
+    status: active
+    cycle: yearly
+    cost: 120
+    currency: GBP
+    renewsOn: 2028-01-01
+    seats: 3
+    paidBy: Northwind Studio
+    vaultItem: Fictitious Xero subscription
+    note: Synthetic example, no real subscription
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-expensify
+spec:
+  type: licence
+  owner: group:northwind
+  licence:
+    vendor: Northwind Software (fictitious)
+    status: active
+    cycle: yearly
+    cost: 120
+    currency: GBP
+    renewsOn: 2028-01-01
+    seats: 3
+    paidBy: Northwind Studio
+    vaultItem: Fictitious Expensify subscription
+    note: Synthetic example, no real subscription
+---
+apiVersion: stackledger/v1alpha1
+kind: Line
+metadata:
+  name: ship
+  title: Ship a feature
+spec:
+  code: "1"
+  color: "#7B3FE4"
+  stops:
+    - component:linear
+    - component:vscode
+    - component:github
+    - component:actions
+    - component:vercel
+---
+apiVersion: stackledger/v1alpha1
+kind: Line
+metadata:
+  name: design
+  title: Design review
+spec:
+  code: "2"
+  color: "#0098D4"
+  stops:
+    - component:figma
+    - component:loom
+    - component:slack
+    - component:linear
+---
+apiVersion: stackledger/v1alpha1
+kind: Line
+metadata:
+  name: support
+  title: Answer a customer
+spec:
+  code: "3"
+  color: "#00A88F"
+  stops:
+    - component:intercom
+    - component:notion
+    - component:slack
+    - component:linear
+---
+apiVersion: stackledger/v1alpha1
+kind: Line
+metadata:
+  name: onboard
+  title: Onboard a hire
+spec:
+  code: "4"
+  color: "#00782A"
+  stops:
+    - component:gusto
+    - component:google
+    - component:onepass
+    - component:slack
+    - component:notion
+---
+apiVersion: stackledger/v1alpha1
+kind: Line
+metadata:
+  name: secrets
+  title: Rotate a secret
+spec:
+  code: "5"
+  color: "#DC241F"
+  stops:
+    - component:onepass
+    - component:doppler
+    - component:actions
+    - component:vercel
+---
+apiVersion: stackledger/v1alpha1
+kind: Line
+metadata:
+  name: invoice
+  title: Send an invoice
+spec:
+  code: "6"
+  color: "#EE7C0E"
+  stops:
+    - component:stripe
+    - component:xero
+    - component:google
+---
+apiVersion: stackledger/v1alpha1
+kind: Line
+metadata:
+  name: expenses
+  title: Claim expenses
+spec:
+  code: "7"
+  color: "#B36305"
+  stops:
+    - component:expensify
+    - component:xero
+---
+apiVersion: stackledger/v1alpha1
+kind: MapLayout
+metadata:
+  name: northwind
+spec:
+  stations:
+    component:linear:
+      - 8
+      - 3
+    component:vscode:
+      - 11
+      - 3
+    component:github:
+      - 13
+      - 3
+    component:actions:
+      - 15
+      - 5
+    component:vercel:
+      - 18
+      - 5
+    component:figma:
+      - 2
+      - 2
+    component:loom:
+      - 4
+      - 2
+    component:slack:
+      - 6
+      - 5
+    component:intercom:
+      - 1
+      - 8
+    component:notion:
+      - 4
+      - 8
+    component:gusto:
+      - 11
+      - 11
+    component:google:
+      - 9
+      - 9
+    component:onepass:
+      - 11
+      - 7
+    component:doppler:
+      - 13
+      - 7
+    component:stripe:
+      - 5
+      - 12
+    component:xero:
+      - 7
+      - 12
+    component:expensify:
+      - 9
+      - 13
+  zones:
+    - name: finance
+      title: Zone 2 · Finance
+      color: "#9B0056"

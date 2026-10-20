@@ -94,6 +94,8 @@ All Resource fields outside `spec.licence` accept Backstage extensions, includin
 
 ## Lines
 
+See [the map guide](map.md) for routing, terminal badges and how journeys are drawn.
+
 Unlisted fields anywhere in a Line are errors.
 
 | Field | Rule |
@@ -107,6 +109,8 @@ Unlisted fields anywhere in a Line are errors.
 A component may appear only once in a line, even under a different case or explicit default namespace. Two lines sharing a colour ignoring case warn on the later line. Shared codes are errors naming the earlier line. Circle lines are not supported.
 
 ## Map layout and zones
+
+See [the map guide](map.md) for grid units, zone areas, conflicts and suggested positions.
 
 At most one MapLayout is allowed. A later layout gets an error and none of its positions/zones is used. Unlisted fields anywhere in a MapLayout are errors.
 

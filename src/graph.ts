@@ -2,7 +2,8 @@
  * Pure functions over view entities, shared by the MCP server and the future site.
  * Only a component's spec.dependsOn creates a dependency; every list is sorted, so output is stable.
  */
-import { compareText } from './source.js';
+import { compareText, compareRefs, isDate } from './identity.js';
+export { compareRefs, isDate } from './identity.js';
 import { reference } from './validate.js';
 import type { Component, Licence, Line } from './schema.js';
 import type { OtherResource } from './validate.js';
@@ -19,12 +20,6 @@ export interface Graph {
   dependants: Map<string, Set<string>>; linesAt: Map<string, Set<string>>; stops: Map<string, string[]>;
 }
 export const IMPACT_LIMIT = 500;
-const kindOrder: Record<string, number> = { component: 0, resource: 1, line: 2 };
-/** Results order: name by Unicode code point, ties component, resource, line. */
-export function compareRefs(left: string, right: string): number {
-  const a = left.indexOf(':'), b = right.indexOf(':');
-  return compareText(left.slice(a + 1), right.slice(b + 1)) || (kindOrder[left.slice(0, a)] ?? 3) - (kindOrder[right.slice(0, b)] ?? 3);
-}
 function sorted(values: Iterable<string>): string[] { return [...values].sort(compareRefs); }
 function strings(value: unknown): string[] { return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []; }
 export function buildGraph(view: View): Graph {
@@ -137,12 +132,6 @@ export function gaps(graph: Graph): { isolated: string[]; offMap: string[]; unus
     offMap: sorted(components.filter(item => !graph.linesAt.get(item.key)?.size).map(item => item.ref)),
     unusedLicences: sorted(items.filter(item => item.kind === 'licence' && !graph.dependants.get(item.key)?.size).map(item => item.ref)),
   };
-}
-/** A real calendar date written YYYY-MM-DD. */
-export function isDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 /** Calendar arithmetic in UTC on date strings, so the machine's time zone cannot shift a day. */
 export function addDays(from: string, days: number): string {

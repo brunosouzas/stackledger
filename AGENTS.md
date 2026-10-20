@@ -6,11 +6,11 @@ Open-source software governance tool. It reads a software and licence catalogue 
 
 Stack: TypeScript, Node.js, Astro, zod, vitest, Playwright, GitHub Actions, OpenSpec
 
-Implemented: the catalogue format and `stackledger validate` (`catalogue-model`), and the read-only MCP server with the `full` and `staff` views (`mcp-server`). The rest of the roadmap is not implemented: say so instead of describing files that do not exist.
+Implemented: the catalogue format and `stackledger validate` (`catalogue-model`), the SVG map engine and `stackledger map` (`metro-map-engine`), and the read-only MCP server with the `full` and `staff` views (`mcp-server`). The rest of the roadmap is not implemented: say so instead of describing files that do not exist.
 
-- Build: not applicable yet
-- Test: not applicable yet
-- Run locally: not applicable yet
+- Build: `npm run build`
+- Test: `npm test` (build first for CLI integration tests)
+- Run locally: `node dist/cli.js --help`
 
 ## Rules for this repository
 
