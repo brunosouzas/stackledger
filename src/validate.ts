@@ -3,6 +3,7 @@
  * Run npm test for rule scenarios; validation only reads and never resolves remote references.
  */
 import { z } from 'zod';
+import { isMap, isScalar } from 'yaml';
 import { name, schemas, type Entity } from './schema.js';
 import { scanSecrets } from './secrets.js';
 import { compareText, loadFolder, problem, type Source, type Problem, type FieldPath, type Loaded } from './source.js';
@@ -81,7 +82,19 @@ export function validateLoaded(loaded: Loaded): Catalogue {
       }
     }
     const parsed = schemas[entity.kind].safeParse(value);
-    if (!parsed.success) { problems.push(...schemaProblems(source, parsed.error.issues)); continue; }
+    const fieldProblems = parsed.success ? [] : schemaProblems(source, parsed.error.issues);
+    if (kind === 'Component' || kind === 'Resource') {
+      // JavaScript coerces mapping keys to strings; retain YAML's original key types for this rule.
+      for (const field of ['labels', 'annotations']) {
+        const mapping = source.document.getIn(['metadata', field], true);
+        if (isMap(mapping)) for (const pair of mapping.items) {
+          if (!isScalar(pair.key) || typeof pair.key.value !== 'string') {
+            fieldProblems.push(problem(source, ['metadata', field, String(pair.key)], 'Mapping keys must be strings', 'error', true));
+          }
+        }
+      }
+    }
+    if (fieldProblems.length || !parsed.success) { problems.push(...fieldProblems); continue; }
     entities.push(parsed.data);
     problems.push(...scanSecrets(source));
   }
