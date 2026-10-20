@@ -47,7 +47,7 @@ export function sourceNode(source: Source, path: FieldPath, keyPosition = false)
     node = resolveNode(source, node);
     const part = path[i]!;
     if (isMap(node)) {
-      const pair = node.items.find(item => String(item.key) === String(part));
+      const pair = node.items.find(item => String(resolveNode(source, item.key as Node | null)) === String(part));
       if (!pair) return undefined;
       node = (keyPosition && i === path.length - 1 ? pair.key : pair.value) as Node | null;
     } else if (isSeq(node) && typeof part === 'number' && part < node.items.length) {

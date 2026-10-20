@@ -3,7 +3,7 @@
  * Run npm test for rule scenarios; validation only reads and never resolves remote references.
  */
 import { z } from 'zod';
-import { isMap, isScalar } from 'yaml';
+import { isMap, isScalar, type Node } from 'yaml';
 import { name, schemas, type Entity } from './schema.js';
 import { scanSecrets } from './secrets.js';
 import { compareText, loadFolder, problem, resolveNode, sourceNode, type Source, type Problem, type FieldPath, type Loaded } from './source.js';
@@ -88,8 +88,9 @@ export function validateLoaded(loaded: Loaded): Catalogue {
       for (const field of ['labels', 'annotations']) {
         const mapping = resolveNode(source, sourceNode(source, ['metadata', field]));
         if (isMap(mapping)) for (const pair of mapping.items) {
-          if (!isScalar(pair.key) || typeof pair.key.value !== 'string') {
-            fieldProblems.push(problem(source, ['metadata', field, String(pair.key)], 'Mapping keys must be strings', 'error', true));
+          const key = resolveNode(source, pair.key as Node | null);
+          if (!isScalar(key) || typeof key.value !== 'string') {
+            fieldProblems.push(problem(source, ['metadata', field, String(key)], 'Mapping keys must be strings', 'error', true));
           }
         }
       }
