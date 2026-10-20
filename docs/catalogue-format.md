@@ -14,6 +14,8 @@ node dist/cli.js validate test/fixtures/demo
 node dist/cli.js validate /path/to/catalogue --json
 ```
 
+To let an AI agent query the catalogue, see the [MCP server](mcp.md).
+
 The npm executable is `stackledger validate [folder] [--json]`; the folder defaults to the current directory. `--help` anywhere prints usage and succeeds, even with otherwise invalid arguments. The package is not yet published to npm.
 
 Validation reads only: no writes, network requests or telemetry. Exit codes are **0** for no errors (warnings allowed), **1** for catalogue errors, and **2** for usage errors or an absent, unreadable or non-directory root. Exit 2 leaves stdout empty and reports the reason and usage on stderr.
@@ -42,6 +44,7 @@ Every checked document has `apiVersion`, `kind`, and `metadata.name`. A name is 
 | `Resource` | `backstage.io/v1alpha1` | Licence when `spec.type` is exactly `licence` |
 | `Line` | `stackledger/v1alpha1` | Ordered journey through components |
 | `MapLayout` | `stackledger/v1alpha1` | Station positions and zones |
+| `Settings` | `stackledger/v1alpha1` | Fields hidden from the staff view |
 
 Any other pair is an error, except `System`, `API`, `Group`, `User`, `Domain`, `Location` and `Template`: these are counted as ignored regardless of apiVersion, without checking names, fields or secrets.
 
@@ -51,7 +54,7 @@ A Resource requires a non-empty string `spec.type`. Other types such as `databas
 
 For each document, checks run in order: kind present; ignored kind (stop); supported pair; name; non-licence Resource (stop); kind fields; secret scan. An error stops the remaining stages. Cross-document checks run last on documents that passed identity, excluding later duplicates.
 
-**Backstage location rules:** when Backstage reads the same folder, configure its location rules to allow only `Component` and `Resource`, or keep `Line` and `MapLayout` in a subfolder Backstage does not read. Their stackledger apiVersion is not a native Backstage kind.
+**Backstage location rules:** when Backstage reads the same folder, configure its location rules to allow only `Component` and `Resource`, or keep `Line`, `MapLayout` and `Settings` in a subfolder Backstage does not read. Their stackledger apiVersion is not a native Backstage kind.
 
 ## Components
 
@@ -117,6 +120,36 @@ At most one MapLayout is allowed. A later layout gets an error and none of its p
 | `spec.zones[n].color` | Required `#` plus six hexadecimal digits |
 
 Station references must match existing components. Two entries cannot occupy the same cell; the later entry gets an error naming the earlier one. A component on a line without a position warns once at its first stop: the map will place it. With no layout, each distinct stop still warns once. A positioned component not on any line warns at its station key: the map will not show it. Zone labels must name a zone in the earliest layout, compared ignoring case.
+
+## Settings and views
+
+stackledger has two views ([ADR 7](adr/0007-two-views-built-as-separate-sites.md)): `full` shows every field, and `staff` drops licence fields so that everyone can see the software without seeing what it costs. By default `staff` hides `cost`, `currency`, `cycle`, `renewsOn`, `paidBy`, `seats`, `vaultItem` and `note`. One `Settings` document changes that list. Keep it by convention in `stackledger.yaml` at the top of the catalogue; any file name works.
+
+```yaml
+apiVersion: stackledger/v1alpha1
+kind: Settings
+metadata:
+  name: settings
+spec:
+  views:
+    staff:
+      hide: [cost, currency, renewsOn, paidBy, vaultItem, note]
+```
+
+| Field | Rule |
+| --- | --- |
+| `metadata.name`, `metadata.namespace` | Identity and namespace rules above |
+| `metadata.title` | Optional non-empty string |
+| `spec` | Required mapping; may be empty (`spec: {}`) |
+| `spec.views.staff.hide` | Optional list of licence field names without repeats, each one of `vendor`, `status`, `cycle`, `cost`, `currency`, `renewsOn`, `seats`, `paidBy`, `vaultItem` and `note` |
+
+Unlisted fields anywhere in a Settings document are errors, so `spec.view` instead of `spec.views` is reported. When `hide` is given it replaces the default list entirely: `[cost]` hides only the cost, and `[]` hides nothing. Without `hide`, the default list applies.
+
+At most one Settings document is allowed; the earliest is used. A later one with another name gets an error naming the earlier file; one with the same name gets only the duplicate-name error.
+
+**Broken settings hide everything.** While any document whose kind is `Settings` in any case has an error, or any file named `stackledger.yaml` or `stackledger.yml` has an error, the `staff` view hides every licence field above, until it is fixed. A typo can never hide less than you asked for.
+
+In `staff`, components and licences are rebuilt from the fields this reference lists, so a field written in the wrong place (for example `spec.cost` next to `spec.licence`, or a `spec.licence` block on a component) never reaches staff. Free text is not filtered: **keep prices, renewal terms and payment details in licence fields**, not in `metadata.description`, annotations, tags or titles, which staff can read.
 
 ## Secret and personal-data guard
 

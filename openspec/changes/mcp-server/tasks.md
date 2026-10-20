@@ -19,7 +19,7 @@
 
 ## 4. Documentation and agent skill
 
-- [ ] 4.1 `docs/mcp.md`: what each tool answers, views, and configuration examples for Claude Code, Codex and Hermes, with and without `--view staff`.
-- [ ] 4.2 `docs/catalogue-format.md`: the `Settings` document and the advice to keep prices in licence fields; add `Settings` to the kinds checked by `test/integration/docs.test.ts`.
-- [ ] 4.3 `skills/stackledger/SKILL.md`: maintain a catalogue with an agent (add an item, link a licence, add a line, place a station, run `validate`), fictitious examples only.
-- [ ] 4.4 README: Usage table (`stackledger mcp` available from source) and the AI agents section linking `docs/mcp.md` and the skill.
+- [x] 4.1 `docs/mcp.md`: what each tool answers, views, and configuration examples for Claude Code, Codex and Hermes, with and without `--view staff`.
+- [x] 4.2 `docs/catalogue-format.md`: the `Settings` document and the advice to keep prices in licence fields; add `Settings` to the kinds checked by `test/integration/docs.test.ts`.
+- [x] 4.3 `skills/stackledger/SKILL.md`: maintain a catalogue with an agent (add an item, link a licence, add a line, place a station, run `validate`), fictitious examples only.
+- [x] 4.4 README: Usage table (`stackledger mcp` available from source) and the AI agents section linking `docs/mcp.md` and the skill.
