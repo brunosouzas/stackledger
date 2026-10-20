@@ -8,6 +8,8 @@ import { validateFolder } from '../../src/validate.js';
 import { applyView, resolveHidden } from '../../src/views.js';
 import { buildMapModel } from '../../src/map/model.js';
 import { layoutMap } from '../../src/map/layout.js';
+import { suggestPositions, octile } from '../../src/map/suggest.js';
+import { routeMap, directionOf } from '../../src/map/route.js';
 import { root, run } from './helpers.js';
 const example=join(root,'examples/northwind');
 test('Labels do not collide in the example',async()=>{
@@ -34,6 +36,20 @@ test('Terminal badges in the example overlap no badge, station marker or licence
     if(station.licencePoint)expect(hits(badge.box,{x:station.licencePoint[0]-6,y:station.licencePoint[1]-6,w:12,h:12}),`badge ${badge.text} covers licence of ${station.ref}`).toBe(false);
    }
   }
+ }
+});
+test('Example hops are near-shortest with few bends',async()=>{
+ const catalogue=await validateFolder(example);
+ const m=buildMapModel(applyView(catalogue.served,'full',resolveHidden(catalogue)),'2027-06-01');
+ const p=suggestPositions(m).positions,routes=routeMap(m,p);
+ expect(routes.hops.length).toBeGreaterThan(10);
+ for(const hop of routes.hops){
+  const pts=hop.points,name=`${hop.from} -> ${hop.to}`;
+  let length=0,bends=0;
+  for(let i=1;i<pts.length;i++){length+=Math.hypot(pts[i]![0]-pts[i-1]![0],pts[i]![1]-pts[i-1]![1]);if(i>1&&directionOf(pts[i-2]!,pts[i-1]!)!==directionOf(pts[i-1]!,pts[i]!))bends++;}
+  expect(hop.unrouted,name).toBe(false);
+  expect(length,name).toBeLessThanOrEqual(octile(pts[0]!,pts.at(-1)!)+1+1e-9);
+  expect(bends,name).toBeLessThanOrEqual(2);
  }
 });
 test('Every stroke in the example is octilinear',async()=>{

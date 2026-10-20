@@ -34,7 +34,19 @@ test('Router bounds, state budget and turns',()=>{
 test('Routes prefer reused corridors and penalise diagonal crossings',()=>{
  const a=routeHop([0,0],[4,2],new Set()); const used=new Set<string>(); for(let i=1;i<a.points.length;i++)used.add(edgeKey(a.points[i-1]!,a.points[i]!));
  expect(routeHop([0,0],[4,2],new Set(),used).points).toEqual(a.points);
- const cross=new Set([edgeKey([0,1],[1,0])]); const direct=routeHop([0,0],[2,2],new Set()); const diverted=routeHop([0,0],[2,2],new Set(),cross);expect(direct.points[1]).toEqual([1,1]);expect(diverted.points[1]).not.toEqual([1,1]);
+ // Crossing a used corridor diagonally only breaks ties between routes of equal length and bends.
+ const cross=new Set([edgeKey([0,1],[1,0])]); const diverted=routeHop([0,0],[2,1],new Set(),cross);expect(diverted.points).toEqual([[0,0],[1,0],[2,1]]);
+ expect(routeHop([0,0],[2,2],new Set(),cross).points).toEqual([[0,0],[1,1],[2,2]]);
+});
+test('Reuse never buys extra length or bends',()=>{
+ const used=new Set([edgeKey([0,0],[0,1]),edgeKey([0,1],[0,2]),edgeKey([0,2],[1,2]),edgeKey([1,2],[2,2])]);
+ expect(routeHop([0,0],[2,2],new Set(),used).points).toEqual([[0,0],[1,1],[2,2]]);
+ const corridor=new Set([edgeKey([0,0],[1,0]),edgeKey([1,0],[2,0]),edgeKey([2,0],[3,0])]);
+ expect(routeHop([0,0],[3,0],new Set(),corridor).points).toEqual([[0,0],[1,0],[2,0],[3,0]]);
+});
+test('Routes avoid cells beside other stations when an equal-length route exists',()=>{
+ // [0,0] to [2,1]: right-then-diagonal passes [1,0], beside the station at [1,-1]; diagonal-then-right does not.
+ const r=routeHop([0,0],[2,1],new Set(['0,0','2,1','1,-1']));expect(r.points).toEqual([[0,0],[1,1],[2,1]]);
 });
 test('Two lines on one hop',()=>{const m=model(...base(),journey('secrets',['b','a']));const p=suggestPositions(m).positions,r=routeMap(m,p);expect(r.hops).toHaveLength(1);expect(r.hops[0]!.lines).toHaveLength(2); const strokes=parallelLines(m,r);expect(strokes[0]!.points).not.toEqual([...strokes[1]!.points].reverse());});
 test('Different hops on one edge',()=>{

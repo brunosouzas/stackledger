@@ -11,6 +11,8 @@ export interface Badge { point: Point; box: Box; text: string; color: string }
 const HEIGHT = 20;
 const GAP = 4;
 const DISTANCES = Array.from({ length: 16 }, (_, i) => 20 + i * 4);
+// When a row cannot clear along the line (another stroke continues that way), it may shift to either side.
+const SIDEWAYS = [0, 18, -18];
 
 interface Terminal { stroke: Stroke; station: Point; direction: Point; end: Point }
 
@@ -42,10 +44,13 @@ function terminals(strokes: Stroke[]): Terminal[] {
   return result;
 }
 
-/** Boxes for one row of badges centred `distance` units beyond the station along its direction. */
-function row(members: Terminal[], distance: number): Box[] {
+/** Boxes for one row of badges centred `distance` units beyond the station along its direction, moved `sideways` across it. */
+function row(members: Terminal[], distance: number, sideways: number): Box[] {
   const { station, direction } = members[0]!;
-  const centre: Point = [station[0] + direction[0] * distance, station[1] + direction[1] * distance];
+  const centre: Point = [
+    station[0] + direction[0] * distance - direction[1] * sideways,
+    station[1] + direction[1] * distance + direction[0] * sideways,
+  ];
   const widths = members.map(member => badgeWidth(member.stroke.badge));
   if (Math.abs(direction[1]) < 1e-9) {
     // Lines ending horizontally are stacked, one badge per row, centred on the bundle.
@@ -82,10 +87,10 @@ export function placeBadges(strokes: Stroke[], obstacles: Obstacle[]): Badge[] {
       .map((member, index) => ({ member, index }))
       .sort((one, two) => one.member.end[across] - two.member.end[across] || one.index - two.index)
       .map(entry => entry.member);
-    let chosen = row(members, DISTANCES[0]!);
+    const candidates = SIDEWAYS.flatMap(sideways => DISTANCES.map(distance => row(members, distance, sideways)));
+    let chosen = candidates[0]!;
     let best = Infinity;
-    for (const distance of DISTANCES) {
-      const boxes = row(members, distance);
+    for (const boxes of candidates) {
       const score = boxes.reduce((sum, box) => sum + overlapScore(box, taken), 0);
       if (score < best - 1e-8) {
         best = score;

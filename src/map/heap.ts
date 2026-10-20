@@ -1,7 +1,21 @@
 /** Stable binary min-heap for bounded A*. Internal use; npm test exercises routing.
- * Sequence numbers resolve equal priorities deterministically; empty pop returns undefined.
+ * Priorities are compared lexicographically (with a small tolerance for float sums);
+ * sequence numbers resolve equal priorities deterministically; empty pop returns undefined.
  */
-interface Entry<T> { value: T; priority: number; sequence: number }
+export type Priority = readonly number[];
+
+interface Entry<T> { value: T; priority: Priority; sequence: number }
+
+const TOLERANCE = 1e-9;
+
+/** Negative when `one` sorts first, positive when `two` does, 0 when equal within tolerance. */
+export function comparePriorities(one: Priority, two: Priority): number {
+  for (let i = 0; i < Math.max(one.length, two.length); i++) {
+    const difference = (one[i] ?? 0) - (two[i] ?? 0);
+    if (Math.abs(difference) > TOLERANCE) return difference;
+  }
+  return 0;
+}
 
 export class MinHeap<T> {
   private entries: Entry<T>[] = [];
@@ -11,7 +25,7 @@ export class MinHeap<T> {
     return this.entries.length;
   }
 
-  push(value: T, priority: number): void {
+  push(value: T, priority: Priority): void {
     const entry = { value, priority, sequence: this.sequence++ };
     let index = this.entries.length;
     this.entries.push(entry);
@@ -44,6 +58,7 @@ export class MinHeap<T> {
   }
 
   private before(one: Entry<T>, two: Entry<T>): boolean {
-    return one.priority < two.priority || (one.priority === two.priority && one.sequence < two.sequence);
+    const order = comparePriorities(one.priority, two.priority);
+    return order < 0 || (order === 0 && one.sequence < two.sequence);
   }
 }
