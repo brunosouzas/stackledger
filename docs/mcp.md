@@ -35,7 +35,7 @@ The two views are those of [ADR 7](adr/0007-two-views-built-as-separate-sites.md
 In `staff`:
 
 - A component keeps `apiVersion`, `kind`, the listed `metadata` fields (`name`, `namespace`, `title`, `description`, `labels`, `annotations`, `tags`), `spec.type`, `spec.lifecycle`, `spec.owner` and `spec.dependsOn`. Anything else, such as a `spec.licence` block on a component, is dropped.
-- A licence keeps `apiVersion`, `kind`, the listed `metadata` fields, `spec.type`, `spec.owner` and the `spec.licence` fields that are not hidden. By default `cost`, `currency`, `cycle`, `renewsOn`, `paidBy`, `seats`, `vaultItem` and `note` are hidden. A catalogue changes that list in a `Settings` document ([format](catalogue-format.md#settings-and-views)); a broken `Settings`, or YAML that could not be read, hides every licence field.
+- A licence keeps `apiVersion`, `kind`, the listed `metadata` fields, `spec.type`, `spec.owner` and the `spec.licence` fields that are not hidden. By default `cost`, `currency`, `cycle`, `renewsOn`, `paidBy`, `seats`, `vaultItem` and `note` are hidden. A catalogue changes that list in a `Settings` document ([format](catalogue-format.md#settings-and-views)); a broken `Settings` hides every licence field.
 - Hidden fields are absent, not masked. Search does not match them, counts and order do not depend on them, and `renewals` and `validate` are not offered. Results carry no error counts, because problems can point at hidden fields.
 - A licence with an error in any field, hidden ones included, is served in neither view.
 

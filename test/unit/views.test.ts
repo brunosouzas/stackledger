@@ -28,14 +28,21 @@ test('Typo next to valid names', () => { const result = check(hiding(['vendor', 
 test('Typo in the path', () => { const result = check(settings('settings', { view: { staff: { hide: ['vendor'] } } }), full()); expect(details(result)).not.toHaveProperty('vendor'); expect(resolveHidden(result)).toEqual(allFields); });
 test('Real list in a second settings document', () => { const result = checkFiles({ 'a.yaml': [settings('settings')], 'b.yaml': [hiding(['vendor'], 'company')], 'c.yaml': [full()] }); expect(details(result)).not.toHaveProperty('vendor'); });
 test('Syntax error in stackledger.yaml', () => { const result = checkFiles({ 'stackledger.yaml': ['spec: "unclosed\n'], 'c.yaml': [full()] }); expect(result.served.licences).toHaveLength(1); expect(view(result).licences[0]!.spec).not.toHaveProperty('licence'); });
-test('YAML that was not read fails closed', () => {
- // Whether a broken file held Settings cannot be known, so any unread YAML hides every licence field.
+test('Settings in a file that cannot be parsed or expanded fail closed', () => {
  const custom = 'apiVersion: stackledger/v1alpha1\nkind: Settings\nmetadata: {name: settings}\nspec: {views: {staff: {hide: [vendor]}}}\n';
- for (const broken of [custom + 'extra: *missing\n', custom + 'extra: "unclosed\n', custom.replace('kind: Settings', '{kind: "settings"'), 'note: "unclosed\n']) {
+ const kinds = ['kind: !!str Settings', 'kind: &policy Settings', 'kind: "Set\\u0074ings"', 'kind: settings', 'kind: *missing', '{kind: "settings"'];
+ for (const broken of [custom + 'extra: *missing\n', custom + 'extra: "unclosed\n', ...kinds.map(kind => custom.replace('kind: Settings', kind) + 'extra: *missing\n')]) {
   const result = checkFiles({ 'policy.yaml': [broken], 'c.yaml': [full()] });
-  expect(result.served.settings).toEqual([]); expect(resolveHidden(result)).toEqual(allFields);
+  expect(result.served.settings).toEqual([]); expect(resolveHidden(result), broken).toEqual(allFields);
  }
- expect(resolveHidden(checkFiles({ 'list.yaml': ['- a\n'], 'c.yaml': [full()] }))).toEqual(['cost', 'currency', 'cycle', 'renewsOn', 'paidBy', 'seats', 'vaultItem', 'note']);
+});
+test('Unread files that are not settings keep the list in use', () => {
+ const defaults = ['cost', 'currency', 'cycle', 'renewsOn', 'paidBy', 'seats', 'vaultItem', 'note'];
+ expect(resolveHidden(checkFiles({ 'notes.yaml': ['note: "unclosed\n'], 'c.yaml': [full()] }))).toEqual(defaults);
+ expect(resolveHidden(checkFiles({ 'a.yaml': [hiding([])], 'b.yaml': [set(full(), 'spec.licence.note', 'kind: Settings'), 'extra: *missing\n'] }))).toEqual([]);
+ // An alias never resolves, so the hidden value it points at cannot decide.
+ const aliased = (note: string) => checkFiles({ 'a.yaml': [hiding([])], 'b.yaml': [`apiVersion: backstage.io/v1alpha1\nkind: Resource\nmetadata: {name: x}\nspec: {licence: {note: &n ${note}}}\nextra: *missing\n`] });
+ expect(resolveHidden(aliased('Settings'))).toEqual(resolveHidden(aliased('ordinary')));
 });
 test('Settings-like documents fail closed', () => {
  for (const broken of [set(settings(), 'kind', 'settings'), set(settings(), 'apiVersion', 'backstage.io/v1alpha1'), set(settings(), 'metadata.name', 'café'), set(hiding([]), 'metadata.description', '-----BEGIN OPENSSH PRIVATE KEY-----')]) expect(resolveHidden(check(broken, full()))).toEqual(allFields);

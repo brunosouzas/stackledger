@@ -40,10 +40,3 @@ test('Document that is a list', async () => {
  const result = await loadFolder(folder({ 'list.yaml': '- a\n- b\n' }));
  expect(result.sources).toEqual([]); expect(result.problems).toMatchObject([{ field: null, severity: 'error', message: 'Document must be a mapping' }]);
 });
-test('Unread YAML marks settings as unread', async () => {
- const big = folder({ 'big.yaml': 'x'.repeat(MAX_FILE_BYTES + 1), 'ok.yaml': component() });
- expect((await loadFolder(big)).settingsUnread).toBe(true);
- const linked = folder({ 'ok.yaml': component() }); symlinkSync(join(folder({ 'stackledger.yaml': 'kind: Settings\n' }), 'stackledger.yaml'), join(linked, 'stackledger.yaml'));
- expect((await loadFolder(linked)).settingsUnread).toBe(true);
- expect((await loadFolder(folder({ 'ok.yaml': component(), 'list.yaml': '- a\n' }))).settingsUnread).toBeUndefined();
-});

@@ -3,7 +3,7 @@
  */
 import { readdir, lstat, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { parseAllDocuments, LineCounter, isMap, isSeq, isAlias, type Document, type Node } from 'yaml';
+import { parseAllDocuments, LineCounter, isMap, isSeq, isAlias, isScalar, type Document, type Node } from 'yaml';
 
 export type FieldPath = (string | number)[];
 export interface Problem {
@@ -13,7 +13,7 @@ export interface Problem {
 export interface Source {
   path: string; document: Document; counter: LineCounter; value: Record<string, unknown>;
 }
-/** settingsUnread: a file, folder, link or document was not read, so it may hide a Settings document. */
+/** settingsUnread: a file that failed to parse or expand holds a document that reads as Settings. */
 export interface Loaded { files: number; sources: Source[]; problems: Problem[]; settingsUnread?: boolean }
 export const MAX_FILE_BYTES = 1024 * 1024;
 
@@ -66,18 +66,27 @@ export function problem(source: Source, path: FieldPath, message: string,
     severity, field: fieldName(path), message };
 }
 
-/** Problems that mean a document may exist that was never read; a non-mapping document cannot be Settings. */
-export function unread(problems: Problem[]): boolean {
-  return problems.some(p => p.field === null && p.message !== 'Document must be a mapping');
+/** Whether a document that failed to parse or expand reads as Settings: a top-level kind of Settings in any case.
+ * Aliases are never resolved, so the text they point at (a hidden licence value, say) cannot decide;
+ * an alias in place of the kind key or value counts as Settings. A key that is itself a mapping, as parser
+ * recovery produces from a broken flow mapping, is searched the same way.
+ */
+function mayBeSettings(node: unknown, depth = 0): boolean {
+  if (!isMap(node) || depth > 2) return false;
+  return node.items.some(pair => {
+    if (isMap(pair.key)) return mayBeSettings(pair.key, depth + 1);
+    if (!isAlias(pair.key) && !(isScalar(pair.key) && String(pair.key.value) === 'kind')) return false;
+    return isAlias(pair.value) || (isScalar(pair.value) && String(pair.value.value).toLowerCase() === 'settings');
+  });
 }
-/** settingsUnread: some YAML was not read, so a Settings document in it cannot be ruled out (fail closed). */
+/** settingsUnread: the file failed to parse or expand and holds a document that reads as Settings (fail closed). */
 export function parseSource(path: string, text: string): { sources: Source[]; problems: Problem[]; settingsUnread: boolean } {
-  const parsed = parseDocuments(path, text);
-  return { ...parsed, settingsUnread: unread(parsed.problems) };
-}
-function parseDocuments(path: string, text: string): { sources: Source[]; problems: Problem[] } {
   const counter = new LineCounter();
   const documents = parseAllDocuments(text, { lineCounter: counter, prettyErrors: false, uniqueKeys: true, logLevel: 'silent' });
+  const parsed = parseDocuments(path, documents, counter);
+  return { ...parsed, settingsUnread: parsed.problems.some(p => p.severity === 'error') && documents.some(document => mayBeSettings(document.contents)) };
+}
+function parseDocuments(path: string, documents: ReturnType<typeof parseAllDocuments>, counter: LineCounter): { sources: Source[]; problems: Problem[] } {
   // A syntax failure invalidates the entire file, including earlier documents.
   const errors = documents.flatMap(document => document.errors);
   if (errors.length) return { sources: [], problems: errors.map(error => {
@@ -137,11 +146,11 @@ export async function loadFolder(folder: string): Promise<Loaded> {
         if (!(stat.mode & 0o444)) { loaded.problems.push(fileProblem(path, 'File cannot be read')); continue; }
         const parsed = parseSource(path, await readFile(absolute, 'utf8'));
         loaded.sources.push(...parsed.sources); loaded.problems.push(...parsed.problems);
+        if (parsed.settingsUnread) loaded.settingsUnread = true;
       } catch { loaded.problems.push(fileProblem(path, 'File cannot be read')); }
     }
   }
   await walk('');
   loaded.sources.sort((a, b) => compareText(a.path, b.path));
-  if (unread(loaded.problems)) loaded.settingsUnread = true;
   return loaded;
 }
