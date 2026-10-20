@@ -14,8 +14,12 @@ export const octile = (a: Point, b: Point): number => {
   return Math.max(dx, dy) + (Math.SQRT2 - 1) * Math.min(dx, dy);
 };
 
-/** Rings searched around a target; beyond this a station takes the fallback cell. */
-export const SEARCH_RADIUS = 64;
+/**
+ * Rings searched around a target. With n taken cells, any window of side 2R+2 around a target, even
+ * clipped at column or row 0, holds more than n cells when R >= ceil(sqrt(n)) + 2, so a free cell
+ * always lies within R and the nearest-cell rule stays exact; only unsafe coordinates use the fallback.
+ */
+export const searchRadius = (taken: number): number => Math.max(64, Math.ceil(Math.sqrt(taken)) + 2);
 
 const usable = (x: number, y: number): boolean => Number.isSafeInteger(x) && Number.isSafeInteger(y) && x >= 0 && y >= 0;
 
@@ -35,7 +39,7 @@ function neighbourPoints(model: MapModel, ref: string, positions: Map<string, Po
 
 /**
  * Free cell nearest the target by octile distance, ties by smaller row then smaller column.
- * Only cells within SEARCH_RADIUS rings of the target with safe-integer, nonnegative
+ * Only cells within searchRadius(taken.size) rings of the target with safe-integer, nonnegative
  * coordinates are tried, so the search always ends; undefined when none is free.
  */
 function nearestFreeCell(target: Point, taken: Set<string>): Point | undefined {
@@ -44,7 +48,8 @@ function nearestFreeCell(target: Point, taken: Set<string>): Point | undefined {
   const column = Math.floor(target[0]);
   const row = Math.floor(target[1]);
   // A cell outside the visited square is at least radius units from the target.
-  for (let radius = 0; radius <= SEARCH_RADIUS && radius <= best; radius++) {
+  const limit = searchRadius(taken.size);
+  for (let radius = 0; radius <= limit && radius <= best; radius++) {
     for (let dy = -radius; dy <= radius + 1; dy++) {
       for (let dx = -radius; dx <= radius + 1; dx++) {
         const inner = dx > -radius && dx < radius + 1 && dy > -radius && dy < radius + 1;

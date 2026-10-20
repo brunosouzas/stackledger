@@ -40,6 +40,15 @@ test('Very long journeys do not overflow the call stack',()=>{
  const g=layoutMap(m);expect(g.lines).toHaveLength(3);expect(g.frame.w).toBeGreaterThan(0);
  expect(renderSvg(g,themes.light).startsWith('<svg')).toBe(true);
 },60000);
+test('A crowded neighbourhood still gets the exact nearest free cell',()=>{
+ const m=model(component('a'),component('b'),journey('ship',['a','b']),positions({a:[100,100]}));
+ for(let x=36;x<=165;x++)for(let y=36;y<=165;y++)if(x!==100||y!==100)m.occupied.push([x,y]);
+ // Brute force of the spec rule over a window that holds the answer: octile distance, then row, then column.
+ const taken=new Set(m.occupied.map(p=>p.join(',')));let expected:[number,number]|undefined,best=Infinity;
+ for(let y=0;y<=200;y++)for(let x=0;x<=200;x++){if(taken.has(`${x},${y}`))continue;const d=octile([x,y],[100,100]);if(d<best-1e-9){best=d;expected=[x,y];}}
+ expect(expected).toEqual([100,35]);
+ expect(suggestPositions(m).suggestions).toEqual([{ref:'component:b',point:expected}]);
+});
 test('Neighbours come from every occurrence of a repeated stop',()=>{
  const m=model(component('a'),component('b'),component('c'),component('d'),journey('ship',['b','a','c','a','d']),positions({b:[0,0],c:[6,0],d:[12,0]}));
  // Distinct neighbours b, c and d have mean [6,0], held by c; the nearest free cells are [5,0], [7,0] and [6,1]; row then column picks [5,0].
