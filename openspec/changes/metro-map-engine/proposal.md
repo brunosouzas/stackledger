@@ -50,6 +50,8 @@ None. The catalogue already has `Line`, `MapLayout`, zones and the warnings for 
 
 ## Open questions
 
+Both answered by the owner on 2026-10-20: add `stackledger map` now, and keep the renewal ring at 30 days.
+
 1. **Command now or only in the website?** Recommended: add `stackledger map` now. It lets the owner see and tune the map of their real catalogue right after this change, and the website will call the same library.
 2. **Renewal ring window.** Recommended: fixed at 30 days for now (the MCP `renewals` tool covers other windows); making it a `Settings` field can come later if needed.
 
