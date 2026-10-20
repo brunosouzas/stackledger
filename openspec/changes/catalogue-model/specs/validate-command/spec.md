@@ -17,8 +17,27 @@ Defines how `stackledger validate` checks a catalogue folder from the command li
 - **WHEN** the command checks a folder
 - **THEN** no file in or outside the folder is created, changed or deleted
 
+### Requirement: Usage
+`stackledger --help` and `stackledger validate --help` SHALL print usage on stdout and exit 0. A missing or unknown command, an unknown option or more than one folder SHALL print the reason and usage on stderr, print nothing on stdout, and exit 2.
+
+#### Scenario: Help
+- **WHEN** the command runs as `stackledger validate --help`
+- **THEN** stdout shows usage and the exit code is 0
+
+#### Scenario: Unknown option
+- **WHEN** the command runs as `stackledger validate --fast`
+- **THEN** the exit code is 2 and stderr names `--fast`
+
+#### Scenario: Two folders
+- **WHEN** the command runs as `stackledger validate a b`
+- **THEN** the exit code is 2 and stderr says only one folder is accepted
+
+#### Scenario: No command
+- **WHEN** the command runs as `stackledger` with no argument
+- **THEN** the exit code is 2 and stderr shows usage
+
 ### Requirement: Exit codes
-The command SHALL exit 0 when there is no error (warnings allowed), 1 when there is at least one error, and 2 when it cannot check: the folder does not exist, is not a folder or cannot be read, or an option is unknown.
+The command SHALL exit 0 when there is no error (warnings allowed), 1 when there is at least one error, and 2 when it cannot check: usage errors, or the folder does not exist, is not a folder or cannot be read. With exit 2, stdout SHALL be empty, also with `--json`.
 
 #### Scenario: Warnings only
 - **WHEN** the catalogue has two warnings and no error
@@ -29,48 +48,62 @@ The command SHALL exit 0 when there is no error (warnings allowed), 1 when there
 - **THEN** the exit code is 1
 
 #### Scenario: Missing folder
-- **WHEN** the folder does not exist
-- **THEN** the exit code is 2 and stderr says the folder was not found
-
-#### Scenario: Unknown option
-- **WHEN** the command runs with `--fast`
-- **THEN** the exit code is 2 and stderr names the unknown option
+- **WHEN** the folder does not exist and `--json` is given
+- **THEN** the exit code is 2, stdout is empty and stderr says the folder was not found
 
 ### Requirement: Text output
-By default each problem SHALL be one line on stdout: `<path>:<line>:<column> <error|warning> <field> <message>`, with the path relative to the folder. A last line SHALL count files, documents read, documents ignored, errors and warnings.
+By default each problem SHALL be one line on stdout: `<path>:<line>:<column> <error|warning> <field> <message>`, the path relative to the folder with `/` as separator. A last line SHALL give the counts `files`, `documents`, `ignored`, `errors` and `warnings`.
 
 #### Scenario: Error line
 - **WHEN** `apps/slack.yaml` has no `spec.owner` in the document starting at line 1
-- **THEN** stdout has a line starting `apps/slack.yaml:1:1 error spec.owner`
+- **THEN** stdout has a line starting `apps/slack.yaml:1:1 error spec.owner `
 
 #### Scenario: Clean catalogue
 - **WHEN** the catalogue has no problem
-- **THEN** stdout has only the summary line, with 0 errors and 0 warnings
+- **THEN** stdout has only the counts line, with 0 errors and 0 warnings
+
+### Requirement: Field paths
+A field SHALL be written as keys joined by `.`, with list indexes as `[n]` from 0. A key holding `.`, `/`, a space, `[` or `"` SHALL be written as `["key"]`. A problem about a whole file or document SHALL use `-` as field in text and `null` in JSON.
+
+#### Scenario: Annotation key with a slash
+- **WHEN** the annotation `deploy/Token` is a secret key
+- **THEN** the field is `metadata.annotations["deploy/Token"]`
+
+#### Scenario: Problem about a file
+- **WHEN** a file exceeds 1 MiB
+- **THEN** its problem line is `<path>:1:1 error - <message>`
 
 ### Requirement: Problem position
-A problem SHALL point to the line and column of the field it is about. When that field is missing, it SHALL point to the start of its document; when the file cannot be parsed, to the position the parser reports, or to `1:1` when there is none.
+A problem SHALL point to the line and column, from 1, of the value of its field. A missing field points to the start of its document's mapping; a file not read, or a parse error without a position, points to `1:1`; a parse error with a position points there.
 
 #### Scenario: Error on a nested field
-- **WHEN** `spec.licence.cost` is `-5` on line 12, column 11
+- **WHEN** `spec.licence.cost: -5` is on line 12 and its value starts at column 11
 - **THEN** the problem line starts with `<path>:12:11`
 
+### Requirement: Counts
+`files` SHALL count the YAML files found, read or not. `documents` SHALL count the documents checked past the ignored-kind step. `ignored` SHALL count the ignored documents. Skipped empty documents SHALL count in none of them.
+
+#### Scenario: Mixed folder
+- **WHEN** the folder holds a valid component file, a file with a `System` and an empty document, and an oversized file
+- **THEN** the counts are 3 files, 1 document, 1 ignored and 1 error
+
 ### Requirement: JSON output
-With `--json`, the command SHALL print one JSON object on stdout with `problems` (each with `path`, `line`, `column`, `severity`, `field`, `message`) and `summary` (`files`, `documents`, `ignored`, `errors`, `warnings`), and nothing else on stdout. Exit codes are the same as for text output.
+With `--json`, the command SHALL print one JSON object on stdout with `problems` (each with `path`, `line`, `column`, `severity`, `field`, `message`) and `summary` (`files`, `documents`, `ignored`, `errors`, `warnings`), and nothing else on stdout.
 
 #### Scenario: JSON for a pipeline
 - **WHEN** the command runs with `--json` on a catalogue with one error
 - **THEN** stdout parses as JSON, `summary.errors` is 1 and the exit code is 1
 
 ### Requirement: Deterministic order
-Problems SHALL be sorted by path, then line, then column, then field. Running the command twice on unchanged files SHALL print the same output.
+Problems SHALL be sorted by path (Unicode code point), then line, column, field, severity (`error` first) and message. Running the command twice on unchanged files SHALL print the same output.
 
 #### Scenario: Two runs
 - **WHEN** the command runs twice on the same catalogue with five problems in three files
-- **THEN** both outputs are identical and sorted by path, then line
+- **THEN** both outputs are identical and sorted as stated
 
 ### Requirement: No network and no telemetry
 The command SHALL make no network connection.
 
 #### Scenario: Offline run
 - **WHEN** the command runs with network access blocked
-- **THEN** it gives the same result as with network access
+- **THEN** it gives the same output and exit code as with network access

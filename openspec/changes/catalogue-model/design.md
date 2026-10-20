@@ -2,7 +2,7 @@
 
 ## Context
 
-The repository has no code yet. The model follows Bruno's existing register in his private `mac-setup` repository (Backstage `Component` and `Resource` files, one per item), with three differences: licence fields use Backstage's camelCase (`renewsOn`, `vaultItem` instead of `renews_on`), a component points to its licence with `dependsOn: resource:<name>` instead of an app-name annotation, and journeys and map positions become their own kinds. The specs give the rules; this file records the choices behind them.
+The repository has no code yet. The model starts from Bruno's existing register in his private `mac-setup` repository (Backstage `Component` and `Resource` files, one per item; 62 components and 20 licences on 2026-10-20). The full mapping from that register is in D8. The specs give the rules; this file records the choices behind them.
 
 ## Goals / Non-Goals
 
@@ -44,7 +44,23 @@ One npm package, `stackledger`, ESM, TypeScript compiled with `tsc` to `dist/`, 
 
 ### D7. Offline proof
 
-The "Read-only" and "Offline run" scenarios are tested by running the CLI under Node's permission model: `--permission` with `--allow-fs-read` and no `--allow-fs-write` or `--allow-net`, so a write or a network call fails with `ERR_ACCESS_DENIED` (checked on Node 26: `fetch` and `writeFileSync` are both denied). The permission model covers the network only on Node versions that have `--allow-net`; the test detects that flag in `node --help` and is skipped with a message on older versions. The write check runs on every version.
+The "Read-only" and "Offline run" scenarios are tested by running the CLI under Node's permission model: `--permission` with `--allow-fs-read` and no `--allow-fs-write` or `--allow-net`, so a write or a network call fails with `ERR_ACCESS_DENIED` (checked on Node 26: `fetch` and `writeFileSync` are both denied). Denial alone does not prove that nothing was attempted, because code could catch the error, so each test also compares stdout and the exit code with an unrestricted run of the same folder, and the read-only test compares a hash of every file in the folder before and after. The permission model covers the network only on Node versions that have `--allow-net`; the test detects that flag in `node --help` and is skipped with a message on older versions. The write check runs on every version.
+
+### D8. Mapping from the `mac-setup` register
+
+| `mac-setup` | stackledger | Why |
+|---|---|---|
+| `spec.licence.renews_on` | `renewsOn` | Backstage uses camelCase |
+| `spec.licence.kind` | dropped | `perpetual` becomes `cycle: one-off`; `free` is `cost: 0` with `cycle: none`; `subscription` is already `monthly` or `yearly` |
+| `spec.licence.owner_scope` | `paidBy` (optional, free text) | Who pays is what the field records; `personal` becomes `self` |
+| `status: retired` | `status: cancelled` | One word for a licence that is no longer paid |
+| `spec.lifecycle` on a licence | kept, no rule | Accepted Backstage field (spec "Fields outside the format") |
+| `mac-setup/app-name` annotation linking a licence to an app | `dependsOn: resource:<licence>` on the component | A relation the map and the item page can follow |
+| `mac-setup/triage`, `mac-setup/launchd-label` annotations | kept as annotations, no rule | Discovery reads them in a later change |
+
+### D9. Check order
+
+The spec fixes one order per document (kind, ignored kind, pair, identity, non-licence resource, fields, secret scan) and runs cross-document rules last, only on documents that passed identity. Alternative: run every rule on every document and report everything. Chosen order because one root cause then gives one problem: a document from another tool is ignored silently instead of producing a cascade of missing-field errors, and an ignored Backstage `User` with an e-mail address in its profile does not warn, so a plain Backstage folder validates clean.
 
 ## Risks / Trade-offs
 
@@ -55,4 +71,4 @@ The "Read-only" and "Offline run" scenarios are tested by running the CLI under 
 
 ## Migration Plan
 
-Not applicable inside this repository. After the change ships, Bruno's register moves from `mac-setup/registry/` to his private catalogue repository, and the licence fields are renamed; that work is tracked outside this repository.
+Not applicable inside this repository. After the change ships, Bruno's register moves from `mac-setup/registry/` to his private catalogue repository `stackledger-catalog`, following D8; that work is tracked outside this repository.

@@ -35,13 +35,14 @@ None. This is the first change.
 - Drawing the map, suggesting station positions (change `metro-map-engine`), the website (change `catalogue-site`), reports, discovery and drift.
 - Publishing a JSON Schema for editors, `--strict` mode that turns warnings into errors, and fixing files automatically.
 - Lines that visit the same station twice (circle lines).
-- Any Backstage kind beyond counting and ignoring it, and Backstage relations other than `dependsOn` (`partOf`, `providesApi`, `consumesApi`, `memberOf`).
+- Any Backstage kind beyond counting and ignoring it, and Backstage relations other than `dependsOn` (`partOf`, `providesApi`, `consumesApi`, `memberOf`). Their fields are accepted and ignored on components.
+- Backstage namespaces other than `default`: a document in another namespace gets a warning and is treated as `default`.
 - Publishing to npm. The package is built and tested, not released.
 
 ## Implicit requirements
 
 - **Errors and invalid input:** requirement. Every problem is reported with file, line and field, and validation never stops at the first error (`validate-command`). Malformed YAML is an error for that file only; the other files are still checked.
-- **Limits:** requirement. A file larger than 1 MiB is rejected as an error without being parsed. Symbolic links that point outside the folder are not followed. Folders named `.git` and `node_modules` are skipped.
+- **Limits:** requirement. A file larger than 1 MiB is rejected as an error without being parsed. Symbolic links are never followed, so a link cannot leave the folder, loop or make a file count twice. Folders named `.git` and `node_modules` are skipped.
 - **Repetition and idempotency:** requirement. Validation only reads; running it twice on the same files gives the same output in the same order.
 - **Concurrency:** n/a. One process reads files; nothing is written.
 - **Security:** requirement. A key that names a secret (`password`, `secret`, `token`, `apiKey`, `privateKey`, any case, anywhere in a document) and a value that looks like a private key or a payment-card number are errors. The catalogue may name a password-manager item, never hold a credential. An e-mail address in a value is a warning.
@@ -49,7 +50,11 @@ None. This is the first change.
 
 ## Open questions
 
-None. The decisions taken without Bruno are in `design.md`.
+These choices become part of the public file format. The specs are written with the recommended answer; Bruno confirms or changes them at the proposal review.
+
+1. **Our own kinds use `apiVersion: stackledger/v1alpha1`** (`Line`, `MapLayout`), and a component joins a zone with the label `stackledger/zone`. Recommended: yes (design D1, D2).
+2. **Licence fields from the `mac-setup` register.** `kind` (subscription, perpetual, free) is dropped because `cycle` and `cost` already say it. `owner_scope` becomes the optional free-text `paidBy` (for example `self`, `employer`). `status: retired` becomes `cancelled`. `spec.lifecycle` on a licence is kept as an accepted Backstage field with no rule. Recommended: yes (design D8).
+3. **An e-mail address in a value is a warning, not an error.** Recommended: warning, because a vendor's support address is legitimate; the rule exists so a personal address is noticed.
 
 ## Documentation
 
