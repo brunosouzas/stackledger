@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { isMap, isScalar } from 'yaml';
 import { name, schemas, type Entity } from './schema.js';
 import { scanSecrets } from './secrets.js';
-import { compareText, loadFolder, problem, type Source, type Problem, type FieldPath, type Loaded } from './source.js';
+import { compareText, loadFolder, problem, resolveNode, sourceNode, type Source, type Problem, type FieldPath, type Loaded } from './source.js';
 export interface Summary { files: number; documents: number; ignored: number; errors: number; warnings: number }
 export interface Result { problems: Problem[]; summary: Summary }
 export interface Catalogue extends Result { entities: Entity[] }
@@ -86,7 +86,7 @@ export function validateLoaded(loaded: Loaded): Catalogue {
     if (kind === 'Component' || kind === 'Resource') {
       // JavaScript coerces mapping keys to strings; retain YAML's original key types for this rule.
       for (const field of ['labels', 'annotations']) {
-        const mapping = source.document.getIn(['metadata', field], true);
+        const mapping = resolveNode(source, sourceNode(source, ['metadata', field]));
         if (isMap(mapping)) for (const pair of mapping.items) {
           if (!isScalar(pair.key) || typeof pair.key.value !== 'string') {
             fieldProblems.push(problem(source, ['metadata', field, String(pair.key)], 'Mapping keys must be strings', 'error', true));

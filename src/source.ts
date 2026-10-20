@@ -3,7 +3,7 @@
  */
 import { readdir, lstat, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { parseAllDocuments, LineCounter, isMap, isSeq, type Document, type Node } from 'yaml';
+import { parseAllDocuments, LineCounter, isMap, isSeq, isAlias, type Document, type Node } from 'yaml';
 
 export type FieldPath = (string | number)[];
 export interface Problem {
@@ -33,21 +33,33 @@ export function fieldName(path: FieldPath): string | null {
 export function fileProblem(path: string, message: string, severity: Problem['severity'] = 'error'): Problem {
   return { path, line: 1, column: 1, field: null, severity, message };
 }
-export function problem(source: Source, path: FieldPath, message: string,
-  severity: Problem['severity'] = 'error', keyPosition = false): Problem {
+export function resolveNode(source: Source, node: Node | null | undefined): Node | null | undefined {
+  const seen = new Set<Node>();
+  while (isAlias(node)) {
+    if (seen.has(node)) return undefined;
+    seen.add(node); node = node.resolve(source.document);
+  }
+  return node;
+}
+export function sourceNode(source: Source, path: FieldPath, keyPosition = false): Node | null | undefined {
   let node: Node | null | undefined = source.document.contents as Node | null;
-  let found = true;
   for (let i = 0; i < path.length; i++) {
+    node = resolveNode(source, node);
     const part = path[i]!;
     if (isMap(node)) {
       const pair = node.items.find(item => String(item.key) === String(part));
-      if (!pair) { found = false; break; }
+      if (!pair) return undefined;
       node = (keyPosition && i === path.length - 1 ? pair.key : pair.value) as Node | null;
     } else if (isSeq(node) && typeof part === 'number' && part < node.items.length) {
       node = node.items[part] as Node | null;
-    } else { found = false; break; }
+    } else return undefined;
   }
-  const offset = found && node?.range ? node.range[0] : source.document.contents?.range?.[0] ?? 0;
+  return node;
+}
+export function problem(source: Source, path: FieldPath, message: string,
+  severity: Problem['severity'] = 'error', keyPosition = false): Problem {
+  const node = sourceNode(source, path, keyPosition);
+  const offset = node?.range?.[0] ?? source.document.contents?.range?.[0] ?? 0;
   const position = source.counter.linePos(offset);
   return { path: source.path, line: position.line, column: position.col,
     severity, field: fieldName(path), message };
@@ -55,7 +67,7 @@ export function problem(source: Source, path: FieldPath, message: string,
 
 export function parseSource(path: string, text: string): { sources: Source[]; problems: Problem[] } {
   const counter = new LineCounter();
-  const documents = parseAllDocuments(text, { lineCounter: counter, prettyErrors: false, uniqueKeys: true });
+  const documents = parseAllDocuments(text, { lineCounter: counter, prettyErrors: false, uniqueKeys: true, logLevel: 'silent' });
   // A syntax failure invalidates the entire file, including earlier documents.
   const errors = documents.flatMap(document => document.errors);
   if (errors.length) return { sources: [], problems: errors.map(error => {

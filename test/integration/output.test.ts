@@ -5,6 +5,25 @@ import { folder, component } from '../helpers.js';
 import { MAX_FILE_BYTES } from '../../src/source.js';
 import { stringify } from 'yaml';
 import { line, licence } from '../unit/helpers.js';
+test('Unquoted long numeric extensions retain exact digits for the secret scan', () => {
+ // A synthetic 19-digit Luhn extension of the well-known test card, never a real credential.
+ const number = '4111111111111111' + '003';
+ const result = run(['validate', '--json', folder({ 'a.yaml': component() + `extra: ${number}\n` })]);
+ const output = JSON.parse(result.stdout); expect(result.status).toBe(1);
+ expect(output.problems).toMatchObject([{ field: 'extra', message: 'Payment-card number is not allowed' }]);
+ expect(result.stdout).not.toContain(number); expect(result.stderr).toBe('');
+});
+test('Alias-backed nested fields point to the existing anchored key', () => {
+ const text = component() + 'extra:\n  source: &shared {token: abc}\n  alias: *shared\n';
+ const result = run(['validate', '--json', folder({ 'a.yaml': text })]);
+ const output = JSON.parse(result.stdout); const problem = output.problems.find(p => p.field === 'extra.alias.token');
+ expect(problem).toMatchObject({ line: 10, column: 20, severity: 'error' }); expect(result.stdout).not.toContain('abc');
+});
+test('YAML conversion warnings never leak values', () => {
+ const result = run(['validate', '--json', folder({ 'ignored.yaml': 'kind: System\n? [synthetic-private-value, other]\n: ignored\n' })]);
+ expect(result.status).toBe(0); expect(result.stderr).toBe(''); expect(result.stdout).not.toContain('synthetic-private-value');
+ expect(JSON.parse(result.stdout).summary).toMatchObject({ ignored: 1, errors: 0, warnings: 0 });
+});
 test('Error line', () => { const result = run(['validate', folder({ 'apps/slack.yaml': component().replace('  owner: user:alex\n', '') })]); expect(result.stdout).toMatch(/^apps\/slack.yaml:1:1 error spec.owner /); });
 test('Clean catalogue', () => { const result = run(['validate', demo]); expect(result.stdout.split('\n')).toHaveLength(2); expect(result.stdout).toMatch(/^files: 1, documents: 5, ignored: 0, errors: 0, warnings: 0\n$/); });
 test('Annotation key with a slash', () => { const result = run(['validate', folder({ 'a.yaml': component().replace('  name: a', '  name: a\n  annotations:\n    deploy/Token: abc') })]); expect(result.stdout).toMatch(/^a.yaml:6:5 error metadata.annotations\["deploy\/Token"\] /); expect(result.stdout).not.toContain('abc'); });

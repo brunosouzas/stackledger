@@ -1,7 +1,8 @@
 /** Guard against accidental credentials and personal addresses. Used after schema checks.
  * Messages are constants: neither a detected value nor parser excerpts reach output.
  */
-import { problem, type Source, type Problem, type FieldPath } from './source.js';
+import { isScalar } from 'yaml';
+import { problem, sourceNode, resolveNode, type Source, type Problem, type FieldPath } from './source.js';
 function luhn(digits: string): boolean {
   let sum = 0;
   for (let i = digits.length - 1, double = false; i >= 0; i--, double = !double) {
@@ -29,7 +30,9 @@ export function scanSecrets(source: Source): Problem[] {
       ancestors.delete(value); return;
     }
     if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'bigint') return;
-    const text = String(value);
+    const node = resolveNode(source, sourceNode(source, path));
+    // IEEE-754 conversion loses digits of long unquoted integers; inspect the original scalar.
+    const text = typeof value === 'number' && isScalar(node) && node.source !== undefined ? node.source : String(value);
     if (/-----BEGIN[^\r\n]*PRIVATE KEY-----/.test(text)) problems.push(problem(source, path, 'Private key material is not allowed'));
     // Match the entire run before checking length, avoiding a valid substring of a longer number.
     const runs = text.match(/\d(?:[ -]?\d)*/g) ?? [];
