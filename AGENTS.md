@@ -6,7 +6,7 @@ Open-source software governance tool. It reads a software and licence catalogue 
 
 Stack: TypeScript, Node.js, Astro, zod, vitest, Playwright, GitHub Actions, OpenSpec
 
-Nothing is implemented yet. Until a change delivers code, say "not implemented" instead of describing files that do not exist.
+Implemented: the catalogue format and `stackledger validate` (`catalogue-model`), and the read-only MCP server with the `full` and `staff` views (`mcp-server`). The rest of the roadmap is not implemented: say so instead of describing files that do not exist.
 
 - Build: not applicable yet
 - Test: not applicable yet
