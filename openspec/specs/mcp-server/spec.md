@@ -37,7 +37,7 @@ When `--help` is among the arguments, the command SHALL print usage on stdout an
 
 #### Scenario: Global help lists both commands
 - **WHEN** the command runs as `stackledger --help`
-- **THEN** stdout shows usage for `validate`, `mcp` and `map`
+- **THEN** stdout shows usage for `validate`, `mcp`, `map` and `build`, and an unknown command's error lists all four
 
 ### Requirement: Tools per view
 In the `full` view the server SHALL offer the tools `find_items`, `get_item`, `impact`, `gaps`, `renewals` and `validate`. In the `staff` view it SHALL offer only `find_items`, `get_item`, `impact` and `gaps`. Every tool SHALL be marked read-only and SHALL declare an output schema.
