@@ -1,0 +1,14 @@
+---
+// Nested page (two levels deep) sharing the script chunk with the home page.
+import Base from '../../../layouts/Base.astro';
+import site from '../../../data/site.json';
+---
+<Base title="Editor">
+  <h1>Editor ({site.view})</h1>
+  <p>Northwind Editor is a fictional component.</p>
+  <button type="button" id="toggle">Toggle</button>
+</Base>
+
+<script>
+  import '../../../scripts/editor.ts';
+</script>

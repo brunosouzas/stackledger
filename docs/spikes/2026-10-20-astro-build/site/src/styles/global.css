@@ -1,0 +1,22 @@
+/* Global styles. The font files are copied into src/fonts/ by build.mjs from the
+   @fontsource packages (no network). Vite emits them into _astro/ and writes
+   root-absolute url()s, which build.mjs then rewrites to relative ones (D3). */
+@font-face {
+  font-family: 'Heebo';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/heebo-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Signika';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/signika-latin-400-normal.woff2') format('woff2');
+}
+
+body { font-family: 'Heebo', sans-serif; margin: 2rem; }
+body.is-on { background: #fdf6e3; }
+.station { fill: #1f6feb; }

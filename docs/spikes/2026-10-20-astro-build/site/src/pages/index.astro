@@ -1,0 +1,25 @@
+---
+// Home page: shows the view's items and a small inline SVG (xmlns exemption).
+import Base from '../layouts/Base.astro';
+import site from '../data/site.json';
+---
+<Base title="Map">
+  <h1>{site.title}</h1>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="20" height="20" role="img" aria-label="station">
+    <circle cx="10" cy="10" r="8" class="station" />
+  </svg>
+  <ul>
+    {site.items.map((item) => <li>{item.name}{item.cost !== undefined && <span> cost {item.cost}</span>}</li>)}
+  </ul>
+  <button type="button" id="toggle">Toggle</button>
+  <p class="scoped">Scoped style check.</p>
+</Base>
+
+<style>
+  /* Scoped component style: must end up in a CSS file, not inline. */
+  .scoped { font-family: 'Signika', sans-serif; }
+</style>
+
+<script>
+  import '../scripts/home.ts';
+</script>
