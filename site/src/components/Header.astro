@@ -1,0 +1,34 @@
+---
+// Sticky header from brunosouzas.com (Astroplate theme, MIT): brand, navigation, theme switch.
+import ThemeSwitch from './ThemeSwitch.astro';
+import { href, site } from '../lib/site';
+
+interface Props {
+  root: string;
+  current?: 'map' | 'software' | 'journeys' | undefined;
+}
+const { root, current } = Astro.props;
+const links = [
+  { key: 'map', title: 'Map', path: '' },
+  { key: 'software', title: 'Software', path: 'software/' },
+  { key: 'journeys', title: 'Journeys', path: 'journeys/' },
+];
+---
+
+<header class="header">
+  <nav class="navbar container" aria-label="Main">
+    <a class="navbar-brand" href={href(root, '')}>{site.title}</a>
+    <ul class="navbar-nav">
+      {
+        links.map((link) => (
+          <li>
+            <a class="nav-link" href={href(root, link.path)} aria-current={link.key === current ? 'page' : undefined}>
+              {link.title}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+    <ThemeSwitch />
+  </nav>
+</header>

@@ -1,0 +1,14 @@
+---
+// One stackledger-rendered SVG per theme; CSS shows the one that matches the page theme.
+// set:html is allowed only here and for line badges: these SVGs come from src/map/*.ts, which
+// escape every catalogue text themselves (site-security, Escaped catalogue text).
+interface Props {
+  light: string;
+  dark: string;
+  class?: string;
+}
+const { light, dark, class: className = 'diagram' } = Astro.props;
+---
+
+<div class={`${className} themed-light`} set:html={light} />
+<div class={`${className} themed-dark`} set:html={dark} />

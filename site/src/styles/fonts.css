@@ -1,0 +1,35 @@
+/* Heebo (text) and Signika (headings), the fonts of brunosouzas.com, from the @fontsource packages
+   (SIL Open Font License 1.1). The build copies the files into src/fonts/; Vite emits them next to
+   the stylesheet in _astro/ and the build makes these url()s relative. No font is fetched from the network. */
+
+@font-face {
+  font-family: "Heebo";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/heebo-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Heebo";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../fonts/heebo-latin-600-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Signika";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../fonts/signika-latin-500-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Signika";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/signika-latin-700-normal.woff2") format("woff2");
+}
