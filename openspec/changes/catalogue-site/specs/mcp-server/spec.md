@@ -21,4 +21,4 @@ When `--help` is among the arguments, the command SHALL print usage on stdout an
 
 #### Scenario: Global help lists both commands
 - **WHEN** the command runs as `stackledger --help`
-- **THEN** stdout shows usage for `validate`, `mcp`, `map` and `build`
+- **THEN** stdout shows usage for `validate`, `mcp`, `map` and `build`, and an unknown command's error lists all four

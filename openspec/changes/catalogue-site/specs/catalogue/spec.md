@@ -18,11 +18,15 @@ A `Settings` document SHALL have `metadata.name` and MAY have `metadata.namespac
 ## ADDED Requirements
 
 ### Requirement: Site settings
-`spec.site` MAY have `title`, a non-empty string of at most 60 characters, and `colors`, a mapping whose keys are among `primary`, `accent`, `body` and `text`, each a `#RRGGBB` colour. Any other field under `spec.site` SHALL be an error.
+`spec.site` MAY have `title`, a non-empty string of at most 60 characters, and `colors`, a mapping whose keys are among `primary`, `accent`, `body` and `text`, each `#` followed by six hexadecimal digits in either case. Any other field under `spec.site` SHALL be an error.
 
 #### Scenario: Title and accent
-- **WHEN** a `Settings` document has `spec.site.title: Northwind software` and `spec.site.colors.accent: "#E4002B"`
+- **WHEN** a `Settings` document has `spec.site.title: Northwind software` and `spec.site.colors.accent: "#e4002b"`
 - **THEN** it has no problem
+
+#### Scenario: Title too long
+- **WHEN** `spec.site.title` has 61 characters
+- **THEN** it gets an error on `spec.site.title`
 
 #### Scenario: Colour name
 - **WHEN** `spec.site.colors.primary` is `red`

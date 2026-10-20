@@ -1,25 +1,29 @@
+## Purpose
+
+Defines `stackledger build`, the command that turns a catalogue folder into the `full` and `staff` static sites: its options, the output folder it writes, what else it may write, and what it reports.
+
 ## ADDED Requirements
 
 ### Requirement: Command
-`stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` SHALL build the `full` site into `<dir>/full/` and the `staff` site into `<dir>/staff/`, and exit 0. `--date` sets the map date of the `full` site (default: the machine's local date). The command reads the catalogue folder only and SHALL NOT open network connections.
+`stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` SHALL build the `full` site into `<dir>/full/` and the `staff` site into `<dir>/staff/`, and exit 0. `--date` sets the map date of the `full` site (default: the machine's local date). A missing `<dir>` is created. The command reads the catalogue folder only and SHALL NOT open network connections.
 
 #### Scenario: Two sites
 - **WHEN** the command runs as `stackledger build ./catalogue --out ./public`
 - **THEN** `./public/full/index.html` and `./public/staff/index.html` exist and the exit code is 0
 
-#### Scenario: Offline
-- **WHEN** the command runs under the Node.js permission model with no network permission, where the Node.js version supports it
-- **THEN** both sites are built
-
 ### Requirement: Usage errors
-When `--help` is among the arguments, the command SHALL print usage on stdout and exit 0. Otherwise a missing folder or `--out`, an unknown option, a `--date` that is not a real `YYYY-MM-DD` date, more than one folder, or a catalogue folder that cannot be read SHALL print the reason and usage on stderr and exit 2, without creating or changing anything.
+When `--help` is among the arguments, the command SHALL print usage on stdout and exit 0. Otherwise a missing folder or `--out`, an unknown option, a `--date` that is not a real `YYYY-MM-DD` date, more than one folder, a catalogue folder that does not exist, is not a folder or cannot be read, or an `--out` that is a file SHALL print the reason and usage on stderr and exit 2, without creating or changing anything.
 
 #### Scenario: Missing out
 - **WHEN** the command runs as `stackledger build ./catalogue`
 - **THEN** the exit code is 2 and stderr says `--out` is required
 
+#### Scenario: Impossible date
+- **WHEN** the command runs with `--date 2027-02-30`
+- **THEN** the exit code is 2 and nothing is written
+
 ### Requirement: Safe output folder
-The output folder SHALL be refused, with exit 2 and no change, when it is the catalogue folder, inside it, contains it, or is a non-empty folder that was not written by `stackledger build`. A folder written by `stackledger build` carries a marker file `.stackledger-build` and is replaced on the next build.
+After resolving symbolic links, the output folder SHALL be refused, with exit 2 and no change, when it is the catalogue folder, inside it, contains it, or is a non-empty folder without the marker file `.stackledger-build` written by an earlier build. The marker has fixed content, with no date or version.
 
 #### Scenario: Output inside the catalogue
 - **WHEN** `--out` is `./catalogue/site`
@@ -29,27 +33,34 @@ The output folder SHALL be refused, with exit 2 and no change, when it is the ca
 - **WHEN** `--out` is a folder holding `notes.txt` and no marker
 - **THEN** the exit code is 2 and `notes.txt` is untouched
 
+### Requirement: Atomic replace
+Both sites SHALL be built into a temporary folder `.stackledger-tmp-*` inside the output folder. Only when both succeed are the previous `full/` and `staff/` renamed aside, the new ones renamed into place, and the old ones removed. On any failure the temporary folder is removed and the previous sites stay as they were.
+
 #### Scenario: Rebuild
 - **WHEN** the command runs twice with the same `--out`
 - **THEN** the second build replaces the first and no file of the first remains unless rebuilt
 
-### Requirement: Writes
-The command SHALL write only inside the output folder and inside one temporary folder under the system temporary directory, which it removes before exiting, also on failure. Both sites SHALL be built into the temporary folder first and moved into place only when both succeed.
-
 #### Scenario: Failure leaves the old site
 - **WHEN** a build fails after an earlier successful build into the same `--out`
-- **THEN** the earlier site is still complete and the exit code is 1
+- **THEN** the earlier sites are still complete, no `.stackledger-tmp-*` folder remains and the exit code is 1
 
-#### Scenario: Nothing in the package or catalogue
-- **WHEN** a build runs
-- **THEN** no file is created or changed in the catalogue folder or in the installed stackledger package
+### Requirement: Writes
+The command SHALL write only inside the output folder and inside one folder under the system temporary directory (for Astro's working copy and cache), which it removes before exiting, also on failure. It SHALL NOT write in the catalogue folder, the installed stackledger package or the user's home folder.
 
-### Requirement: Catalogue with errors
-A catalogue with errors SHALL still be built from the documents the views serve, with exit 0. stderr SHALL report the catalogue error and warning counts once, then the two folders written and the number of pages in each.
+#### Scenario: Sandboxed build
+- **WHEN** the command runs under the Node.js permission model with read access to the catalogue folder, the package and the system temporary directory, write access only to `--out` and the system temporary directory, and `--allow-addons --allow-child-process --allow-worker`
+- **THEN** both sites are built, and child processes, which the model does not restrict, are outside this check
+
+### Requirement: Build report
+stderr SHALL show, in order: when the catalogue has at least one error or warning, one line with both counts and a hint to run `stackledger validate`; the map's lines for suggestions, unrouted hops and an unused layout, as `stackledger map` writes them for the `full` view; one line per site with its folder and page count; and a last line saying both folders must be served behind an identity-aware proxy. A catalogue with errors SHALL still be built, with exit 0.
 
 #### Scenario: One error
 - **WHEN** the catalogue has one error
 - **THEN** both sites are built, the exit code is 0 and stderr says there is 1 error
+
+#### Scenario: Proxy reminder
+- **WHEN** a build succeeds
+- **THEN** the last stderr line says the folders must be served behind an identity-aware proxy
 
 ### Requirement: Deterministic build
 The same catalogue, `--date` and stackledger version SHALL produce byte-identical files in both sites, whatever the order of files and documents in the catalogue folder, as long as the same documents are served.

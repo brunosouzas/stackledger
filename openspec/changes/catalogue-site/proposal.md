@@ -13,7 +13,7 @@ People who govern software want to open a website and see their software and lic
   - **Item** (`/software/<name>/` for components, `/licences/<name>/` for licences): the item's fields as the view allows, its journeys, a neighbourhood diagram (what it depends on, what depends on it), the impact of removing it, and references that match nothing.
   - **Journeys** (`/journeys/` and `/journeys/<name>/`): every line, and for each a strip diagram with its stops in order and the interchanges with other lines.
 - A look based on brunosouzas.com (layout, typography and colour tokens of its Astroplate-based theme, MIT, credited), with fonts shipped in the package and a small set of colours and the site title replaceable in `Settings`.
-- Hardening: strict Content Security Policy with hashes, no third-party request of any kind, `noindex` and `robots.txt`, security headers in a `_headers` file for hosts that read it, and every hidden field absent from every file of the `staff` site.
+- Hardening: one fixed strict Content Security Policy with no inline code, relative URLs only, no third-party request of any kind, `noindex` and `robots.txt`, `_headers` and `robots.txt` at the root of the output and in each site, and every hidden field absent from every file of the `staff` site.
 - The neighbourhood and journey diagrams are SVG drawn by stackledger's own code (no Mermaid), in the map's style.
 
 ## Capabilities
@@ -28,7 +28,7 @@ People who govern software want to open a website and see their software and lic
 
 - `catalogue`: the `Settings` requirement gains `spec.site` (title and a few colours).
 - `mcp-server`: the global help scenario lists `build` too.
-- `metro-map`: the attribute allow-list gains `data-line` and `data-zone`, used by the map page's filters.
+- `metro-map`: the attribute allow-list gains `data-line` and `data-zone` (Allowed attributes, Safe SVG text, new Data attributes), used by the map page's filters.
 
 ## Impact
 
@@ -62,5 +62,5 @@ None. The owner decided on 2026-10-20: keep Astro with the guardrails in design.
 - `README.md`: Usage table (`stackledger build`), a screenshot of each page from the fictitious example.
 - `docs/site.md` (new).
 - `docs/catalogue-format.md`: `spec.site`.
-- `docs/roadmap.md`: mark change 4 delivered after merge.
+- `docs/roadmap.md`: row 4 says own SVG diagrams instead of Mermaid; mark it delivered after merge.
 - Brain vault: `10-personal/projects/stackledger/_index.md`.

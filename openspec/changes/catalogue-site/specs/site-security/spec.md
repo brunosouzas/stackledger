@@ -1,51 +1,65 @@
+## Purpose
+
+Defines what the built sites may and may not contain or request: one view per site, no external requests, a fixed Content Security Policy, headers and robots files for the host, and escaping of catalogue text.
+
 ## ADDED Requirements
 
 ### Requirement: One view per site
-Each site SHALL be built only from its view: the `staff` site from the `staff` view, with no hidden value in any file it contains (HTML, JSON, SVG, CSS, JavaScript, headers). The `staff` site SHALL NOT depend on `--date` nor on any hidden field.
+Each site SHALL be built only from its view, in its own Astro build with its own data file and cache. The `staff` site SHALL be built first and contain no hidden value in any file (HTML, SVG, CSS, JavaScript, headers). The `staff` site SHALL NOT depend on `--date` nor on any hidden field.
 
 #### Scenario: No trace of the cost
 - **WHEN** a licence has `cost: 98765` and `note: ZETA-NOTE` and the default hidden fields apply
 - **THEN** neither `98765` nor `ZETA-NOTE` appears in any file of the `staff` site
 
 #### Scenario: Staff ignores hidden fields and the date
-- **WHEN** two catalogues differ only in default-hidden licence fields and are built with different `--date` values
+- **WHEN** two catalogues differ only in valid values of default-hidden licence fields and are built with different `--date` values
 - **THEN** their `staff` sites are byte-identical
 
+### Requirement: No inline code
+Pages SHALL contain no inline `script` or `style` element, no `style` attribute and no event-handler attribute; scripts and styles are files of the site. Every page of both sites SHALL carry the same Content Security Policy.
+
+#### Scenario: Same policy everywhere
+- **WHEN** both sites are built from the example
+- **THEN** every HTML page has the same CSP and none has an inline script, inline style or `style` attribute
+
+### Requirement: Content Security Policy
+Every HTML page SHALL carry, in a `meta` element, exactly `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'`.
+
+#### Scenario: Pages work under the policy
+- **WHEN** the map, list, component, licence and journey pages are opened in a headless browser
+- **THEN** no CSP violation is reported and zoom, filters, highlight and search work
+
 ### Requirement: No external requests
-No file of either site SHALL make the browser request anything outside the site: no external script, style, font, image, frame, form action or preconnect, and no analytics. Links to other sites SHALL NOT be generated in this change.
+No `href`, `src`, `srcset`, `action`, `formaction`, `poster` or `data` attribute and no CSS `url()` or `@import` SHALL hold an absolute or protocol-relative URL; the SVG namespace in `xmlns` is exempt. There are no analytics and no links to other sites in this change.
 
 #### Scenario: Only local URLs
 - **WHEN** both sites are built from the example
-- **THEN** no attribute or CSS value in any file contains `http:`, `https:` or `//` at the start of a URL
+- **THEN** no such attribute or CSS value starts with a scheme or `//`
 
-### Requirement: Content Security Policy
-Every HTML page SHALL carry a Content Security Policy in a `meta` element that allows scripts and styles only from the site itself or by hash, images only from the site or `data:`, fonts only from the site, `connect-src 'self'`, `object-src 'none'`, `base-uri 'none'` and `form-action 'none'`. No page SHALL need `'unsafe-inline'` or `'unsafe-eval'`.
+### Requirement: Relative URLs
+Every URL in every HTML, CSS and JavaScript file (links, scripts, stylesheets, fonts, images, module imports) SHALL be relative and resolve inside its site's folder, so each site works under any path prefix.
 
-#### Scenario: Policy present
-- **WHEN** any page is opened
-- **THEN** its CSP has `object-src 'none'` and `base-uri 'none'` and contains neither `unsafe-inline` nor `unsafe-eval`
-
-#### Scenario: Pages work under the policy
-- **WHEN** the map, list, item and journey pages are opened in a headless browser
-- **THEN** no CSP violation is reported and zoom, filter and search work
+#### Scenario: Two sites on one host
+- **WHEN** the `full` and `staff` sites are served at `/full/` and `/staff/` of one host and every page is opened
+- **THEN** no request leaves the site's prefix and none fails
 
 ### Requirement: Headers file
-Each site SHALL contain a `_headers` file applying to every path: the same Content Security Policy plus `frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow` and `Permissions-Policy` denying camera, microphone and geolocation.
+The build SHALL write `_headers` at the root of the output folder and in each site, applying to `/*` the Content Security Policy above plus `frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow` and `Permissions-Policy: camera=(), microphone=(), geolocation=()`.
 
-#### Scenario: Headers for the host
-- **WHEN** a site is built
-- **THEN** its `_headers` file holds those headers for `/*`
+#### Scenario: Root headers
+- **WHEN** a build succeeds
+- **THEN** `<out>/_headers` holds those headers for `/*`
 
 ### Requirement: Not indexed
-Every page SHALL have `<meta name="robots" content="noindex, nofollow">`, and each site SHALL have a `robots.txt` that disallows everything.
+Every page SHALL have `<meta name="robots" content="noindex, nofollow">`. The build SHALL write `robots.txt` with `User-agent: *` and `Disallow: /` at the root of the output folder and in each site.
 
-#### Scenario: robots.txt
-- **WHEN** a site is built
-- **THEN** `robots.txt` contains `User-agent: *` and `Disallow: /`
+#### Scenario: Root robots
+- **WHEN** a build succeeds
+- **THEN** `<out>/robots.txt` disallows everything
 
 ### Requirement: Escaped catalogue text
-Every catalogue text in a page SHALL be HTML-escaped by the template engine; no catalogue value SHALL be inserted as raw HTML, into a script, into a `style`, or into a URL other than the site's own item paths built from validated names.
+Every catalogue text in a page SHALL be HTML-escaped by the template engine. Only two things are inserted raw: SVG produced by stackledger's map and diagram renderers, which escape catalogue text themselves, and the generated stylesheet of validated colours. No catalogue value goes into a script, a `style`, or a URL other than the site's own paths built from validated names.
 
 #### Scenario: Hostile title
-- **WHEN** a component's title is `<img src=x onerror=alert(1)>`
-- **THEN** every page showing it contains the text escaped and no `img` element with `onerror`
+- **WHEN** a component's title is `<img src=x onerror=alert(1)>` and a line's title is `</script><script>alert(1)</script>`
+- **THEN** every page shows both titles as text, and contains no `img` element with `onerror` and no script element other than the site's script files
