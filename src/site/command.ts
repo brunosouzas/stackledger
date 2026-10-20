@@ -29,7 +29,7 @@ import { internal, InternalError } from '../errors.js';
 import { problemCounts } from '../map/command.js';
 import { prepareBuild, type PreparedBuild } from './build.js';
 import { MARKER, MARKER_NAME } from './policy.js';
-import { lstatOrUndefined, within } from './paths.js';
+import { assertSameFolder, folderIdentity, lstatOrUndefined, within } from './paths.js';
 import { clearStaging, ENTRIES, isInterrupted, OLD_NAME, publish, STAGING_PREFIX } from './publish.js';
 
 const PROXY_REMINDER = 'Serve both folders only behind an identity-aware proxy: full/ for the people allowed to see costs, staff/ for everyone else.';
@@ -101,7 +101,12 @@ export interface BuildFaults {
   undo?: number;
   /** Throw when removing the staging folder after the commit. */
   cleanup?: boolean;
+  /** Called just before the output folder's identity is checked at each point (to swap it). */
+  at?: (point: CheckPoint, target: string) => void;
 }
+
+/** The points where the build re-checks that the output folder is still the one it validated. */
+export type CheckPoint = 'staging' | 'publish' | 'cleanup';
 
 const plural = (count: number, word: string) => `${count} ${count === 1 ? word : `${word}s`}`;
 
@@ -138,19 +143,32 @@ export async function buildCommand(args: string[], faults: BuildFaults = {}): Pr
   const target = checkOutput(out, catalogue);
 
   mkdirSync(target, { recursive: true });
+  // From here on, every change first checks that the output folder is still the validated one.
+  const identity = folderIdentity(target);
+  const unchanged = () => assertSameFolder(identity);
+  const checkAt = (point: CheckPoint) => {
+    faults.at?.(point, target);
+    unchanged();
+  };
+
+  checkAt('staging');
   // Finish an interrupted publication, then remove old staging folders (throws, deleting nothing, if stuck).
-  const recovered = clearStaging(target);
+  const recovered = clearStaging(target, unchanged);
   const staging = join(target, `${STAGING_PREFIX}${randomBytes(8).toString('hex')}`);
+  unchanged();
   mkdirSync(staging);
   let prepared: PreparedBuild;
   try {
     if (faults.prepare) throw new Error('injected failure while preparing');
     prepared = await prepareBuild(loaded, staging, date);
-    publish(target, staging, faults);
+    checkAt('publish');
+    publish(target, staging, faults, unchanged);
   } catch (error) {
-    // An undo that failed keeps the staging folder: it holds the previous entries.
+    // An undo that failed keeps the staging folder (it holds the previous entries), and a moved
+    // output folder is left alone: both are InternalErrors.
     if (error instanceof InternalError) throw error;
     const reason = error instanceof Error ? error.message : String(error);
+    unchanged();
     try {
       rmSync(staging, { recursive: true, force: true });
     } catch (cleanupError) {
@@ -161,6 +179,8 @@ export async function buildCommand(args: string[], faults: BuildFaults = {}): Pr
 
   // Committed: the new sites are in place. Removing the old entries is best effort.
   const warnings = [...recovered];
+  // A moved output folder stops the build with exit 1, even after the commit: nothing is removed.
+  checkAt('cleanup');
   try {
     if (faults.cleanup) throw new Error('injected failure while removing the staging folder');
     rmSync(staging, { recursive: true, force: true });

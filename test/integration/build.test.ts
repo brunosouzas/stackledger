@@ -14,7 +14,7 @@ import { dirname, join } from 'node:path';
 import { component, layout, licence, line, set } from '../unit/helpers.js';
 import { yaml } from './mcp-helpers.js';
 import { cli, root } from './helpers.js';
-import type { BuildFaults } from '../../src/site/command.js';
+import type { BuildFaults, CheckPoint } from '../../src/site/command.js';
 import { MARKER, MARKER_NAME } from '../../src/site/policy.js';
 
 const DATE = '2027-06-01';
@@ -24,7 +24,10 @@ interface Result { status: number; stdout: string; stderr: string; ms: number }
 
 const faultEntry = join(root, 'test', 'integration', 'build-with-faults.mjs');
 
-interface BuildOptions { env?: Record<string, string>; flags?: string[]; faults?: BuildFaults }
+/** BuildFaults as JSON, plus the entry point's `swap` of the output folder for a link (no functions). */
+type Faults = Omit<BuildFaults, 'at'> & { swap?: { at: CheckPoint; to: string } };
+
+interface BuildOptions { env?: Record<string, string>; flags?: string[]; faults?: Faults }
 
 /** Run the built CLI asynchronously, so several builds can run at the same time. With `faults`, run
  * the test-only entry point instead, which passes them to the command. */
@@ -414,6 +417,29 @@ describe('Atomic replace', () => {
       const again = await build(['build', catalogue, '--out', out, '--date', DATE], { faults: { prepare: true } });
       expect(again.status, again.stderr).toBe(1);
       expect(snapshot(out)).toEqual(before);
+    }, 120_000);
+
+    // The build cannot hold the output folder open; it re-checks the folder's real path and
+    // identity before each change, and stops when the folder was swapped for a link.
+    test.concurrent.each(['staging', 'publish', 'cleanup'] as const)('An output folder swapped for a link before %s: exit 1, nothing outside changes', async point => {
+      const out = fresh('swapped');
+      cpSync(seed, out, { recursive: true });
+      const elsewhere = writeFolder(fresh('elsewhere'), { [MARKER_NAME]: MARKER, 'staff/index.html': 'another site\n' });
+      const before = snapshot(elsewhere);
+      const other = writeFolder(fresh('other'), smallCatalogue([component('extra')]));
+      const result = await build(['build', other, '--out', out, '--date', DATE], { faults: { swap: { at: point, to: elsewhere } } });
+      expect(result.status, result.stderr).toBe(1);
+      expect(result.stderr).toMatch(new RegExp(`^stackledger build: the output folder ${out} was moved or replaced during the build; stopped without further changes`));
+      expect(snapshot(elsewhere)).toEqual(before);
+      // The real folder, now at <out>-moved, holds a complete build (the earlier one, or the new one
+      // after the commit) and, from the publish point on, the staging folder left as it was.
+      const moved = `${out}-moved`;
+      expect(readFileSync(join(moved, MARKER_NAME), 'utf8')).toBe(MARKER);
+      expect(staging(moved)).toHaveLength(point === 'staging' ? 0 : 1);
+      if (point !== 'cleanup') {
+        const published = (dir: string) => Object.fromEntries(Object.entries(snapshot(dir)).filter(([path]) => !path.startsWith('.stackledger-tmp-')));
+        expect(published(moved)).toEqual(snapshot(seed));
+      }
     }, 120_000);
 
     test.concurrent('There is no eleventh step: the marker rename is the last one', async () => {

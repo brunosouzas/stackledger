@@ -6,7 +6,8 @@
  * renamed into place. Each rename is announced in the staging folder's journal (journal.ts) before
  * it happens. The rename of the marker is the commit point: a failure before it undoes the renames
  * in reverse, so the output folder is byte for byte what it was. Renames stay on one filesystem
- * because the staging folder is inside the output folder; none goes through a symbolic link.
+ * because the staging folder is inside the output folder; none goes through a symbolic link, and
+ * the command's `beforeChange` check (paths.ts, assertSameFolder) runs before each one.
  *
  * Recovery: an undo can itself fail (a folder made read-only during the build) or the process can
  * die mid-publication. The previous entries are then under `<staging>/old/`, and the journal says
@@ -42,12 +43,15 @@ export const ENTRIES: readonly { name: string; staged: string }[] = [
 
 export interface PublishFaults { step?: number; undo?: number }
 
-/** Publish the staged entries into `out`. Throws (after undoing every rename) on a failure before the commit. */
-export function publish(out: string, staging: string, faults: PublishFaults = {}): void {
+/** Publish the staged entries into `out`. Throws (after undoing every rename) on a failure before
+ * the commit. `beforeChange` runs before each rename; when it throws an InternalError (the output
+ * folder was moved), nothing more is renamed, not even to undo. */
+export function publish(out: string, staging: string, faults: PublishFaults = {}, beforeChange: () => void = () => {}): void {
   mkdirSync(join(staging, OLD_NAME));
   const done: Move[] = [];
   const move = (from: string, to: string): void => {
     const step: Move = { index: done.length + 1, from: relative(out, from), to: relative(out, to) };
+    beforeChange();
     appendRecord(staging, { kind: 'move', ...step });
     if (step.index === faults.step) throw new Error(`injected failure at publication step ${faults.step}`);
     renameSync(from, to);
@@ -64,6 +68,8 @@ export function publish(out: string, staging: string, faults: PublishFaults = {}
     }
     appendRecord(staging, { kind: 'commit' });
   } catch (error) {
+    if (error instanceof InternalError) throw error;
+    beforeChange();
     undo(out, staging, done, faults.undo);
     throw error;
   }
@@ -100,8 +106,9 @@ function journalPath(out: string, staging: string, path: string): string {
 }
 
 /** Finish the undo of the publication interrupted in `staging`, from its journal records. */
-function recoverPublication(out: string, staging: string, records: readonly JournalRecord[]): void {
+function recoverPublication(out: string, staging: string, records: readonly JournalRecord[], beforeChange: () => void): void {
   for (const step of pendingMoves(records)) {
+    beforeChange();
     const from = journalPath(out, staging, step.from);
     const to = journalPath(out, staging, step.to);
     const atFrom = lstatOrUndefined(from);
@@ -169,7 +176,7 @@ export function clearStaging(out: string, beforeChange: () => void = () => {}): 
   const notes: string[] = [];
   for (const { path, records } of open) {
     beforeChange();
-    recoverPublication(out, path, records!);
+    recoverPublication(out, path, records!, beforeChange);
     notes.push(`Note: finished undoing the publication interrupted in ${path}; the earlier build was restored first`);
   }
   for (const { path } of stagings) {

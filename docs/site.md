@@ -71,6 +71,7 @@ The look follows brunosouzas.com (based on the Astroplate theme, MIT), with the 
 - `noindex, nofollow` on every page, `X-Robots-Tag` in `_headers`, and a `robots.txt` that disallows everything, at the root of the output and in each site.
 - The `staff` site is built first, from the staff view only: no file of it contains a hidden field's value.
 - Catalogue text is escaped everywhere; titles such as `<img onerror=…>` show as text.
+- The build writes only inside the output folder and never renames or removes through a symbolic link. Node.js cannot hold a folder open, so the build works with paths: it records the output folder's real path and identity (device and inode) once the folder is checked, compares them again before it creates the staging folder, before each rename and before each removal, and stops with exit 1, changing nothing more, when they differ. It assumes that no other process renames the output folder or its parents during a build, the same trust you give any program you run as yourself.
 
 ## Publishing the output
 
