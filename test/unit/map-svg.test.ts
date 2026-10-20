@@ -27,6 +27,19 @@ test('No lines',()=>{const doc=safe(renderSvg(geometry([]),themes.light));expect
 test('Allowed names only',()=>{const g=geometry(),doc=safe(renderSvg(g,themes.light));const refs=Array.from(doc.getElementsByTagName('*')).map(e=>e.getAttribute('data-ref')).filter(Boolean);expect(refs.sort()).toEqual(['component:a','component:b','line:ship']);expect(doc.getElementsByTagName('title').length).toBe(4);});
 const hostile='<script>&"\' ]]> javascript: \u0001 \uFFFE';
 function hostileGeometry(){const g=geometry();g.stations[0]!.title=hostile;g.lines[0]!.title=hostile;g.legend.lines[0]!.title=hostile;g.zones.push({name:'zone',title:hostile,color:'#ABCDEF',hull:[[0,0],[256,0]],padding:32,titleBox:{x:0,y:-60,w:200,h:17}});return g;}
+test('Hostile titles through the real pipeline',()=>{
+ const long=`${hostile} Northwind Customer Relationship Manager`;
+ const docs=[set(set(component('a'),'metadata.title',long),'metadata.labels',{'stackledger/zone':'zone'}),component('b'),set(journey('ship',['a','b']),'metadata.title',hostile),set(positions({a:[0,0],b:[4,0]}),'spec.zones',[{name:'zone',title:hostile,color:'#ABCDEF'}])];
+ const g=geometry(docs);
+ expect(g.lines).toHaveLength(1);expect(g.zones).toHaveLength(1);expect(g.labels.find(l=>l.ref==='component:a')!.rows).toHaveLength(2);
+ const clean=(text:string)=>text.replace(/[\u0001￾]/g,'�');
+ for(const theme of Object.values(themes)){
+  const doc=safe(renderSvg(g,theme)),text=doc.documentElement.textContent!;
+  expect(text).toContain(clean(long));expect(text).toContain(clean(hostile));
+  expect(doc.getElementsByTagName('script')).toHaveLength(0);
+  for(const e of Array.from(doc.getElementsByTagName('*')))for(const a of Array.from(e.attributes))expect(a.value).not.toMatch(/javascript:|<script/);
+ }
+});
 test('Unknown attribute',()=>{safe(renderSvg(hostileGeometry(),themes.light));});
 test('Paint values',()=>{for(const theme of Object.values(themes))safe(renderSvg(geometry(),theme));const g=geometry();g.lines[0]!.color='url(javascript:alert(1))';expect(()=>renderSvg(g,themes.light)).toThrow(/colour/);});
 test('Hostile titles',()=>{const svg=renderSvg(hostileGeometry(),themes.light),doc=safe(svg);const clean=hostile.replace(/[\u0001\uFFFE]/g,'�');expect(doc.documentElement.textContent).toContain(clean);expect(doc.getElementsByTagName('script')).toHaveLength(0);for(const e of Array.from(doc.getElementsByTagName('*')))for(const a of Array.from(e.attributes))expect(a.value).not.toContain('javascript:');expect(escapeXml('&<>"\'\ud800')).toBe('&amp;&lt;&gt;&quot;&apos;�');});
