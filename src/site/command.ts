@@ -18,7 +18,7 @@
  */
 import { randomBytes } from 'node:crypto';
 import { lstatSync, mkdirSync, readdirSync, realpathSync, rmSync, statSync } from 'node:fs';
-import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { parseArgs } from 'node:util';
 import { isDate, localDate } from '../graph.js';
 import { loadFolder } from '../source.js';
@@ -30,10 +30,12 @@ import { publish, removeStaleStaging, STAGING_PREFIX } from './publish.js';
 
 const PROXY_REMINDER = 'Serve both folders only behind an identity-aware proxy: full/ for the people allowed to see costs, staff/ for everyone else.';
 
-/** True when `child` is `parent` or inside it (both real, absolute paths). */
+/** True when `child` is `parent` or inside it (both real, absolute paths). Only a `..` segment
+ * leaves `parent`: a child named `..review-probe` is inside it. */
 function within(child: string, parent: string): boolean {
   const path = relative(parent, child);
-  return path === '' || (!path.startsWith('..') && !isAbsolute(path));
+  const outside = path === '..' || path.startsWith(`..${sep}`) || isAbsolute(path);
+  return !outside;
 }
 
 /** The real path of `path`, or of its nearest existing ancestor joined with the missing rest. */

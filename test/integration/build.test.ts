@@ -15,6 +15,7 @@ import { component, layout, licence, line, set } from '../unit/helpers.js';
 import { yaml } from './mcp-helpers.js';
 import { cli, root } from './helpers.js';
 import type { BuildFaults } from '../../src/site/command.js';
+import { MARKER, MARKER_NAME } from '../../src/site/policy.js';
 
 const DATE = '2027-06-01';
 const PROXY = /identity-aware proxy/;
@@ -229,6 +230,33 @@ describe('Safe output folder', () => {
     }
     expect(snapshot(parent)).toEqual(before);
   });
+
+  test('Names that begin with two dots are still inside the folder', async () => {
+    // `..review-probe` is a child of the catalogue, not its parent: relative() gives '..review-probe'.
+    const folder = writeFolder(fresh('dots'), smallCatalogue());
+    const beforeFolder = snapshot(folder);
+    const inside = await build(['build', folder, '--out', join(folder, '..review-probe')]);
+    expect(inside.status, inside.stderr).toBe(2);
+    expect(inside.stderr).toMatch(/inside it/);
+    expect(snapshot(folder)).toEqual(beforeFolder);
+
+    // The other direction: a marked output folder holding a catalogue named `..catalogue`.
+    const parent = writeFolder(fresh('dots-parent'), { [MARKER_NAME]: MARKER });
+    const inner = writeFolder(join(parent, '..catalogue'), smallCatalogue());
+    const beforeParent = snapshot(parent);
+    const containing = await build(['build', inner, '--out', parent]);
+    expect(containing.status, containing.stderr).toBe(2);
+    expect(containing.stderr).toMatch(/must not contain the catalogue folder/);
+    expect(snapshot(parent)).toEqual(beforeParent);
+  });
+
+  test.concurrent('A sibling whose name begins with two dots is outside and accepted', async () => {
+    const folder = writeFolder(fresh('dots-sibling'), smallCatalogue());
+    const out = join(dirname(folder), `..sibling-${++counter}`);
+    const result = await build(['build', folder, '--out', out, '--date', DATE]);
+    expect(result.status, result.stderr).toBe(0);
+    expect(existsSync(join(out, 'staff', 'index.html'))).toBe(true);
+  }, 120_000);
 
   test('Unrelated non-empty folder', async () => {
     const out = writeFolder(fresh('notes'), { 'notes.txt': 'keep me\n' });
