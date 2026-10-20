@@ -1,6 +1,6 @@
 name: Test
 
-# Compile and test the CLI on supported Node release lines.
+# Compile and test the CLI on supported Node release lines; browser test of the built sites on Node 22.
 on:
   pull_request:
   push:
@@ -24,3 +24,17 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+  browser:
+    # Playwright (Chromium) on the built Northwind sites served under /full/ and /staff/; see test/browser/.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser

@@ -26,3 +26,12 @@ test('Two settings with the same name', () => {
  const result = checkFiles({ 'a.yaml': [settings('settings')], 'b.yaml': [settings('settings')] });
  expect(result.problems).toHaveLength(1); expect(result.problems[0]).toMatchObject({ path: 'b.yaml', field: 'metadata.name' }); expect(result.problems[0]!.message).toContain('Duplicate name');
 });
+const site = (value: unknown) => settings('settings', { site: value });
+test('Title and accent', () => { expect(check(site({ title: 'Northwind software', colors: { accent: '#e4002b' } })).problems).toEqual([]); });
+test('Title too long', () => { expect(errors(site({ title: 'N'.repeat(61) }))).toMatchObject([{ field: 'spec.site.title' }]); expect(check(site({ title: 'N'.repeat(60) })).problems).toEqual([]); });
+test('Colour name', () => { expect(errors(site({ colors: { primary: 'red' } }))).toMatchObject([{ field: 'spec.site.colors.primary' }]); });
+test('Logo not supported', () => {
+ expect(errors(site({ logo: 'logo.png' }))).toMatchObject([{ field: 'spec.site.logo', message: 'Unlisted field' }]);
+ expect(errors(site({ colors: { border: '#FFFFFF' } }))).toMatchObject([{ field: 'spec.site.colors.border', message: 'Unlisted field' }]);
+ expect(check(site({ colors: { primary: '#121212', accent: '#E4002B', body: '#FFFFFF', text: '#444444' } })).problems).toEqual([]);
+});

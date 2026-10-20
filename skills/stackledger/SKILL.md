@@ -132,3 +132,5 @@ Run one of these after every edit:
 - Command line, from a stackledger clone: `node dist/cli.js validate /path/to/catalogue`.
 
 Each problem is `<path>:<line>:<column> <error|warning> <field> <message>`. Exit code 0 means no errors, 1 means errors, 2 means the command or the folder is wrong. Fix the errors, run it again, and report what you changed and the final counts.
+
+To see the result as the website, build both sites into a folder outside the catalogue: `node dist/cli.js build /path/to/catalogue --out /path/to/out`. It needs no network; publish only `full/`, `staff/`, `_headers` and `robots.txt` from it ([docs/site.md](../../docs/site.md)).

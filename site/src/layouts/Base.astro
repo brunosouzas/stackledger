@@ -1,0 +1,44 @@
+---
+// Shared page shell (catalogue-site, Layout): fixed CSP and noindex metas, header, main, footer.
+// Structure from brunosouzas.com's Layout.astro (Astroplate theme, MIT, see LICENSE-astroplate).
+// No inline code: the theme script is a bundled file, styles are imported files.
+import '../styles/fonts.css';
+import '../styles/tokens.css';
+import '../styles/override.css';
+import '../styles/base.css';
+import '../styles/pages.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { href, policy, rootFor, site } from '../lib/site';
+
+interface Props {
+  title: string;
+  current?: 'map' | 'software' | 'journeys';
+}
+const { title, current } = Astro.props;
+const root = rootFor(Astro.url.pathname);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content={policy} />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>{title} | {site.title}</title>
+    <link rel="icon" type="image/svg+xml" href={href(root, 'favicon.svg')} />
+    <script>
+      import '../scripts/theme.ts';
+    </script>
+  </head>
+  <body data-root={root}>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <Header root={root} current={current} />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer root={root} />
+  </body>
+</html>

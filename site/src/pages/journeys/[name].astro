@@ -1,0 +1,50 @@
+---
+// Journey page (catalogue-site, Journey pages): the strip diagram and the same stops and
+// interchanges as a text list of links.
+import Base from '../../layouts/Base.astro';
+import LinkOrText from '../../components/LinkOrText.astro';
+import Themed from '../../components/Themed.astro';
+import { rootFor, site } from '../../lib/site';
+
+export function getStaticPaths() {
+  return site.journeys.map((page) => ({ params: { name: page.slug }, props: { page } }));
+}
+
+const { page } = Astro.props;
+const root = rootFor(Astro.url.pathname);
+---
+
+<Base title={page.title} current="journeys">
+  <article class="container section">
+    <p class="kicker">Journey</p>
+    <h1 class="journey-title"><span class="badge" set:html={page.badgeSvg} />{page.title}</h1>
+    <p class="lead">{page.stops} stops, in order.</p>
+    <div data-diagram>
+      <Themed light={page.strip.light} dark={page.strip.dark} />
+    </div>
+    <h2>Stops</h2>
+    <ol class="stop-list">
+      {
+        page.stopList.map((stop) => (
+          <li>
+            <LinkOrText root={root} item={stop} />
+            {stop.lines.length > 0 && (
+              <span class="muted">
+                {' '}· also on{' '}
+                {stop.lines.map((line, index) => (
+                  <>
+                    {index > 0 && ', '}
+                    <LinkOrText root={root} item={line} />
+                  </>
+                ))}
+              </span>
+            )}
+          </li>
+        ))
+      }
+    </ol>
+  </article>
+  <script>
+    import '../../scripts/diagram.ts';
+  </script>
+</Base>

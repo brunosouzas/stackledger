@@ -6,10 +6,13 @@ Open-source software governance tool. It reads a software and licence catalogue 
 
 Stack: TypeScript, Node.js, Astro, zod, vitest, Playwright, GitHub Actions, OpenSpec
 
-Implemented: the catalogue format and `stackledger validate` (`catalogue-model`), the SVG map engine and `stackledger map` (`metro-map-engine`), and the read-only MCP server with the `full` and `staff` views (`mcp-server`). The rest of the roadmap is not implemented: say so instead of describing files that do not exist.
+Implemented: the catalogue format and `stackledger validate` (`catalogue-model`), the SVG map engine and `stackledger map` (`metro-map-engine`), and the read-only MCP server with the `full` and `staff` views (`mcp-server`), and `stackledger build` with the static `full` and `staff` sites (`catalogue-site`). The rest of the roadmap is not implemented: say so instead of describing files that do not exist.
+
+Layout: `src/` the CLI and its modules (`src/map/` map engine and diagrams, `src/site/` site data, build, publication); `site/` the Astro project shipped in the package and copied into the build's staging folder; `test/unit`, `test/integration` (vitest) and `test/browser` (Playwright); `examples/northwind/` the fictitious example catalogue.
 
 - Build: `npm run build`
-- Test: `npm test` (build first for CLI integration tests)
+- Test: `npm test` (vitest; build first for CLI integration tests)
+- Browser test: `npm run test:browser` (Playwright with Chromium; `npx playwright install chromium` once)
 - Run locally: `node dist/cli.js --help`
 
 ## Rules for this repository

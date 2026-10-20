@@ -1,0 +1,208 @@
+/* Page-specific styles: map, software list, item and journey pages. Colours from tokens.css only. */
+
+.kicker {
+  margin: 0 0 0.25rem;
+  color: var(--color-text-light);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.card-title {
+  margin: 0 0 0.75rem;
+  font-size: var(--text-h6);
+}
+
+.item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.licence-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr));
+  gap: 1rem;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0 2rem;
+}
+
+.columns h3 {
+  margin-top: 0.5rem;
+}
+
+/* Map page. */
+
+.map-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1.5rem 0 1rem;
+}
+
+.map-zoom {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.map-zoom .btn {
+  min-width: 2.5rem;
+  justify-content: center;
+}
+
+.map-frame {
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-body);
+}
+
+.map-frame.is-interactive {
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+}
+
+.map-frame.is-interactive:active {
+  cursor: grabbing;
+}
+
+.map-canvas svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.map-frame svg .is-dimmed {
+  opacity: 0.15;
+  transition: opacity 0.2s;
+}
+
+.map-frame svg .is-choosable,
+.map-frame svg [data-ref^="component:"] {
+  cursor: pointer;
+}
+
+.map-frame svg [data-ref^="component:"]:focus-visible {
+  outline: 3px solid var(--color-accent);
+}
+
+.line-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.line-chips .btn {
+  border-color: var(--color-border);
+  font-weight: 400;
+}
+
+.line-chips .btn[aria-pressed="true"] {
+  border-color: var(--color-primary);
+}
+
+.map-symbols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  color: var(--color-text-light);
+  font-size: 0.9rem;
+  list-style: none;
+}
+
+.map-symbols li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.map-symbol svg {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Software list. */
+
+.list-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.list-search {
+  flex: 1 1 16rem;
+}
+
+.list-search input {
+  width: 100%;
+}
+
+.no-match {
+  margin-top: 1rem;
+  font-weight: 600;
+}
+
+/* Journeys. */
+
+.journey-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.journey-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.journey-card .badge {
+  margin-top: 0.3rem;
+}
+
+.journey-card .card-title {
+  margin-bottom: 0.25rem;
+}
+
+.journey-card p {
+  margin: 0;
+}
+
+.journey-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.journey-title .badge svg {
+  width: auto;
+  height: 1.6rem;
+}
+
+.stop-list {
+  padding-left: 1.5rem;
+}
+
+.stop-list li {
+  margin: 0.35rem 0;
+}

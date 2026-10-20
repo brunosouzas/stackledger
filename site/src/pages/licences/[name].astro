@@ -1,0 +1,56 @@
+---
+// Licence page (catalogue-site, Licence page): the licence fields of the view, the components
+// that use it and the impact of removing it. The staff view has already dropped hidden fields.
+import Base from '../../layouts/Base.astro';
+import Impact from '../../components/Impact.astro';
+import LinkOrText from '../../components/LinkOrText.astro';
+import { rootFor, site } from '../../lib/site';
+
+export function getStaticPaths() {
+  return site.licences.map((page) => ({ params: { name: page.slug }, props: { page } }));
+}
+
+const { page } = Astro.props;
+const root = rootFor(Astro.url.pathname);
+---
+
+<Base title={page.title} current="software">
+  <article class="container section">
+    <p class="kicker">Licence</p>
+    <h1>{page.title}</h1>
+    <div class="item-grid">
+      <section class="card" aria-labelledby="details">
+        <h2 id="details" class="card-title">Details</h2>
+        <dl class="fields">
+          <dt>Name</dt>
+          <dd><code>{page.name}</code></dd>
+          <dt>Owner</dt>
+          <dd>{page.owner}</dd>
+          {
+            page.fields.map((field) => (
+              <>
+                <dt>{field.label}</dt>
+                <dd>{field.value}</dd>
+              </>
+            ))
+          }
+        </dl>
+      </section>
+      <section class="card" aria-labelledby="used-by">
+        <h2 id="used-by" class="card-title">Used by</h2>
+        {
+          page.usedBy.length === 0 ? (
+            <p>No component uses this licence.</p>
+          ) : (
+            <ul class="plain-list">
+              {page.usedBy.map((item) => (
+                <li><LinkOrText root={root} item={item} /></li>
+              ))}
+            </ul>
+          )
+        }
+      </section>
+    </div>
+    <Impact root={root} impact={page.impact} />
+  </article>
+</Base>

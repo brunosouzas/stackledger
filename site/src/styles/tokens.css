@@ -1,0 +1,71 @@
+/* Design tokens: every colour, font and size of the site (catalogue-site, Look and theme).
+   Colours, fonts and type scale come from brunosouzas.com (src/config/theme.json there, on the
+   Astroplate theme, MIT); the accent and the focus colour are stackledger's own additions.
+   Light is the default. Dark applies when the reader chose it (data-theme="dark" on <html>), or
+   when the system prefers dark and the reader made no choice. Those dark rules are more specific
+   than :root, so override.css (spec.site.colors, also :root) changes the light theme only. */
+
+:root {
+  color-scheme: light;
+
+  --color-primary: #121212;
+  --color-accent: #000f9f;
+  --color-body: #ffffff;
+  --color-border: #eaeaea;
+  --color-light: #f6f6f6;
+  --color-dark: #040404;
+  --color-text: #444444;
+  --color-text-dark: #040404;
+  --color-text-light: #717171;
+  --color-on-primary: #ffffff;
+
+  --font-primary: "Heebo", system-ui, sans-serif;
+  --font-secondary: "Signika", system-ui, sans-serif;
+
+  --text-base: 16px;
+  --text-base-sm: 12.8px;
+  --text-h6: 1.2rem;
+  --text-h5: 1.44rem;
+  --text-h4: 1.728rem;
+  --text-h3: 2.0736rem;
+  --text-h3-sm: 1.86624rem;
+  --text-h2: 2.48832rem;
+  --text-h2-sm: 2.239488rem;
+  --text-h1: 2.986rem;
+  --text-h1-sm: 2.6874rem;
+
+  --radius: 0.5rem;
+  --container: 1320px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-primary: #ffffff;
+  --color-accent: #9da8ff;
+  --color-body: #1c1c1c;
+  --color-border: #3e3e3e;
+  --color-light: #222222;
+  --color-dark: #ffffff;
+  --color-text: #b4afb6;
+  --color-text-dark: #ffffff;
+  --color-text-light: #b4afb6;
+  --color-on-primary: #040404;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --color-primary: #ffffff;
+    --color-accent: #9da8ff;
+    --color-body: #1c1c1c;
+    --color-border: #3e3e3e;
+    --color-light: #222222;
+    --color-dark: #ffffff;
+    --color-text: #b4afb6;
+    --color-text-dark: #ffffff;
+    --color-text-light: #b4afb6;
+    --color-on-primary: #040404;
+  }
+}

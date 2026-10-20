@@ -1,0 +1,37 @@
+---
+// Journeys list (catalogue-site, Journey pages): every drawn line in line order with its badge,
+// colour, title and number of stops.
+import Base from '../../layouts/Base.astro';
+import { href, rootFor, site } from '../../lib/site';
+
+const root = rootFor(Astro.url.pathname);
+const lines = site.journeys;
+---
+
+<Base title="Journeys" current="journeys">
+  <section class="container section">
+    <h1>Journeys</h1>
+    {
+      lines.length === 0 ? (
+        <p class="lead">There are no journeys yet.</p>
+      ) : (
+        <>
+          <p class="lead">{lines.length} journeys, in line order.</p>
+          <ul class="journey-list">
+            {lines.map((line) => (
+              <li class="card journey-card">
+                <span class="badge" set:html={line.badgeSvg} />
+                <div>
+                  <h2 class="card-title"><a href={href(root, line.href)}>{line.title}</a></h2>
+                  <p class="muted">
+                    {line.stops} stops · colour <code>{line.color}</code>
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )
+    }
+  </section>
+</Base>

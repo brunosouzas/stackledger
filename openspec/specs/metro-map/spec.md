@@ -196,7 +196,7 @@ The SVG SHALL be one XML document with `role="img"`, a `title`, one element per 
 - **THEN** every element and attribute name in the SVG is on the allow-lists
 
 ### Requirement: Allowed attributes
-Attribute names SHALL be limited to `xmlns`, `role`, `viewBox`, `width`, `height`, `x`, `y`, `x1`, `y1`, `x2`, `y2`, `cx`, `cy`, `r`, `rx`, `ry`, `d`, `points`, `fill`, `stroke`, `stroke-width`, `stroke-linecap`, `stroke-linejoin`, `stroke-dasharray`, `opacity`, `fill-opacity`, `stroke-opacity`, `font-family`, `font-size`, `font-weight`, `text-anchor`, `dominant-baseline` and `data-ref`.
+Attribute names SHALL be limited to `xmlns`, `role`, `viewBox`, `width`, `height`, `x`, `y`, `x1`, `y1`, `x2`, `y2`, `cx`, `cy`, `r`, `rx`, `ry`, `d`, `points`, `fill`, `stroke`, `stroke-width`, `stroke-linecap`, `stroke-linejoin`, `stroke-dasharray`, `opacity`, `fill-opacity`, `stroke-opacity`, `font-family`, `font-size`, `font-weight`, `text-anchor`, `dominant-baseline`, `data-ref`, `data-line` and `data-zone`.
 
 #### Scenario: Unknown attribute
 - **WHEN** the hostile fixture is drawn
@@ -210,7 +210,7 @@ Attribute names SHALL be limited to `xmlns`, `role`, `viewBox`, `width`, `height
 - **THEN** every `fill` and `stroke` is `none`, a theme constant or a `#RRGGBB` colour, and no value contains `url(`
 
 ### Requirement: Safe SVG text
-Every text taken from the catalogue SHALL be XML-escaped (`&`, `<`, `>`, `"`, `'`), with characters not allowed in XML 1.0 replaced by U+FFFD. No catalogue text SHALL appear in an attribute except `data-ref`, and colours are written only after matching `#RRGGBB`.
+Every text taken from the catalogue SHALL be XML-escaped (`&`, `<`, `>`, `"`, `'`), with characters not allowed in XML 1.0 replaced by U+FFFD. No catalogue text SHALL appear in an attribute except `data-ref`, `data-line` and `data-zone`, and colours are written only after matching `#RRGGBB`.
 
 #### Scenario: Hostile titles
 - **WHEN** component, line and zone titles contain `<script>`, `&`, `"`, `'`, `]]>`, `javascript:`, U+0001 and U+FFFE
@@ -229,3 +229,10 @@ The engine SHALL lay out and draw 200 stations and 20 lines within 5 seconds.
 #### Scenario: Large catalogue
 - **WHEN** a seeded catalogue of 200 stations on a 50 by 24 grid at even coordinates and 20 lines of 12 stops each is drawn
 - **THEN** the SVG is produced within 5 seconds
+
+### Requirement: Data attributes
+Every line stroke, station, terminal badge and legend entry SHALL carry `data-line` with the space-separated `line:<name>` references of the lines it belongs to, in line order. Every station whose component is in a drawn zone SHALL carry `data-zone` with the zone's declared name, lower-cased and XML-escaped.
+
+#### Scenario: Interchange in a zone
+- **WHEN** `xero` is a stop of `invoice` and `expenses` and is in zone `finance`
+- **THEN** its station has `data-line` listing `line:invoice` and `line:expenses` in line order and `data-zone="finance"`

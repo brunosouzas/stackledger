@@ -1,0 +1,12 @@
+---
+// A catalogue item or line as a link when it has a page, as plain text otherwise.
+import { href } from '../lib/site';
+
+interface Props {
+  root: string;
+  item: { title: string; href?: string | undefined };
+}
+const { root, item } = Astro.props;
+---
+
+{item.href ? <a href={href(root, item.href)}>{item.title}</a> : <span>{item.title}</span>}

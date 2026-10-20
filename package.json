@@ -6,9 +6,9 @@
   "description": "Validate a local software and licence catalogue",
   "license": "Apache-2.0",
   "bin": { "stackledger": "dist/cli.js" },
-  "engines": { "node": ">=22" },
-  "scripts": { "build": "tsc", "test": "vitest run" },
-  "dependencies": { "@modelcontextprotocol/sdk": "1.32.1", "yaml": "2.9.1", "zod": "4.6.7" },
-  "devDependencies": { "@types/node": "22.20.5", "@xmldom/xmldom": "0.9.12", "typescript": "6.0.2", "vitest": "4.1.11" },
-  "overrides": { "vite": "6.4.4" }
+  "files": ["dist", "site", "skills", "examples"],
+  "engines": { "node": ">=22.12" },
+  "scripts": { "build": "tsc", "test": "vitest run", "test:browser": "npm run build && playwright test" },
+  "dependencies": { "@fontsource/heebo": "5.3.0", "@fontsource/signika": "5.3.0", "@modelcontextprotocol/sdk": "1.32.1", "astro": "7.3.8", "yaml": "2.9.1", "zod": "4.6.7" },
+  "devDependencies": { "@playwright/test": "1.64.1", "@types/node": "22.20.5", "@xmldom/xmldom": "0.9.12", "esbuild": "0.28.2", "typescript": "6.0.2", "vitest": "4.1.11" }
 }

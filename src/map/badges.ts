@@ -6,7 +6,8 @@ import type { Point } from './model.js';
 import { GRID, type Stroke } from './parallel.js';
 import { overlapScore, textWidth, type Box, type Obstacle } from './labels.js';
 
-export interface Badge { point: Point; box: Box; text: string; color: string }
+/** `line` is the ref of the line the badge ends, written as the badge's data-line. */
+export interface Badge { point: Point; box: Box; text: string; color: string; line: string }
 
 const HEIGHT = 20;
 const GAP = 4;
@@ -100,7 +101,7 @@ export function placeBadges(strokes: Stroke[], obstacles: Obstacle[]): Badge[] {
     }
     members.forEach((member, i) => {
       const box = chosen[i]!;
-      badges.push({ point: [box.x + box.w / 2, box.y + box.h / 2], box, text: member.stroke.badge, color: member.stroke.color });
+      badges.push({ point: [box.x + box.w / 2, box.y + box.h / 2], box, text: member.stroke.badge, color: member.stroke.color, line: member.stroke.ref });
       taken.push(box);
     });
   }

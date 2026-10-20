@@ -1,0 +1,155 @@
+---
+// Component page (catalogue-site, Component page): fields of the view, licences, journeys,
+// neighbourhood diagram with its text alternative, impact of removal and unresolved references.
+import Base from '../../layouts/Base.astro';
+import Impact from '../../components/Impact.astro';
+import LinkOrText from '../../components/LinkOrText.astro';
+import Themed from '../../components/Themed.astro';
+import { href, rootFor, site } from '../../lib/site';
+
+export function getStaticPaths() {
+  return site.components.map((page) => ({ params: { name: page.slug }, props: { page } }));
+}
+
+const { page } = Astro.props;
+const root = rootFor(Astro.url.pathname);
+const near = page.neighbourhood;
+---
+
+<Base title={page.title} current="software">
+  <article class="container section">
+    <p class="kicker">Component</p>
+    <h1>{page.title}</h1>
+    {page.description && <p class="lead">{page.description}</p>}
+    <div class="item-grid">
+      <section class="card" aria-labelledby="details">
+        <h2 id="details" class="card-title">Details</h2>
+        <dl class="fields">
+          <dt>Name</dt>
+          <dd><code>{page.name}</code></dd>
+          <dt>Type</dt>
+          <dd>{page.type}</dd>
+          <dt>Lifecycle</dt>
+          <dd>{page.lifecycle}</dd>
+          <dt>Owner</dt>
+          <dd>{page.owner}</dd>
+          <dt>Zone</dt>
+          <dd>{page.zone ?? 'None'}</dd>
+          <dt>Tags</dt>
+          <dd>
+            {
+              page.tags.length ? (
+                <ul class="tags">
+                  {page.tags.map((tag) => <li>{tag}</li>)}
+                </ul>
+              ) : (
+                'None'
+              )
+            }
+          </dd>
+        </dl>
+      </section>
+      <section class="card" aria-labelledby="journeys">
+        <h2 id="journeys" class="card-title">Journeys</h2>
+        {
+          page.journeys.length === 0 ? (
+            <p>No journey stops here.</p>
+          ) : (
+            <ul class="plain-list">
+              {page.journeys.map((line) => (
+                <li>
+                  <LinkOrText root={root} item={line} />
+                  {!line.href && <span class="muted"> (not drawn)</span>}
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </section>
+    </div>
+
+    <section aria-labelledby="licences">
+      <h2 id="licences">Licences</h2>
+      {
+        page.licences.length === 0 ? (
+          <p>No licence.</p>
+        ) : (
+          <div class="licence-cards">
+            {page.licences.map((licence) => (
+              <div class="card">
+                <h3 class="card-title"><a href={href(root, licence.href!)}>{licence.title}</a></h3>
+                {licence.fields.length > 0 && (
+                  <dl class="fields">
+                    {licence.fields.map((field) => (
+                      <>
+                        <dt>{field.label}</dt>
+                        <dd>{field.value}</dd>
+                      </>
+                    ))}
+                  </dl>
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      }
+    </section>
+
+    <section aria-labelledby="neighbourhood">
+      <h2 id="neighbourhood">Neighbourhood</h2>
+      <div data-diagram>
+        <Themed light={near.light} dark={near.dark} class="diagram diagram-wide" />
+      </div>
+      <div class="columns">
+        <div>
+          <h3>Depends on</h3>
+          {
+            near.dependencies.length === 0 ? (
+              <p>Nothing.</p>
+            ) : (
+              <ul class="plain-list" data-dependencies>
+                {near.dependencies.map((item) => (
+                  <li><LinkOrText root={root} item={item} /></li>
+                ))}
+              </ul>
+            )
+          }
+        </div>
+        <div>
+          <h3>Used by</h3>
+          {
+            near.dependants.length === 0 ? (
+              <p>Nothing.</p>
+            ) : (
+              <ul class="plain-list" data-dependants>
+                {near.dependants.map((item) => (
+                  <li><LinkOrText root={root} item={item} /></li>
+                ))}
+              </ul>
+            )
+          }
+        </div>
+      </div>
+    </section>
+
+    <Impact root={root} impact={page.impact} />
+
+    <section aria-labelledby="unresolved">
+      <h2 id="unresolved">References that match nothing</h2>
+      {
+        page.unresolved.length === 0 ? (
+          <p>None.</p>
+        ) : (
+          <ul class="plain-list">
+            {page.unresolved.map((value) => (
+              <li><code>{value}</code></li>
+            ))}
+          </ul>
+        )
+      }
+    </section>
+  </article>
+  <script>
+    import '../../scripts/diagram.ts';
+  </script>
+</Base>

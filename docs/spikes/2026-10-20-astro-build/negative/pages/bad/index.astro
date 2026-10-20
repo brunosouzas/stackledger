@@ -1,0 +1,18 @@
+---
+// Negative control page (only copied in with SPIKE_NEGATIVE=1): every line below
+// must be reported by the scan in build.mjs.
+import Base from '../../layouts/Base.astro';
+const colour = 'red';
+---
+<Base title="Bad">
+  <p style="color: red">style attribute</p>
+  <a href="https://example.com/">external link</a>
+  <a href="//example.com/">protocol-relative link</a>
+  <a href="/software/editor/">root-absolute link</a>
+  <button onclick="alert(1)">handler</button>
+</Base>
+<script is:inline>console.log('inline');</script>
+<script define:vars={{ colour }}>console.log(colour);</script>
+<script>
+  import '../../scripts/bad.ts';
+</script>

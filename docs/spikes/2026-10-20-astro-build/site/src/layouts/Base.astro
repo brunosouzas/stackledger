@@ -1,0 +1,35 @@
+---
+// Spike layout: the fixed CSP (D4), relative page links (D3) and the global CSS.
+// No is:inline, no define:vars, no style attribute: everything is a file.
+import '../styles/global.css';
+import site from '../data/site.json';
+
+interface Props { title: string }
+const { title } = Astro.props;
+
+// Fixed policy, identical on every page of both sites (D4).
+const policy = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
+
+// Page links are relative to the page's folder depth (trailingSlash 'always').
+const depth = Astro.url.pathname.split('/').filter(Boolean).length;
+const href = (path: string) => ('../'.repeat(depth) + path) || './';
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content={policy} />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} | {site.title}</title>
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href={href('')}>Map</a>
+        <a href={href('software/editor/')}>Editor</a>
+      </nav>
+      <p class="view">View: {site.view}</p>
+    </header>
+    <main><slot /></main>
+  </body>
+</html>
