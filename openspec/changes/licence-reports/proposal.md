@@ -54,7 +54,7 @@ The catalogue already records what each licence costs, how often it renews and w
 
 ## Open questions
 
-None. The owner decided on 2026-10-20: `cost` is the price per cycle for all seats; monthly ×12 and yearly ÷12, one-off apart, `none` is zero; `active` and `to-confirm` count, `to-buy` apart, `cancelled` and `expired` excluded; unknown values listed as incomplete; one total per currency without conversion; groups by owner, by payer and by the zone of using components ("several zones", "no zone"), never splitting a cost; a Reports page and `renewals.ics` in the full site and a `report` command with text, JSON, CSV and calendar output.
+None. Gate 1 approved by the owner on 2026-10-20, including the two review recommendations declined in design (required calendar UUID, revision DTSTAMP). The owner decided on 2026-10-20: `cost` is the price per cycle for all seats; monthly ×12 and yearly ÷12, one-off apart, `none` is zero; `active` and `to-confirm` count, `to-buy` apart, `cancelled` and `expired` excluded; unknown values listed as incomplete; one total per currency without conversion; groups by owner, by payer and by the zone of using components ("several zones", "no zone"), never splitting a cost; a Reports page and `renewals.ics` in the full site and a `report` command with text, JSON, CSV and calendar output.
 
 ## Documentation
 
