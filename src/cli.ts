@@ -42,14 +42,13 @@ async function main(args: string[]): Promise<void> {
   if (args.includes('--help')) { process.stdout.write(usage); return; }
   try {
     // Find the command first; each command then parses its own options strictly.
-    const { positionals } = parseArgs({ args, strict: false, allowPositionals: true, options: { json: { type: 'boolean' }, view: { type: 'string' }, theme: { type: 'string' }, date: { type: 'string' } } });
+    const { positionals } = parseArgs({ args, strict: false, allowPositionals: true, options: { json: { type: 'boolean' }, view: { type: 'string' }, theme: { type: 'string' }, date: { type: 'string' }, out: { type: 'string' } } });
     const command = positionals[0];
     if (!command) throw new Error('A command is required');
     if (command === 'validate') await validate(args);
     else if (command === 'mcp') await mcp(args);
     else if (command === 'map') { const { mapCommand } = await import('./map/command.js'); await mapCommand(args); }
-    // Seam for task 4.1 of catalogue-site: the build command's options, safe output folder and publication.
-    else if (command === 'build') throw new Error('The build command is not available yet');
+    else if (command === 'build') { const { buildCommand } = await import('./site/command.js'); await buildCommand(args); }
     else throw new Error('Unknown command; expected validate, mcp, map or build');
   } catch (error) {
     const { stderr, exitCode } = reportFailure(error, usage);

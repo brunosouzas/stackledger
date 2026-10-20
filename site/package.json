@@ -1,5 +1,6 @@
 {
   "name": "stackledger-site",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "workspaces": []
 }

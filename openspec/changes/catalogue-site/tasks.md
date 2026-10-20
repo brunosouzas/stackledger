@@ -37,7 +37,7 @@ Levels: U unit, I integration (built files or CLI), B browser (Playwright). Ever
 
 ## 4. Build command
 
-- [ ] 4.1 `src/site/build.ts` and `stackledger build`: options, usage errors, safe output folder, atomic replace, writes, report; integration tests (`test/integration/build.test.ts`) for every `build-command` scenario, including the sandboxed build and the 300-item timing.
+- [x] 4.1 `src/site/build.ts` and `stackledger build`: options, usage errors, safe output folder, atomic replace, writes, report; integration tests (`test/integration/build.test.ts`) for every `build-command` scenario, including the sandboxed build and the 300-item timing.
 
 ## 5. Browser checks and documentation
 

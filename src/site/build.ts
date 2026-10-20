@@ -1,14 +1,14 @@
 /** Build both sites of a catalogue into a staging folder: the internal building block of
  * `stackledger build` (design D1, D2, D8).
  *
- * What: prepareBuild(folder, staging, date) validates the catalogue, builds the staff site and then
+ * What: prepareBuild(folder or loaded folder, staging, date) validates the catalogue, builds the staff site and then
  * the full site, each from its own SiteData, working copy and caches, and writes the root files:
  *   <staging>/site-staff/   <staging>/site-full/   <staging>/root/{_headers, robots.txt, .stackledger-build}
  * Each site also holds `_headers` and `robots.txt`. Nothing is written outside `staging`.
  *
- * Seams for task 4.1 (the command): parsing options, the safe output folder, creating `staging` as
- * `<out>/.stackledger-tmp-*`, the atomic publication of the five entries, removing the staging folder
- * and the stderr report (PreparedBuild carries the counts and the full map geometry for it).
+ * The command (src/site/command.ts) checks the options and the output folder, creates `staging` as
+ * `<out>/.stackledger-tmp-*`, publishes the five entries (src/site/publish.ts) and writes the report;
+ * PreparedBuild carries the catalogue counts, the page counts and the full map's diagnostic lines.
  *
  * How Astro runs (proven by docs/spikes/2026-10-20-astro-build/): from a writable copy of the shipped
  * `site/` folder with the current directory set to it, `outDir` inside it, every dependency bundled
@@ -22,11 +22,11 @@ import { chmodSync, cpSync, mkdirSync, readFileSync, readdirSync, realpathSync, 
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadFolder } from '../source.js';
+import { loadFolder, type Loaded } from '../source.js';
 import { validateLoaded, type Catalogue } from '../validate.js';
 import type { ViewName } from '../views.js';
-import type { MapGeometry } from '../map/layout.js';
 import { siteColorNames } from '../schema.js';
+import { mapNotes } from '../map/command.js';
 import { buildSiteData, type SiteData } from './data.js';
 import { HEADERS, MARKER, MARKER_NAME, POLICY, ROBOTS } from './policy.js';
 import { listFiles, relativise, scan } from './relative.js';
@@ -46,8 +46,12 @@ const FONT_FILES: readonly [string, string][] = [
 
 const HEX_COLOUR = /^#[0-9a-fA-F]{6}$/;
 
+/** Every Astro preference a build reads, answered in the working copy (see prepareWorkingCopy). */
+const ASTRO_PREFERENCES = { devToolbar: { enabled: false } };
+
 export interface BuiltSite { dir: string; pages: number }
-export interface PreparedBuild { catalogue: Catalogue; staff: BuiltSite; full: BuiltSite; root: string; geometry: MapGeometry }
+/** `notes` are the map's diagnostic lines for the full view, as `stackledger map` writes them. */
+export interface PreparedBuild { catalogue: Catalogue; staff: BuiltSite; full: BuiltSite; root: string; notes: string[] }
 
 export function packageVersion(): string {
   return (JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')) as { version: string }).version;
@@ -83,6 +87,10 @@ function prepareWorkingCopy(staging: string, view: ViewName, data: SiteData): st
   writeFileSync(join(work, 'src', 'data', 'site.json'), JSON.stringify(data) + '\n');
   writeFileSync(join(work, 'src', 'data', 'policy.json'), JSON.stringify(POLICY) + '\n');
   writeFileSync(join(work, 'src', 'styles', 'override.css'), overrideCss(data.colors));
+  // Astro reads its preferences from the project's .astro/settings.json before the user's home
+  // folder; answering here keeps the build from touching $HOME (refused under the permission model).
+  mkdirSync(join(work, '.astro'), { recursive: true });
+  writeFileSync(join(work, '.astro', 'settings.json'), JSON.stringify(ASTRO_PREFERENCES) + '\n');
   mkdirSync(join(work, 'src', 'fonts'), { recursive: true });
   for (const [pkg, file] of FONT_FILES) cpSync(require.resolve(`${pkg}/files/${file}`), join(work, 'src', 'fonts', file));
   return work;
@@ -151,11 +159,12 @@ async function buildView(staging: string, view: ViewName, data: SiteData): Promi
 }
 
 /** Build both sites and the root files into `staging`, which must exist and be empty. */
-export async function prepareBuild(folder: string, stagingPath: string, date: string, version = packageVersion()): Promise<PreparedBuild> {
+export async function prepareBuild(folder: string | Loaded, stagingPath: string, date: string, version = packageVersion()): Promise<PreparedBuild> {
   // Astro compares module paths with process.cwd(), which is always the real path (on macOS the
   // temporary folder /var is a link to /private/var), so the working copies use the real path too.
   const staging = realpathSync(stagingPath);
-  const catalogue = validateLoaded(await loadFolder(folder));
+  const loaded = typeof folder === 'string' ? await loadFolder(folder) : folder;
+  const catalogue = validateLoaded(loaded);
   // The staff site is built first, before the full data exists anywhere (site-security, One view per site).
   const staff = await buildView(staging, 'staff', buildSiteData(catalogue, 'staff', version).data);
   const fullData = buildSiteData(catalogue, 'full', version, date);
@@ -165,5 +174,5 @@ export async function prepareBuild(folder: string, stagingPath: string, date: st
   writeFileSync(join(root, '_headers'), HEADERS);
   writeFileSync(join(root, 'robots.txt'), ROBOTS);
   writeFileSync(join(root, MARKER_NAME), MARKER);
-  return { catalogue, staff, full, root, geometry: fullData.geometry };
+  return { catalogue, staff, full, root, notes: mapNotes(loaded, catalogue, fullData.geometry) };
 }
