@@ -3,7 +3,7 @@
 ## 1. Package skeleton and CI
 
 - [x] 1.1 Create `package.json` (name `stackledger`, ESM, `bin`, `engines.node >=22`, scripts `build`, `test`), `tsconfig.json`, and add `yaml`, `zod`, `typescript`, `vitest` and `@types/node` with exact versions in `package-lock.json`; verify `npm ci && npm run build` succeeds.
-- [ ] 1.2 Add `.github/workflows/test.yml` running `npm ci`, `npm run build` and `npm test` on Node 22, 24 and 26, actions pinned by commit SHA; verify the job passes on the draft pull request.
+- [x] 1.2 Add `.github/workflows/test.yml` running `npm ci`, `npm run build` and `npm test` on Node 22, 24 and 26, actions pinned by commit SHA; verify the job passes on the draft pull request.
 
 ## 2. Reading files
 
