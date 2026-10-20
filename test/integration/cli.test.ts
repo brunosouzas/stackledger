@@ -21,6 +21,6 @@ test('Unknown command', () => { const result = run(['publish']); expect(result.s
 test('Fictitious demo validates with every checked kind', () => { const result = run(['validate', demo]); expect(result.status).toBe(0); expect(result.stdout).toBe('files: 1, documents: 5, ignored: 0, errors: 0, warnings: 0\n'); });
 test('Global help lists both commands', () => {
  const help = run(['--help']); expect(help.status).toBe(0);
- for (const command of ['validate', 'mcp', 'map', 'build']) expect(help.stdout).toContain(`stackledger ${command} `);
- const unknown = run(['publish']); expect(unknown.status).toBe(2); expect(unknown.stderr).toContain('expected validate, mcp, map or build');
+ for (const command of ['validate', 'mcp', 'map', 'build', 'report']) expect(help.stdout).toContain(`stackledger ${command} `);
+ const unknown = run(['publish']); expect(unknown.status).toBe(2); expect(unknown.stderr).toContain('expected validate, mcp, map, build or report');
 });

@@ -1,4 +1,4 @@
-/** Failure classes for the command line. Used by src/cli.ts and src/map/command.ts.
+/** Failure classes for the command line. Used by src/cli.ts and the commands.
  * Usage and folder errors exit 2 with usage text; an InternalError is a bug in stackledger
  * itself and exits 1 with one line and no usage. Messages never span lines.
  */

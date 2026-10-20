@@ -75,6 +75,11 @@ function siteSettings(catalogue: Catalogue): { title: string; colors: Partial<Re
   return { title: site?.title ?? DEFAULT_TITLE, colors };
 }
 
+/** The site title, as the header shows it; also the calendar name of `stackledger report --format ics`. */
+export function siteTitle(catalogue: Catalogue): string {
+  return siteSettings(catalogue).title;
+}
+
 class PageBuilder {
   private readonly drawn: Map<string, MapLine>;
 

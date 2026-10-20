@@ -20,7 +20,7 @@ Levels: U unit, I integration (CLI or built files), B browser (Playwright). Ever
 
 ## 2. Command
 
-- [ ] 2.1 `stackledger report` with `text`, `json`, `csv` and `ics`; global help and unknown-command message list `report`; integration tests.
+- [x] 2.1 `stackledger report` with `text`, `json`, `csv` and `ics`; global help and unknown-command message list `report`; integration tests.
 
 ## 3. Site
 
