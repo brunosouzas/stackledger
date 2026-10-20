@@ -27,6 +27,7 @@ The catalogue already records what each licence costs, how often it renews and w
 
 - `catalogue-site`: `Pages` gains `/reports/` and `renewals.ics` in the `full` site; `Layout` gains a Reports link in the `full` site.
 - `mcp-server`: the global help scenario lists `report` too.
+- `build-command`: `--date` also sets the report date of the `full` site.
 
 ## Impact
 

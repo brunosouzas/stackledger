@@ -5,14 +5,18 @@ Defines the licence report stackledger computes from the `full` view and a date:
 ## ADDED Requirements
 
 ### Requirement: Source and date
-The report SHALL be computed from the `full` view only, for a report date (`--date` or the build date) and a renewal window of `days` days (default 90). It SHALL NOT be computed for, or reach any file of, the `staff` view.
+The report SHALL be computed from the `full` view only, for a report date and a renewal window of `days` days (default 90). In the `full` site the report date is the same resolved date as the map (`build --date`, or the local date captured once) and the window is 90 days. Nothing of the report SHALL be computed for, or reach any file of, the `staff` site.
 
 #### Scenario: Not in staff
 - **WHEN** both sites are built
 - **THEN** the `staff` site has no `/reports/` page, no `renewals.ics` and no link to either
 
+#### Scenario: Site report date
+- **WHEN** the sites are built with `--date 2027-06-01`
+- **THEN** the Reports page and the calendar use `2027-06-01` as the report date
+
 ### Requirement: Renewals
-The report SHALL list, among licences with status `active` or `to-confirm`: those renewing from the report date to the date plus `days`, both included; those renewing before the report date (overdue); and those whose `renewsOn` is `unknown`. Entries are sorted by date, then reference, as the MCP `renewals` tool does.
+Among licences with status `active` or `to-confirm`, of any cycle, the report SHALL list those renewing from the report date to the date plus `days`, both included; those renewing before the report date (overdue); and those whose `renewsOn` is `unknown`. Entries are sorted by date, then reference, as the MCP `renewals` tool does.
 
 #### Scenario: Ninety-day window
 - **WHEN** the report date is `2027-06-01` and an active licence renews on `2027-08-30`
@@ -22,16 +26,28 @@ The report SHALL list, among licences with status `active` or `to-confirm`: thos
 - **WHEN** an active licence renews on `2027-05-20` and the report date is `2027-06-01`
 - **THEN** it is listed as overdue
 
+#### Scenario: Window of zero days
+- **WHEN** `days` is 0 and licences renew yesterday, today and tomorrow
+- **THEN** yesterday's is overdue, today's is listed and tomorrow's is not
+
+#### Scenario: Window of 366 days
+- **WHEN** `days` is 366 from `2027-06-01`
+- **THEN** a renewal on `2028-06-01` is listed and one on `2028-06-02` is not
+
 ### Requirement: Recurring cost
-For licences with status `active` or `to-confirm`, `cost` SHALL be read as the price of one cycle for the whole licence. A `monthly` licence costs `cost` per month and `cost × 12` per year; a `yearly` one costs `cost ÷ 12` per month and `cost` per year; a `none` cycle costs zero. Amounts are summed exactly and shown rounded to two decimals.
+For licences with status `active` or `to-confirm`, `cost` SHALL be read as the price of one cycle for the whole licence; `seats` never multiply it. A `monthly` licence costs `cost` per month and `cost × 12` per year; a `yearly` one `cost ÷ 12` per month and `cost` per year; a `none` cycle costs zero whatever its `cost`. Sums are exact; only shown amounts are rounded, half away from zero, to two decimals.
 
 #### Scenario: Monthly and yearly
-- **WHEN** active licence `a` is `monthly` at 10 GBP and active licence `b` is `yearly` at 120 GBP
+- **WHEN** active licence `a` is `monthly` at 10 GBP and to-confirm licence `b` is `yearly` at 120 GBP
 - **THEN** the GBP total is 20.00 per month and 240.00 per year
 
-#### Scenario: Free licence
-- **WHEN** an active licence has cycle `none` and cost 0
-- **THEN** it adds nothing and is not listed as incomplete
+#### Scenario: Seats and none
+- **WHEN** an active `yearly` licence costs 120 GBP with 5 seats and an active `none` licence has cost 50 GBP
+- **THEN** the GBP total is 120.00 per year
+
+#### Scenario: Exact sum
+- **WHEN** three active `monthly` licences cost 0.1, 0.2 and 1.00499 GBP
+- **THEN** the GBP total is 1.30 per month
 
 ### Requirement: Currencies
 Totals SHALL be given per currency, sorted by currency code, and never converted or added across currencies.
@@ -40,8 +56,15 @@ Totals SHALL be given per currency, sorted by currency code, and never converted
 - **WHEN** active licences cost 10 GBP and 20 USD per month
 - **THEN** there is a GBP total of 10.00 and a USD total of 20.00 per month, and no combined total
 
-### Requirement: Outside the recurring totals
-`one-off` licences with status `active` or `to-confirm` SHALL be listed with their cost apart from the recurring totals, with a total per currency. Licences with status `to-buy` SHALL be listed as planned, with monthly and yearly amounts per currency computed as above. `cancelled` and `expired` licences SHALL be left out of every total.
+### Requirement: One-off costs
+Complete `one-off` licences with status `active` or `to-confirm` SHALL be listed with their cost, with a total per currency, and SHALL add nothing to the recurring totals. A one-off licence with a real `renewsOn` is also in the renewals and the calendar, without a repeat rule.
+
+#### Scenario: One-off with a date
+- **WHEN** an active `one-off` licence costs 300 GBP and renews on `2027-07-01`
+- **THEN** it is in the one-off list at 300.00 GBP, in the renewals, and in the calendar with no `RRULE`
+
+### Requirement: Planned purchases
+Every licence with status `to-buy` SHALL be in the planned list. Complete monthly and yearly ones have monthly and yearly amounts and a total per currency; complete one-off ones have a planned one-off total; `none` adds zero; incomplete ones add to no total and show no amount. `cancelled` and `expired` licences are in no list and no total.
 
 #### Scenario: Planned purchase
 - **WHEN** a `to-buy` licence is `yearly` at 600 EUR
@@ -52,14 +75,18 @@ Totals SHALL be given per currency, sorted by currency code, and never converted
 - **THEN** it is in no total and no list of the report
 
 ### Requirement: Incomplete licences
-A licence with status `active`, `to-confirm` or `to-buy` whose `cost`, `currency` or `cycle` is `unknown` SHALL be left out of the totals and listed as incomplete, naming each unknown field. Wherever a total is shown, the number of incomplete licences SHALL be shown with it.
+A licence with status `active`, `to-confirm` or `to-buy` whose `cost`, `currency` or `cycle` is `unknown` SHALL add to no total and SHALL be listed as incomplete, naming each unknown field. Each total SHALL show how many licences of its own population (status category, currency, group) are incomplete; those with an unknown currency are counted on their own line.
 
 #### Scenario: Unknown cost
-- **WHEN** an active `yearly` licence has `cost: unknown`
-- **THEN** it is listed as incomplete with `cost`, and the totals say 1 licence is incomplete
+- **WHEN** an active `yearly` GBP licence has `cost: unknown`
+- **THEN** it is listed as incomplete with `cost`, and the GBP recurring total says 1 licence is incomplete
+
+#### Scenario: Unknown currency
+- **WHEN** an active licence has `currency: unknown`
+- **THEN** it is counted as incomplete on the unknown-currency line, not under any currency
 
 ### Requirement: Groups
-The recurring totals SHALL also be given per licence owner (`spec.owner`), per payer (`spec.licence.paidBy`, or `Not set`), and per zone. A licence's zone is the zone of the served components that depend on it: one zone, `Several zones` when they are in more than one, or `No zone` when none is in a zone or nothing uses it. A cost is never split between groups.
+Recurring totals SHALL also be given per licence owner (`spec.owner`), per payer (`spec.licence.paidBy`, or `Not set`) and per zone. A licence's zone comes from the served components that list it in `spec.dependsOn`: one zone, `Several zones` if more, `No zone` if none. Zones are identified by declared name ignoring case; unresolved labels count as no zone. Groups with only incomplete licences stay, with no amount.
 
 #### Scenario: Licence used in two zones
 - **WHEN** a licence is used by a component in zone `Finance` and one in zone `Delivery`
@@ -69,26 +96,45 @@ The recurring totals SHALL also be given per licence owner (`spec.owner`), per p
 - **WHEN** no component depends on a licence
 - **THEN** its cost is in the `No zone` group
 
+#### Scenario: Name that looks like a synthetic group
+- **WHEN** one licence's `paidBy` is the text `Not set` and another has no `paidBy`
+- **THEN** they are in two different payer groups
+
+### Requirement: No licences
+With no served licence, every list and total SHALL be empty and the report says so.
+
+#### Scenario: Empty report
+- **WHEN** the catalogue has no licence
+- **THEN** the Reports page says there are no licences, the calendar has no event, the CSV has only its header and the JSON lists are empty
+
 ### Requirement: Calendar file
-The calendar file SHALL be iCalendar (RFC 5545) with CRLF line endings and folded lines, one all-day event per licence with status `active` or `to-confirm` and a real `renewsOn` date: summary `Renewal: <title>`, description with vendor, cost, currency and cycle, a yearly or monthly repeat rule for those cycles, and a display alarm 14 days before.
+The calendar SHALL be iCalendar (RFC 5545) with CRLF endings and lines folded at 75 octets without splitting a character: one all-day event per licence of the renewals with a real date, with `DTSTART;VALUE=DATE` on the date and `DTEND` the next day; summary `Renewal: <title>`; description with vendor, cost, currency and cycle; a yearly or monthly repeat rule for those cycles; and a display alarm 14 days before whose description is the summary.
 
 #### Scenario: Yearly renewal
 - **WHEN** an active `yearly` licence renews on `2027-06-30`
-- **THEN** the file has an all-day event on `2027-06-30` with `RRULE:FREQ=YEARLY` and an alarm 14 days before
+- **THEN** the file has an event with `DTSTART;VALUE=DATE:20270630`, `DTEND;VALUE=DATE:20270701`, `RRULE:FREQ=YEARLY` and a `VALARM` with `TRIGGER:-P14D`
 
 #### Scenario: Calendar text escaped
-- **WHEN** a licence title is `Edit, review; ship\nnow`
-- **THEN** the summary escapes the comma, the semicolon and the backslash as RFC 5545 requires
+- **WHEN** a licence title contains a comma, a semicolon, a backslash and a line break
+- **THEN** the summary writes them as `\,`, `\;`, `\\` and `\n`, and the file parses back to the same title
 
-### Requirement: Deterministic calendar
-Each event's `UID` SHALL be derived from the licence reference only, and `DTSTAMP` from the report date at `000000Z`, so the same catalogue and date give a byte-identical file.
+#### Scenario: Long non-ASCII title
+- **WHEN** a title has 120 characters with accents
+- **THEN** every line is at most 75 octets, no character is split, and unfolding gives the title back
+
+### Requirement: Calendar identity and stamp
+Each event's `UID` SHALL be derived from the catalogue's calendar namespace (the `Settings` document's `metadata.name`, or `catalogue` without one) and the licence reference only. `DTSTAMP` SHALL be the report date at `000000Z` and the calendar SHALL have no `METHOD`, so the same catalogue and date give a byte-identical file.
 
 #### Scenario: Same input
 - **WHEN** the calendar is produced twice with the same catalogue and date
 - **THEN** the two files are byte-identical
 
+#### Scenario: Two catalogues
+- **WHEN** two catalogues with different `Settings` names both have licence `resource:licence-editor`
+- **THEN** their events have different UIDs
+
 ### Requirement: Reports page
-The `full` site SHALL have a Reports page at `/reports/` showing the report for the build date: renewals, overdue and unknown dates; recurring totals per currency; the three groupings; one-off and planned lists; incomplete licences; and a link to `renewals.ics`. Each licence links to its page.
+The `full` site SHALL have a Reports page at `/reports/` with the renewals, overdue and unknown dates; the recurring totals per currency with their incomplete counts; the three groupings; the one-off and planned lists; the incomplete licences; and a link to `renewals.ics`. Each licence links to its page.
 
 #### Scenario: Page content
 - **WHEN** the `full` site of the example is built

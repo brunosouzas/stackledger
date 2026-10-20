@@ -4,17 +4,19 @@ Levels: U unit, I integration (CLI or built files), B browser (Playwright). Ever
 
 | Spec | Scenarios | File | Level |
 | --- | --- | --- | --- |
-| licence-reports | Ninety-day window; Overdue; Monthly and yearly; Free licence; Two currencies; Planned purchase; Cancelled; Unknown cost; Licence used in two zones; Unused licence | `test/unit/reports.test.ts` | U |
-| licence-reports | Yearly renewal; Calendar text escaped; Same input | `test/unit/ics.test.ts` | U |
-| licence-reports | Not in staff; Page content | `test/integration/site.test.ts` | I |
-| report-command | Default options; Read-only; Days out of range; Unknown format; JSON totals; CSV columns; Formula in a title; One error; Large catalogue | `test/integration/report.test.ts` | I |
-| catalogue-site | Item pages; No journeys; Reports in full only; Theme remembered; Site title; View in the footer; Reports link | `test/integration/site.test.ts` (Theme remembered stays in `test/browser/site.spec.ts`) | I / B |
+| licence-reports | Ninety-day window; Overdue; Window of zero days; Window of 366 days; Monthly and yearly; Seats and none; Exact sum; Two currencies; One-off with a date (report part); Planned purchase; Cancelled; Unknown cost; Unknown currency; Licence used in two zones; Unused licence; Name that looks like a synthetic group | `test/unit/reports.test.ts` | U |
+| licence-reports | Yearly renewal; Calendar text escaped; Long non-ASCII title; Same input; Two catalogues; One-off with a date (calendar part) | `test/unit/ics.test.ts` | U |
+| licence-reports | Not in staff; Site report date; Page content; Empty report (page part) | `test/integration/site.test.ts` | I |
+| report-command | Default options; Read-only; Days out of range; Unknown format; Missing folder; Amount too large; JSON totals; CSV rows; Formula in a title; One error; Large catalogue; Empty report (command part) | `test/integration/report.test.ts` | I |
+| build-command | Two sites | `test/integration/build.test.ts` | I |
+| catalogue-site | Item pages; No journeys; Reports in full only; Site title; View in the footer; Reports link | `test/integration/site.test.ts` | I |
+| catalogue-site | Theme remembered; the Reports page under the CSP | `test/browser/site.spec.ts` | B |
 | mcp-server | No folder; Unknown view; Missing folder; Help; Global help lists both commands | `test/integration/cli.test.ts` | I |
 
 ## 1. Report model
 
-- [ ] 1.1 `src/reports.ts`: `buildReport` with exact amounts, renewals via `graph.renewals`, totals per currency, one-off, planned, incomplete and the three groups; unit tests.
-- [ ] 1.2 `src/ics.ts`: the calendar file; unit tests, including folding of long UTF-8 lines and a parse check of the output.
+- [ ] 1.1 `src/money.ts` (exact decimal amounts) and `src/reports.ts` (`buildReport`: renewals via `graph.renewals`, recurring totals per currency, one-off, planned, incomplete, groups with synthetic keys); unit tests.
+- [ ] 1.2 `src/ics.ts`: the calendar file; unit tests with a small reader that unfolds and unescapes the output.
 
 ## 2. Command
 
@@ -22,8 +24,8 @@ Levels: U unit, I integration (CLI or built files), B browser (Playwright). Ever
 
 ## 3. Site
 
-- [ ] 3.1 `SiteData.report` for the `full` view only; Reports page, header link and `renewals.ics` in the `full` site; site tests; the browser test opens `/full/reports/` under the CSP.
+- [ ] 3.1 `SiteData.report` for the `full` view only, from the map's resolved date; Reports page, header link and `renewals.ics` in the `full` site; site tests; the browser test opens `/full/reports/` under the CSP.
 
 ## 4. Documentation
 
-- [ ] 4.1 `docs/reports.md`, `cost` meaning in `docs/catalogue-format.md`, `docs/site.md`, README Usage row and a Reports screenshot, roadmap row 5 wording, `skills/stackledger/SKILL.md` and AGENTS.md if they list commands. Example licences in `examples/northwind/` cover monthly, yearly, one-off, `to-buy`, an unknown cost and two currencies.
+- [ ] 4.1 `docs/reports.md` (rules, JSON shape, calendar notes), `cost` meaning in `docs/catalogue-format.md`, `docs/site.md`, README Usage row and a Reports screenshot, roadmap row 5 wording, `skills/stackledger/SKILL.md` and AGENTS.md if they list commands. Example licences in `examples/northwind/` cover monthly, yearly, one-off, `to-buy`, an unknown cost and two currencies.
