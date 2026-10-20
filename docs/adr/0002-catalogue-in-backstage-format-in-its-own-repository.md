@@ -24,4 +24,4 @@ Option 3. Software items are Backstage `Component` documents and licences are `R
 - Git gives history, review through pull requests and backups at no cost.
 - A company that runs Backstage can point stackledger at the same files. Backstage logs our two kinds as unknown unless its location rules allow only `Component` and `Resource`; the catalogue format document explains how.
 - Anyone with read access to the catalogue repository sees everything, costs included. People who should not see costs get the website instead (see [ADR 7](0007-two-views-built-as-separate-sites.md)).
-- The exact rules are specified by the OpenSpec change `catalogue-model` ([pull request #1](https://github.com/brunosouzas/stackledger/pull/1)); once delivered they live in `openspec/specs/catalogue/`.
+- The exact rules are in [`openspec/specs/catalogue/`](../../openspec/specs/catalogue/spec.md), delivered by the OpenSpec change `catalogue-model`; the field-by-field guide is [docs/catalogue-format.md](../catalogue-format.md).

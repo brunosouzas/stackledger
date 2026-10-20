@@ -19,13 +19,14 @@ stackledger is a small, local-first tool for people and small companies who want
 - [Security](#security)
 - [Using it with AI agents](#using-it-with-ai-agents)
 - [Usage](#usage)
+- [Catalogue format](#catalogue-format)
 - [How this project is built](#how-this-project-is-built)
 - [Contributing](#contributing)
 - [License](#license)
 
 ## Status
 
-Early development. Nothing is released yet. The first piece of work, the catalogue format and the `validate` command, is in [pull request #1](https://github.com/brunosouzas/stackledger/pull/1). The order of the rest is in the [roadmap](docs/roadmap.md).
+Early development. Nothing is released to npm yet. The catalogue format and the `validate` command work from source (see [Usage](#usage)). The order of the rest is in the [roadmap](docs/roadmap.md).
 
 ## Features
 
@@ -76,14 +77,81 @@ stackledger does not call any AI model. Instead, a read-only [MCP](https://model
 
 ## Usage
 
-Not available yet. The planned commands are:
+The package is not published to npm yet. To run it from a clone, with Node.js 22 or later:
 
-| Command | Does | Change |
+```sh
+npm ci
+npm run build
+node dist/cli.js validate /path/to/catalogue
+node dist/cli.js validate /path/to/catalogue --json
+```
+
+| Command | Does | Status |
 |---|---|---|
-| `stackledger validate [folder]` | Checks a catalogue and reports each problem with file, line and field | `catalogue-model` |
-| `stackledger mcp` | Serves the catalogue to AI agents over MCP | `mcp-server` |
-| `stackledger build` | Builds the `full` and `staff` sites | `catalogue-site` |
-| `stackledger discover`, `stackledger drift` | Records what a Mac has installed, and compares it with the catalogue | `mac-discovery` |
+| `stackledger validate [folder]` | Checks a catalogue and reports each problem with file, line and field. Exit 0: no errors (warnings allowed); 1: catalogue errors; 2: usage or folder problem | Available from source |
+| `stackledger mcp` | Serves the catalogue to AI agents over MCP | Planned: `mcp-server` |
+| `stackledger build` | Builds the `full` and `staff` sites | Planned: `catalogue-site` |
+| `stackledger discover`, `stackledger drift` | Records what a Mac has installed, and compares it with the catalogue | Planned: `mac-discovery` |
+
+`validate` only reads files, makes no network calls and sends no telemetry.
+
+## Catalogue format
+
+A catalogue is a folder of YAML files: Backstage `Component` documents for software, `Resource` documents with `spec.type: licence` for licences, plus `Line` journeys and one `MapLayout` with station positions and zones. The [format reference](docs/catalogue-format.md) describes every field, how references work, which problems are warnings, and how to share the folder with a Backstage instance. Keep real data in its own private repository; this example is fictitious. Save it as `catalogue.yaml` in an empty folder and run `validate` on that folder:
+
+```yaml
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: editor
+spec:
+  type: tool
+  lifecycle: active
+  owner: user:alex
+  dependsOn: [resource:licence-editor]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: forge
+spec:
+  type: service
+  lifecycle: active
+  owner: group:delivery
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-editor
+spec:
+  type: licence
+  owner: user:alex
+  licence:
+    vendor: Northwind Studio
+    status: active
+    cycle: yearly
+    cost: 120
+    currency: GBP
+    renewsOn: 2027-06-30
+    vaultItem: Northwind Editor subscription
+---
+apiVersion: stackledger/v1alpha1
+kind: Line
+metadata:
+  name: ship
+spec:
+  color: '#4466FF'
+  stops: [component:editor, component:forge]
+---
+apiVersion: stackledger/v1alpha1
+kind: MapLayout
+metadata:
+  name: northwind
+spec:
+  stations:
+    component:editor: [0, 0]
+    component:forge: [2, 0]
+```
 
 ## How this project is built
 
