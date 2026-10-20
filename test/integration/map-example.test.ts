@@ -21,6 +21,13 @@ test('Labels do not collide in the example',async()=>{
   for(const badge of g.badges)expect(hits(label.box,badge.box),`${label.ref} covers badge ${badge.text}`).toBe(false);
  }
 });
+test('Every stroke in the example is octilinear',async()=>{
+ const catalogue=await validateFolder(example);
+ for(const view of ['full','staff'] as const){
+  const g=layoutMap(buildMapModel(applyView(catalogue.served,view,resolveHidden(catalogue)),'2027-06-01'));
+  for(const l of g.lines)for(let i=1;i<l.points.length;i++){const dx=Math.abs(l.points[i]![0]-l.points[i-1]![0]),dy=Math.abs(l.points[i]![1]-l.points[i-1]![1]);expect(dx<1e-7||dy<1e-7||Math.abs(dx-dy)<1e-7,`${l.ref} ${JSON.stringify(l.points.slice(i-1,i+1))}`).toBe(true);}
+ }
+});
 test('Example YAML preserves demo titles, zone labels and Settings',async()=>{
  const c=await validateFolder(example);expect(c.served.settings).toHaveLength(1);expect(c.served.layouts[0]!.spec.zones).toEqual([{name:'finance',title:'Zone 2 · Finance',color:'#9B0056'}]);
  expect(c.served.components.find(s=>s.metadata.name==='google')!.metadata.title).toBe('Google Workspace');expect(c.served.licences.length).toBeGreaterThan(0);

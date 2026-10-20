@@ -42,6 +42,21 @@ test('Different hops on one edge',()=>{
  const routes={hops:[],paths:new Map([['line:secrets',[[1,1],[2,0],[3,0],[4,0],[5,1]]],['line:ship',[[0,0],[1,0],[2,0],[3,0],[4,0],[5,0],[6,0]]]])} as any;
  const strokes=parallelLines(m,routes);const edge=strokes.map(s=>s.edges.find(e=>e.key===edgeKey([3,0],[4,0]))!);expect(edge.every(Boolean)).toBe(true);expect(edge[0]!.offset).not.toBe(edge[1]!.offset);expect(edge[0]!.a[1]).not.toBe(edge[1]!.a[1]);for(const s of strokes)octilinear(s.points);
 });
+test('Bends are mitred and a bundle keeps its sides through the bend',()=>{
+ const m=model(component('a'),component('b'),journey('ship',['a','b'],'1'),journey('secrets',['a','b'],'2'),positions({a:[0,1],b:[1,0]}));
+ const routes={hops:[],paths:new Map([['line:ship',[[0,1],[1,1],[1,0]]],['line:secrets',[[0,1],[1,1],[1,0]]]])} as any;
+ const strokes=parallelLines(m,routes);
+ const sides=strokes.map(s=>s.edges.map(e=>{const dx=e.gridB[0]-e.gridA[0],dy=e.gridB[1]-e.gridA[1],ox=e.a[0]-e.gridA[0]*64,oy=e.a[1]-e.gridA[1]*64;return Math.sign(dx*oy-dy*ox);}));
+ for(const s of sides){expect(s[0]).not.toBe(0);expect(s[1]).toBe(s[0]);}
+ expect(sides[0]![0]).not.toBe(sides[1]![0]);
+ for(const s of strokes){expect(s.points).toHaveLength(3);octilinear(s.points);}
+});
+test('A single line bends without steps',()=>{const routes={hops:[],paths:new Map([['line:ship',[[3,2],[4,2],[5,3],[5,4],[6,4]]]])} as any;const m=model(...base());expect(parallelLines(m,routes)[0]!.points).toEqual([[192,128],[256,128],[320,192],[320,256],[384,256]]);});
+test('Collinear slot changes use one 45-degree connector',()=>{
+ const m=model(component('a'),component('b'),component('c'),journey('ship',['a','c'],'1'),journey('secrets',['b','c'],'2'),positions({a:[0,0],b:[2,1],c:[4,0]}));
+ const routes={hops:[],paths:new Map([['line:ship',[[0,0],[1,0],[2,0],[3,0],[4,0]]],['line:secrets',[[2,1],[3,0],[4,0]]]])} as any;
+ const ship=parallelLines(m,routes)[0]!;octilinear(ship.points);expect(ship.points).toHaveLength(4);
+});
 test('Angles',()=>{const m=model(...base(),component('c'),component('d'),journey('extra',['b','c','a','d']),positions({}));const g=layoutMap(m); for(const l of g.lines)octilinear(l.points);});
 test('Long title',()=>{const title='Northwind Customer Relationship Manager';const rows=wrapLabel(title);expect(rows).toHaveLength(2);expect(rows[1]).toMatch(/…$/);for(const r of rows)expect([...r].length).toBeLessThanOrEqual(18);expect(wrapLabel('😀'.repeat(30))[0]).toMatch(/…$/);});
 test('Labels wrap at spaces, cut each long word, and use fixed widths',()=>{expect(wrapLabel('short title')).toEqual(['short title']);expect(wrapLabel('abcdefghijklmnopqrst more')).toEqual(['abcdefghijklmnopq…','more']);expect(textWidth('WWW')).toBeGreaterThan(textWidth('iii'));expect(textWidth('😀')).toBeGreaterThan(0);});
