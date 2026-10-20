@@ -18,6 +18,10 @@ Each site SHALL have a map page at `/`, a software list at `/software/`, one pag
 ### Requirement: Layout
 Every page SHALL share one layout: a header with the site title (from `spec.site.title`, default `Software map`) and links to Map, Software and Journeys; a footer with the view name and the stackledger version; and a theme switch that follows `prefers-color-scheme` until the reader chooses light or dark, then remembers the choice in the browser.
 
+#### Scenario: Theme remembered
+- **WHEN** the reader chooses dark on one page and opens another page
+- **THEN** the other page opens in dark
+
 #### Scenario: Site title
 - **WHEN** `spec.site.title` is `Northwind software`
 - **THEN** every page's header and `title` element show `Northwind software`
@@ -89,11 +93,15 @@ A licence page SHALL show its title, name, owner and the `spec.licence` fields o
 - **THEN** the page shows vendor and status and no cost, currency, cycle, renewal date, payer, seats, vault item or note
 
 ### Requirement: Neighbourhood diagram
-The neighbourhood diagram SHALL be an SVG drawn by stackledger, following the map's safe-SVG rules: the item in the centre, the items it depends on to the left and the items that depend on it to the right, in the map's colours and the page theme. Next to it, a text list SHALL hold the same items as links; the page script also opens an item's page when its box is clicked or focused and Enter is pressed.
+The neighbourhood diagram SHALL be a safe SVG drawn by stackledger: the item in the centre, its resolved direct dependencies on the left and direct dependants on the right. Next to it, a text list SHALL hold the same items: components and licences link to their pages, other resources are plain text. The page script opens a linked item's page when its box is clicked, or focused and Enter is pressed.
 
 #### Scenario: Dependencies and dependants
 - **WHEN** `forge` depends on `vault` and `editor` depends on `forge`
 - **THEN** the diagram on `forge`'s page shows `vault` on the left and `editor` on the right, and the text list links both
+
+#### Scenario: Resource without a page
+- **WHEN** `forge` depends on resource `orders-db`, which is not a licence
+- **THEN** `orders-db` is in the diagram and in the text list as plain text, without a link
 
 ### Requirement: Impact of removal
 Item pages SHALL list every item that depends on the item directly or indirectly, with its depth, and the journeys affected, as the MCP `impact` tool computes them, and SHALL say when the list stops at 500.
@@ -103,7 +111,7 @@ Item pages SHALL list every item that depends on the item directly or indirectly
 - **THEN** `vault`'s page lists `forge` at depth 1 and `editor` at depth 2
 
 ### Requirement: Journey pages
-The journeys list SHALL show every drawn line in line order with its badge, colour, title and number of stops. A journey page SHALL show a strip diagram (stops in order on a straight line in the line's colour, other lines at each stop as badges) and a text list with the same stops and lines as links.
+The journeys list SHALL show every drawn line in line order with its badge, colour, title and number of stops. A journey page SHALL show a strip diagram (the line's served stops from the map model, in order, on a straight line in its colour, with badges of the other drawn lines at each stop) and a text list with the same stops and lines as links.
 
 #### Scenario: Interchange on a strip
 - **WHEN** line `ship` stops at `slack` and `slack` is also a stop of `design`

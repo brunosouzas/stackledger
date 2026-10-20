@@ -1,6 +1,22 @@
 ## 0. Spike
 
-- [ ] 0.1 Prove the Astro workarounds before building pages: from an `npm pack` tarball installed into a read-only folder, build a two-page Astro site from a working copy under the system temporary directory (D2), with the config in D2, the relative-URL rewrite (D3) and the fixed CSP (D4); serve it under `/full/` and `/staff/` and load it in Playwright with no failed request and no CSP violation; list every path written (including under `$HOME`). Report findings in `docs/spikes/<date>-astro-build/README.md`; stop and report if a workaround does not hold.
+- [ ] 0.1 Prove the Astro workarounds before building pages: from an `npm pack` tarball installed into a read-only folder, build a two-page Astro site from a working copy inside the output staging folder (D2), with the config in D2, the relative-URL rewrite (D3) and the fixed CSP (D4); serve it under `/full/` and `/staff/` and load it in Playwright with no failed request and no CSP violation; list every path written (including under `$HOME` and the package); include nested pages, a shared chunk and a CSS font; confirm the installed dependency tree uses Vite 8 without the old override and that the pinned Astro 7.x runs on Node 22.12. Report findings in `docs/spikes/<date>-astro-build/README.md`; stop and report if a workaround does not hold.
+
+## Scenario to test map
+
+Levels: U unit, I integration (built files or CLI), B browser (Playwright). Every scenario has one test named after it.
+
+| Spec | Scenarios | File | Level |
+| --- | --- | --- | --- |
+| catalogue | Staff hide list; Unknown field name in the hide list; Repeated field name; Title and accent; Title too long; Colour name; Logo not supported | `test/unit/settings.test.ts` | U |
+| mcp-server | No folder; Unknown view; Missing folder; Help; Global help lists both commands | `test/integration/cli.test.ts` | I |
+| metro-map | Unknown attribute; Hostile titles; Interchange in a zone | `test/unit/map-svg.test.ts` | U |
+| catalogue-site | Neighbourhood diagram: Dependencies and dependants, Resource without a page; Journey pages: Interchange on a strip (SVG part) | `test/unit/map-diagrams.test.ts` | U |
+| catalogue-site | Item pages; No journeys; Site title; View in the footer; Accent override; Broken settings; Journeys; Line with one served stop; Staff licence page; Indirect dependant; Interchange on a strip (page part); Diagram alternative; Without JavaScript (table present) | `test/integration/site.test.ts` | I |
+| catalogue-site | Theme remembered; Zoom; Station link; Highlight a line; Search; Nothing matches; Without JavaScript | `test/browser/site.spec.ts` | B |
+| site-security | No trace of the cost; Staff ignores hidden fields and the date; Custom-hidden vendor and status; Broken settings hide the defaults; Same policy everywhere; Only local URLs; Root headers; Root robots; Hostile title | `test/integration/site.test.ts` | I |
+| site-security | Pages work under the policy; Two sites on one host | `test/browser/site.spec.ts` | B |
+| build-command | Two sites; Missing out; Impossible date; Output inside the catalogue; Unrelated non-empty folder; Rebuild; Failure leaves the old site (one case per publication step); Documented; Sandboxed build; One error; Proxy reminder; Built twice; Large catalogue | `test/integration/build.test.ts` | I |
 
 ## 1. Catalogue and data
 
@@ -26,4 +42,4 @@
 ## 5. Browser checks and documentation
 
 - [ ] 5.1 Playwright test (`test/browser/site.spec.ts`, CI job): both sites under `/full/` and `/staff/` of one local server; no CSP violation, no failed or external request; zoom, filters, highlight, station and diagram links, search; without JavaScript the map and table are shown.
-- [ ] 5.2 `docs/site.md` (pages, hosting, headers, the trailing-slash redirect the host must do), `spec.site` in `docs/catalogue-format.md`, README Usage row and screenshots of each page from `examples/northwind`, roadmap row 4 wording (own SVG diagrams, not Mermaid).
+- [ ] 5.2 `docs/site.md` (pages, hosting, headers, the trailing-slash redirect the host must do, what to publish and not serving `--out` during a build), `spec.site` in `docs/catalogue-format.md`, README Usage row and screenshots of each page from `examples/northwind`, roadmap row 4 wording (own SVG diagrams, not Mermaid).

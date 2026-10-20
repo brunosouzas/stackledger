@@ -50,7 +50,7 @@ People who govern software want to open a website and see their software and lic
 - **Limits:** requirement. 300 items and 20 lines build both sites within 90 seconds on CI.
 - **Repetition and idempotency:** requirement. The same catalogue, date and version produce identical files; building twice into the same output folder replaces the previous build.
 - **Concurrency:** n/a. One build at a time per output folder; the command does not lock it.
-- **Security:** requirement. See `site-security`: the staff site carries no hidden value in any file; no external request; strict CSP; nothing written outside the output folder except a temporary folder that is removed.
+- **Security:** requirement. See `site-security`: the staff site carries no hidden value in any file; no external request; strict CSP; nothing written outside the output folder; staging, working copies and caches live in a staging folder inside it.
 - **Logs and observability:** requirement. stderr lists the two folders written, the page counts, and the catalogue counts in the full view as `map` does.
 
 ## Open questions

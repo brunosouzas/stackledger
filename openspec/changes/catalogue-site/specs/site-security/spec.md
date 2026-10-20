@@ -5,7 +5,7 @@ Defines what the built sites may and may not contain or request: one view per si
 ## ADDED Requirements
 
 ### Requirement: One view per site
-Each site SHALL be built only from its view, in its own Astro build with its own data file and cache. The `staff` site SHALL be built first and contain no hidden value in any file (HTML, SVG, CSS, JavaScript, headers). The `staff` site SHALL NOT depend on `--date` nor on any hidden field.
+Each site SHALL be built only from its view, in its own Astro build with its own data file and cache. The `staff` site SHALL be built first and contain no hidden value in any file. Its files SHALL NOT depend on `--date` nor on valid values of hidden fields; as `catalogue-views` says, an invalid hidden value MAY unserve its licence, and that is the only allowed effect.
 
 #### Scenario: No trace of the cost
 - **WHEN** a licence has `cost: 98765` and `note: ZETA-NOTE` and the default hidden fields apply
@@ -14,6 +14,14 @@ Each site SHALL be built only from its view, in its own Astro build with its own
 #### Scenario: Staff ignores hidden fields and the date
 - **WHEN** two catalogues differ only in valid values of default-hidden licence fields and are built with different `--date` values
 - **THEN** their `staff` sites are byte-identical
+
+#### Scenario: Custom-hidden vendor and status
+- **WHEN** `Settings` hides `vendor` and `status`, and two catalogues differ only in valid values of those fields
+- **THEN** their `staff` sites are byte-identical and contain no vendor or status text, filter option or marker derived from them
+
+#### Scenario: Broken settings hide the defaults
+- **WHEN** the `Settings` in use has an error
+- **THEN** the `staff` site hides the default fields, as the `staff` view does
 
 ### Requirement: No inline code
 Pages SHALL contain no inline `script` or `style` element, no `style` attribute and no event-handler attribute; scripts and styles are files of the site. Every page of both sites SHALL carry the same Content Security Policy.
@@ -37,7 +45,7 @@ No `href`, `src`, `srcset`, `action`, `formaction`, `poster` or `data` attribute
 - **THEN** no such attribute or CSS value starts with a scheme or `//`
 
 ### Requirement: Relative URLs
-Every URL in every HTML, CSS and JavaScript file (links, scripts, stylesheets, fonts, images, module imports) SHALL be relative and resolve inside its site's folder, so each site works under any path prefix.
+Every URL SHALL be relative to the file that holds it and resolve inside its site's folder: HTML URL attributes, CSS `url()` and `@import`, JavaScript static and dynamic imports, and asset references through `import.meta.url`. A generated URL form the build does not handle SHALL fail the build before publication.
 
 #### Scenario: Two sites on one host
 - **WHEN** the `full` and `staff` sites are served at `/full/` and `/staff/` of one host and every page is opened
@@ -62,4 +70,4 @@ Every catalogue text in a page SHALL be HTML-escaped by the template engine. Onl
 
 #### Scenario: Hostile title
 - **WHEN** a component's title is `<img src=x onerror=alert(1)>` and a line's title is `</script><script>alert(1)</script>`
-- **THEN** every page shows both titles as text, and contains no `img` element with `onerror` and no script element other than the site's script files
+- **THEN** every page that shows either title shows it only as text, and no page has an `img` element with `onerror` or a script element other than the site's script files

@@ -34,21 +34,28 @@ After resolving symbolic links, the output folder SHALL be refused, with exit 2 
 - **THEN** the exit code is 2 and `notes.txt` is untouched
 
 ### Requirement: Atomic replace
-Both sites SHALL be built into a temporary folder `.stackledger-tmp-*` inside the output folder. Only when both succeed are the previous `full/` and `staff/` renamed aside, the new ones renamed into place, and the old ones removed. On any failure the temporary folder is removed and the previous sites stay as they were.
+Both sites and the root files SHALL be fully prepared in a staging folder `.stackledger-tmp-*` inside the output folder before anything published changes, then published by renames whose last one is the commit point. A failure before the commit SHALL restore every previous entry byte for byte and exit 1. After the commit, a failure to remove the staging folder is a warning, with exit 0.
 
 #### Scenario: Rebuild
 - **WHEN** the command runs twice with the same `--out`
 - **THEN** the second build replaces the first and no file of the first remains unless rebuilt
 
 #### Scenario: Failure leaves the old site
-- **WHEN** a build fails after an earlier successful build into the same `--out`
-- **THEN** the earlier sites are still complete, no `.stackledger-tmp-*` folder remains and the exit code is 1
+- **WHEN** a build fails, at any step before the commit, after an earlier successful build into the same `--out`
+- **THEN** the earlier sites and root files are unchanged, no `.stackledger-tmp-*` folder remains and the exit code is 1
+
+### Requirement: Publishing the output
+The output folder SHALL NOT be served while a build runs. Only `full/`, `staff/`, `_headers` and `robots.txt` SHALL be published, after an exit code 0; `docs/site.md` SHALL say so, because staging folders hold `full` view files outside the protected `/full/` path.
+
+#### Scenario: Documented
+- **WHEN** a reader opens `docs/site.md`
+- **THEN** it says not to serve the output folder during a build and which four entries to publish
 
 ### Requirement: Writes
-The command SHALL write only inside the output folder and inside one folder under the system temporary directory (for Astro's working copy and cache), which it removes before exiting, also on failure. It SHALL NOT write in the catalogue folder, the installed stackledger package or the user's home folder.
+The command SHALL write only inside the output folder. Astro's working copy, generated files and every cache (Astro `cacheDir` and Vite `cacheDir`) SHALL be under the staging folder. It SHALL NOT write in the catalogue folder, the installed stackledger package, the system temporary directory or the user's home folder.
 
 #### Scenario: Sandboxed build
-- **WHEN** the command runs under the Node.js permission model with read access to the catalogue folder, the package and the system temporary directory, write access only to `--out` and the system temporary directory, and `--allow-addons --allow-child-process --allow-worker`
+- **WHEN** the command runs under the Node.js permission model with read access to the catalogue folder and the package, write access only to `--out`, and `--allow-addons --allow-child-process --allow-worker`
 - **THEN** both sites are built, and child processes, which the model does not restrict, are outside this check
 
 ### Requirement: Build report

@@ -32,11 +32,19 @@ flowchart LR
 
 ### D2. Astro run from a working copy
 
-Astro writes `.astro/` into its root, so the shipped `site/` folder is copied into a folder under the system temporary directory for each build and used as `root`; `node_modules` is linked to the package's, so `astro` and the fonts resolve without writing in the package. `cacheDir` is inside that temporary folder, `outDir` inside `--out/.stackledger-tmp-*`, telemetry is disabled with `ASTRO_TELEMETRY_DISABLED=1`, and the spike checks that nothing is written under `$HOME`. Config: `output: 'static'`, `trailingSlash: 'always'`, `build.format: 'directory'`, `build.inlineStylesheets: 'never'`, `vite.build.assetsInlineLimit: 0`, no integrations, no `is:inline` and no `define:vars`.
+Astro writes `.astro/` into its root, so the shipped `site/` folder is copied into the staging folder `--out/.stackledger-tmp-*/work-<view>/` for each build and used as `root`; `node_modules` is linked to the package's, so `astro` and the fonts resolve. Because Vite defaults its own cache to `root/node_modules/.vite`, which through the link would land in the package, both Astro `cacheDir` and `vite.cacheDir` point into the staging folder. `outDir` is the staging folder's `site-<view>/`. Nothing goes to the system temporary directory. Telemetry is disabled with `ASTRO_TELEMETRY_DISABLED=1`; the spike checks that nothing is written under `$HOME` or in the package.
+
+Versions: Astro 7 needs Vite 8 and Node >= 22.12. The current `overrides: { vite: 6.4.4 }` in `package.json` is removed (Vitest 4.1 accepts Vite 8), `engines.node` becomes `>=22.12`, and Astro is pinned to an exact 7.x release whose `engines` allows 22.12 (later 7.x releases require 22.22). CI keeps Node 22, 24 and 26. This narrows ADR 9's "Node >= 22" without changing its decision. Config: `output: 'static'`, `trailingSlash: 'always'`, `build.format: 'directory'`, `build.inlineStylesheets: 'never'`, `vite.build.assetsInlineLimit: 0`, no integrations, no `is:inline` and no `define:vars`.
 
 ### D3. Relative URLs by a post-build rewrite
 
-Astro has no relative `base`. After each build, `src/site/relative.ts` rewrites every root-absolute URL in HTML attributes and CSS `url()` (only those pointing into the site, such as `/_astro/...` and page links) into a path relative to the file's depth, deterministically. It then fails the build if any root-absolute or external URL remains. This is safe because pages hold no inline code, so no hash changes.
+Astro has no relative `base`. Page links are written relative by the layout's `href()` helper. For assets, `src/site/relative.ts` rewrites after each build, deterministically:
+
+- HTML URL attributes: `/_astro/...` becomes relative to the page's folder depth;
+- CSS `url()` and `@import`: relative to the stylesheet (fonts sit next to it in `_astro/`);
+- JavaScript: the bundle is kept to one entry module per page with no dynamic imports and no `import.meta.url` assets (`build.rollupOptions.output.inlineDynamicImports` per entry, no `?url` imports); static imports between chunks in `_astro/` are already relative (`./x.js`), and Vite's module preload helper is disabled (`build.modulePreload: false`).
+
+Then a scan of every HTML, CSS and JavaScript file fails the build if any root-absolute, protocol-relative or external URL, any dynamic `import(` or any `import.meta.url` remains. This is safe because pages hold no inline code, so no hash changes. The spike checks this on nested pages with a shared chunk and a font.
 
 ### D4. One fixed CSP
 
@@ -56,7 +64,9 @@ One small TypeScript module per page in `site/src/scripts/`, bundled as files: p
 
 ### D8. Atomic replace
 
-Both sites are built into `--out/.stackledger-tmp-*` (same filesystem as the target, so renames are atomic). On success: rename old `full/` and `staff/` aside, rename the new ones in, write `_headers`, `robots.txt` and the marker, remove the old ones. On failure: remove the temporary folders only.
+Everything is prepared in `--out/.stackledger-tmp-<random>/` (same filesystem, so renames are atomic): `site-staff/`, `site-full/` and `root/` with `_headers`, `robots.txt` and the marker. Publication, in order, for each entry `staff`, `full`, `_headers`, `robots.txt`, `.stackledger-build`: rename the existing entry to `stage/old/<entry>`, then rename the new one into place, recording each step in memory. The rename of the marker is the commit point. A failure before it undoes the recorded steps in reverse (new entry back to staging, old entry back into place), removes the staging folder and exits 1. After the commit the staging folder, with the old entries, is removed; a failure there is a warning. A test injects a failure at every step and compares the output folder byte for byte with the one before. A crashed process can leave a staging folder; the next build removes stale `.stackledger-tmp-*` folders first.
+
+`docs/site.md` tells the reader to publish only `full/`, `staff/`, `_headers` and `robots.txt` (for example `wrangler pages deploy` of a copy, or a CI step that builds into a clean folder) and never to serve `--out` while a build runs.
 
 ### D9. Tests
 
@@ -68,3 +78,5 @@ Unit tests on `SiteData` and the diagrams; build tests on the files of both site
 - **Working around Astro defaults** (D2, D3) may break on an Astro upgrade; the spike and the build tests catch it.
 - **The look belongs to a personal site.** Companies change title and colours; a deeper theme is a later change.
 - **Playwright** adds a browser download to CI only.
+- **Node 22.12 floor and a pinned older Astro 7.x** to keep Node 22 support; moving to a later 7.x means `engines.node >= 22.22`.
+- **Staging inside `--out`** holds full-view files while a build runs; mitigated by the rule not to serve `--out` during a build and to publish only the four entries.
