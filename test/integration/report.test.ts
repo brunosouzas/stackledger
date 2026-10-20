@@ -203,6 +203,8 @@ test('Hostile label in an internal error', () => {
   const path = catalogueOf(
     lic('licence-big', { cycle: 'monthly', cost: 1e15, currency: 'GBP', paidBy: 'pay\nfake line\u001b[31m' }),
     lic('licence-cent', { cycle: 'monthly', cost: 0.01, currency: 'GBP', paidBy: 'pay\nfake line\u001b[31m' }),
+    // The overall total (1e15 + 1.00) is exact; only the hostile payer's group (1e15 + 0.01) is not.
+    lic('licence-rest', { cycle: 'monthly', cost: 0.99, currency: 'GBP', paidBy: 'company' }),
   );
   const result = run(['report', path, '--date', DATE, '--format', 'json']);
   expect(result.status).toBe(1);
