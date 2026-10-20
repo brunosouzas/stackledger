@@ -147,7 +147,7 @@ Unlisted fields anywhere in a Settings document are errors, so `spec.view` inste
 
 At most one Settings document is allowed; the earliest is used. A later one with another name gets an error naming the earlier file; one with the same name gets only the duplicate-name error.
 
-**Broken settings hide everything.** While any document whose kind is `Settings` in any case has an error, or any file named `stackledger.yaml` or `stackledger.yml` has an error, or a file that mentions `kind: Settings` cannot be parsed, the `staff` view hides every licence field above, until it is fixed. A typo can never hide less than you asked for.
+**Broken settings hide everything.** While any document whose kind is `Settings` in any case has an error, or any file named `stackledger.yaml` or `stackledger.yml` has an error, or a file holding a document whose `kind` is `Settings` cannot be parsed or expanded, the `staff` view hides every licence field above, until it is fixed. A typo can never hide less than you asked for.
 
 In `staff`, components and licences are rebuilt from the fields this reference lists, so a field written in the wrong place (for example `spec.cost` next to `spec.licence`, or a `spec.licence` block on a component) never reaches staff. Free text is not filtered: **keep prices, renewal terms and payment details in licence fields**, not in `metadata.description`, annotations, tags or titles, which staff can read.
 

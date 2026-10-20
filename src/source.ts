@@ -3,7 +3,7 @@
  */
 import { readdir, lstat, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { parseAllDocuments, LineCounter, isMap, isSeq, isAlias, type Document, type Node } from 'yaml';
+import { parseAllDocuments, LineCounter, isMap, isSeq, isAlias, isScalar, type Document, type Node } from 'yaml';
 
 export type FieldPath = (string | number)[];
 export interface Problem {
@@ -66,15 +66,35 @@ export function problem(source: Source, path: FieldPath, message: string,
     severity, field: fieldName(path), message };
 }
 
-/** Fail closed: a broken file that mentions a Settings kind, in any case or YAML style, counts as broken settings. */
-const settingsText = /kind["']?\s*:\s*["']?settings\b/i;
-export function parseSource(path: string, text: string): { sources: Source[]; problems: Problem[]; settingsUnread: boolean } {
-  const parsed = parseDocuments(path, text);
-  return { ...parsed, settingsUnread: parsed.problems.some(p => p.severity === 'error') && settingsText.test(text) };
+/** Whether a document's top-level kind is Settings in any case, read from the syntax tree so tags,
+ * anchors and escapes count; an alias that cannot be resolved counts too. Other fields are never read.
+ */
+function mayBeSettings(document: Document): boolean {
+  const resolve = (node: unknown): unknown => {
+    const seen = new Set<unknown>();
+    while (isAlias(node)) {
+      if (seen.has(node)) return undefined;
+      seen.add(node);
+      try { node = node.resolve(document); } catch { return undefined; }
+    }
+    return node;
+  };
+  if (!isMap(document.contents)) return false;
+  return document.contents.items.some(pair => {
+    const key = resolve(pair.key);
+    if (!isScalar(key) || String(key.value) !== 'kind') return false;
+    const value = resolve(pair.value);
+    return value === undefined || (isScalar(value) && String(value.value).toLowerCase() === 'settings');
+  });
 }
-function parseDocuments(path: string, text: string): { sources: Source[]; problems: Problem[] } {
+/** Fail closed: a file that failed to parse or expand and holds a Settings-like document counts as broken settings. */
+export function parseSource(path: string, text: string): { sources: Source[]; problems: Problem[]; settingsUnread: boolean } {
   const counter = new LineCounter();
   const documents = parseAllDocuments(text, { lineCounter: counter, prettyErrors: false, uniqueKeys: true, logLevel: 'silent' });
+  const parsed = parseDocuments(path, documents, counter);
+  return { ...parsed, settingsUnread: parsed.problems.some(p => p.severity === 'error') && documents.some(mayBeSettings) };
+}
+function parseDocuments(path: string, documents: ReturnType<typeof parseAllDocuments>, counter: LineCounter): { sources: Source[]; problems: Problem[] } {
   // A syntax failure invalidates the entire file, including earlier documents.
   const errors = documents.flatMap(document => document.errors);
   if (errors.length) return { sources: [], problems: errors.map(error => {
