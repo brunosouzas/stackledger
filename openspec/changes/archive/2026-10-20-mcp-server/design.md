@@ -1,0 +1,79 @@
+# Design: mcp-server
+
+## Context
+
+`catalogue-model` delivered a library (`validateFolder` returns the valid entities and the problems) and the `validate` command. This change adds the first consumer of the catalogue beyond validation. It relies on [ADR 7](../../../docs/adr/0007-two-views-built-as-separate-sites.md) (two views, hidden fields removed, never masked), [ADR 8](../../../docs/adr/0008-read-only-mcp-early-no-ai-in-the-core.md) (read-only MCP over stdio, no AI in the core) and [ADR 9](../../../docs/adr/0009-typescript-end-to-end.md).
+
+## Goals / Non-goals
+
+Goals: answer the questions an owner asks an agent about their stack; make the views a library the website will reuse; keep the server stateless and read-only.
+
+Non-goals: HTTP transport, authentication, writing tools, MCP resources or prompts, file watching.
+
+## Decisions
+
+### D1. Layers: view, graph, tools
+
+```mermaid
+flowchart LR
+    folder["Catalogue folder"] --> validate["validateFolder()"]
+    validate --> view["applyView(catalogue, view)"]
+    view --> graph["buildGraph()"]
+    graph --> tools["MCP tools"]
+    view --> tools
+```
+
+- `validateLoaded` gains `served`: documents that passed every document check (secret scan included) and are not later duplicates, plus the non-licence resources that passed the name step, reduced to `ref` and a `type` matching the name pattern (they skip the field step and the secret scan, so nothing else of theirs is ever read). Today `entities` holds documents before the secret scan and before duplicate removal, so the server never reads `entities` directly.
+- `src/views.ts`: `resolveHidden(catalogue)` returns the hidden list: every allowed licence field when any `Settings`-like document (kind compared ignoring case) or `stackledger.yaml`/`.yml` has an error (fail closed); otherwise the valid list of the earliest `Settings`, or the default. `applyView(served, view, hidden)` returns deep copies. In `staff`, components and licences are rebuilt from allow-lists instead of deleting keys, so a field written in the wrong place cannot pass. A licence keeps no `spec.dependsOn` (unchecked on licences); only a component's `spec.dependsOn` creates a dependency. Every consumer gets data only through `applyView`.
+- `src/graph.ts`: indexes by reference, `dependsOn`, `dependants`, `linesAt`, `impact` (breadth-first search with a visited set, cap 500), `gaps`. Pure functions over view entities; the website will reuse them.
+- `src/mcp.ts`: the server, tool registration per view and the result envelope.
+
+Alternative rejected: filtering hidden fields in each tool's output. One forgotten field leaks; deleting before any tool sees the data makes leaking structurally impossible.
+
+### D2. Official SDK, stdio only
+
+`@modelcontextprotocol/sdk` (MIT), `McpServer` with `StdioServerTransport`; input schemas in zod, which the project already uses. The SDK is pinned to an exact version like the other dependencies. Tool annotations set `readOnlyHint: true`, `openWorldHint: false`.
+
+### D3. Results are JSON
+
+Each tool returns one JSON object as text content and as `structuredContent`, with an `outputSchema`. Agents read JSON reliably and tests can compare objects. Lists are sorted (by reference, or as each requirement says), so the same call on the same files gives the same bytes.
+
+Tool input schemas declare every argument optional and untyped beyond a description, and each handler checks presence, types, ranges, dates and references itself and returns `isError: true` with a plain reason. This keeps out-of-range values as tool errors whatever the SDK version does with schema failures. In `staff`, `catalogue` carries only `view`: error counts can come from hidden fields.
+
+### D4. Read the folder on every call
+
+No cache and no watcher. A personal or small-company catalogue is under a few hundred files; `validate` on 82 real files takes well under a second. Reading on each call means an agent that edits YAML and calls a tool sees its own edit, and the server holds no state.
+
+### D5. Tools per view
+
+`renewals` and `validate` are not registered in the `staff` view. `renewals` is about hidden fields by nature. `validate` problems point at hidden fields and staff do not maintain the catalogue. Not registering is clearer to a client than registering a tool that always fails.
+
+### D6. Settings as a new kind
+
+The hidden-field list must live in the catalogue repository (ADR 7). A `Settings` document of `apiVersion: stackledger/v1alpha1` keeps one file format and reuses the loader, positions and error reporting. Its schema is strict. The name `stackledger.yaml` is a convention only, so the loader stays "every YAML file in the folder". Any error in a `Settings` document, or in `stackledger.yaml`, makes the `staff` view hide every licence field until it is fixed: a typo can never hide less than the owner asked for. A second `Settings` follows the `MapLayout` rule: a same-name duplicate gets only the duplicate-name error.
+
+### D6b. Folder required for `mcp`
+
+MCP clients often start servers with the working directory at `/` or the home folder, and a recursive load there would read unrelated YAML. `stackledger mcp` therefore requires the folder, resolves it to an absolute path and logs it at start. `validate` keeps its default of the current folder.
+
+### D7. Default view `full` (open question 1)
+
+Whoever runs `stackledger mcp` locally already has the folder, which is the `full` view by ADR 2. A company that gives the server to staff passes `--view staff` in the client configuration; `docs/mcp.md` shows both.
+
+### D8. CLI
+
+`src/cli.ts` dispatches `validate` and `mcp`; each command has its own `parseArgs` options. Global `--help` prints the usage of both. The `validate-command` Usage requirement already speaks of "a missing or unknown command", so it holds unchanged with two commands. The folder is checked before the transport starts so that exit 2 happens before any protocol output.
+
+### D9. Tests
+
+- Unit: `views`, `graph` (cycles, depth, cap, gaps), settings rules.
+- Integration: start `dist/cli.js mcp` as a child process and talk to it with the SDK's `Client` and `StdioClientTransport`; one test per scenario.
+- Leak test: a fixture with distinctive hidden values (for example cost `98765`, note `ZETA-NOTE`); call every staff tool with several arguments and assert none of the values appears in any raw response.
+- Sandbox: the same child process under `node --permission --allow-fs-read=<dist,node_modules,fixture>`; all tools succeed, fixture hashes unchanged; the network part is skipped with a message where `--allow-net` does not exist, as in the `validate` sandbox test.
+- `renewals` scenarios pass `from` explicitly; the default (local date) is checked only for its format, because it depends on the machine's time zone.
+
+## Risks / Trade-offs
+
+- **Free-text fields can still mention prices** (`metadata.description`, annotations). Hiding works on licence fields only. Mitigation: `docs/catalogue-format.md` says to keep prices and terms in licence fields, and `note` is hidden by default.
+- **SDK churn.** The SDK moves fast; pinning and the integration tests catch breaking upgrades.
+- **Large catalogues.** Re-reading on every call is linear in files; fine for the target size. Caching can come later without changing the tool contract.

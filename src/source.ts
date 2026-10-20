@@ -3,7 +3,7 @@
  */
 import { readdir, lstat, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { parseAllDocuments, LineCounter, isMap, isSeq, isAlias, type Document, type Node } from 'yaml';
+import { parseAllDocuments, LineCounter, isMap, isSeq, isAlias, isScalar, type Document, type Node } from 'yaml';
 
 export type FieldPath = (string | number)[];
 export interface Problem {
@@ -13,7 +13,8 @@ export interface Problem {
 export interface Source {
   path: string; document: Document; counter: LineCounter; value: Record<string, unknown>;
 }
-export interface Loaded { files: number; sources: Source[]; problems: Problem[] }
+/** settingsUnread: a file that failed to parse or expand holds a document that reads as Settings. */
+export interface Loaded { files: number; sources: Source[]; problems: Problem[]; settingsUnread?: boolean }
 export const MAX_FILE_BYTES = 1024 * 1024;
 
 /** Compare Unicode code points, not locale collation or UTF-16 surrogate order. */
@@ -65,18 +66,38 @@ export function problem(source: Source, path: FieldPath, message: string,
     severity, field: fieldName(path), message };
 }
 
-export function parseSource(path: string, text: string): { sources: Source[]; problems: Problem[] } {
+/** Whether a document that failed to parse or expand reads as Settings: a top-level kind of Settings in any case.
+ * Aliases are never resolved, so the text they point at (a hidden licence value, say) cannot decide;
+ * an alias in place of the kind key or value counts as Settings. A key that is itself a mapping, as parser
+ * recovery produces from a broken flow mapping, is searched the same way.
+ */
+function mayBeSettings(node: unknown, depth = 0): boolean {
+  if (!isMap(node) || depth > 2) return false;
+  return node.items.some(pair => {
+    if (isMap(pair.key)) return mayBeSettings(pair.key, depth + 1);
+    if (!isAlias(pair.key) && !(isScalar(pair.key) && String(pair.key.value) === 'kind')) return false;
+    return isAlias(pair.value) || (isScalar(pair.value) && String(pair.value.value).toLowerCase() === 'settings');
+  });
+}
+/** settingsUnread: the file failed to parse or expand and holds a document that reads as Settings (fail closed). */
+export function parseSource(path: string, text: string): { sources: Source[]; problems: Problem[]; settingsUnread: boolean } {
   const counter = new LineCounter();
   const documents = parseAllDocuments(text, { lineCounter: counter, prettyErrors: false, uniqueKeys: true, logLevel: 'silent' });
+  const { sources, problems, unread } = parseDocuments(path, documents, counter);
+  return { sources, problems, settingsUnread: unread.some(document => mayBeSettings(document.contents)) };
+}
+/** unread: the documents not checked because of their own failure, or every document when the file is invalid. */
+function parseDocuments(path: string, documents: ReturnType<typeof parseAllDocuments>, counter: LineCounter): { sources: Source[]; problems: Problem[]; unread: Document[] } {
   // A syntax failure invalidates the entire file, including earlier documents.
   const errors = documents.flatMap(document => document.errors);
-  if (errors.length) return { sources: [], problems: errors.map(error => {
+  if (errors.length) return { sources: [], unread: documents, problems: errors.map(error => {
     const position = counter.linePos(error.pos[0] ?? 0);
     // Parser messages can embed input, so only emit the parser's stable error code.
     return { ...fileProblem(path, `Invalid YAML (${error.code})`), line: position.line, column: position.col };
   }) };
   const sources: Source[] = [];
   const problems: Problem[] = [];
+  const unread: Document[] = [];
   for (const document of documents) {
     // An explicit scalar null is not an empty document; comments and blank documents have no source.
     if (document.contents === null || (document.contents?.range?.[0] === document.contents?.range?.[1])) continue;
@@ -90,9 +111,10 @@ export function parseSource(path: string, text: string): { sources: Source[]; pr
       sources.push({ path, document, counter, value });
     } catch {
       problems.push(fileProblem(path, 'Document cannot be expanded safely'));
+      unread.push(document);
     }
   }
-  return { sources, problems };
+  return { sources, problems, unread };
 }
 
 /** Top-level failures are usage failures; descendants are recoverable file problems. */
@@ -127,6 +149,7 @@ export async function loadFolder(folder: string): Promise<Loaded> {
         if (!(stat.mode & 0o444)) { loaded.problems.push(fileProblem(path, 'File cannot be read')); continue; }
         const parsed = parseSource(path, await readFile(absolute, 'utf8'));
         loaded.sources.push(...parsed.sources); loaded.problems.push(...parsed.problems);
+        if (parsed.settingsUnread) loaded.settingsUnread = true;
       } catch { loaded.problems.push(fileProblem(path, 'File cannot be read')); }
     }
   }

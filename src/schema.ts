@@ -40,9 +40,21 @@ export const layoutSchema = z.strictObject({
   spec: z.strictObject({ stations: z.record(z.string(), z.tuple([z.number().int().nonnegative(), z.number().int().nonnegative()])),
     zones: z.array(z.strictObject({ name: text, title: text, color })).optional() }),
 });
-export const schemas = { Component: componentSchema, Resource: licenceSchema, Line: lineSchema, MapLayout: layoutSchema };
+/** Licence fields a Settings document may hide from the staff view, in catalogue order. */
+export const licenceFields = ['vendor', 'status', 'cycle', 'cost', 'currency', 'renewsOn', 'seats', 'paidBy', 'vaultItem', 'note'] as const;
+export type LicenceField = typeof licenceFields[number];
+const hide = z.array(z.enum(licenceFields)).superRefine((list, context) => list.forEach((value, index) => {
+  if (list.indexOf(value) < index) context.addIssue({ code: 'custom', message: 'Field name is already listed', path: [index] });
+}));
+export const settingsSchema = z.strictObject({
+  apiVersion: z.literal('stackledger/v1alpha1'), kind: z.literal('Settings'),
+  metadata: z.strictObject({ ...identity, title: text.optional() }),
+  spec: z.strictObject({ views: z.strictObject({ staff: z.strictObject({ hide: hide.optional() }).optional() }).optional() }),
+});
+export const schemas = { Component: componentSchema, Resource: licenceSchema, Line: lineSchema, MapLayout: layoutSchema, Settings: settingsSchema };
 export type Component = z.infer<typeof componentSchema>;
 export type Licence = z.infer<typeof licenceSchema>;
 export type Line = z.infer<typeof lineSchema>;
 export type MapLayout = z.infer<typeof layoutSchema>;
-export type Entity = Component | Licence | Line | MapLayout;
+export type Settings = z.infer<typeof settingsSchema>;
+export type Entity = Component | Licence | Line | MapLayout | Settings;

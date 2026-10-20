@@ -26,7 +26,7 @@ stackledger is a small, local-first tool for people and small companies who want
 
 ## Status
 
-Early development. Nothing is released to npm yet. The catalogue format and the `validate` command work from source (see [Usage](#usage)). The order of the rest is in the [roadmap](docs/roadmap.md).
+Early development. Nothing is released to npm yet. The catalogue format, the `validate` command and the `mcp` server work from source (see [Usage](#usage)). The order of the rest is in the [roadmap](docs/roadmap.md).
 
 ## Features
 
@@ -64,7 +64,7 @@ flowchart LR
 A software catalogue maps its owner's attack surface: which VPN, which secret store, which versions. stackledger is designed around that:
 
 - **No sign-in code in the tool.** The site sits behind an identity-aware proxy that uses your existing accounts (Google Workspace, Microsoft 365). [ADR 6](docs/adr/0006-authentication-at-an-identity-aware-proxy.md)
-- **Two views, built as two sites.** The `staff` site does not contain costs, renewal dates, payers, seats or password-manager references at all, so nothing leaks through the browser. You choose the hidden fields. [ADR 7](docs/adr/0007-two-views-built-as-separate-sites.md)
+- **Two views, built as two sites.** The `staff` site does not contain costs, renewal dates, payers, seats, password-manager references or notes at all, so nothing leaks through the browser. You choose the hidden fields. [ADR 7](docs/adr/0007-two-views-built-as-separate-sites.md)
 - **No secrets in the catalogue.** `validate` rejects fields named like secrets, private keys and card numbers, and never repeats the value in its message.
 - **Nothing leaves your machine.** No telemetry, no analytics, no third-party scripts; discovery only reads and never uses `sudo`.
 - **Read access to the catalogue repository equals the `full` view.** Give everyone else the website.
@@ -73,7 +73,10 @@ To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## Using it with AI agents
 
-stackledger does not call any AI model. Instead, a read-only [MCP](https://modelcontextprotocol.io/) server lets the agent you already use (Claude, Codex or any MCP client) ask questions such as "what depends on this app?", "what breaks if I remove it?" or "what renews this month?", and validate the YAML it writes. With `--view staff` it serves only what the staff view shows. Why: [ADR 8](docs/adr/0008-read-only-mcp-early-no-ai-in-the-core.md).
+stackledger does not call any AI model. Instead, a read-only [MCP](https://modelcontextprotocol.io/) server lets the agent you already use (Claude Code, Codex, Hermes or any MCP client) ask questions such as "what depends on this app?", "what breaks if I remove it?" or "what renews this month?", and validate the YAML it writes. With `--view staff` it serves only what the staff view shows, and offers no renewals or validation. Why: [ADR 8](docs/adr/0008-read-only-mcp-early-no-ai-in-the-core.md).
+
+- [docs/mcp.md](docs/mcp.md): the tools, the views, and configuration for Claude Code, Codex and Hermes.
+- [skills/stackledger/SKILL.md](skills/stackledger/SKILL.md): an agent skill for maintaining a catalogue (add an item, link a licence, add a line, place a station, run `validate`).
 
 ## Usage
 
@@ -84,20 +87,21 @@ npm ci
 npm run build
 node dist/cli.js validate /path/to/catalogue
 node dist/cli.js validate /path/to/catalogue --json
+node dist/cli.js mcp /path/to/catalogue --view staff
 ```
 
 | Command | Does | Status |
 |---|---|---|
 | `stackledger validate [folder]` | Checks a catalogue and reports each problem with file, line and field. Exit 0: no errors (warnings allowed); 1: catalogue errors; 2: usage or folder problem | Available from source |
-| `stackledger mcp` | Serves the catalogue to AI agents over MCP | Planned: `mcp-server` |
+| `stackledger mcp <folder> [--view full\|staff]` | Serves the catalogue read-only to AI agents over MCP on stdio; see [docs/mcp.md](docs/mcp.md). Exit 2: usage or folder problem | Available from source |
 | `stackledger build` | Builds the `full` and `staff` sites | Planned: `catalogue-site` |
 | `stackledger discover`, `stackledger drift` | Records what a Mac has installed, and compares it with the catalogue | Planned: `mac-discovery` |
 
-`validate` only reads files, makes no network calls and sends no telemetry.
+`validate` and `mcp` only read files, make no network calls and send no telemetry.
 
 ## Catalogue format
 
-A catalogue is a folder of YAML files: Backstage `Component` documents for software, `Resource` documents with `spec.type: licence` for licences, plus `Line` journeys and one `MapLayout` with station positions and zones. The [format reference](docs/catalogue-format.md) describes every field, how references work, which problems are warnings, and how to share the folder with a Backstage instance. Keep real data in its own private repository; this example is fictitious. Save it as `catalogue.yaml` in an empty folder and run `validate` on that folder:
+A catalogue is a folder of YAML files: Backstage `Component` documents for software, `Resource` documents with `spec.type: licence` for licences, plus `Line` journeys, one `MapLayout` with station positions and zones, and an optional `Settings` document that chooses the fields the staff view hides. The [format reference](docs/catalogue-format.md) describes every field, how references work, which problems are warnings, and how to share the folder with a Backstage instance. Keep real data in its own private repository; this example is fictitious. Save it as `catalogue.yaml` in an empty folder and run `validate` on that folder:
 
 ```yaml
 apiVersion: backstage.io/v1alpha1
