@@ -134,3 +134,13 @@ test('A CSS URL holding an escape is refused', () => {
   const site = folder({ '_astro/site.css': 'a{background:url(\\2f full/x.png)}' });
   expect(scan(site)).toEqual(['_astro/site.css: url(\\2f full/x.png) has a CSS escape']);
 });
+
+test('A no-break space does not split a srcset candidate', () => {
+  const site = folder({ 'software/editor/index.html': page('<img srcset="ok\u00a0/../../../../full/x.png 1x" alt="">') });
+  expect(scan(site)).toEqual(['software/editor/index.html: srcset part "ok\u00a0/../../../../full/x.png 1x" leaves the site folder']);
+});
+
+test('An import specifier holding a string escape is refused', () => {
+  const site = folder({ '_astro/map.js': 'import "./\\x2e\\x2e/\\x2e\\x2e/full/x.js";' });
+  expect(scan(site)).toEqual(['_astro/map.js: import specifier "./\\x2e\\x2e/\\x2e\\x2e/full/x.js" has a string escape']);
+});

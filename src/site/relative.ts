@@ -180,8 +180,15 @@ function urlAttributeProblems(file: string, attr: Attribute): string[] {
   const { text, unknown } = decodeAttribute(attr.value ?? '');
   if (unknown.length) return [`${file}: ${attr.name}="${attr.value}" has an unknown character reference ${unknown[0]}`];
   if (attr.name !== 'srcset') return urlProblems(file, `${attr.name}="${text}"`, text);
-  return text.split(',').map(item => item.trim()).flatMap(part => urlProblems(file, `srcset part "${part}"`, part.split(/\s+/)[0] ?? ''));
+  return text
+    .split(',')
+    .map(item => item.replace(ASCII_EDGE_SPACE, ''))
+    .flatMap(part => urlProblems(file, `srcset part "${part}"`, part.split(ASCII_SPACE)[0] ?? ''));
 }
+
+/** HTML's ASCII whitespace only: a no-break space (U+00A0) is part of a URL, not a separator. */
+const ASCII_SPACE = /[\t\n\f\r ]+/;
+const ASCII_EDGE_SPACE = /^[\t\n\f\r ]+|[\t\n\f\r ]+$/g;
 
 /** The problem with one URL of `file`, if any. `label` names the URL in the message. */
 function urlProblems(file: string, label: string, url: string): string[] {
@@ -210,7 +217,9 @@ function scanJs(file: string, js: string): string[] {
   if (/\/_astro\//.test(js)) problems.push(`${file}: /_astro/ string`);
   for (const match of js.matchAll(/(?:\bimport|\bexport)\s*(?:[\w*{}\s,$]*?\bfrom\s*)?["']([^"']+)["']/g)) {
     const specifier = match[1]!;
-    if (!specifier.startsWith('./') && !specifier.startsWith('../')) problems.push(`${file}: import specifier "${specifier}"`);
+    // String escapes (`\x2e`, `\u002e`) would change the specifier: refuse any backslash.
+    if (specifier.includes('\\')) problems.push(`${file}: import specifier "${specifier}" has a string escape`);
+    else if (!specifier.startsWith('./') && !specifier.startsWith('../')) problems.push(`${file}: import specifier "${specifier}"`);
     else if (urlProblem(file, specifier)) problems.push(`${file}: import specifier "${specifier}" leaves the site folder`);
   }
   return problems;
