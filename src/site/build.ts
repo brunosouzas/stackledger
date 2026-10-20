@@ -4,7 +4,8 @@
  * What: prepareBuild(folder or loaded folder, staging, date) validates the catalogue, builds the staff site and then
  * the full site, each from its own SiteData, working copy and caches, and writes the root files:
  *   <staging>/site-staff/   <staging>/site-full/   <staging>/root/{_headers, robots.txt, .stackledger-build}
- * Each site also holds `_headers` and `robots.txt`. Nothing is written outside `staging`.
+ * Each site also holds `_headers` and `robots.txt`; the full site also holds `renewals.ics`.
+ * Nothing is written outside `staging`.
  *
  * The command (src/site/command.ts) checks the options and the output folder, creates `staging` as
  * `<out>/.stackledger-tmp-*`, publishes the five entries (src/site/publish.ts) and writes the report;
@@ -27,7 +28,7 @@ import { validateLoaded, type Catalogue } from '../validate.js';
 import type { ViewName } from '../views.js';
 import { siteColorNames } from '../schema.js';
 import { mapNotes } from '../map/command.js';
-import { buildSiteData, type SiteData } from './data.js';
+import { buildSiteData, CALENDAR_FILE, type SiteData } from './data.js';
 import { ownerNames } from './owners.js';
 import { HEADERS, MARKER, MARKER_NAME, POLICY, ROBOTS } from './policy.js';
 import { listFiles, relativise, scan } from './relative.js';
@@ -136,7 +137,9 @@ function astroConfig(staging: string, view: ViewName, work: string) {
   };
 }
 
-async function buildView(staging: string, view: ViewName, data: SiteData): Promise<BuiltSite> {
+/** Build one site; `calendar` (full site only) is written as renewals.ics before the scan, so it is
+ * checked and published with the pages. */
+async function buildView(staging: string, view: ViewName, data: SiteData, calendar?: string): Promise<BuiltSite> {
   const work = prepareWorkingCopy(staging, view, data);
   // Telemetry must be off before Astro is first loaded.
   process.env.ASTRO_TELEMETRY_DISABLED = '1';
@@ -151,6 +154,7 @@ async function buildView(staging: string, view: ViewName, data: SiteData): Promi
   }
   const dir = join(staging, `site-${view}`);
   renameSync(join(work, 'dist'), dir);
+  if (calendar !== undefined) writeFileSync(join(dir, CALENDAR_FILE), calendar);
   relativise(dir);
   // The staging folder's absolute path and random name, and the working copy, must not leak into a file.
   const problems = scan(dir, [staging, work, basename(staging)]);
@@ -171,7 +175,7 @@ export async function prepareBuild(folder: string | Loaded, stagingPath: string,
   const owners = ownerNames(loaded.sources);
   const staff = await buildView(staging, 'staff', buildSiteData(catalogue, 'staff', version, undefined, owners).data);
   const fullData = buildSiteData(catalogue, 'full', version, date, owners);
-  const full = await buildView(staging, 'full', fullData.data);
+  const full = await buildView(staging, 'full', fullData.data, fullData.calendar);
   const root = join(staging, 'root');
   mkdirSync(root);
   writeFileSync(join(root, '_headers'), HEADERS);

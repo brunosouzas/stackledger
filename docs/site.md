@@ -12,7 +12,7 @@ npm run build
 node dist/cli.js build examples/northwind --out ./public --date 2027-06-01
 ```
 
-`stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` writes `<dir>/full/`, `<dir>/staff/`, `<dir>/_headers`, `<dir>/robots.txt` and the marker `<dir>/.stackledger-build`. `--date` sets the map date of the `full` site (renewals within 30 days are ringed); the default is the machine's local date. The `staff` site never depends on the date.
+`stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` writes `<dir>/full/`, `<dir>/staff/`, `<dir>/_headers`, `<dir>/robots.txt` and the marker `<dir>/.stackledger-build`. `--date` sets the map date and the report date of the `full` site (renewals within 30 days are ringed on the map; the Reports page and `renewals.ics` cover the 90 days from it); the default is the machine's local date. The `staff` site never depends on the date.
 
 | Exit | When |
 | --- | --- |
@@ -63,7 +63,7 @@ After step 3, `<out>` holds the previous build byte for byte; the build tests fo
 
 ## Pages
 
-Each site has the same pages, filled from its own view.
+Each site has the same pages, filled from its own view; the `full` site also has the Reports page and the calendar file.
 
 | Page | Path | Shows |
 | --- | --- | --- |
@@ -73,6 +73,8 @@ Each site has the same pages, filled from its own view.
 | Licence | `/licences/<name>/` | Title, name, owner and the licence fields of the view; the components that use it; the impact of removing it. |
 | Journeys | `/journeys/` | Every drawn line in line order, with badge, title and number of stops. |
 | Journey | `/journeys/<name>/` | A strip diagram of the line's stops in order, with the badges of other lines at interchanges, and the same stops and lines as text links. |
+| Reports (`full` only) | `/reports/` | Renewals in the next 90 days, overdue renewals and unknown dates; recurring cost per month and per year for each currency, with the number of incomplete licences; the same totals by owner, by payer and by zone; one-off costs, planned purchases and incomplete licences; a link to `renewals.ics`. Each licence links to its page. The rules are in [docs/reports.md](reports.md). |
+| Calendar (`full` only) | `/renewals.ics` | The renewals of the Reports page as an iCalendar file to download and import ([docs/reports.md](reports.md#the-calendar-file)). |
 
 `<name>` is the item's `metadata.name` in lower case. The diagrams are SVG drawn by stackledger itself, in the map's style. Owners show by name when the catalogue has a `Group` or `User` document for them (its `metadata.title`, else `spec.profile.displayName`, else its name); otherwise the reference, such as `group:northwind`, is shown.
 
@@ -89,7 +91,7 @@ The look follows brunosouzas.com (based on the Astroplate theme, MIT), with the 
 - One fixed Content Security Policy on every page, in a `meta` element and in `_headers`: `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'` (plus `frame-ancestors 'none'` in `_headers`). Pages have no inline script or style, no `style` attribute and no event-handler attribute.
 - Every URL is relative and stays inside its site, so the same files work under any path prefix. No font, script or image comes from another site; there are no analytics.
 - `noindex, nofollow` on every page, `X-Robots-Tag` in `_headers`, and a `robots.txt` that disallows everything, at the root of the output and in each site.
-- The `staff` site is built first, from the staff view only: no file of it contains a hidden field's value.
+- The `staff` site is built first, from the staff view only: no file of it contains a hidden field's value. It has no Reports page, no calendar file and no link to either.
 - Catalogue text is escaped everywhere; titles such as `<img onerror=…>` show as text.
 - The build writes only inside the output folder and never renames or removes through a symbolic link: entries are looked at with `lstat`, and a staging folder is removed only when it is a real folder. Node.js cannot hold a folder open, so the build works with paths: it records the output folder's real path and identity (device and inode) once the folder is checked, compares them again immediately before it creates the staging folder, before each rename (an undo's included) and before each removal, and stops with exit 1, changing nothing more, when they differ. **Trust assumption:** no other process renames or replaces the output folder or its parents during a build. A swap between a check and the change right after it, or while the sites are being prepared in the staging folder, is outside what the build can detect; this is the same trust you give any program you run as yourself.
 
@@ -112,5 +114,7 @@ Serve both sites from one host, with a stricter rule on `/full/`:
 Without the proxy, anyone with the address can read the catalogue. The host has no page at `/`: point people to `/staff/`, or add a redirect at the host.
 
 **Trailing slash.** Every page is a folder with an `index.html`, and its links are relative, so a page must be served at its address with a trailing slash. The host must redirect a folder address without it (`/staff/software/slack`) to the address with it (`/staff/software/slack/`), and serve `index.html` for a folder. Cloudflare Pages, Netlify and most static hosts do both by default; for nginx, `try_files $uri $uri/ =404;` does.
+
+**Calendar file.** Serve `renewals.ics` with the type `text/calendar` (check how your host types `.ics` files). It is for download and import only: calendar services fetch a subscribed feed from their own servers, without the reader's sign-in, so the proxy in front of `/full/` refuses them and a subscription to it cannot work. Do not publish the file outside the proxy to make it subscribable; it holds costs.
 
 **Cloudflare Pages and Access.** Deploy a folder holding only the four entries (for example `npx wrangler pages deploy ./publish`); Pages reads `_headers` at its root. In Cloudflare Zero Trust, add two self-hosted Access applications on the Pages domain: one for the path `full/*` with a policy for owners and finance, and one for the whole domain with a policy for staff. Access applies the more specific path, so `/full/` needs the stricter policy. Protect the `*.pages.dev` preview addresses too. Step-by-step recipes come with the `catalogue-git-source` change ([roadmap](roadmap.md)).

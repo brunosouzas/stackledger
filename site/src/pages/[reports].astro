@@ -1,0 +1,222 @@
+---
+// Reports page (licence-reports, Reports page): renewals, recurring cost per currency and per
+// group, one-off and planned costs, incomplete licences and the calendar link. The full site only:
+// the route is dynamic so that getStaticPaths can return no page at all when SiteData has no
+// report (the staff site), instead of a page that would have to hide itself. All text and amounts
+// are prepared by src/site/data.ts; the tables are plain HTML, with no script.
+import Base from '../layouts/Base.astro';
+import LinkOrText from '../components/LinkOrText.astro';
+import { href, rootFor, site } from '../lib/site';
+
+export function getStaticPaths() {
+  return 'report' in site ? [{ params: { reports: 'reports' }, props: { report: site.report } }] : [];
+}
+
+const { report } = Astro.props;
+const root = rootFor(Astro.url.pathname);
+const renewalTables = [
+  { id: 'renewals', title: 'Renewals', entries: report.renewals, none: `No licence renews from ${report.date} to ${report.to}.` },
+  { id: 'overdue', title: 'Overdue', entries: report.overdue, none: `No renewal date is before ${report.date}.` },
+];
+---
+
+<Base title="Reports" current="reports">
+  <article class="container section report">
+    <h1>Reports</h1>
+    <p class="lead">
+      Licence costs and renewals on {report.date}, with renewals up to {report.to} ({report.days} days). Each
+      currency has its own totals: amounts are never converted.
+    </p>
+    <p><a class="btn" href={href(root, report.calendar)} download="renewals.ics">Download the renewal calendar (renewals.ics)</a></p>
+    {
+      report.empty ? (
+        <p class="lead" data-empty-report>There are no licences.</p>
+      ) : (
+        <>
+          <section aria-labelledby="recurring">
+            <h2 id="recurring">Recurring cost</h2>
+            <p class="muted">
+              Active and to-confirm licences. A cost is the price of one cycle for the whole licence: monthly costs count
+              12 times a year, yearly ones a twelfth a month. Incomplete licences (an unknown cost, currency or cycle) add
+              to no amount; — means no complete licence adds to it.
+            </p>
+            {report.recurring.length === 0 ? (
+              <p>No recurring cost.</p>
+            ) : (
+              <div class="table-wrap">
+                <table data-report="recurring">
+                  <thead>
+                    <tr><th scope="col">Currency</th><th scope="col" class="amount">Per month</th><th scope="col" class="amount">Per year</th><th scope="col" class="amount">Incomplete</th></tr>
+                  </thead>
+                  <tbody>
+                    {report.recurring.map((row) => (
+                      <tr><td>{row.currency}</td><td class="amount">{row.monthly}</td><td class="amount">{row.yearly}</td><td class="amount">{row.incomplete}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          {renewalTables.map((table) => (
+            <section aria-labelledby={table.id}>
+              <h2 id={table.id}>{table.title}</h2>
+              {table.entries.length === 0 ? (
+                <p>{table.none}</p>
+              ) : (
+                <div class="table-wrap">
+                  <table data-report={table.id}>
+                    <thead>
+                      <tr><th scope="col">Date</th><th scope="col">Licence</th><th scope="col">Vendor</th><th scope="col">Cycle</th><th scope="col" class="amount">Cost</th></tr>
+                    </thead>
+                    <tbody>
+                      {table.entries.map((entry) => (
+                        <tr><td>{entry.date}</td><td><LinkOrText root={root} item={entry} /></td><td>{entry.vendor}</td><td>{entry.cycle}</td><td class="amount">{entry.cost}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          ))}
+
+          <section aria-labelledby="unknown-dates">
+            <h2 id="unknown-dates">Unknown renewal dates</h2>
+            {report.unknownDates.length === 0 ? (
+              <p>Every counted licence has a renewal date.</p>
+            ) : (
+              <ul class="plain-list">
+                {report.unknownDates.map((item) => (
+                  <li><LinkOrText root={root} item={item} /></li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {report.groupings.map((grouping) => (
+            <section aria-labelledby={`by-${grouping.key}`}>
+              <h2 id={`by-${grouping.key}`}>{grouping.title}</h2>
+              {grouping.key === 'zone' && (
+                <p class="muted">
+                  A licence's zone is the zone of the components that use it. A licence used in more than one zone counts
+                  whole under Several zones; a cost is never split.
+                </p>
+              )}
+              {grouping.groups.length === 0 ? (
+                <p>No recurring cost.</p>
+              ) : (
+                <div class="table-wrap">
+                  <table data-report={`by-${grouping.key}`}>
+                    <thead>
+                      <tr><th scope="col">{grouping.column}</th><th scope="col">Currency</th><th scope="col" class="amount">Per month</th><th scope="col" class="amount">Per year</th><th scope="col" class="amount">Incomplete</th></tr>
+                    </thead>
+                    <tbody>
+                      {grouping.groups.flatMap((group) => group.rows.map((row) => (
+                        <tr>
+                          <td>{group.synthetic ? <em>{group.label}</em> : group.label}</td><td>{row.currency}</td><td class="amount">{row.monthly}</td><td class="amount">{row.yearly}</td><td class="amount">{row.incomplete}</td>
+                        </tr>
+                      )))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          ))}
+
+          <section aria-labelledby="one-off">
+            <h2 id="one-off">One-off costs</h2>
+            <p class="muted">Paid once; not in the recurring totals.</p>
+            {report.oneOff.items.length === 0 ? (
+              <p>No complete one-off licence.</p>
+            ) : (
+              <div class="table-wrap">
+                <table data-report="one-off">
+                  <thead>
+                    <tr><th scope="col">Licence</th><th scope="col" class="amount">Cost</th><th scope="col">Renews on</th></tr>
+                  </thead>
+                  <tbody>
+                    {report.oneOff.items.map((item) => (
+                      <tr><td><LinkOrText root={root} item={item} /></td><td class="amount">{item.cost}</td><td>{item.renewsOn}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {report.oneOff.totals.length > 0 && (
+              <div class="table-wrap">
+                <table data-report="one-off-totals">
+                  <thead>
+                    <tr><th scope="col">Currency</th><th scope="col" class="amount">Total</th><th scope="col" class="amount">Incomplete</th></tr>
+                  </thead>
+                  <tbody>
+                    {report.oneOff.totals.map((row) => (
+                      <tr><td>{row.currency}</td><td class="amount">{row.total}</td><td class="amount">{row.incomplete}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section aria-labelledby="planned">
+            <h2 id="planned">Planned purchases</h2>
+            <p class="muted">Licences with status to-buy; not in the recurring totals.</p>
+            {report.planned.items.length === 0 ? (
+              <p>No planned purchase.</p>
+            ) : (
+              <div class="table-wrap">
+                <table data-report="planned">
+                  <thead>
+                    <tr><th scope="col">Licence</th><th scope="col">Cycle</th><th scope="col" class="amount">Cost</th><th scope="col" class="amount">Per month</th><th scope="col" class="amount">Per year</th></tr>
+                  </thead>
+                  <tbody>
+                    {report.planned.items.map((item) => (
+                      <tr><td><LinkOrText root={root} item={item} /></td><td>{item.cycle}</td><td class="amount">{item.cost}</td><td class="amount">{item.monthly}</td><td class="amount">{item.yearly}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {(report.planned.recurring.length > 0 || report.planned.oneOff.length > 0) && (
+              <div class="table-wrap">
+                <table data-report="planned-totals">
+                  <thead>
+                    <tr><th scope="col">Planned</th><th scope="col">Currency</th><th scope="col" class="amount">Per month</th><th scope="col" class="amount">Per year</th><th scope="col" class="amount">One-off</th><th scope="col" class="amount">Incomplete</th></tr>
+                  </thead>
+                  <tbody>
+                    {report.planned.recurring.map((row) => (
+                      <tr><td>Recurring</td><td>{row.currency}</td><td class="amount">{row.monthly}</td><td class="amount">{row.yearly}</td><td class="amount">—</td><td class="amount">{row.incomplete}</td></tr>
+                    ))}
+                    {report.planned.oneOff.map((row) => (
+                      <tr><td>One-off</td><td>{row.currency}</td><td class="amount">—</td><td class="amount">—</td><td class="amount">{row.total}</td><td class="amount">{row.incomplete}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section aria-labelledby="incomplete">
+            <h2 id="incomplete">Incomplete licences</h2>
+            {report.incomplete.length === 0 ? (
+              <p>Every licence has a known cost, currency and cycle.</p>
+            ) : (
+              <div class="table-wrap">
+                <table data-report="incomplete">
+                  <thead>
+                    <tr><th scope="col">Licence</th><th scope="col">Status</th><th scope="col">Unknown</th></tr>
+                  </thead>
+                  <tbody>
+                    {report.incomplete.map((item) => (
+                      <tr><td><LinkOrText root={root} item={item} /></td><td>{item.status}</td><td>{item.unknown}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </>
+      )
+    }
+  </article>
+</Base>

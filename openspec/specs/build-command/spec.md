@@ -6,7 +6,7 @@ Defines `stackledger build`, the command that turns a catalogue folder into the 
 ## Requirements
 
 ### Requirement: Command
-`stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` SHALL build the `full` site into `<dir>/full/` and the `staff` site into `<dir>/staff/`, and exit 0. `--date` sets the map date of the `full` site (default: the machine's local date). A missing `<dir>` is created. The command reads the catalogue folder only and SHALL NOT open network connections.
+`stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` SHALL build the `full` site into `<dir>/full/` and the `staff` site into `<dir>/staff/`, and exit 0. `--date` sets the map date and the report date of the `full` site (default: the machine's local date, captured once); a date whose 90-day report window ends after `9999-12-30` is a usage error. A missing `<dir>` is created. The command reads the catalogue folder only and SHALL NOT open network connections.
 
 #### Scenario: Two sites
 - **WHEN** the command runs as `stackledger build ./catalogue --out ./public`

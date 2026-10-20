@@ -10,6 +10,15 @@ spec:
   children: []
 ---
 apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: finance
+  title: Finance team
+spec:
+  type: team
+  children: []
+---
+apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: linear
@@ -228,7 +237,7 @@ spec:
     vendor: Northwind Software (fictitious)
     status: active
     cycle: yearly
-    cost: 120
+    cost: unknown
     currency: GBP
     renewsOn: 2028-01-01
     seats: 3
@@ -265,9 +274,9 @@ spec:
   licence:
     vendor: Northwind Software (fictitious)
     status: active
-    cycle: yearly
-    cost: 120
-    currency: GBP
+    cycle: monthly
+    cost: 20
+    currency: USD
     renewsOn: 2028-01-01
     seats: 3
     paidBy: Northwind Studio
@@ -285,7 +294,7 @@ spec:
     vendor: Northwind Software (fictitious)
     status: active
     cycle: yearly
-    cost: 120
+    cost: 144
     currency: GBP
     renewsOn: 2028-01-01
     seats: 3
@@ -303,8 +312,8 @@ spec:
   licence:
     vendor: Northwind Software (fictitious)
     status: active
-    cycle: yearly
-    cost: 120
+    cycle: monthly
+    cost: 8.75
     currency: GBP
     renewsOn: 2028-01-01
     seats: 3
@@ -322,9 +331,9 @@ spec:
   licence:
     vendor: Northwind Software (fictitious)
     status: active
-    cycle: yearly
-    cost: 120
-    currency: GBP
+    cycle: monthly
+    cost: 74
+    currency: USD
     renewsOn: 2028-01-01
     seats: 3
     paidBy: Northwind Studio
@@ -342,7 +351,7 @@ spec:
     vendor: Northwind Software (fictitious)
     status: active
     cycle: yearly
-    cost: 120
+    cost: 96
     currency: GBP
     renewsOn: 2028-01-01
     seats: 3
@@ -360,12 +369,12 @@ spec:
   licence:
     vendor: Northwind Software (fictitious)
     status: active
-    cycle: yearly
-    cost: 120
+    cycle: monthly
+    cost: 45
     currency: GBP
     renewsOn: 2028-01-01
     seats: 3
-    paidBy: Northwind Studio
+    paidBy: Finance team
     vaultItem: Fictitious Gusto subscription
     note: Synthetic example, no real subscription
 ---
@@ -379,12 +388,11 @@ spec:
   licence:
     vendor: Northwind Software (fictitious)
     status: active
-    cycle: yearly
-    cost: 120
+    cycle: monthly
+    cost: 5.75
     currency: GBP
     renewsOn: 2028-01-01
     seats: 3
-    paidBy: Northwind Studio
     vaultItem: Fictitious Google Workspace subscription
     note: Synthetic example, no real subscription
 ---
@@ -399,7 +407,7 @@ spec:
     vendor: Northwind Software (fictitious)
     status: active
     cycle: yearly
-    cost: 120
+    cost: 36
     currency: GBP
     renewsOn: 2027-06-26
     seats: 3
@@ -418,7 +426,7 @@ spec:
     vendor: Northwind Software (fictitious)
     status: to-buy
     cycle: yearly
-    cost: 120
+    cost: 240
     currency: GBP
     renewsOn: 2028-01-01
     seats: 3
@@ -432,16 +440,16 @@ metadata:
   name: licence-xero
 spec:
   type: licence
-  owner: group:northwind
+  owner: group:finance
   licence:
     vendor: Northwind Software (fictitious)
     status: active
-    cycle: yearly
-    cost: 120
+    cycle: monthly
+    cost: 29
     currency: GBP
     renewsOn: 2028-01-01
     seats: 3
-    paidBy: Northwind Studio
+    paidBy: Finance team
     vaultItem: Fictitious Xero subscription
     note: Synthetic example, no real subscription
 ---
@@ -451,7 +459,7 @@ metadata:
   name: licence-expensify
 spec:
   type: licence
-  owner: group:northwind
+  owner: group:finance
   licence:
     vendor: Northwind Software (fictitious)
     status: active
@@ -460,9 +468,27 @@ spec:
     currency: GBP
     renewsOn: 2028-01-01
     seats: 3
-    paidBy: Northwind Studio
+    paidBy: Finance team
     vaultItem: Fictitious Expensify subscription
     note: Synthetic example, no real subscription
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-brand-fonts
+  title: Brand fonts
+spec:
+  type: licence
+  owner: group:northwind
+  licence:
+    vendor: Northwind Type Foundry (fictitious)
+    status: active
+    cycle: one-off
+    cost: 300
+    currency: GBP
+    renewsOn: not-applicable
+    paidBy: Northwind Studio
+    note: Synthetic example, a one-off purchase used by no component
 ---
 apiVersion: stackledger/v1alpha1
 kind: Line

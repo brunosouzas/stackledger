@@ -30,7 +30,7 @@ stackledger is a small, local-first tool for people and small companies who want
 
 ## Status
 
-Early development. Nothing is released to npm yet. The catalogue format, the `validate`, `map` and `build` commands and the `mcp` server work from source (see [Usage](#usage)); the site from `build` is in review. The order of the rest is in the [roadmap](docs/roadmap.md).
+Early development. Nothing is released to npm yet. The catalogue format, the `validate`, `map` and `build` commands and the `mcp` server work from source (see [Usage](#usage)); licence reports (`stackledger report` and the Reports page) are in review. The order of the rest is in the [roadmap](docs/roadmap.md).
 
 ## Features
 
@@ -38,7 +38,7 @@ Planned for the first version:
 
 - **A metro map of your software.** Each line is a journey, such as "ship a feature" or "send an invoice", and each station is a piece of software. Interchanges are the tools several journeys depend on. Stations stay where you put them, so the map does not reshuffle when the catalogue changes.
 - **A software list with one page per item.** Owner, lifecycle, licence, the journeys it serves, a diagram of what it depends on and what depends on it, and what breaks if you remove it.
-- **Licence reports.** Renewals, cost per month and year, and items nobody owns, with a calendar feed of renewal dates.
+- **Licence reports.** Renewals, cost per month and year for each currency by owner, payer and zone, and items nobody owns, with a calendar file of renewal dates.
 - **Drift on a Mac.** What is installed but not declared, and what is declared but missing.
 - **Two views.** A `full` view for owners and finance, and a `staff` view without costs or renewal dates.
 - **An MCP server**, so your AI agent can query and check the catalogue.
@@ -94,6 +94,7 @@ node dist/cli.js validate /path/to/catalogue --json
 node dist/cli.js mcp /path/to/catalogue --view staff
 node dist/cli.js map examples/northwind --date 2027-06-01 > map.svg
 node dist/cli.js build examples/northwind --out ./public --date 2027-06-01
+node dist/cli.js report examples/northwind --date 2027-06-01 --format csv > licences.csv
 ```
 
 | Command | Does | Status |
@@ -102,9 +103,10 @@ node dist/cli.js build examples/northwind --out ./public --date 2027-06-01
 | `stackledger mcp <folder> [--view full\|staff]` | Serves the catalogue read-only to AI agents over MCP on stdio; see [docs/mcp.md](docs/mcp.md). Exit 2: usage or folder problem | Available from source |
 | `stackledger map <folder> [--view full\|staff] [--theme light\|dark] [--date YYYY-MM-DD]` | Draws a self-contained SVG on stdout; diagnostics and suggestions on stderr. Exit 0 even with catalogue errors; 2 for usage/folder problems. See [docs/map.md](docs/map.md) | Available from source |
 | `stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` | Builds the `full` and `staff` static sites into `<dir>/full/` and `<dir>/staff/`, with `_headers` and `robots.txt`, replacing an earlier build atomically; report on stderr. Exit 0 even with catalogue errors; 1: internal failure (the earlier build is left as it was); 2: usage or folder problem. See [docs/site.md](docs/site.md) | Available from source |
+| `stackledger report <folder> [--date YYYY-MM-DD] [--days N] [--format text\|json\|csv\|ics]` | Prints the licence report of the `full` view on stdout: renewals in the next `--days` (default 90), recurring cost per currency by owner, payer and zone, one-off and planned costs, incomplete licences; or the renewal calendar. Exit 0 even with catalogue errors; 1: the report could not be computed or written; 2: usage or folder problem. See [docs/reports.md](docs/reports.md) | Available from source |
 | `stackledger discover`, `stackledger drift` | Records what a Mac has installed, and compares it with the catalogue | Planned: `mac-discovery` |
 
-`validate`, `mcp` and `map` only read files; `build` writes only inside its output folder. None of them makes network calls or sends telemetry.
+`validate`, `mcp`, `map` and `report` only read files; `build` writes only inside its output folder. None of them makes network calls or sends telemetry.
 
 ## The website
 
@@ -120,6 +122,8 @@ node dist/cli.js build examples/northwind --out ./public --date 2027-06-01
 | **Licence, `full` site** | **The same licence, `staff` site**: the hidden fields are not in the files at all |
 | ![Journeys list with each line's badge and stop count](docs/images/site-journeys.png) | ![Journey page with its stops on a strip and the interchanges](docs/images/site-journey.png) |
 | **Journeys** | **Journey**: stops in order, with the other lines at each interchange |
+| ![Reports page with the recurring cost per currency and the renewals](docs/images/site-reports.png) | |
+| **Reports**, `full` site only: renewals, cost per month and year per currency and group, and the calendar file | |
 
 ## Catalogue format
 

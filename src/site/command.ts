@@ -26,6 +26,8 @@ import type { Stats } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { isDate, localDate } from '../graph.js';
+import { LAST_WINDOW_DATE, windowFits } from '../reports.js';
+import { REPORT_DAYS } from './data.js';
 import { loadFolder } from '../source.js';
 import { internal } from '../errors.js';
 import { problemCounts } from '../map/command.js';
@@ -167,6 +169,7 @@ function parseBuildArgs(args: string[]): { folder: string; out: string; date: st
   if (values.out === undefined || values.out === '') throw new Error('--out is required');
   const date = values.date ?? localDate();
   if (!isDate(date)) throw new Error('Map date must be a real YYYY-MM-DD date');
+  if (!windowFits(date, REPORT_DAYS)) throw new Error(`--date plus the ${REPORT_DAYS}-day report window must be no later than ${LAST_WINDOW_DATE}`);
   return { folder, out: values.out, date };
 }
 

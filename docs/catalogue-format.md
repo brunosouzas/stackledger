@@ -84,13 +84,15 @@ A licence is a Resource with `spec.type: licence`. It accepts the same metadata 
 | `spec.licence.vendor` | Required non-empty string |
 | `spec.licence.status` | Exactly `active`, `to-confirm`, `to-buy`, `cancelled` or `expired` |
 | `spec.licence.cycle` | Exactly `monthly`, `yearly`, `one-off`, `none` or `unknown` |
-| `spec.licence.cost` | Required number ≥0, or `unknown` |
+| `spec.licence.cost` | Required number ≥0, or `unknown`: the price of one cycle for the whole licence (all seats), as on the invoice |
 | `spec.licence.currency` | Required three capital ASCII letters, or `unknown` |
 | `spec.licence.renewsOn` | Required real calendar date `YYYY-MM-DD`, `not-applicable` or `unknown` |
 | `spec.licence.seats` | Optional integer ≥1 |
 | `spec.licence.paidBy`, `spec.licence.vaultItem`, `spec.licence.note` | Optional non-empty strings |
 
 All Resource fields outside `spec.licence` accept Backstage extensions, including `spec.lifecycle` with no rule. Use camelCase `renewsOn`, not `renews_on`. Use `paidBy` for who pays; no `owner_scope` or licence `kind`. Use `cancelled`, not `retired`. A `vaultItem` names an item in a password manager; it never holds the credential itself.
+
+`cost` is what one `cycle` costs for the whole licence: a `monthly` licence for 3 seats at 10 per seat has `cost: 30`, and `seats` never multiplies it. The [licence reports](reports.md) count `monthly` costs 12 times a year, `yearly` costs a twelfth a month, `none` as zero and `one-off` costs apart, one total per `currency` without conversion.
 
 ## Lines
 

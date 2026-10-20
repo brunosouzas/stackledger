@@ -137,6 +137,9 @@ describe('Command', () => {
     expect(existsSync(join(out, 'full', 'index.html'))).toBe(true);
     expect(existsSync(join(out, 'staff', 'index.html'))).toBe(true);
     expect(readdirSync(out).sort()).toEqual(['.stackledger-build', '_headers', 'full', 'robots.txt', 'staff']);
+    // The report date of the full site is the build date too (licence-reports, Site report date).
+    expect(readFileSync(join(out, 'full', 'reports', 'index.html'), 'utf8')).toContain(`renewals on ${DATE},`);
+    expect(existsSync(join(out, 'staff', 'reports'))).toBe(false);
   });
 
   test('Proxy reminder', () => {
@@ -167,6 +170,14 @@ describe('Usage errors', () => {
     expect(result.stderr).toContain('real YYYY-MM-DD');
     expect(existsSync(out)).toBe(false);
     expect(snapshot(base)).toEqual(before);
+  });
+
+  test('Date too late for the report window', async () => {
+    const out = fresh('late-date');
+    const result = await build(['build', catalogue, '--out', out, '--date', '9999-12-01']);
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('no later than 9999-12-30');
+    expect(existsSync(out)).toBe(false);
   });
 
   test('Every usage error prints a reason and usage, and creates or changes nothing', async () => {

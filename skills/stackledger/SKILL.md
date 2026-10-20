@@ -72,7 +72,7 @@ spec:
 
 - `status`: `active`, `to-confirm`, `to-buy`, `cancelled` or `expired`.
 - `cycle`: `monthly`, `yearly`, `one-off`, `none` or `unknown`.
-- `cost`: a number of 0 or more, or `unknown`. `currency`: three capital letters, or `unknown`.
+- `cost`: a number of 0 or more, or `unknown`: the price of one `cycle` for the whole licence (all seats), as on the invoice. `currency`: three capital letters, or `unknown`.
 - `renewsOn`: a real date `YYYY-MM-DD`, `not-applicable` or `unknown`.
 - Only the fields above are allowed inside `spec.licence`; `renews_on` or `price` are errors.
 
@@ -132,5 +132,7 @@ Run one of these after every edit:
 - Command line, from a stackledger clone: `node dist/cli.js validate /path/to/catalogue`.
 
 Each problem is `<path>:<line>:<column> <error|warning> <field> <message>`. Exit code 0 means no errors, 1 means errors, 2 means the command or the folder is wrong. Fix the errors, run it again, and report what you changed and the final counts.
+
+To check the costs, print the licence report: `node dist/cli.js report /path/to/catalogue` (renewals in the next 90 days, cost per month and year per currency, and the licences whose cost, currency or cycle is `unknown`; see [docs/reports.md](../../docs/reports.md)).
 
 To see the result as the website, build both sites into a folder outside the catalogue: `node dist/cli.js build /path/to/catalogue --out /path/to/out`. It needs no network; publish only `full/`, `staff/`, `_headers` and `robots.txt` from it ([docs/site.md](../../docs/site.md)).

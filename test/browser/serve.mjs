@@ -28,7 +28,7 @@ const headers = readFileSync(join(out, '_headers'), 'utf8').split('\n').slice(1)
     return [line.slice(0, at).trim(), line.slice(at + 1).trim()];
   });
 
-const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.txt': 'text/plain' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.txt': 'text/plain', '.ics': 'text/calendar; charset=utf-8' };
 
 function isFolder(path) {
   try {

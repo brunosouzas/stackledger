@@ -6,7 +6,7 @@ Defines the pages of the static catalogue site, what each shows from its view, h
 ## Requirements
 
 ### Requirement: Pages
-Each site SHALL have a map page at `/`, a software list at `/software/`, one page per served component at `/software/<name>/`, one page per served licence at `/licences/<name>/`, a journeys list at `/journeys/` and one page per drawn line at `/journeys/<name>/`, with `<name>` the item's `metadata.name` in lower case.
+Each site SHALL have a map page at `/`, a software list at `/software/`, one page per served component at `/software/<name>/`, one page per served licence at `/licences/<name>/`, a journeys list at `/journeys/` and one page per drawn line at `/journeys/<name>/`, with `<name>` the item's `metadata.name` in lower case. The `full` site SHALL also have `/reports/` and `/renewals.ics`, as `licence-reports` defines.
 
 #### Scenario: Item pages
 - **WHEN** the catalogue has components `editor` and `forge` and licence `licence-editor`
@@ -16,8 +16,12 @@ Each site SHALL have a map page at `/`, a software list at `/software/`, one pag
 - **WHEN** the catalogue has no drawn line
 - **THEN** the map page shows `No journeys yet` and the journeys list says there are none
 
+#### Scenario: Reports in full only
+- **WHEN** both sites are built
+- **THEN** the `full` site has `/reports/` and `/renewals.ics` and the `staff` site has neither
+
 ### Requirement: Layout
-Every page SHALL share one layout: a header with the site title (from `spec.site.title`, default `Software map`) and links to Map, Software and Journeys; a footer with the view name and the stackledger version; and a theme switch that follows `prefers-color-scheme` until the reader chooses light or dark, then remembers the choice in the browser.
+Every page SHALL share one layout: a header with the site title (from `spec.site.title`, default `Software map`) and links to Map, Software and Journeys, plus Reports in the `full` site; a footer with the view name and the stackledger version; and a theme switch that follows `prefers-color-scheme` until the reader chooses light or dark, then remembers the choice in the browser.
 
 #### Scenario: Theme remembered
 - **WHEN** the reader chooses dark on one page and opens another page
@@ -30,6 +34,10 @@ Every page SHALL share one layout: a header with the site title (from `spec.site
 #### Scenario: View in the footer
 - **WHEN** a page of the `staff` site is opened
 - **THEN** its footer says `staff view`
+
+#### Scenario: Reports link
+- **WHEN** any page is opened
+- **THEN** its header links Reports in the `full` site and not in the `staff` site
 
 ### Requirement: Look and theme
 The default look SHALL follow brunosouzas.com: its colour tokens for light and dark, the Heebo and Signika fonts shipped with the package, and its type scale. `spec.site.colors` SHALL override the matching light-theme tokens only. When the `Settings` in use has an error, the site uses the default title and colours. All colours and fonts come from one stylesheet of variables.
