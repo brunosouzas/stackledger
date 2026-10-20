@@ -20,7 +20,7 @@ Option 2, with exactly two views:
 | View | For | Contents |
 |---|---|---|
 | `full` | Owners, finance, IT | Everything |
-| `staff` | Everyone else | The map, the software list, item pages, owners and relations; no cost, currency, cycle, renewal date, payer, seats or password-manager item |
+| `staff` | Everyone else | The map, the software list, item pages, owners and relations; no cost, currency, cycle, renewal date, payer, seats, password-manager item or note |
 
 `stackledger build` writes `site/full/` and `site/staff/`. The fields removed from `staff` have a default list that a catalogue can change in its `stackledger.yaml`. With Cloudflare Access, one policy protects `/full/*` for a finance group and another protects the rest for all staff ([ADR 6](0006-authentication-at-an-identity-aware-proxy.md)). The MCP server takes the same `--view` option ([ADR 8](0008-read-only-mcp-early-no-ai-in-the-core.md)).
 

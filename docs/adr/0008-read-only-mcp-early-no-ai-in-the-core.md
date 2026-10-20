@@ -15,7 +15,7 @@ Many people, the main user included, already work with AI agents (Claude, Codex,
 
 ## Decision
 
-Option 2, delivered right after the catalogue format. The MCP server runs locally over stdio and only reads. Its tools find an item, list what depends on an item, show what breaks if an item is removed, list renewals in the next N days, list items with no owner or no relation, and validate a catalogue so an agent can check the YAML it wrote. It takes `--view staff` to serve only what the staff view shows ([ADR 7](0007-two-views-built-as-separate-sites.md)). The repository also ships an agent skill that teaches an agent to maintain a catalogue.
+Option 2, delivered right after the catalogue format. The MCP server runs locally over stdio and only reads. Its tools find an item, list what depends on an item, show what breaks if an item is removed, list renewals in the next N days, list gaps (items with no relation, on no journey, licences nobody uses), and validate a catalogue so an agent can check the YAML it wrote. It takes `--view staff` to serve only what the staff view shows ([ADR 7](0007-two-views-built-as-separate-sites.md)). The repository also ships an agent skill that teaches an agent to maintain a catalogue.
 
 ## Consequences
 

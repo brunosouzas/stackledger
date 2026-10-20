@@ -64,7 +64,7 @@ flowchart LR
 A software catalogue maps its owner's attack surface: which VPN, which secret store, which versions. stackledger is designed around that:
 
 - **No sign-in code in the tool.** The site sits behind an identity-aware proxy that uses your existing accounts (Google Workspace, Microsoft 365). [ADR 6](docs/adr/0006-authentication-at-an-identity-aware-proxy.md)
-- **Two views, built as two sites.** The `staff` site does not contain costs, renewal dates, payers, seats or password-manager references at all, so nothing leaks through the browser. You choose the hidden fields. [ADR 7](docs/adr/0007-two-views-built-as-separate-sites.md)
+- **Two views, built as two sites.** The `staff` site does not contain costs, renewal dates, payers, seats, password-manager references or notes at all, so nothing leaks through the browser. You choose the hidden fields. [ADR 7](docs/adr/0007-two-views-built-as-separate-sites.md)
 - **No secrets in the catalogue.** `validate` rejects fields named like secrets, private keys and card numbers, and never repeats the value in its message.
 - **Nothing leaves your machine.** No telemetry, no analytics, no third-party scripts; discovery only reads and never uses `sudo`.
 - **Read access to the catalogue repository equals the `full` view.** Give everyone else the website.
