@@ -16,7 +16,7 @@ Defines `stackledger report`, the command that prints the licence report of a ca
 - **THEN** it succeeds and no file in the folder changes
 
 ### Requirement: Usage errors
-When `--help` is among the arguments, the command SHALL print usage on stdout and exit 0. Otherwise a missing folder, an unknown option, a `--format` outside the allowed values, a `--days` that is not an integer from 0 to 366, a `--date` that is not a real date, more than one folder, or a folder that does not exist, is not a folder or cannot be read SHALL print the reason and usage on stderr, print nothing on stdout, and exit 2.
+When `--help` is among the arguments, the command SHALL print usage on stdout and exit 0. Otherwise a missing folder, an unknown option, a `--format` outside the allowed values, a `--days` that is not an integer from 0 to 366, a `--date` that is not a real date or whose window ends after `9999-12-30`, more than one folder, or a folder that does not exist, is not a folder or cannot be read SHALL print the reason and usage on stderr, print nothing on stdout, and exit 2.
 
 #### Scenario: Days out of range
 - **WHEN** the command runs with `--days 400`
@@ -25,6 +25,10 @@ When `--help` is among the arguments, the command SHALL print usage on stdout an
 #### Scenario: Unknown format
 - **WHEN** the command runs with `--format xlsx`
 - **THEN** the exit code is 2 and stderr names the allowed formats
+
+#### Scenario: Window past the last date
+- **WHEN** the command runs with `--date 9999-10-01 --days 91`
+- **THEN** the exit code is 2 and stderr says the window must end no later than `9999-12-30`
 
 #### Scenario: Missing folder
 - **WHEN** the folder does not exist
@@ -36,6 +40,10 @@ A failure while computing or serialising the report SHALL exit 1 with stdout emp
 #### Scenario: Amount too large
 - **WHEN** a licence cost cannot be written faithfully as a JSON number
 - **THEN** the exit code is 1, stdout is empty and stderr names the licence
+
+#### Scenario: Hostile label in an internal error
+- **WHEN** the amount that cannot be written belongs to a payer whose name holds a line break and a terminal escape
+- **THEN** stderr has one line and no control character
 
 #### Scenario: Closed pipe
 - **WHEN** stdout is closed after the first bytes

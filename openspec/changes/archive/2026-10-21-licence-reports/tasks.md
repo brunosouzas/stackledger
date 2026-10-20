@@ -7,9 +7,9 @@ Levels: U unit, I integration (CLI or built files), B browser (Playwright). Ever
 | licence-reports | Ninety-day window; Overdue; Window of zero days; Window of 366 days; Monthly and yearly; Seats and none; Exact sum; Two currencies; One-off with a date (report part); One-off beyond the window; Planned purchase; Cancelled; Unknown cost; Unknown currency; Incomplete one-off and planned; Group with only an unknown currency; Licence used in two zones; Unused licence; Name that looks like a synthetic group; Zones with the same title | `test/unit/reports.test.ts` | U |
 | licence-reports | Yearly renewal; Calendar text escaped; Long non-ASCII title; Same input; Two catalogues; One-off with a date (calendar part) | `test/unit/ics.test.ts` | U |
 | licence-reports | Not in staff; Site report date; Page content; Empty report (page part) | `test/integration/site.test.ts` | I |
-| report-command | Default options; Read-only; Days out of range; Unknown format; Missing folder; Amount too large; Closed pipe; JSON totals; CSV rows; Formula in a title; One error; Empty report (command part) | `test/integration/report.test.ts` | I |
+| report-command | Default options; Read-only; Days out of range; Unknown format; Missing folder; Window past the last date; Amount too large; Hostile label in an internal error; Closed pipe; JSON totals; CSV rows; Formula in a title; One error; Empty report (command part) | `test/integration/report.test.ts` | I |
 | report-command | Large catalogue (elapsed time, run alone with `npm run test:perf`) | `test/perf/report.perf.test.ts` | I |
-| build-command | Two sites | `test/integration/build.test.ts` | I |
+| build-command | Two sites; Date too late for the report window (Command) | `test/integration/build.test.ts` | I |
 | catalogue-site | Item pages; No journeys; Reports in full only; Site title; View in the footer; Reports link | `test/integration/site.test.ts` | I |
 | catalogue-site | Theme remembered; the Reports page under the CSP | `test/browser/site.spec.ts` | B |
 | mcp-server | No folder; Unknown view; Missing folder; Help; Global help lists both commands | `test/integration/cli.test.ts` | I |
