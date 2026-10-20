@@ -83,19 +83,21 @@ function mayBeSettings(node: unknown, depth = 0): boolean {
 export function parseSource(path: string, text: string): { sources: Source[]; problems: Problem[]; settingsUnread: boolean } {
   const counter = new LineCounter();
   const documents = parseAllDocuments(text, { lineCounter: counter, prettyErrors: false, uniqueKeys: true, logLevel: 'silent' });
-  const parsed = parseDocuments(path, documents, counter);
-  return { ...parsed, settingsUnread: parsed.problems.some(p => p.severity === 'error') && documents.some(document => mayBeSettings(document.contents)) };
+  const { sources, problems, unread } = parseDocuments(path, documents, counter);
+  return { sources, problems, settingsUnread: unread.some(document => mayBeSettings(document.contents)) };
 }
-function parseDocuments(path: string, documents: ReturnType<typeof parseAllDocuments>, counter: LineCounter): { sources: Source[]; problems: Problem[] } {
+/** unread: the documents not checked because of their own failure, or every document when the file is invalid. */
+function parseDocuments(path: string, documents: ReturnType<typeof parseAllDocuments>, counter: LineCounter): { sources: Source[]; problems: Problem[]; unread: Document[] } {
   // A syntax failure invalidates the entire file, including earlier documents.
   const errors = documents.flatMap(document => document.errors);
-  if (errors.length) return { sources: [], problems: errors.map(error => {
+  if (errors.length) return { sources: [], unread: documents, problems: errors.map(error => {
     const position = counter.linePos(error.pos[0] ?? 0);
     // Parser messages can embed input, so only emit the parser's stable error code.
     return { ...fileProblem(path, `Invalid YAML (${error.code})`), line: position.line, column: position.col };
   }) };
   const sources: Source[] = [];
   const problems: Problem[] = [];
+  const unread: Document[] = [];
   for (const document of documents) {
     // An explicit scalar null is not an empty document; comments and blank documents have no source.
     if (document.contents === null || (document.contents?.range?.[0] === document.contents?.range?.[1])) continue;
@@ -109,9 +111,10 @@ function parseDocuments(path: string, documents: ReturnType<typeof parseAllDocum
       sources.push({ path, document, counter, value });
     } catch {
       problems.push(fileProblem(path, 'Document cannot be expanded safely'));
+      unread.push(document);
     }
   }
-  return { sources, problems };
+  return { sources, problems, unread };
 }
 
 /** Top-level failures are usage failures; descendants are recoverable file problems. */

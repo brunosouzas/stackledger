@@ -41,6 +41,8 @@ test('Unread files that are not settings keep the list in use', () => {
  expect(resolveHidden(checkFiles({ 'notes.yaml': ['note: "unclosed\n'], 'c.yaml': [full()] }))).toEqual(defaults);
  expect(resolveHidden(checkFiles({ 'a.yaml': [hiding([])], 'b.yaml': [set(full(), 'spec.licence.note', 'kind: Settings'), 'extra: *missing\n'] }))).toEqual([]);
  // An alias never resolves, so the hidden value it points at cannot decide.
+ // A valid Settings stays in use when another document of its file cannot be expanded.
+ expect(resolveHidden(checkFiles({ 'policy.yaml': [hiding(['vendor']), 'apiVersion: backstage.io/v1alpha1\nkind: Resource\nmetadata: {name: y}\nspec: {licence: {note: *missing}}\n'] }))).toEqual(['vendor']);
  const aliased = (note: string) => checkFiles({ 'a.yaml': [hiding([])], 'b.yaml': [`apiVersion: backstage.io/v1alpha1\nkind: Resource\nmetadata: {name: x}\nspec: {licence: {note: &n ${note}}}\nextra: *missing\n`] });
  expect(resolveHidden(aliased('Settings'))).toEqual(resolveHidden(aliased('ordinary')));
 });
