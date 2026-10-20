@@ -10,12 +10,12 @@
 
 ## 3. MCP server
 
-- [ ] 3.1 Add `@modelcontextprotocol/sdk` at an exact version; record it in `package-lock.json`; `npm audit` clean.
-- [ ] 3.2 Add `src/mcp.ts` with the six tools, permissive input schemas with checks in the handlers, output schemas, read-only annotations, the result envelope (`catalogue` per view), tool errors and stderr logs; register tools per view.
-- [ ] 3.3 Extend `src/cli.ts` with the `mcp` command (folder required, absolute path), its options and usage errors, and global help listing both commands; keep every `validate-command` scenario passing.
-- [ ] 3.4 Integration tests in `test/integration/mcp.test.ts`: one test per `mcp-server` scenario, named after it, through the SDK client over stdio against the built CLI.
-- [ ] 3.5 Leak test in `test/integration/staff-leak.test.ts`: distinctive hidden values, including one placed outside `spec.licence`, never appear in any raw `staff` response.
-- [ ] 3.6 Sandbox test: the server under the Node.js permission model (read-only; no network where supported); every tool succeeds and fixture hashes do not change.
+- [x] 3.1 Add `@modelcontextprotocol/sdk` at an exact version; record it in `package-lock.json`; `npm audit` clean.
+- [x] 3.2 Add `src/mcp.ts` with the six tools, permissive input schemas with checks in the handlers, output schemas, read-only annotations, the result envelope (`catalogue` per view), tool errors and stderr logs; register tools per view.
+- [x] 3.3 Extend `src/cli.ts` with the `mcp` command (folder required, absolute path), its options and usage errors, and global help listing both commands; keep every `validate-command` scenario passing.
+- [x] 3.4 Integration tests in `test/integration/mcp.test.ts`: one test per `mcp-server` scenario, named after it, through the SDK client over stdio against the built CLI.
+- [x] 3.5 Leak test in `test/integration/staff-leak.test.ts`: distinctive hidden values, including one placed outside `spec.licence`, never appear in any raw `staff` response.
+- [x] 3.6 Sandbox test: the server under the Node.js permission model (read-only; no network where supported); every tool succeeds and fixture hashes do not change.
 
 ## 4. Documentation and agent skill
 
