@@ -19,15 +19,16 @@ export const SEARCH_RADIUS = 64;
 
 const usable = (x: number, y: number): boolean => Number.isSafeInteger(x) && Number.isSafeInteger(y) && x >= 0 && y >= 0;
 
-/** Placed or already-suggested stops right before or after `ref` on any line, each once. */
+/** Placed or already-suggested stops right before or after any occurrence of `ref` on any line, each once. */
 function neighbourPoints(model: MapModel, ref: string, positions: Map<string, Point>): Point[] {
   const neighbours = new Set<string>();
   for (const line of model.lines) {
-    const index = line.stops.indexOf(ref);
-    if (index < 0) continue;
-    for (const neighbour of [line.stops[index - 1], line.stops[index + 1]]) {
-      if (neighbour && positions.has(neighbour)) neighbours.add(neighbour);
-    }
+    line.stops.forEach((stop, index) => {
+      if (stop !== ref) return;
+      for (const neighbour of [line.stops[index - 1], line.stops[index + 1]]) {
+        if (neighbour && neighbour !== ref && positions.has(neighbour)) neighbours.add(neighbour);
+      }
+    });
   }
   return [...neighbours].map(neighbour => positions.get(neighbour)!);
 }

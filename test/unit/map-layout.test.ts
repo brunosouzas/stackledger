@@ -31,6 +31,11 @@ test('Suggestions next to a huge stored column end and use safe integers',()=>{
  expect(suggestPositions(lone).suggestions).toEqual([{ref:'component:b',point:[0,0]},{ref:'component:c',point:[1,0]}]);
  const g=layoutMap(near);expect(g.stations.find(s=>s.name==='b')!.point.every(Number.isFinite)).toBe(true);
 },5000);
+test('Neighbours come from every occurrence of a repeated stop',()=>{
+ const m=model(component('a'),component('b'),component('c'),component('d'),journey('ship',['b','a','c','a','d']),positions({b:[0,0],c:[6,0],d:[12,0]}));
+ // Distinct neighbours b, c and d have mean [6,0], held by c; the nearest free cells are [5,0], [7,0] and [6,1]; row then column picks [5,0].
+ expect(suggestPositions(m).suggestions).toEqual([{ref:'component:a',point:[5,0]}]);
+});
 test('Station in the way',()=>{ const r=routeHop([0,0],[4,0],new Set(['2,0'])); expect(r.unrouted).toBe(false); expect(r.points).not.toContainEqual([2,0]); octilinear(r.points); });
 test('Straight when nothing is in the way',()=>{ const r=routeHop([0,0],[3,0],new Set()); expect(r.points).toEqual([[0,0],[1,0],[2,0],[3,0]]); expect(r.unrouted).toBe(false); });
 test('Far-away typo',()=>{ const start=performance.now();const r=routeHop([0,0],[100000,100000],new Set());expect(r.unrouted).toBe(true);expect(r.expanded).toBeLessThanOrEqual(50000); expect(r.points).toEqual([[0,0],[100000,100000]]);expect(performance.now()-start).toBeLessThan(1000); });
