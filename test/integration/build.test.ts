@@ -359,6 +359,63 @@ describe('Atomic replace', () => {
       expect(snapshot(out)).toEqual(before);
     }, 120_000);
 
+    // A failed undo leaves previous entries under the staging folder's old/; its journal lets the
+    // next build finish the undo before it removes any staging folder.
+    const UNDO_FAILED = /^stackledger build: publication failed and could not be undone; the previous entries are in .*\/old/;
+    const interrupt = async (out: string, step: number) => {
+      const other = writeFolder(fresh('other'), smallCatalogue([component('extra')]));
+      const result = await build(['build', other, '--out', out, '--date', '2031-01-01'], { faults: { step, undo: 1 } });
+      expect(result.status, result.stderr).toBe(1);
+      expect(result.stderr).toMatch(UNDO_FAILED);
+      expect(staging(out)).toHaveLength(1);
+      return join(out, staging(out)[0]!);
+    };
+
+    test.concurrent.each([5, 10])('An undo that failed at step %i is finished by the next build', async step => {
+      const out = fresh('undo');
+      cpSync(seed, out, { recursive: true });
+      const before = snapshot(out);
+      await interrupt(out, step);
+      expect(snapshot(out)).not.toEqual(before);
+      // The next build recovers first, then fails while preparing: the output is the earlier build again.
+      const next = await build(['build', catalogue, '--out', out, '--date', DATE], { faults: { prepare: true } });
+      expect(next.status, next.stderr).toBe(1);
+      expect(next.stderr).toMatch(/injected failure while preparing/);
+      expect(staging(out)).toEqual([]);
+      expect(snapshot(out)).toEqual(before);
+    }, 120_000);
+
+    test.concurrent('A recovered publication is reported, and the build then succeeds', async () => {
+      const out = fresh('undo-report');
+      cpSync(seed, out, { recursive: true });
+      const interrupted = await interrupt(out, 7);
+      const next = await build(['build', catalogue, '--out', out, '--date', DATE]);
+      expect(next.status, next.stderr).toBe(0);
+      expect(next.stderr).toContain(`Note: finished undoing the publication interrupted in ${interrupted}`);
+      expect(staging(out)).toEqual([]);
+      expect(snapshot(out)).toEqual(snapshot(seed));
+    }, 120_000);
+
+    test.concurrent('An interrupted publication that cannot be undone stops the build and deletes nothing', async () => {
+      const out = fresh('undo-stuck');
+      cpSync(seed, out, { recursive: true });
+      const before = snapshot(out);
+      const interrupted = await interrupt(out, 5);
+      // A read-only staging folder: the new full site cannot be moved back into it.
+      chmodSync(interrupted, 0o555);
+      const stuck = snapshot(out);
+      const next = await build(['build', catalogue, '--out', out, '--date', DATE]);
+      expect(next.status, next.stderr).toBe(1);
+      expect(next.stderr).toContain(`the publication interrupted in ${interrupted} could not be undone`);
+      expect(next.stderr).toContain('nothing was deleted');
+      expect(snapshot(out)).toEqual(stuck);
+      // Once the folder is writable again, the next build restores the earlier one.
+      chmodSync(interrupted, 0o755);
+      const again = await build(['build', catalogue, '--out', out, '--date', DATE], { faults: { prepare: true } });
+      expect(again.status, again.stderr).toBe(1);
+      expect(snapshot(out)).toEqual(before);
+    }, 120_000);
+
     test.concurrent('There is no eleventh step: the marker rename is the last one', async () => {
       const out = fresh('eleven');
       cpSync(seed, out, { recursive: true });

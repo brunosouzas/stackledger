@@ -37,6 +37,8 @@ Create `/path/to/out` first and give real paths (without symbolic links): the bu
 
 **Atomic replace.** Both sites are fully built in the staging folder before anything published changes. Then each entry (`staff`, `full`, `_headers`, `robots.txt`, `.stackledger-build`) is swapped by renames; the rename of the marker is the commit point. A failure before it undoes every rename, so the previous build stays as it was. A failure to remove the staging folder after it is only a warning; the next build removes stale staging folders first.
 
+Each rename is first written to a journal in the staging folder. If the undo itself fails (for example a folder made read-only during the build) or the process dies during publication, the previous entries stay in the staging folder's `old/` and the command exits 1 saying where they are. The next build reads the journal before it removes anything: it finishes the undo, says so in its report, and only then builds. When it cannot finish the undo (an entry is not where the journal expects it, or cannot be moved), it exits 1, names the staging folder and deletes nothing; move the entries in its `old/` back by hand, then remove it.
+
 **Deterministic.** The same catalogue, `--date` and stackledger version produce byte-identical files, whatever the order of files and documents in the catalogue folder.
 
 ## Pages
