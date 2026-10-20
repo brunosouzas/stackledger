@@ -4,44 +4,112 @@
  */
 import type { View } from '../views.js';
 import { reference, compareRefs, isDate, compareText } from '../identity.js';
+
 export type Point = [number, number];
 export interface MapLine { ref: string; name: string; title: string; badge: string; color: string; stops: string[] }
-export interface MapStation { ref: string; name: string; title: string; lines: string[]; deprecated: boolean; zone: string | undefined; licence: 'none' | 'solid' | 'hollow'; renewal: boolean }
+export interface MapStation {
+  ref: string;
+  name: string;
+  title: string;
+  lines: string[];
+  deprecated: boolean;
+  zone: string | undefined;
+  licence: 'none' | 'solid' | 'hollow';
+  renewal: boolean;
+}
 export interface MapZone { name: string; title: string; color: string }
-export interface MapModel { view: View['name']; lines: MapLine[]; stations: MapStation[]; positions: Map<string, Point>; occupied: Point[]; zones: MapZone[] }
+export interface MapModel {
+  view: View['name'];
+  lines: MapLine[];
+  stations: MapStation[];
+  positions: Map<string, Point>;
+  occupied: Point[];
+  zones: MapZone[];
+}
+
+type Component = View['components'][number];
+type Licence = View['licences'][number];
+type Line = View['lines'][number];
+
+const DAY = 86400000;
+
+/** Lines with a code first (upper-cased, by code point), then lines without; ties by name. */
+function compareLines(one: Line, two: Line): number {
+  const first = one.spec.code;
+  const second = two.spec.code;
+  return (first === undefined ? 1 : 0) - (second === undefined ? 1 : 0)
+    || compareText(first?.toUpperCase() ?? '', second?.toUpperCase() ?? '')
+    || compareText(one.metadata.name, two.metadata.name);
+}
+
+function drawnLines(view: View, components: Map<string, Component>): MapLine[] {
+  return [...view.lines].sort(compareLines).map(line => ({
+    ref: `line:${line.metadata.name}`,
+    name: line.metadata.name,
+    title: line.metadata.title ?? line.metadata.name,
+    badge: line.spec.code ?? Array.from(line.metadata.name)[0]!.toUpperCase(),
+    color: line.spec.color,
+    stops: line.spec.stops.flatMap(value => {
+      const target = reference(value);
+      const found = target?.kind === 'component' && target.namespace === 'default' ? components.get(target.key) : undefined;
+      return found ? [`component:${found.metadata.name}`] : [];
+    }),
+  })).filter(line => line.stops.length >= 2);
+}
+
 export function buildMapModel(view: View, date: string): MapModel {
   // Even a custom staff view that exposes renewsOn must remain date independent.
   if (view.name === 'full' && !isDate(date)) throw new Error('Map date must be a real YYYY-MM-DD date');
   const windowStart = view.name === 'full' ? Date.parse(`${date}T00:00:00Z`) : 0;
-  const windowEnd = windowStart + 30 * 86400000;
-  const components = new Map(view.components.map(c => [`component:${c.metadata.name.toLowerCase()}`, c]));
-  const licences = new Map(view.licences.map(l => [`resource:${l.metadata.name.toLowerCase()}`, l]));
-  const lines = [...view.lines].sort((a,b) => {
-    const ac = a.spec.code, bc = b.spec.code;
-    return (ac === undefined ? 1 : 0) - (bc === undefined ? 1 : 0)
-      || compareText(ac?.toUpperCase() ?? '', bc?.toUpperCase() ?? '') || compareText(a.metadata.name,b.metadata.name);
-  }).map(line => ({ ref: `line:${line.metadata.name}`, name: line.metadata.name, title: line.metadata.title ?? line.metadata.name,
-    badge: line.spec.code ?? Array.from(line.metadata.name)[0]!.toUpperCase(), color: line.spec.color,
-    stops: line.spec.stops.flatMap(value => { const r=reference(value); const c=r?.kind==='component' && r.namespace==='default' ? components.get(r.key) : undefined; return c ? [`component:${c.metadata.name}`] : []; })
-  })).filter(line => line.stops.length >= 2);
-  const drawn = new Set(lines.flatMap(l=>l.stops));
-  const stations: MapStation[] = [...components.values()].filter(c=>drawn.has(`component:${c.metadata.name}`)).map((c): MapStation => {
-    const details = (c.spec.dependsOn ?? []).flatMap(value => { const r=reference(value); const l=r?.namespace==='default' ? licences.get(r.key) : undefined; return l?.spec.licence ? [l.spec.licence] : []; });
-    const solid = details.filter(l=>l.status==='active' || l.status==='to-confirm');
-    return { ref:`component:${c.metadata.name}`, name:c.metadata.name, title:c.metadata.title ?? c.metadata.name,
-      lines:lines.filter(l=>l.stops.includes(`component:${c.metadata.name}`)).map(l=>l.ref), deprecated:c.spec.lifecycle.toLowerCase()==='deprecated',
-      zone:c.metadata.labels?.['stackledger/zone']?.toLowerCase(), licence:solid.length ? 'solid' : details.some(l=>l.status==='to-buy') ? 'hollow' : 'none',
-      renewal:view.name==='full' && solid.some(l=>isDate(l.renewsOn) && Date.parse(`${l.renewsOn}T00:00:00Z`)>=windowStart && Date.parse(`${l.renewsOn}T00:00:00Z`)<=windowEnd) };
-  }).sort((a,b)=>compareRefs(a.ref,b.ref));
-  const positions = new Map<string,Point>(), occupied:Point[] = [], seen=new Set<string>(), cells=new Set<string>();
-  for (const [value,point] of Object.entries(view.layout?.spec.stations ?? {})) {
+  const windowEnd = windowStart + 30 * DAY;
+  const components = new Map(view.components.map(item => [`component:${item.metadata.name.toLowerCase()}`, item]));
+  const licences = new Map(view.licences.map(item => [`resource:${item.metadata.name.toLowerCase()}`, item]));
+  const lines = drawnLines(view, components);
+  const drawn = new Set(lines.flatMap(line => line.stops));
+
+  const station = (item: Component): MapStation => {
+    const ref = `component:${item.metadata.name}`;
+    const details = (item.spec.dependsOn ?? []).flatMap(value => {
+      const target = reference(value);
+      const found: Licence | undefined = target?.namespace === 'default' ? licences.get(target.key) : undefined;
+      return found?.spec.licence ? [found.spec.licence] : [];
+    });
+    const solid = details.filter(detail => detail.status === 'active' || detail.status === 'to-confirm');
+    const renewsSoon = (renewsOn: string | undefined): boolean => {
+      if (renewsOn === undefined || !isDate(renewsOn)) return false;
+      const time = Date.parse(`${renewsOn}T00:00:00Z`);
+      return time >= windowStart && time <= windowEnd;
+    };
+    return {
+      ref,
+      name: item.metadata.name,
+      title: item.metadata.title ?? item.metadata.name,
+      lines: lines.filter(line => line.stops.includes(ref)).map(line => line.ref),
+      deprecated: item.spec.lifecycle.toLowerCase() === 'deprecated',
+      zone: item.metadata.labels?.['stackledger/zone']?.toLowerCase(),
+      licence: solid.length ? 'solid' : details.some(detail => detail.status === 'to-buy') ? 'hollow' : 'none',
+      renewal: view.name === 'full' && solid.some(detail => renewsSoon(detail.renewsOn)),
+    };
+  };
+  const stations = [...components.values()]
+    .filter(item => drawn.has(`component:${item.metadata.name}`))
+    .map(station)
+    .sort((one, two) => compareRefs(one.ref, two.ref));
+
+  const positions = new Map<string, Point>();
+  const occupied: Point[] = [];
+  const seen = new Set<string>();
+  const cells = new Set<string>();
+  for (const [value, point] of Object.entries(view.layout?.spec.stations ?? {})) {
     occupied.push([...point]);
-    const r=reference(value), c=r?.namespace==='default' ? components.get(r.key) : undefined;
-    const ref=c ? `component:${c.metadata.name}` : undefined, cell=point.join(',');
-    if (ref && !seen.has(ref) && !cells.has(cell)) positions.set(ref,[...point]);
+    const target = reference(value);
+    const found = target?.namespace === 'default' ? components.get(target.key) : undefined;
+    const ref = found ? `component:${found.metadata.name}` : undefined;
+    const cell = point.join(',');
+    if (ref && !seen.has(ref) && !cells.has(cell)) positions.set(ref, [...point]);
     if (ref) seen.add(ref);
     // Undrawn and even unresolved stored keys still reserve their cell.
     cells.add(cell);
   }
-  return { view:view.name, lines, stations, positions, occupied, zones:structuredClone(view.layout?.spec.zones ?? []) };
+  return { view: view.name, lines, stations, positions, occupied, zones: structuredClone(view.layout?.spec.zones ?? []) };
 }
