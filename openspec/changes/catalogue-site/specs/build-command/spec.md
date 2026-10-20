@@ -23,7 +23,7 @@ When `--help` is among the arguments, the command SHALL print usage on stdout an
 - **THEN** the exit code is 2 and nothing is written
 
 ### Requirement: Safe output folder
-After resolving symbolic links, the output folder SHALL be refused, with exit 2 and no change, when it is the catalogue folder, inside it, contains it, or is a non-empty folder without the marker file `.stackledger-build` written by an earlier build. The marker has fixed content, with no date or version.
+After resolving symbolic links, the output folder SHALL be refused, with exit 2 and no change, when it is the catalogue folder, inside it, contains it, or is a non-empty folder without the marker `.stackledger-build`: a regular file with fixed content, no date or version. It SHALL also be refused when `full`, `staff`, `_headers`, `robots.txt` or the marker is a symbolic link.
 
 #### Scenario: Output inside the catalogue
 - **WHEN** `--out` is `./catalogue/site`
@@ -32,6 +32,32 @@ After resolving symbolic links, the output folder SHALL be refused, with exit 2 
 #### Scenario: Unrelated non-empty folder
 - **WHEN** `--out` is a folder holding `notes.txt` and no marker
 - **THEN** the exit code is 2 and `notes.txt` is untouched
+
+#### Scenario: Marker that is not a file
+- **WHEN** `.stackledger-build` in `--out` is a folder, a symbolic link or has other content
+- **THEN** the exit code is 2 and nothing changes
+
+#### Scenario: Linked published entry
+- **WHEN** `full` in a marked `--out` is a symbolic link to another folder
+- **THEN** the exit code is 2 and the link's target is untouched
+
+### Requirement: Interrupted publication
+Publication steps SHALL be recorded in a journal inside the staging folder. When a failure before the commit cannot be undone, the command exits 1 and keeps the staging folder. The next build SHALL first finish that undo, or exit 1 naming the staging folder and delete nothing; only staging folders with no unfinished journal are removed.
+
+#### Scenario: Undo finished by the next build
+- **WHEN** an undo fails and the command runs again
+- **THEN** the previous sites are back in place before the new build starts
+
+#### Scenario: Undo impossible
+- **WHEN** the unfinished undo cannot be completed
+- **THEN** the exit code is 1, stderr names the staging folder and nothing is deleted
+
+### Requirement: Output folder identity
+The command SHALL record the output folder's real path and file identity after validation and check them again before creating staging, before each publication or undo rename and before every removal; a mismatch SHALL stop the command with exit 1 and no further change, also after the commit.
+
+#### Scenario: Folder swapped during a build
+- **WHEN** the output folder is replaced by a symbolic link to another folder during the build
+- **THEN** the exit code is 1 and the other folder is untouched
 
 ### Requirement: Atomic replace
 Both sites and the root files SHALL be fully prepared in a staging folder `.stackledger-tmp-*` inside the output folder before anything published changes, then published by renames whose last one is the commit point. A failure before the commit SHALL restore every previous entry byte for byte and exit 1. After the commit, a failure to remove the staging folder is a warning, with exit 0.
