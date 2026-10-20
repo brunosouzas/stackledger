@@ -33,7 +33,7 @@ Levels: U unit, I integration (built files or CLI), B browser (Playwright). Ever
 - [x] 3.1 `site/` project: tokens, fonts, `Base` layout, header, footer, theme switch, Astroplate credit.
 - [x] 3.2 Pages and scripts: map, software list, component, licence, journeys list, journey.
 - [x] 3.3 `src/site/relative.ts` and the fixed CSP; `_headers`, `robots.txt`, marker.
-- [ ] 3.4 Build-output tests (`test/integration/site.test.ts`): every `catalogue-site` and `site-security` scenario that can be checked on the built files.
+- [x] 3.4 Build-output tests (`test/integration/site.test.ts`): every `catalogue-site` and `site-security` scenario that can be checked on the built files.
 
 ## 4. Build command
 
