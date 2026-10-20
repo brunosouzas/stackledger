@@ -383,6 +383,15 @@ describe('Atomic replace', () => {
   });
 });
 
+test.concurrent('Catalogue text that mentions staging folders builds', async () => {
+  const text = 'Clean up .stackledger-tmp-* after a crashed build';
+  const folder = writeFolder(fresh('mentions-staging'), smallCatalogue([set(component('janitor'), 'metadata.description', text)]));
+  const out = fresh('mentions-staging-out');
+  const result = await build(['build', folder, '--out', out, '--date', DATE]);
+  expect(result.status, result.stderr).toBe(0);
+  expect(readFileSync(join(out, 'staff', 'software', 'janitor', 'index.html'), 'utf8')).toContain(text);
+}, 120_000);
+
 test.concurrent('The shipped CLI ignores the old STACKLEDGER_TEST_FAIL variable', async () => {
   const out = fresh('no-env-hook');
   const result = await build(['build', catalogue, '--out', out, '--date', DATE], { env: { STACKLEDGER_TEST_FAIL: 'prepare' } });

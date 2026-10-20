@@ -38,7 +38,7 @@ test('The scan rejects URL forms and inline code the build does not allow', () =
     'lazy.js': 'import("./later.js");new URL("x.png",import.meta.url);fetch("/_astro/x");import{y}from"astro/runtime";',
     'leak.js': 'const path = "/out/.stackledger-tmp-abc/work-full";',
   });
-  const problems = scan(site).join('\n');
+  const problems = scan(site, ['/out/.stackledger-tmp-abc']).join('\n');
   for (const expected of ['href="https://example.com/"', 'href="//cdn.example"', 'href="/full/"', 'src="data:image/png;base64,AA"',
     'inline <script>', '<style> element', 'style attribute', 'event-handler attribute onclick', 'c/index.html: CSP meta []',
     'url(https://example.com/x.png)', '@import //cdn.example/x.css', 'dynamic import(', 'import.meta.url', '/_astro/ string',
@@ -51,4 +51,33 @@ test('Escaped hostile text is not mistaken for markup', () => {
   const hostile = '&lt;img src=x onerror=alert(1)&gt; style=&quot;x&quot; &lt;/script&gt;&lt;script&gt;alert(1)&lt;/script&gt;';
   const site = folder({ 'index.html': page(`<h1>${hostile}</h1><a href="software/x/" title="${hostile}">ok</a>`) });
   expect(scan(site)).toEqual([]);
+});
+
+test('The scan rejects relative URLs that resolve outside the site folder', () => {
+  const site = folder({
+    'software/editor/index.html': page('<a href="../../../full/licences/private/">x</a><img src="../../_astro/ok.png" alt=""><img srcset="../../_astro/a.png 1x, ../../../b.png 2x" alt="">'),
+    'index.html': page('<a href="..">up</a><a href="software/%2e%2e/%2e%2e/full/">dots</a><a href="software/..%2F..%2Ffull/">slash</a><a href="..\\full\\">back</a>'),
+    '_astro/site.css': 'a{background:url(../../full/x.png)}@import "../../staff/x.css";b{background:url(ok.png)}i{background:url("../_astro/ok.png")}',
+    '_astro/map.js': 'import{a}from"../../full/licences.js";export{b}from"./shared.js";import"../ok.js";',
+  });
+  const problems = scan(site);
+  expect(problems).toEqual([
+    '_astro/map.js: import specifier "../../full/licences.js" leaves the site folder',
+    '_astro/site.css: url(../../full/x.png) leaves the site folder',
+    '_astro/site.css: @import ../../staff/x.css leaves the site folder',
+    'index.html: href=".." leaves the site folder',
+    'index.html: href="software/%2e%2e/%2e%2e/full/" leaves the site folder',
+    'index.html: href="software/..%2F..%2Ffull/" leaves the site folder',
+    'index.html: href="..\\full\\" leaves the site folder',
+    'software/editor/index.html: href="../../../full/licences/private/" leaves the site folder',
+    'software/editor/index.html: srcset part "../../../b.png 2x" leaves the site folder',
+  ]);
+});
+
+test('Catalogue text naming staging folders is not a leak; the build\'s own paths are', () => {
+  const site = folder({
+    'index.html': page('<p>Clean up .stackledger-tmp-* after a crashed build</p>'),
+    'leak.js': 'const path = "/out/.stackledger-tmp-3f9a/work-full/src";',
+  });
+  expect(scan(site, ['/out/.stackledger-tmp-3f9a', '/out/.stackledger-tmp-3f9a/work-full'])).toEqual(['leak.js: staging path in the output']);
 });

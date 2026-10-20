@@ -2,9 +2,11 @@
  *
  * Why: Astro has no relative base and writes root-absolute `/_astro/...` URLs. relativise(siteDir)
  * rewrites them in HTML URL attributes and in CSS `url()` and `@import`, relative to the file that
- * holds them, so a site works under any path prefix (`/full/`, `/staff/`). scan(siteDir) then lists
- * every URL form the rewrite does not handle, every piece of inline code and any page whose CSP
- * differs from POLICY; the build fails on any problem, before anything is published.
+ * holds them, so a site works under any path prefix (`/full/`, `/staff/`). scan(siteDir, buildPaths)
+ * then lists every URL form the rewrite does not handle, every relative URL that resolves outside
+ * the site folder (`../../../full/` from a `staff` page), every piece of inline code, any page whose
+ * CSP differs from POLICY and any build path left in a file; the build fails on any problem, before
+ * anything is published.
  *
  * HTML is read tag by tag: catalogue text is escaped by Astro and the SVG renderers, so `<` and `>`
  * never appear inside text or attribute values, and a hostile title cannot look like an attribute.
@@ -39,6 +41,24 @@ function attributes(text: string): Attribute[] {
 
 /** A URL that leaves the site: root-absolute, protocol-relative or with a scheme. */
 const leaves = (url: string): boolean => url.startsWith('/') || SCHEME.test(url);
+
+/** A made-up origin and folder for the site root; any URL resolving outside the folder escapes. */
+const SITE_FOLDER = '/root/';
+const SITE_ROOT = `https://site.invalid${SITE_FOLDER}`;
+/** Encoded `/` and `\`: a server that decodes them before resolving the path could climb out. */
+const ENCODED_SEPARATOR = /%2f|%5c/i;
+
+/** True when a relative `url`, resolved as a browser does against `file` (a path from the site
+ * root), lands outside the site folder: `../` past the root, `%2e%2e`, backslashes or an encoded
+ * separator. A URL the parser rejects counts as escaping. */
+function escapes(file: string, url: string): boolean {
+  try {
+    const { pathname } = new URL(url, SITE_ROOT + file);
+    return !pathname.startsWith(SITE_FOLDER) || ENCODED_SEPARATOR.test(pathname);
+  } catch {
+    return true;
+  }
+}
 
 /** Rewrite `/_astro/...` into a path relative to the folder of `file` (both relative to the site root). */
 function toRelative(file: string, url: string): string {
@@ -90,9 +110,11 @@ function scanHtml(file: string, html: string): string[] {
       const value = attr.value === undefined ? '' : decode(attr.value);
       if (attr.name === 'style') problems.push(`${file}: style attribute`);
       if (attr.name.startsWith('on')) problems.push(`${file}: event-handler attribute ${attr.name}`);
-      if (URL_ATTRIBUTES.has(attr.name) && leaves(value.trim())) problems.push(`${file}: ${attr.name}="${value}"`);
+      if (URL_ATTRIBUTES.has(attr.name)) problems.push(...urlProblems(file, `${attr.name}="${value}"`, value.trim()));
       if (attr.name === 'srcset') {
-        for (const part of value.split(',')) if (leaves(part.trim())) problems.push(`${file}: srcset part "${part.trim()}"`);
+        for (const part of value.split(',').map(item => item.trim())) {
+          problems.push(...urlProblems(file, `srcset part "${part}"`, part.split(/\s+/)[0] ?? ''));
+        }
       }
     }
     const equiv = attrs.find(attr => attr.name === 'http-equiv')?.value;
@@ -104,10 +126,18 @@ function scanHtml(file: string, html: string): string[] {
   return problems;
 }
 
+/** The problem with one URL of `file`, if any: it leaves the site (absolute, scheme) or escapes the
+ * site folder once resolved. `label` names the URL in the message. */
+function urlProblems(file: string, label: string, url: string): string[] {
+  if (leaves(url)) return [`${file}: ${label}`];
+  if (escapes(file, url)) return [`${file}: ${label} leaves the site folder`];
+  return [];
+}
+
 function scanCss(file: string, css: string): string[] {
   const problems: string[] = [];
-  for (const match of css.matchAll(/url\(\s*(["']?)([^"')]*)\1\s*\)/g)) if (leaves(match[2]!.trim())) problems.push(`${file}: url(${match[2]})`);
-  for (const match of css.matchAll(/@import\s+(?:url\()?\s*(["']?)([^"')\s;]*)\1/g)) if (leaves(match[2]!)) problems.push(`${file}: @import ${match[2]}`);
+  for (const match of css.matchAll(/url\(\s*(["']?)([^"')]*)\1\s*\)/g)) problems.push(...urlProblems(file, `url(${match[2]})`, match[2]!.trim()));
+  for (const match of css.matchAll(/@import\s+(?:url\()?\s*(["']?)([^"')\s;]*)\1/g)) problems.push(...urlProblems(file, `@import ${match[2]}`, match[2]!));
   return problems;
 }
 
@@ -117,20 +147,24 @@ function scanJs(file: string, js: string): string[] {
   if (/import\.meta\.url/.test(js)) problems.push(`${file}: import.meta.url`);
   if (/\/_astro\//.test(js)) problems.push(`${file}: /_astro/ string`);
   for (const match of js.matchAll(/(?:\bimport|\bexport)\s*(?:[\w*{}\s,$]*?\bfrom\s*)?["']([^"']+)["']/g)) {
-    if (!match[1]!.startsWith('./') && !match[1]!.startsWith('../')) problems.push(`${file}: import specifier "${match[1]}"`);
+    const specifier = match[1]!;
+    if (!specifier.startsWith('./') && !specifier.startsWith('../')) problems.push(`${file}: import specifier "${specifier}"`);
+    else if (escapes(file, specifier)) problems.push(`${file}: import specifier "${specifier}" leaves the site folder`);
   }
   return problems;
 }
 
-/** Every problem in a built site; an empty list means it may be published. */
-export function scan(siteDir: string): string[] {
+/** Every problem in a built site; an empty list means it may be published. `buildPaths` are the
+ * build's own paths (the staging folder, the working copy): none may appear in an output file.
+ * Only these exact paths count, so catalogue text that mentions `.stackledger-tmp-*` is fine. */
+export function scan(siteDir: string, buildPaths: readonly string[] = []): string[] {
   const problems: string[] = [];
   for (const file of listFiles(siteDir)) {
     const text = readFileSync(join(siteDir, file), 'utf8');
     if (file.endsWith('.html')) problems.push(...scanHtml(file, text));
     else if (file.endsWith('.css')) problems.push(...scanCss(file, text));
     else if (file.endsWith('.js') || file.endsWith('.mjs')) problems.push(...scanJs(file, text));
-    if (text.includes('.stackledger-tmp-')) problems.push(`${file}: staging path in the output`);
+    if (buildPaths.some(path => text.includes(path))) problems.push(`${file}: staging path in the output`);
   }
   return problems;
 }

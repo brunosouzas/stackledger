@@ -20,7 +20,7 @@
  */
 import { chmodSync, cpSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadFolder, type Loaded } from '../source.js';
 import { validateLoaded, type Catalogue } from '../validate.js';
@@ -152,7 +152,8 @@ async function buildView(staging: string, view: ViewName, data: SiteData): Promi
   const dir = join(staging, `site-${view}`);
   renameSync(join(work, 'dist'), dir);
   relativise(dir);
-  const problems = scan(dir);
+  // The staging folder's absolute path and random name, and the working copy, must not leak into a file.
+  const problems = scan(dir, [staging, work, basename(staging)]);
   if (problems.length) throw new Error(`The ${view} site has URL forms or inline code the build does not allow: ${problems.join('; ')}`);
   writeFileSync(join(dir, '_headers'), HEADERS);
   writeFileSync(join(dir, 'robots.txt'), ROBOTS);
