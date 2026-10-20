@@ -52,6 +52,9 @@ spec:
   type: tool
   lifecycle: active
   owner: group:northwind
+  dependsOn:
+    - component:github
+    - component:onepass
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Component
@@ -64,6 +67,7 @@ spec:
   owner: group:northwind
   dependsOn:
     - resource:licence-vercel
+    - component:github
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Component

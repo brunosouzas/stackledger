@@ -42,4 +42,4 @@ Levels: U unit, I integration (built files or CLI), B browser (Playwright). Ever
 ## 5. Browser checks and documentation
 
 - [x] 5.1 Playwright test (`test/browser/site.spec.ts`, CI job): both sites under `/full/` and `/staff/` of one local server; no CSP violation, no failed or external request; zoom, filters, highlight, station and diagram links, search; without JavaScript the map and table are shown.
-- [ ] 5.2 `docs/site.md` (pages, hosting, headers, the trailing-slash redirect the host must do, what to publish and not serving `--out` during a build), `spec.site` in `docs/catalogue-format.md`, README Usage row and screenshots of each page from `examples/northwind`, roadmap row 4 wording (own SVG diagrams, not Mermaid).
+- [x] 5.2 `docs/site.md` (pages, hosting, headers, the trailing-slash redirect the host must do, what to publish and not serving `--out` during a build), `spec.site` in `docs/catalogue-format.md`, README Usage row and screenshots of each page from `examples/northwind`, roadmap row 4 wording (own SVG diagrams, not Mermaid).

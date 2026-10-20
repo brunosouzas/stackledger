@@ -22,6 +22,7 @@ stackledger is a small, local-first tool for people and small companies who want
 - [Security](#security)
 - [Using it with AI agents](#using-it-with-ai-agents)
 - [Usage](#usage)
+- [The website](#the-website)
 - [Catalogue format](#catalogue-format)
 - [How this project is built](#how-this-project-is-built)
 - [Contributing](#contributing)
@@ -29,7 +30,7 @@ stackledger is a small, local-first tool for people and small companies who want
 
 ## Status
 
-Early development. Nothing is released to npm yet. The catalogue format, the `validate` and `map` commands and the `mcp` server work from source (see [Usage](#usage)). The order of the rest is in the [roadmap](docs/roadmap.md).
+Early development. Nothing is released to npm yet. The catalogue format, the `validate`, `map` and `build` commands and the `mcp` server work from source (see [Usage](#usage)); the site from `build` is in review. The order of the rest is in the [roadmap](docs/roadmap.md).
 
 ## Features
 
@@ -83,7 +84,7 @@ stackledger does not call any AI model. Instead, a read-only [MCP](https://model
 
 ## Usage
 
-The package is not published to npm yet. To run it from a clone, with Node.js 22 or later:
+The package is not published to npm yet. To run it from a clone, with Node.js 22.12 or later:
 
 ```sh
 npm ci
@@ -92,6 +93,7 @@ node dist/cli.js validate /path/to/catalogue
 node dist/cli.js validate /path/to/catalogue --json
 node dist/cli.js mcp /path/to/catalogue --view staff
 node dist/cli.js map examples/northwind --date 2027-06-01 > map.svg
+node dist/cli.js build examples/northwind --out ./public --date 2027-06-01
 ```
 
 | Command | Does | Status |
@@ -99,10 +101,25 @@ node dist/cli.js map examples/northwind --date 2027-06-01 > map.svg
 | `stackledger validate [folder]` | Checks a catalogue and reports each problem with file, line and field. Exit 0: no errors (warnings allowed); 1: catalogue errors; 2: usage or folder problem | Available from source |
 | `stackledger mcp <folder> [--view full\|staff]` | Serves the catalogue read-only to AI agents over MCP on stdio; see [docs/mcp.md](docs/mcp.md). Exit 2: usage or folder problem | Available from source |
 | `stackledger map <folder> [--view full\|staff] [--theme light\|dark] [--date YYYY-MM-DD]` | Draws a self-contained SVG on stdout; diagnostics and suggestions on stderr. Exit 0 even with catalogue errors; 2 for usage/folder problems. See [docs/map.md](docs/map.md) | Available from source |
-| `stackledger build` | Builds the `full` and `staff` sites | Planned: `catalogue-site` |
+| `stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` | Builds the `full` and `staff` static sites into `<dir>/full/` and `<dir>/staff/`, with `_headers` and `robots.txt`, replacing an earlier build atomically; report on stderr. Exit 0 even with catalogue errors; 1: internal failure (the earlier build is left as it was); 2: usage or folder problem. See [docs/site.md](docs/site.md) | Available from source |
 | `stackledger discover`, `stackledger drift` | Records what a Mac has installed, and compares it with the catalogue | Planned: `mac-discovery` |
 
-`validate`, `mcp` and `map` only read files, make no network calls and send no telemetry.
+`validate`, `mcp` and `map` only read files; `build` writes only inside its output folder. None of them makes network calls or sends telemetry.
+
+## The website
+
+`stackledger build` makes two static sites from one catalogue: `full` for owners and finance, `staff` for everyone else, without costs, renewal dates, payers, seats, password-manager references or notes. Serve them behind an identity-aware proxy, publishing only `full/`, `staff/`, `_headers` and `robots.txt`; [docs/site.md](docs/site.md) explains the pages, the hosting and the security rules. Screenshots from the fictitious [Northwind catalogue](examples/northwind/), dated 2027-06-01:
+
+| | |
+|---|---|
+| ![Map page with the metro map, line buttons and map symbols](docs/images/site-map-light.png) | ![The same map page in the dark theme](docs/images/site-map-dark.png) |
+| **Map**: zoom, pan, zone filter; the line buttons highlight a journey | **Dark theme**, remembered across pages |
+| ![Software list with search and filters](docs/images/site-software.png) | ![Component page for GitHub with its licence and neighbourhood diagram](docs/images/site-component.png) |
+| **Software**: every component and licence, with search and filters | **Component**: licence, journeys, what it depends on and what depends on it, removal impact |
+| ![Licence page in the full site with cost and renewal](docs/images/site-licence-full.png) | ![The same licence page in the staff site without cost or renewal](docs/images/site-licence-staff.png) |
+| **Licence, `full` site** | **The same licence, `staff` site**: the hidden fields are not in the files at all |
+| ![Journeys list with each line's badge and stop count](docs/images/site-journeys.png) | ![Journey page with its stops on a strip and the interchanges](docs/images/site-journey.png) |
+| **Journeys** | **Journey**: stops in order, with the other lines at each interchange |
 
 ## Catalogue format
 

@@ -44,9 +44,9 @@ Every checked document has `apiVersion`, `kind`, and `metadata.name`. A name is 
 | `Resource` | `backstage.io/v1alpha1` | Licence when `spec.type` is exactly `licence` |
 | `Line` | `stackledger/v1alpha1` | Ordered journey through components |
 | `MapLayout` | `stackledger/v1alpha1` | Station positions and zones |
-| `Settings` | `stackledger/v1alpha1` | Fields hidden from the staff view |
+| `Settings` | `stackledger/v1alpha1` | Fields hidden from the staff view; the site's title and colours |
 
-Any other pair is an error, except `System`, `API`, `Group`, `User`, `Domain`, `Location` and `Template`: these are counted as ignored regardless of apiVersion, without checking names, fields or secrets.
+Any other pair is an error, except `System`, `API`, `Group`, `User`, `Domain`, `Location` and `Template`: these are counted as ignored regardless of apiVersion, without checking names, fields or secrets. The one use of them is the [site](site.md#pages): it shows an owner such as `group:northwind` by the title of the `Group` or `User` document of that name, when that document has apiVersion `backstage.io/v1alpha1`, a valid name and nothing the secret scan rejects.
 
 A Resource requires a non-empty string `spec.type`. Other types such as `database` are ignored after identity, but remain reference targets. `license` and non-exact case variants of `licence` also warn that they are not read as licences.
 
@@ -138,6 +138,10 @@ spec:
   views:
     staff:
       hide: [cost, currency, renewsOn, paidBy, vaultItem, note]
+  site:
+    title: Northwind software
+    colors:
+      accent: '#E4002B'
 ```
 
 | Field | Rule |
@@ -146,8 +150,10 @@ spec:
 | `metadata.title` | Optional non-empty string |
 | `spec` | Required mapping; may be empty (`spec: {}`) |
 | `spec.views.staff.hide` | Optional list of licence field names without repeats, each one of `vendor`, `status`, `cycle`, `cost`, `currency`, `renewsOn`, `seats`, `paidBy`, `vaultItem` and `note` |
+| `spec.site.title` | Optional title of both [sites](site.md), a non-empty string of at most 60 characters; default `Software map` |
+| `spec.site.colors` | Optional mapping with any of `primary`, `accent`, `body` and `text`, each `#` and six hexadecimal digits (quote it: `#` starts a YAML comment). They replace the matching colours of the light theme only; the dark theme keeps its own |
 
-Unlisted fields anywhere in a Settings document are errors, so `spec.view` instead of `spec.views` is reported. When `hide` is given it replaces the default list entirely: `[cost]` hides only the cost, and `[]` hides nothing. Without `hide`, the default list applies.
+Unlisted fields anywhere in a Settings document are errors, so `spec.view` instead of `spec.views` is reported, and so is `spec.site.logo`. While the Settings document has an error, the sites use the default title and colours. When `hide` is given it replaces the default list entirely: `[cost]` hides only the cost, and `[]` hides nothing. Without `hide`, the default list applies.
 
 At most one Settings document is allowed; the earliest is used. A later one with another name gets an error naming the earlier file; one with the same name gets only the duplicate-name error.
 
