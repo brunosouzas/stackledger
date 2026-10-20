@@ -8,11 +8,11 @@ import type { Theme } from './themes.js';
 import type { Box } from './labels.js';
 import type { ZoneGeometry } from './zones.js';
 import type { Stroke } from './parallel.js';
-import { tag, escapeXml, number, color, tint, type Attributes } from './xml.js';
+import { badgeWidth } from './badges.js';
+import { tag, escapeXml, number, color, tint, SVG_NAMESPACE, type Attributes } from './xml.js';
 
 export { escapeXml } from './xml.js';
 
-const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 const HEADER_HEIGHT = 64;
 
 /** Element builders bound to one theme. Catalogue text only ever passes through `text` or `title`. */
@@ -137,10 +137,12 @@ function legendLayer(geometry: MapGeometry, theme: Theme, paint: Painter): strin
   parts.push(paint.text('Lines (journeys)', panel.x + 18, y, { 'font-size': 16, 'font-weight': 700 }));
   y += 30;
   for (const item of geometry.legend.lines) {
-    const box: Box = { x: panel.x + 18, y: y - 15, w: Math.max(20, item.badge.length * 9 + 6), h: 20 };
-    parts.push(paint.badge({ point: [panel.x + 28, y - 5], box, text: item.badge, color: item.color }));
-    parts.push(paint.line([panel.x + 56, y - 5], [panel.x + 85, y - 5], { stroke: item.color, 'stroke-width': theme.lineWidth }));
-    parts.push(paint.text(item.title, panel.x + 98, y));
+    // The same badge width as on the map; the sample and title move right of wider badges.
+    const box: Box = { x: panel.x + 18, y: y - 15, w: badgeWidth(item.badge), h: 20 };
+    const right = box.x + box.w;
+    parts.push(paint.badge({ point: [box.x + box.w / 2, y - 5], box, text: item.badge, color: item.color }));
+    parts.push(paint.line([right + 18, y - 5], [right + 47, y - 5], { stroke: item.color, 'stroke-width': theme.lineWidth }));
+    parts.push(paint.text(item.title, right + 60, y));
     y += 30;
   }
   y += 18;

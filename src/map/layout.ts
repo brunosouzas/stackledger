@@ -8,7 +8,7 @@ import { routeMap, type RoutedHop } from './route.js';
 import { parallelLines, GRID, type Stroke } from './parallel.js';
 import { placeLabels, segmentObstacle, textWidth, type Box, type Label, type Obstacle } from './labels.js';
 import { zoneGeometry, type ZoneGeometry } from './zones.js';
-import { placeBadges, type Badge } from './badges.js';
+import { badgeWidth, placeBadges, type Badge } from './badges.js';
 
 export type { Badge } from './badges.js';
 export interface Marker { kind: 'tick' | 'interchange'; box: Box; contacts: Point[]; normal: Point; a: Point; b: Point }
@@ -92,7 +92,12 @@ export function layoutMap(model: MapModel, lineWidth = 7): MapGeometry {
   const addBox = (box: Box): void => {
     extent.push([box.x, box.y], [box.x + box.w, box.y + box.h]);
   };
-  for (const box of [...labels.map(label => label.box), ...badges.map(badge => badge.box), ...stations.map(station => station.marker.box)]) addBox(box);
+  for (const box of [...labels.map(label => label.box), ...badges.map(badge => badge.box), ...markers]) addBox(box);
+  for (const station of stations) {
+    // Suggestion discs and renewal rings are drawn around the station point.
+    const radius = station.suggested ? 19 : station.renewal ? 17 : 0;
+    if (radius) addBox({ x: station.point[0] - radius, y: station.point[1] - radius, w: radius * 2, h: radius * 2 });
+  }
   for (const zone of zones) {
     addBox(zone.titleBox);
     addBox(bounding(zone.hull, zone.padding));
@@ -100,7 +105,7 @@ export function layoutMap(model: MapModel, lineWidth = 7): MapGeometry {
   const frame = bounding(extent, 48);
 
   const symbols = ['interchange', 'licence', 'licence to buy', 'suggested position', ...(model.view === 'full' ? ['renewal within 30 days'] : [])];
-  const legendWidth = Math.max(310, ...model.lines.map(line => textWidth(line.title) + 116));
+  const legendWidth = Math.max(310, ...model.lines.map(line => textWidth(line.title) + badgeWidth(line.badge) + 96));
   const legendBox: Box = { x: frame.x + frame.w + 28, y: frame.y + 12, w: legendWidth, h: 110 + model.lines.length * 30 + symbols.length * 32 };
   const viewBox: Box = {
     x: frame.x - 16,

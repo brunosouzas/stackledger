@@ -5,6 +5,7 @@ import { test, expect } from 'vitest';
 import { DOMParser } from '@xmldom/xmldom';
 import { renderSvg, escapeXml } from '../../src/map/svg.js';
 import { themes } from '../../src/map/themes.js';
+import { tag } from '../../src/map/xml.js';
 import { buildMapModel } from '../../src/map/model.js';
 import { layoutMap } from '../../src/map/layout.js';
 import { component, journey, positions, set, viewOf } from './map-helpers.js';
@@ -48,6 +49,15 @@ test('Staff ignores hidden fields and the date',()=>{
  for(const fields of variants)for(const value of [fields.renewsOn,fields.paidBy,fields.vaultItem,fields.note])expect(first).not.toContain(value);
 });
 test('Cross-document errors with repeated consecutive stops still produce a map',()=>{for(const stops of [['a','a'],['a','a','b'],['a','b','b'],['a','b','a']]){const g=geometry([component('a'),component('b'),journey('ship',stops),positions({a:[0,0],b:[3,0]})]);expect(g.lines).toHaveLength(1);expect(g.stations).toHaveLength(new Set(stops).size);safe(renderSvg(g,themes.light));}});
+test('Legend badges fit long codes without covering the line sample',()=>{
+ const g=geometry([component('a'),component('b'),journey('ship',['a','b'],'WWW'),positions({a:[0,0],b:[4,0]})]);
+ const doc=parseSvg(renderSvg(g,themes.light)),inside=(e:any)=>Number(e.getAttribute('x'))>=g.legend.box.x;
+ const badge=Array.from(doc.getElementsByTagName('rect')).filter(e=>e.getAttribute('fill')==='#FF0000'&&inside(e)).at(-1)!;
+ const sample=Array.from(doc.getElementsByTagName('line')).find(e=>e.getAttribute('stroke')==='#FF0000'&&Number(e.getAttribute('x1'))>=g.legend.box.x)!;
+ const mapBadge=g.badges[0]!.box;expect(Number(badge.getAttribute('width'))).toBe(mapBadge.w);
+ expect(Number(sample.getAttribute('x1'))).toBeGreaterThan(Number(badge.getAttribute('x'))+Number(badge.getAttribute('width')));
+});
+test('The root namespace and role are fixed values',()=>{expect(()=>tag('svg',{xmlns:'http://example.com/other'})).toThrow(/namespace/);expect(()=>tag('svg',{role:'presentation'})).toThrow(/role/);});
 test('Zone titles are readable in both themes',()=>{
  const luminance=(hex:string)=>{const [r,g,b]=[1,3,5].map(i=>{const c=parseInt(hex.slice(i,i+2),16)/255;return c<=0.03928?c/12.92:((c+0.055)/1.055)**2.4;});return 0.2126*r!+0.7152*g!+0.0722*b!;};
  const contrast=(a:string,b:string)=>{const [x,y]=[luminance(a),luminance(b)].sort((p,q)=>q-p);return (x!+0.05)/(y!+0.05);};

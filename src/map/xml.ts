@@ -12,6 +12,8 @@ const attributes = new Set([
 
 const ENTITIES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' };
 
+export const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+
 const HEX_COLOUR = /^#[0-9a-fA-F]{6}$/;
 
 function allowedInXml(code: number): boolean {
@@ -51,6 +53,8 @@ export function tag(name: string, attrs: Attributes = {}, children?: string): st
   if (!elements.has(name)) throw new Error('Unsupported SVG element');
   const values = Object.entries(attrs).map(([key, value]) => {
     if (!attributes.has(key)) throw new Error('Unsupported SVG attribute');
+    if (key === 'xmlns' && value !== SVG_NAMESPACE) throw new Error('Unsupported SVG namespace');
+    if (key === 'role' && value !== 'img') throw new Error('Unsupported SVG role');
     let text: string;
     if (typeof value === 'number') text = number(value);
     else if (key === 'fill' || key === 'stroke') text = color(value);
