@@ -20,7 +20,7 @@ node dist/cli.js build examples/northwind --out ./public --date 2027-06-01
 | 1 | An internal failure. Nothing published changed: the previous build, if any, is still there byte for byte. |
 | 2 | A usage or folder problem: `--help` aside, a missing folder or `--out`, an unknown option, an impossible date, more than one folder, a catalogue folder that is missing, not a folder or unreadable, or an `--out` that is a file. Nothing is created or changed. |
 
-The output folder is refused (exit 2) when, after resolving symbolic links, it is the catalogue folder, inside it, contains it, or is a non-empty folder without the marker of an earlier build. A missing output folder is created. Building again into the same folder replaces the previous build completely.
+The output folder is refused (exit 2) when, after resolving symbolic links, it is the catalogue folder, inside it, contains it, or is a non-empty folder without the marker of an earlier build. The marker counts only as a regular file (not a link or a folder) holding exactly the text stackledger writes. The folder is also refused when `full`, `staff`, `_headers`, `robots.txt` or the marker is a symbolic link: the build never renames or removes through a link. A missing output folder is created. Building again into the same folder replaces the previous build completely.
 
 stderr holds the report, in this order: the catalogue's error and warning counts with a hint to run `stackledger validate` (only when there is at least one), the map's suggested positions, unrouted hops and unused layout as [`stackledger map`](map.md) writes them for the `full` view, one line per site with its folder and page count, and a reminder that both folders must be served behind an identity-aware proxy.
 

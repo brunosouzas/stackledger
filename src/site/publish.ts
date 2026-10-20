@@ -14,7 +14,7 @@
  * What can go wrong: an undo rename can itself fail (for example a folder made read-only during
  * the build). Then the error says where the previous entries are, and the staging folder is kept.
  */
-import { lstatSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs';
+import { lstatSync, mkdirSync, readdirSync, renameSync, rmSync, type Stats } from 'node:fs';
 import { join } from 'node:path';
 import { InternalError } from '../errors.js';
 import { MARKER_NAME } from './policy.js';
@@ -33,12 +33,12 @@ export const ENTRIES: readonly { name: string; staged: string }[] = [
 
 interface Step { from: string; to: string }
 
-function exists(path: string): boolean {
+/** The entry's own status (links are not followed), or undefined when it does not exist. */
+function lstatOrUndefined(path: string): Stats | undefined {
   try {
-    lstatSync(path);
-    return true;
+    return lstatSync(path);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
     throw error;
   }
 }
@@ -63,7 +63,10 @@ export function publish(out: string, staging: string, failAt?: number): void {
   try {
     for (const entry of ENTRIES) {
       const target = join(out, entry.name);
-      if (exists(target)) move(target, join(old, entry.name));
+      const existing = lstatOrUndefined(target);
+      // Never rename through a link (command.ts refuses them before the build; this is the last check).
+      if (existing?.isSymbolicLink()) throw new Error(`${target} is a symbolic link`);
+      if (existing) move(target, join(old, entry.name));
       move(join(staging, entry.staged), target);
     }
   } catch (error) {

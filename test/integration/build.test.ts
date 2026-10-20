@@ -8,7 +8,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { execFile, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { component, layout, licence, line, set } from '../unit/helpers.js';
@@ -54,13 +54,16 @@ function writeFolder(path: string, files: Record<string, string>): string {
   return path;
 }
 
-/** Every entry under `dir` as relative path -> 'dir' or the SHA-256 of the file (byte-for-byte comparison). */
+/** Every entry under `dir` as relative path -> 'dir', 'link:<target>' or the SHA-256 of the file
+ * (byte-for-byte comparison). Links are recorded, never followed. */
 function snapshot(dir: string): Record<string, string> {
   const result: Record<string, string> = {};
   const walk = (relative: string) => {
     for (const entry of readdirSync(join(dir, relative), { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
       const path = join(relative, entry.name);
-      if (entry.isDirectory()) {
+      if (entry.isSymbolicLink()) {
+        result[path] = `link:${readlinkSync(join(dir, path))}`;
+      } else if (entry.isDirectory()) {
         result[path] = 'dir';
         walk(path);
       } else {
@@ -266,6 +269,50 @@ describe('Safe output folder', () => {
     expect(readdirSync(out)).toEqual(['notes.txt']);
     expect(readFileSync(join(out, 'notes.txt'), 'utf8')).toBe('keep me\n');
   });
+});
+
+describe('Marker and published entries', () => {
+  const NOT_OURS = /not written by stackledger build/;
+
+  test('A marker that is not the regular file stackledger writes is refused', async () => {
+    const elsewhere = writeFolder(fresh('real-marker'), { [MARKER_NAME]: MARKER });
+    const cases: [string, (out: string) => void][] = [
+      ['directory', out => mkdirSync(join(out, MARKER_NAME))],
+      ['symbolic link', out => symlinkSync(join(elsewhere, MARKER_NAME), join(out, MARKER_NAME))],
+      ['wrong content', out => writeFileSync(join(out, MARKER_NAME), 'marker\n')],
+    ];
+    const outs = cases.map(([, make]) => {
+      const out = writeFolder(fresh('marker'), { 'notes.txt': 'keep me\n' });
+      make(out);
+      return { out, before: snapshot(out) };
+    });
+    const results = await Promise.all(outs.map(({ out }) => build(['build', catalogue, '--out', out, '--date', DATE])));
+    results.forEach((result, i) => {
+      const label = cases[i]![0];
+      expect(result.status, `${label}: ${result.stderr}`).toBe(2);
+      expect(result.stderr, label).toMatch(NOT_OURS);
+      expect(snapshot(outs[i]!.out), label).toEqual(outs[i]!.before);
+    });
+    expect(snapshot(elsewhere)).toEqual({ [MARKER_NAME]: expect.any(String) });
+  }, 120_000);
+
+  test('A published entry that is a symbolic link is refused', async () => {
+    const names = ['full', 'staff', '_headers', 'robots.txt'];
+    const cases = names.map(name => {
+      const out = writeFolder(fresh('linked'), { [MARKER_NAME]: MARKER });
+      const target = writeFolder(fresh('link-target'), { 'keep.txt': 'keep me\n' });
+      symlinkSync(target, join(out, name));
+      return { name, out, target, before: snapshot(out), targetBefore: snapshot(target) };
+    });
+    const results = await Promise.all(cases.map(({ out }) => build(['build', catalogue, '--out', out, '--date', DATE])));
+    results.forEach((result, i) => {
+      const { name, out, target, before, targetBefore } = cases[i]!;
+      expect(result.status, `${name}: ${result.stderr}`).toBe(2);
+      expect(result.stderr, name).toContain(`${name} is a symbolic link`);
+      expect(snapshot(out), name).toEqual(before);
+      expect(snapshot(target), name).toEqual(targetBefore);
+    });
+  }, 120_000);
 });
 
 describe('Atomic replace', () => {

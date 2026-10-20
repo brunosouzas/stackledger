@@ -3,7 +3,8 @@
  *
  * Order, so that a usage error never creates or changes anything: parse the options, load the
  * catalogue folder, check the output folder (after resolving symbolic links: not the catalogue, not
- * inside it, not containing it, empty or marked by an earlier build). Only then is the output folder
+ * inside it, not containing it, empty or marked by an earlier build with a regular marker file
+ * holding the marker text, and no published entry that is a symbolic link). Only then is the output folder
  * created, stale `.stackledger-tmp-*` folders removed, a new staging folder made, both sites
  * prepared in it (build.ts) and published by renames (publish.ts).
  *
@@ -17,7 +18,7 @@
  * environment variable, so a user cannot trigger a fault.
  */
 import { randomBytes } from 'node:crypto';
-import { lstatSync, mkdirSync, readdirSync, realpathSync, rmSync, statSync } from 'node:fs';
+import { lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { parseArgs } from 'node:util';
 import { isDate, localDate } from '../graph.js';
@@ -25,8 +26,8 @@ import { loadFolder } from '../source.js';
 import { internal, InternalError } from '../errors.js';
 import { problemCounts } from '../map/command.js';
 import { prepareBuild, type PreparedBuild } from './build.js';
-import { MARKER_NAME } from './policy.js';
-import { publish, removeStaleStaging, STAGING_PREFIX } from './publish.js';
+import { MARKER, MARKER_NAME } from './policy.js';
+import { ENTRIES, publish, removeStaleStaging, STAGING_PREFIX } from './publish.js';
 
 const PROXY_REMINDER = 'Serve both folders only behind an identity-aware proxy: full/ for the people allowed to see costs, staff/ for everyone else.';
 
@@ -80,10 +81,20 @@ function checkOutput(out: string, catalogue: string): string {
     if (code === undefined) throw error;
     throw new Error('Output folder cannot be read');
   }
-  if (entries.length && !entries.includes(MARKER_NAME)) {
-    throw new Error(`Output folder is not empty and was not written by stackledger build (no ${MARKER_NAME})`);
+  if (entries.length && !isMarker(join(target, MARKER_NAME))) {
+    throw new Error(`Output folder is not empty and was not written by stackledger build (no ${MARKER_NAME} file with the marker text)`);
   }
+  // A rename or removal through a link would act outside the output folder: refuse it up front.
+  const linked = ENTRIES.find(entry => lstatOrUndefined(join(target, entry.name))?.isSymbolicLink());
+  if (linked) throw new Error(`Output folder entry ${linked.name} is a symbolic link; stackledger build does not replace links`);
   return target;
+}
+
+/** True when `path` is a regular file (not a link, not a folder) holding exactly the marker text. */
+function isMarker(path: string): boolean {
+  const stats = lstatOrUndefined(path);
+  if (!stats?.isFile() || stats.size !== Buffer.byteLength(MARKER)) return false;
+  return readFileSync(path, 'utf8') === MARKER;
 }
 
 /** Failures a test can inject into one build, to prove the undo and the cleanup. The CLI passes none. */
