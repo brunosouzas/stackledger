@@ -21,11 +21,11 @@
 
 ## 4. The validate command
 
-- [ ] 4.1 Implement `stackledger validate`, usage and exit codes. Prove "Default folder", "Help", "Help wins", "Unknown option", "Two folders", "No command", "Warnings only", "One error" and "Missing folder" in `test/integration/cli.test.ts` (integration, runs the built CLI on `test/fixtures/`).
-- [ ] 4.2 Implement text output, field paths, positions and counts. Prove "Error line", "Clean catalogue", "Annotation key with a slash", "Key with a quote", "Problem about a file", "Error on a nested field", "Error on a station key" and "Mixed folder" in `test/integration/output.test.ts` (integration).
-- [ ] 4.3 Implement `--json` and ordering. Prove "JSON for a pipeline" and "Two runs" in `test/integration/output.test.ts` (integration).
-- [ ] 4.4 Prove "Read-only" and "Offline run" in `test/integration/sandbox.test.ts` (integration, Node permission model plus the comparison with an unrestricted run and the file hashes, as in design D7; the network part is skipped with a message where `--allow-net` does not exist).
-- [ ] 4.5 Add `test/fixtures/demo/`, a valid catalogue of a fictitious company with every kind, and verify `node dist/cli.js validate test/fixtures/demo` exits 0 with 0 errors.
+- [x] 4.1 Implement `stackledger validate`, usage and exit codes. Prove "Default folder", "Help", "Help wins", "Unknown option", "Two folders", "No command", "Warnings only", "One error" and "Missing folder" in `test/integration/cli.test.ts` (integration, runs the built CLI on `test/fixtures/`).
+- [x] 4.2 Implement text output, field paths, positions and counts. Prove "Error line", "Clean catalogue", "Annotation key with a slash", "Key with a quote", "Problem about a file", "Error on a nested field", "Error on a station key" and "Mixed folder" in `test/integration/output.test.ts` (integration).
+- [x] 4.3 Implement `--json` and ordering. Prove "JSON for a pipeline" and "Two runs" in `test/integration/output.test.ts` (integration).
+- [x] 4.4 Prove "Read-only" and "Offline run" in `test/integration/sandbox.test.ts` (integration, Node permission model plus the comparison with an unrestricted run and the file hashes, as in design D7; the network part is skipped with a message where `--allow-net` does not exist).
+- [x] 4.5 Add `test/fixtures/demo/`, a valid catalogue of a fictitious company with every kind, and verify `node dist/cli.js validate test/fixtures/demo` exits 0 with 0 errors.
 
 ## 5. Documentation
 

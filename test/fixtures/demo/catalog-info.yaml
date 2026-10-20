@@ -1,0 +1,64 @@
+# Fictitious catalogue for Northwind Studio. Validate with node dist/cli.js validate test/fixtures/demo.
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: editor
+  title: Northwind Editor
+  labels:
+    stackledger/zone: delivery
+spec:
+  type: tool
+  lifecycle: active
+  owner: user:alex
+  dependsOn: [resource:licence-editor]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: forge
+spec:
+  type: service
+  lifecycle: active
+  owner: group:delivery
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: licence-editor
+spec:
+  type: licence
+  owner: user:alex
+  licence:
+    vendor: Northwind Studio
+    status: active
+    cycle: yearly
+    cost: 120
+    currency: GBP
+    renewsOn: 2027-06-30
+    seats: 2
+    paidBy: company
+    vaultItem: Northwind Editor subscription
+    note: Fictitious licence for the demo
+---
+apiVersion: stackledger/v1alpha1
+kind: Line
+metadata:
+  name: ship
+  title: Ship a feature
+spec:
+  code: S
+  color: '#4466FF'
+  stops: [component:editor, component:forge]
+---
+apiVersion: stackledger/v1alpha1
+kind: MapLayout
+metadata:
+  name: northwind
+spec:
+  stations:
+    component:editor: [0, 0]
+    component:forge: [2, 0]
+  zones:
+    - name: delivery
+      title: Delivery
+      color: '#4466FF'
