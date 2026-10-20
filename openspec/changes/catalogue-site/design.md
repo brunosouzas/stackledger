@@ -32,9 +32,9 @@ flowchart LR
 
 ### D2. Astro run from a working copy
 
-Astro writes `.astro/` into its root, so the shipped `site/` folder is copied into the staging folder `--out/.stackledger-tmp-*/work-<view>/` for each build and used as `root`; `node_modules` is linked to the package's, so `astro` and the fonts resolve. Because Vite defaults its own cache to `root/node_modules/.vite`, which through the link would land in the package, both Astro `cacheDir` and `vite.cacheDir` point into the staging folder. `outDir` is the staging folder's `site-<view>/`. Nothing goes to the system temporary directory. Telemetry is disabled with `ASTRO_TELEMETRY_DISABLED=1`; the spike checks that nothing is written under `$HOME` or in the package.
+Astro writes `.astro/` into its root, so the shipped `site/` folder is copied (and made writable) into the staging folder `--out/.stackledger-tmp-*/work-<view>/` for each build and used as `root`. Astro runs with that working copy as its current directory, and `outDir` is `work-<view>/dist`, renamed to `site-<view>/` afterwards: with `outDir` outside the current directory, Astro writes `<cwd>/.astro/.prerender/`. Packages (`astro`, fonts) resolve from the installed stackledger package through a small Vite resolver plugin; a `node_modules` symbolic link is not used, because the Node.js permission model refuses `fs.symlink` without full read and write access. `vite.ssr.noExternal: true` and `vite.environments.prerender.resolve.noExternal: true` bundle every dependency into the render step, so a package of the same name elsewhere in the tree (for example `cookie` from the MCP SDK) is never picked up. Both Astro `cacheDir` and `vite.cacheDir` point into the staging folder, and `logLevel` is `error` so Astro's output does not mix with the build report. The spike (`docs/spikes/2026-10-20-astro-build/`) proved this configuration. Nothing goes to the system temporary directory. Telemetry is disabled with `ASTRO_TELEMETRY_DISABLED=1`; the spike checks that nothing is written under `$HOME` or in the package.
 
-Versions: Astro 7 needs Vite 8 and Node >= 22.12. The current `overrides: { vite: 6.4.4 }` in `package.json` is removed (Vitest 4.1 accepts Vite 8), `engines.node` becomes `>=22.12`, and Astro is pinned to an exact 7.x release whose `engines` allows 22.12 (later 7.x releases require 22.22). CI keeps Node 22, 24 and 26. This narrows ADR 9's "Node >= 22" without changing its decision. Config: `output: 'static'`, `trailingSlash: 'always'`, `build.format: 'directory'`, `build.inlineStylesheets: 'never'`, `vite.build.assetsInlineLimit: 0`, no integrations, no `is:inline` and no `define:vars`.
+Versions: Astro 7 needs Vite 8 and Node >= 22.12. The current `overrides: { vite: 6.4.4 }` in `package.json` is removed (Vitest 4.1 accepts Vite 8), `engines.node` becomes `>=22.12`, and Astro is pinned to 7.3.8, the last 7.x whose `engines` allows 22.12 (7.4 requires 22.22); `esbuild` is pinned as a development dependency because Vite 8 no longer installs it. CI keeps Node 22, 24 and 26. This narrows ADR 9's "Node >= 22" without changing its decision. Config: `output: 'static'`, `trailingSlash: 'always'`, `build.format: 'directory'`, `build.inlineStylesheets: 'never'`, `vite.build.assetsInlineLimit: 0`, no integrations, no `is:inline` and no `define:vars`.
 
 ### D3. Relative URLs by a post-build rewrite
 
@@ -74,7 +74,7 @@ Unit tests on `SiteData` and the diagrams; build tests on the files of both site
 
 ## Risks / Trade-offs
 
-- **Dependency weight** (about 160 packages, 135 MB). Accepted by the owner; pinned versions, lockfile, `npm audit` in CI.
+- **Dependency weight** (281 packages, 159 MB installed, measured in the spike). Accepted by the owner; pinned versions, lockfile, `npm audit` in CI.
 - **Working around Astro defaults** (D2, D3) may break on an Astro upgrade; the spike and the build tests catch it.
 - **The look belongs to a personal site.** Companies change title and colours; a deeper theme is a later change.
 - **Playwright** adds a browser download to CI only.

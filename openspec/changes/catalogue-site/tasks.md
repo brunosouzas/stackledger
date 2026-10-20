@@ -1,6 +1,6 @@
 ## 0. Spike
 
-- [ ] 0.1 Prove the Astro workarounds before building pages: from an `npm pack` tarball installed into a read-only folder, build a two-page Astro site from a working copy inside the output staging folder (D2), with the config in D2, the relative-URL rewrite (D3) and the fixed CSP (D4); serve it under `/full/` and `/staff/` and load it in Playwright with no failed request and no CSP violation; list every path written (including under `$HOME` and the package); include nested pages, a shared chunk and a CSS font; confirm the installed dependency tree uses Vite 8 without the old override and that the pinned Astro 7.x runs on Node 22.12. Report findings in `docs/spikes/<date>-astro-build/README.md`; stop and report if a workaround does not hold.
+- [x] 0.1 Prove the Astro workarounds before building pages: from an `npm pack` tarball installed into a read-only folder, build a two-page Astro site from a working copy inside the output staging folder (D2), with the config in D2, the relative-URL rewrite (D3) and the fixed CSP (D4); serve it under `/full/` and `/staff/` and load it in Playwright with no failed request and no CSP violation; list every path written (including under `$HOME` and the package); include nested pages, a shared chunk and a CSS font; confirm the installed dependency tree uses Vite 8 without the old override and that the pinned Astro 7.x runs on Node 22.12. Report findings in `docs/spikes/<date>-astro-build/README.md`; stop and report if a workaround does not hold.
 
 ## Scenario to test map
 
