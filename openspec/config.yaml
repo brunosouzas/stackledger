@@ -2,7 +2,7 @@
 schema: spec-driven
 
 context: |
-  softwaremetro is an open-source tool (TypeScript, published to npm,
+  stackledger is an open-source tool (TypeScript, published to npm,
   Apache-2.0) that governs the software and licences of one person or a small
   company. It reads a catalogue of YAML files in Backstage catalog-info format
   (a subset) plus two kinds of its own: a line (an ordered user journey through

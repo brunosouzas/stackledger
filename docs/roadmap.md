@@ -6,11 +6,11 @@ The first version (v1) is split into OpenSpec changes, delivered in this order. 
 
 | # | Change | Delivers |
 |---|---|---|
-| 1 | `catalogue-model` | The catalogue format and `softwaremetro validate`: components and licence resources in the Backstage subset, lines (journeys), the map layout, loading from a local folder, and errors that name the file and field |
+| 1 | `catalogue-model` | The catalogue format and `stackledger validate`: components and licence resources in the Backstage subset, lines (journeys), the map layout, loading from a local folder, and errors that name the file and field |
 | 2 | `metro-map-engine` | The map as SVG: stored station positions, octilinear routing that never runs through a station a line does not stop at, parallel bundles, labels that avoid collisions, zones, light and dark themes, and a position suggestion for a new station |
-| 3 | `catalogue-site` | `softwaremetro build`: a static Astro site with the map (zoom, zone filter, line highlight), the software list, one page per item (licence, owner, journeys, a Mermaid diagram of dependencies and dependants, removal impact), and `--public`, which strips versions, costs and vault references |
+| 3 | `catalogue-site` | `stackledger build`: a static Astro site with the map (zoom, zone filter, line highlight), the software list, one page per item (licence, owner, journeys, a Mermaid diagram of dependencies and dependants, removal impact), and `--public`, which strips versions, costs and vault references |
 | 4 | `licence-reports` | Renewals, cost per month and year by zone and owner, items with no owner, journey or relation, and an ICS feed of renewal dates |
-| 5 | `mac-discovery` | `softwaremetro discover` (Homebrew, App Store, `/Applications`, launchd, mise; read-only, one snapshot file per machine) and `softwaremetro drift` (installed but undeclared, declared but missing). Discovery proposes relations it can infer; a person confirms them |
+| 5 | `mac-discovery` | `stackledger discover` (Homebrew, App Store, `/Applications`, launchd, mise; read-only, one snapshot file per machine) and `stackledger drift` (installed but undeclared, declared but missing). Discovery proposes relations it can infer; a person confirms them |
 | 6 | `catalogue-git-source` | Building from a Git URL as well as a local folder, and a sample pipeline for a separate catalogue repository |
 | 7 | `mcp-server` | A read-only MCP server over stdio: query items, drift, renewals, and what breaks if an item is removed |
 

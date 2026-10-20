@@ -1,6 +1,6 @@
-# softwaremetro: project context
+# stackledger: project context
 
-Open-source tool that reads a software and licence catalogue (Backstage `catalog-info.yaml` format, kept in a separate Git repository or a local folder) and builds a static website with a metro-map view, a software list and licence reports. Owner: Bruno Souza. Human documentation lives in the brain vault under `10-personal/projects/softwaremetro/`.
+Open-source software governance tool. It reads a software and licence catalogue (Backstage `catalog-info.yaml` format, kept in a separate Git repository or a local folder) and builds a static website with a metro-map view, a software list and licence reports. Owner: Bruno Souza. Human documentation lives in the brain vault under `10-personal/projects/stackledger/`.
 
 ## Technology
 
