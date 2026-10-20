@@ -7,8 +7,8 @@
 
 ## 2. Reading files
 
-- [ ] 2.1 Implement folder discovery, link handling and file limits. Prove "Nested and multi-document files", "Skipped folders and other files", "Link that leaves the folder", "Link to a folder inside", "Oversized file" and "Unreadable file" in `test/integration/files.test.ts` (integration, real files, permissions and symbolic links in a temporary folder).
-- [ ] 2.2 Implement YAML parsing with positions and document order. Prove "Broken file among good ones", "Duplicate key" and "Document that is a list" in `test/integration/files.test.ts` (integration), and "Case in paths" and "Two documents in one file" in `test/unit/order.test.ts` (unit).
+- [x] 2.1 Implement folder discovery, link handling and file limits. Prove "Nested and multi-document files", "Skipped folders and other files", "Link that leaves the folder", "Link to a folder inside", "Oversized file" and "Unreadable file" in `test/integration/files.test.ts` (integration, real files, permissions and symbolic links in a temporary folder).
+- [x] 2.2 Implement YAML parsing with positions and document order. Prove "Broken file among good ones", "Duplicate key" and "Document that is a list" in `test/integration/files.test.ts` (integration), and "Case in paths" and "Two documents in one file" in `test/unit/order.test.ts` (unit).
 
 ## 3. Document rules
 
