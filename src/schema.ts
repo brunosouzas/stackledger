@@ -46,10 +46,17 @@ export type LicenceField = typeof licenceFields[number];
 const hide = z.array(z.enum(licenceFields)).superRefine((list, context) => list.forEach((value, index) => {
   if (list.indexOf(value) < index) context.addIssue({ code: 'custom', message: 'Field name is already listed', path: [index] });
 }));
+/** Site tokens spec.site.colors may replace in the light theme; each maps to a --color-<name> variable. */
+export const siteColorNames = ['primary', 'accent', 'body', 'text'] as const;
+export type SiteColorName = typeof siteColorNames[number];
+const site = z.strictObject({
+  title: text.max(60, 'Must have maximum 60 characters').optional(),
+  colors: z.strictObject(Object.fromEntries(siteColorNames.map(key => [key, color.optional()])) as Record<SiteColorName, z.ZodOptional<typeof color>>).optional(),
+});
 export const settingsSchema = z.strictObject({
   apiVersion: z.literal('stackledger/v1alpha1'), kind: z.literal('Settings'),
   metadata: z.strictObject({ ...identity, title: text.optional() }),
-  spec: z.strictObject({ views: z.strictObject({ staff: z.strictObject({ hide: hide.optional() }).optional() }).optional() }),
+  spec: z.strictObject({ views: z.strictObject({ staff: z.strictObject({ hide: hide.optional() }).optional() }).optional(), site: site.optional() }),
 });
 export const schemas = { Component: componentSchema, Resource: licenceSchema, Line: lineSchema, MapLayout: layoutSchema, Settings: settingsSchema };
 export type Component = z.infer<typeof componentSchema>;

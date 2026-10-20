@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Command line: validate, mcp and map; run node dist/cli.js --help for their options.
+/** Command line: validate, mcp, map and build; run node dist/cli.js --help for their options.
  * Usage/folder failures exit 2 on stderr with empty stdout; internal failures exit 1 without usage. Validate reports problems on stdout;
  * map writes SVG on stdout and diagnostics on stderr. MCP stdout contains protocol messages only.
  */
@@ -9,7 +9,7 @@ import { validateFolder, type Result } from './validate.js';
 import { loadFolder } from './source.js';
 import { viewNames, type ViewName } from './views.js';
 import { reportFailure } from './errors.js';
-const usage = 'Usage: stackledger validate [folder] [--json]\n       stackledger mcp <folder> [--view full|staff]\n       stackledger map <folder> [--view full|staff] [--theme light|dark] [--date YYYY-MM-DD]\n       stackledger --help\n';
+const usage = 'Usage: stackledger validate [folder] [--json]\n       stackledger mcp <folder> [--view full|staff]\n       stackledger map <folder> [--view full|staff] [--theme light|dark] [--date YYYY-MM-DD]\n       stackledger build <folder> --out <dir> [--date YYYY-MM-DD]\n       stackledger --help\n';
 function text(result: Result): string {
   const lines = result.problems.map(p => `${p.path}:${p.line}:${p.column} ${p.severity} ${p.field ?? '-'} ${p.message}`);
   const s = result.summary;
@@ -48,7 +48,9 @@ async function main(args: string[]): Promise<void> {
     if (command === 'validate') await validate(args);
     else if (command === 'mcp') await mcp(args);
     else if (command === 'map') { const { mapCommand } = await import('./map/command.js'); await mapCommand(args); }
-    else throw new Error('Unknown command; expected validate, mcp or map');
+    // Seam for task 4.1 of catalogue-site: the build command's options, safe output folder and publication.
+    else if (command === 'build') throw new Error('The build command is not available yet');
+    else throw new Error('Unknown command; expected validate, mcp, map or build');
   } catch (error) {
     const { stderr, exitCode } = reportFailure(error, usage);
     process.stderr.write(stderr);

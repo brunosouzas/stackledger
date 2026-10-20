@@ -42,6 +42,7 @@ function schemaProblems(source: Source, issues: z.core.$ZodIssue[]): Problem[] {
     if (issue.code === 'invalid_type') message = `Expected ${issue.expected}`;
     else if (issue.code === 'invalid_value') message = `Allowed values: ${issue.values.map(String).join(', ')}`;
     else if (issue.code === 'too_small') message = `Must have minimum ${String(issue.minimum)}`;
+    else if (issue.code === 'too_big') message = `Must have maximum ${String(issue.maximum)}`;
     else if (issue.code === 'custom' || issue.code === 'invalid_format') message = issue.message;
     // A station's position is one field: point to that entry rather than an invalid tuple index.
     const stationPath = path[0] === 'spec' && path[1] === 'stations' ? path.slice(0, 3) : path;
