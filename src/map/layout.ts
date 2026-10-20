@@ -8,9 +8,10 @@ import { routeMap, type RoutedHop } from './route.js';
 import { parallelLines, GRID, type Stroke } from './parallel.js';
 import { placeLabels, segmentObstacle, textWidth, type Box, type Label, type Obstacle } from './labels.js';
 import { zoneGeometry, type ZoneGeometry } from './zones.js';
+import { placeBadges, type Badge } from './badges.js';
 export interface Marker { kind:'tick'|'interchange';box:Box;contacts:Point[];normal:Point;a:Point;b:Point }
-export interface StationGeometry extends MapStation { point:Point;suggested:boolean;marker:Marker }
-export interface Badge { point:Point;box:Box;text:string;color:string }
+export interface StationGeometry extends MapStation { point:Point;suggested:boolean;marker:Marker;licencePoint:Point|undefined }
+export type { Badge } from './badges.js';
 export interface MapGeometry { view:MapModel['view'];stations:StationGeometry[];lines:Stroke[];badges:Badge[];labels:Label[];zones:ZoneGeometry[];suggestions:Suggestion[];unrouted:RoutedHop[];legend:{lines:MapLine[];symbols:string[];box:Box};frame:Box;viewBox:Box }
 const bounding=(points:Point[],padding:number):Box=>{const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]),x=Math.min(...xs)-padding,y=Math.min(...ys)-padding;return {x,y,w:Math.max(...xs)-x+padding,h:Math.max(...ys)-y+padding};};
 export function layoutMap(model:MapModel,lineWidth=7):MapGeometry{
@@ -23,19 +24,14 @@ export function layoutMap(model:MapModel,lineWidth=7):MapGeometry{
     const normal=normals[0]??[0,-1],kind=s.lines.length>1?'interchange':'tick';
     const a=contacts[0]!,b:Point=[a[0]+normal[0]*11,a[1]+normal[1]*11];
     const box=kind==='tick'?bounding([a,b],lineWidth/2):bounding(contacts,7);
-    return {...s,point,suggested:suggestions.some(v=>v.ref===s.ref),marker:{kind,box,contacts,normal,a,b}};
+    const licencePoint:Point|undefined=s.licence==='none'?undefined:[box.x+box.w+7,box.y-2];
+    return {...s,point,suggested:suggestions.some(v=>v.ref===s.ref),marker:{kind,box,contacts,normal,a,b},licencePoint};
   });
-  const badges:Badge[]=[];
-  for(const line of lines){const p=line.points;
-    // A served line can repeat the same stop (a cross-document error). Keep its zero-length journey drawable.
-    const first=p[0]!,last=p.at(-1)!;
-    for(const [end,inner] of [[first,p[1]??[first[0]+1,first[1]]],[last,p.at(-2)??[last[0]-1,last[1]]]]){
-    const dx=end![0]-inner![0],dy=end![1]-inner![1],length=Math.hypot(dx,dy)||1;
-    const point:Point=[end![0]+dx/length*26,end![1]+dy/length*26],w=Math.max(20,textWidth(line.badge)+8);
-    badges.push({point,text:line.badge,color:line.color,box:{x:point[0]-w/2,y:point[1]-10,w,h:20}});
-  }}
-  const zones=zoneGeometry(model,pointMap),obstacles:Obstacle[]=[...stations.map(s=>s.marker.box),...badges.map(b=>b.box),...zones.map(z=>z.titleBox)];
-  for(const line of lines)for(let i=1;i<line.points.length;i++)obstacles.push(segmentObstacle(line.points[i-1]!,line.points[i]!,lineWidth));
+  const segments:Obstacle[]=[];
+  for(const line of lines)for(let i=1;i<line.points.length;i++)segments.push(segmentObstacle(line.points[i-1]!,line.points[i]!,lineWidth));
+  const markers:Box[]=[...stations.map(s=>s.marker.box),...stations.flatMap(s=>s.licencePoint?[{x:s.licencePoint[0]-6,y:s.licencePoint[1]-6,w:12,h:12}]:[])];
+  const badges=placeBadges(lines,[...markers,...segments]);
+  const zones=zoneGeometry(model,pointMap),obstacles:Obstacle[]=[...markers,...badges.map(b=>b.box),...zones.map(z=>z.titleBox),...segments];
   const labels=placeLabels(stations,obstacles);
   const extent:Point[]=[[0,0],[320,256],...lines.flatMap(l=>l.points)];
   const addBox=(b:Box)=>extent.push([b.x,b.y],[b.x+b.w,b.y+b.h]);

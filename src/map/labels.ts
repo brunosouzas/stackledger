@@ -54,9 +54,10 @@ function polygonAreaInBox(polygon:Point[],box:Box):number{
   }
   return Math.abs(clipped.reduce((sum,a,i)=>{const b=clipped[(i+1)%clipped.length]!;return sum+a[0]*b[1]-a[1]*b[0];},0))/2;
 }
+export function overlapScore(box:Box,obstacles:Obstacle[]):number{return obstacles.reduce((sum,o)=>sum+('polygon' in o?polygonAreaInBox(o.polygon,box):overlapArea(box,o)),0);}
 export function chooseLabel(candidates:Box[],obstacles:Obstacle[]):Box{
   let chosen=candidates[0]!,best=Infinity;
-  for(const candidate of candidates){const score=obstacles.reduce((sum,o)=>sum+('polygon' in o?polygonAreaInBox(o.polygon,candidate):overlapArea(candidate,o)),0);
+  for(const candidate of candidates){const score=overlapScore(candidate,obstacles);
     if(score<best-1e-8){best=score;chosen=candidate;}if(score<1e-8)break;
   }return chosen;
 }

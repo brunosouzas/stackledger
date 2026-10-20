@@ -48,7 +48,7 @@ export function renderSvg(geometry:MapGeometry,theme:Theme):string{
     const mark=(t.shadow.enabled?marker(s.marker,s.deprecated,lineColor,true):'')+marker(s.marker,s.deprecated,lineColor);
     const suggested=s.suggested?circle(s.point,18,{fill:'none',stroke:t.muted,'stroke-width':1.5,'stroke-dasharray':'4 3'}):'';
     const ring=s.renewal?circle(s.point,15,{fill:'none',stroke:t.renewal,'stroke-width':3}):'';
-    const lic=s.licence==='none'?'':licence([s.marker.box.x+s.marker.box.w+7,s.marker.box.y-2],s.licence==='hollow');
+    const lic=s.licencePoint?licence(s.licencePoint,s.licence==='hollow'):'';
     return tag('g',{'data-ref':s.ref},tag('title',{},escapeXml(s.title))+suggested+ring+mark+lic);
   }).join('');
   const labels=g.labels.map(label=>{const station=g.stations.find(s=>s.ref===label.ref)!;return label.rows.map((row,i)=>text(row,label.box.x,label.box.y+13+i*17,{fill:station.deprecated?t.muted:t.text,'font-weight':station.lines.length>1?700:500})).join('');}).join('');

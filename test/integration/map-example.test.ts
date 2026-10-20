@@ -21,6 +21,21 @@ test('Labels do not collide in the example',async()=>{
   for(const badge of g.badges)expect(hits(label.box,badge.box),`${label.ref} covers badge ${badge.text}`).toBe(false);
  }
 });
+test('Terminal badges in the example overlap no badge, station marker or licence marker',async()=>{
+ const catalogue=await validateFolder(example);
+ const hits=(a:any,b:any)=>a.x<b.x+b.w && b.x<a.x+a.w && a.y<b.y+b.h && b.y<a.y+a.h;
+ for(const view of ['full','staff'] as const){
+  const g=layoutMap(buildMapModel(applyView(catalogue.served,view,resolveHidden(catalogue)),'2027-06-01'));
+  expect(g.badges).toHaveLength(g.lines.length*2);
+  for(const [i,badge] of g.badges.entries()){
+   for(const other of g.badges.slice(i+1))expect(hits(badge.box,other.box),`badge ${badge.text} covers badge ${other.text}`).toBe(false);
+   for(const station of g.stations){
+    expect(hits(badge.box,station.marker.box),`badge ${badge.text} covers ${station.ref}`).toBe(false);
+    if(station.licencePoint)expect(hits(badge.box,{x:station.licencePoint[0]-6,y:station.licencePoint[1]-6,w:12,h:12}),`badge ${badge.text} covers licence of ${station.ref}`).toBe(false);
+   }
+  }
+ }
+});
 test('Every stroke in the example is octilinear',async()=>{
  const catalogue=await validateFolder(example);
  for(const view of ['full','staff'] as const){
