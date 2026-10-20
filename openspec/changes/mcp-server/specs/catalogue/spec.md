@@ -18,7 +18,7 @@ A checked document SHALL be one of: `backstage.io/v1alpha1` `Component`; `backst
 ## ADDED Requirements
 
 ### Requirement: Settings
-A catalogue SHALL have at most one `Settings` document; when there are more, the earliest in document order is used and each later one gets an error. A `Settings` document MAY have `spec.views.staff.hide`, a list of licence field names, each one of `vendor`, `status`, `cycle`, `cost`, `currency`, `renewsOn`, `seats`, `paidBy`, `vaultItem` and `note`, without repeats. An unlisted field anywhere in a `Settings` document SHALL be an error. By convention the document is kept in `stackledger.yaml` at the top of the catalogue folder; any file name is accepted.
+A catalogue SHALL have at most one `Settings` document; the earliest in document order is used and each later one gets an error. It MAY have `spec.views.staff.hide`: licence field names without repeats, each one of `vendor`, `status`, `cycle`, `cost`, `currency`, `renewsOn`, `seats`, `paidBy`, `vaultItem` and `note`. Any unlisted field in it SHALL be an error. It is kept by convention in `stackledger.yaml`; any file name works.
 
 #### Scenario: Staff hide list
 - **WHEN** a `Settings` document has `spec.views.staff.hide: [cost, renewsOn]`

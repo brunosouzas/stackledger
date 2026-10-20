@@ -64,7 +64,7 @@ A tool argument that names an item SHALL accept the catalogue's reference syntax
 - **THEN** the call returns a tool error that names `component:ghost`
 
 ### Requirement: find_items
-`find_items` SHALL accept optional `query`, `kind` (`component`, `licence` or `line`), `zone` and `limit` (1 to 200, default 50), and return the items matching every given filter. `query` matches, ignoring case, part of the name, title, description, a tag, or a licence string field visible in the view. `zone` matches a component's `stackledger/zone` label, ignoring case. Each item has `ref`, `kind` and, when present, `title`, `type`, `lifecycle`, `owner` and `zone`. The result has `items`, `total` (before the limit) and `truncated`.
+`find_items` SHALL accept optional `query`, `kind` (`component`, `licence` or `line`), `zone` and `limit` (1 to 200, default 50), and return the items matching every given filter. `query` matches, ignoring case, part of the name, title, description, a tag, or a visible licence string field. `zone` matches the `stackledger/zone` label, ignoring case. Items have `ref`, `kind` and, when present, `title`, `type`, `lifecycle`, `owner`, `zone`. The result has `items`, `total` and `truncated`.
 
 #### Scenario: Search by vendor
 - **WHEN** a licence has `vendor: Northwind Studio` and `find_items` is called with `query: northwind`
