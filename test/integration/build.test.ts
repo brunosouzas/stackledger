@@ -137,6 +137,9 @@ describe('Command', () => {
     expect(existsSync(join(out, 'full', 'index.html'))).toBe(true);
     expect(existsSync(join(out, 'staff', 'index.html'))).toBe(true);
     expect(readdirSync(out).sort()).toEqual(['.stackledger-build', '_headers', 'full', 'robots.txt', 'staff']);
+    // The report date of the full site is the build date too (licence-reports, Site report date).
+    expect(readFileSync(join(out, 'full', 'reports', 'index.html'), 'utf8')).toContain(`renewals on ${DATE},`);
+    expect(existsSync(join(out, 'staff', 'reports'))).toBe(false);
   });
 
   test('Proxy reminder', () => {

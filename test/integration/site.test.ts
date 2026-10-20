@@ -1,5 +1,5 @@
 /** Build-output tests of both sites (catalogue-site task 3.4): every catalogue-site and site-security
- * scenario that can be checked on the built files. Build first with npm run build; the sites are
+ * scenario that can be checked on the built files, and the site scenarios of licence-reports (task 3.1). Build first with npm run build; the sites are
  * built once per fixture in beforeAll (in parallel child processes) and then only read.
  * Fixtures are fictitious; hidden values are distinctive so that any leak shows.
  */
@@ -78,7 +78,8 @@ beforeAll(async () => {
   ]);
 }, 180_000);
 
-afterAll(cleanup);
+// Removing seven built sites can take more than the default 10 s while other test files run.
+afterAll(cleanup, 60_000);
 
 const tagsOf = (html: string) => [...html.matchAll(/<([A-Za-z][A-Za-z0-9:-]*)((?:\s[^<>]*?)?)\/?>/g)].map(match => ({ name: match[1]!.toLowerCase(), attrs: match[2] ?? '' }));
 const attrsOf = (text: string) => [...text.matchAll(/([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g)].map(match => ({ name: match[1]!.toLowerCase(), value: match[2] ?? match[3] ?? match[4] ?? '' }));
@@ -232,6 +233,67 @@ test('Owners by name', () => {
   }
   // Without an owner document, the reference itself is shown.
   expect(read(main.full, 'software/editor/index.html')).toContain('<dt>Owner</dt><dd>user:alex</dd>');
+});
+
+test('Reports in full only', () => {
+  for (const built of [main, example]) {
+    expect(pages(built.full)).toContain('reports/index.html');
+    expect(tree(built.full).has('renewals.ics')).toBe(true);
+    expect(pages(built.staff)).not.toContain('reports/index.html');
+    expect(tree(built.staff).has('renewals.ics')).toBe(false);
+  }
+});
+
+const REPORTS_LINK = /<a class="nav-link" href="(?:\.\.\/)*reports\/"[^>]*>Reports<\/a>/;
+
+test('Reports link', () => {
+  for (const page of pages(main.full)) {
+    const header = /<header[\s\S]*?<\/header>/.exec(read(main.full, page))![0];
+    expect(header, page).toMatch(REPORTS_LINK);
+  }
+  for (const page of pages(main.staff)) expect(read(main.staff, page), page).not.toContain('>Reports<');
+  // Relative from a nested page too.
+  expect(read(main.full, 'software/editor/index.html')).toContain('<a class="nav-link" href="../../reports/">Reports</a>');
+});
+
+// licence-reports
+
+test('Not in staff', () => {
+  for (const built of [main, example, broken]) {
+    expect(pages(built.staff).some(page => page.startsWith('reports/'))).toBe(false);
+    for (const [file, content] of tree(built.staff)) {
+      for (const value of ['renewals.ics', 'reports/', '>Reports<', 'Recurring cost']) expect(content.includes(value), `${file} ${value}`).toBe(false);
+    }
+  }
+});
+
+test('Site report date', () => {
+  const html = read(example.full, 'reports/index.html');
+  expect(html).toContain('Licence costs and renewals on 2027-06-01, with renewals up to 2027-08-30 (90 days).');
+  const calendar = read(example.full, 'renewals.ics');
+  const stamps = [...calendar.matchAll(/^DTSTAMP:(.*)\r$/gm)].map(match => match[1]);
+  expect(stamps.length).toBeGreaterThan(0);
+  for (const stamp of stamps) expect(stamp).toBe('20270601T000000Z');
+  // Another build date moves the report with it.
+  expect(read(other.full, 'reports/index.html')).toContain('renewals on 2031-01-01, with renewals up to 2031-04-01');
+});
+
+test('Page content', () => {
+  const html = read(example.full, 'reports/index.html');
+  const recurring = /<table data-report="recurring">([\s\S]*?)<\/table>/.exec(html)![1]!;
+  expect(recurring).toContain('<th scope="col" class="amount">Per month</th><th scope="col" class="amount">Per year</th>');
+  expect(recurring).toContain('<tr><td>GBP</td><td class="amount">120.00</td><td class="amount">1440.00</td><td class="amount">0</td></tr>');
+  expect(html).toMatch(/<a class="btn" href="\.\.\/renewals\.ics" download="renewals\.ics">/);
+  // Each licence links to its page.
+  expect(html).toContain('<a href="../licences/licence-github/">');
+  for (const heading of ['Renewals', 'Overdue', 'Unknown renewal dates', 'By owner', 'By payer', 'By zone', 'One-off costs', 'Planned purchases', 'Incomplete licences']) {
+    expect(html, heading).toMatch(new RegExp(`<h2 id="[^"]+">${heading}</h2>`));
+  }
+});
+
+test('Empty report', () => {
+  expect(read(hostile.full, 'reports/index.html')).toContain('There are no licences.');
+  expect(read(hostile.full, 'renewals.ics')).not.toContain('BEGIN:VEVENT');
 });
 
 // site-security

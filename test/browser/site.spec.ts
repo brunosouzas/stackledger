@@ -5,7 +5,8 @@
  * no failed request, no request outside the page's site prefix and none to another origin. Then the
  * interactions of the catalogue-site spec: zoom, reset, pan, zone filter, line highlight, station
  * links (click and Enter), diagram links, search, nothing matches, the remembered theme, and the
- * map and table without JavaScript. Data is the fictitious example in examples/northwind.
+ * map and table without JavaScript, and the full site's Reports page and calendar file (licence-reports).
+ * Data is the fictitious example in examples/northwind.
  */
 import { expect, test, type Page } from '@playwright/test';
 
@@ -241,6 +242,28 @@ test('Theme remembered', async ({ page }) => {
   await expect(page.locator('[data-theme-switch]')).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('.diagram.themed-dark')).toBeVisible();
   await expect(page.locator('.diagram.themed-light')).toBeHidden();
+});
+
+test('The Reports page under the CSP', async ({ page }) => {
+  const watched = await watch(page, '/full/');
+  await page.goto('/full/');
+  await page.getByRole('link', { name: 'Reports', exact: true }).first().click();
+  await expect(page).toHaveURL(/\/full\/reports\/$/);
+  await page.waitForLoadState('networkidle');
+  await expect(page.getByRole('heading', { level: 1, name: 'Reports' })).toBeVisible();
+  await expect(page.locator('table[data-report="recurring"] tbody tr').first()).toContainText('GBP');
+  await expect(page.locator('[data-theme-switch]')).toBeVisible();
+  // The calendar link points at a file of this site, served as a calendar.
+  const calendar = await page.request.get(await page.locator('a[href$="renewals.ics"]').evaluate(anchor => (anchor as HTMLAnchorElement).href));
+  expect(calendar.status()).toBe(200);
+  expect(calendar.headers()['content-type']).toContain('text/calendar');
+  expect(await calendar.text()).toMatch(/^BEGIN:VCALENDAR\r\n/);
+  expect(await violations(page)).toEqual([]);
+  expect(watched.problems).toEqual([]);
+  // The staff site has neither the page nor a link to it.
+  await page.goto('/staff/');
+  await expect(page.getByRole('link', { name: 'Reports', exact: true })).toHaveCount(0);
+  expect((await page.request.get('/staff/reports/')).status()).toBe(404);
 });
 
 test.describe('Without JavaScript', () => {

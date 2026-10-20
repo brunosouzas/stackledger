@@ -1,4 +1,4 @@
-/* Page-specific styles: map, software list, item and journey pages. Colours from tokens.css only. */
+/* Page-specific styles: map, software list, item, journey and reports pages. Colours from tokens.css only. */
 
 .kicker {
   margin: 0 0 0.25rem;
@@ -205,4 +205,24 @@
 
 .stop-list li {
   margin: 0.35rem 0;
+}
+
+/* Reports. */
+
+.report section {
+  margin-top: 2rem;
+}
+
+.report h2 {
+  margin-bottom: 0.5rem;
+}
+
+.report .table-wrap + .table-wrap {
+  margin-top: 1rem;
+}
+
+.report .amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }

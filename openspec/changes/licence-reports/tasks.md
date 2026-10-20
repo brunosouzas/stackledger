@@ -24,7 +24,7 @@ Levels: U unit, I integration (CLI or built files), B browser (Playwright). Ever
 
 ## 3. Site
 
-- [ ] 3.1 `SiteData.report` for the `full` view only, from the map's resolved date; Reports page, header link and `renewals.ics` in the `full` site; site tests; the browser test opens `/full/reports/` under the CSP.
+- [x] 3.1 `SiteData.report` for the `full` view only, from the map's resolved date; Reports page, header link and `renewals.ics` in the `full` site; site tests; the browser test opens `/full/reports/` under the CSP.
 
 ## 4. Documentation
 

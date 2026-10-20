@@ -9,6 +9,10 @@
  * the site's root without a leading slash ('software/editor/'); the layout makes them relative.
  * Owners show by name when `owners` (from src/site/owners.ts) names them, else as the raw reference.
  * The map is drawn without its title band and legend: the page shows both in HTML (`symbols`).
+ *
+ * The full data also carries the licence report (src/reports.ts) for the Reports page, at the map's
+ * date with a 90-day window, and the full build returns the renewal calendar text (src/ics.ts) for
+ * renewals.ics. Only FullSiteData has a `report` field, so staff data holding one is a type error.
  */
 import { compareRefs } from '../identity.js';
 import { buildGraph, impact, linesOf, summary, type Graph, type Item } from '../graph.js';
@@ -22,8 +26,14 @@ import { themes, type Theme } from '../map/themes.js';
 import { applyView, resolveHidden, settingsInError, type ViewName } from '../views.js';
 import type { Catalogue } from '../validate.js';
 import { licenceFields, type Licence, type LicenceField, type SiteColorName } from '../schema.js';
+import { calendarNamespace, renderCalendar } from '../ics.js';
+import { formatAmount, type Amount } from '../money.js';
+import { buildReport, type Group, type LicenceLink, type OneOffRow, type RenewalEntry, type Report, type TotalRow } from '../reports.js';
 
 export const DEFAULT_TITLE = 'Software map';
+/** The renewal window of the site's Reports page and calendar (licence-reports, Source and date). */
+export const REPORT_DAYS = 90;
+export const CALENDAR_FILE = 'renewals.ics';
 
 export interface Link { ref: string; title: string; href?: string }
 export interface Field { label: string; value: string }
@@ -38,12 +48,28 @@ export interface ComponentPage {
 }
 export interface LicencePage { ref: string; slug: string; name: string; title: string; owner: string; fields: Field[]; usedBy: Link[]; impact: Impact }
 export interface JourneyPage extends LineSummary { strip: Themed; stopList: (Link & { lines: Link[] })[] }
-export interface SiteData {
-  view: ViewName; version: string; title: string; colors: Partial<Record<SiteColorName, string>>;
+/** Report amounts as the page shows them: two decimals, or `—` when no complete licence adds to it. */
+export interface MoneyRow { currency: string; monthly: string; yearly: string; incomplete: number }
+export interface OneOffMoneyRow { currency: string; total: string; incomplete: number }
+export interface ReportRenewal extends Link { date: string; vendor: string; cycle: string; cost: string }
+export interface ReportGrouping { key: 'owner' | 'payer' | 'zone'; title: string; column: string; groups: { label: string; synthetic: boolean; rows: MoneyRow[] }[] }
+export interface ReportPage {
+  date: string; to: string; days: number; empty: boolean; calendar: string;
+  renewals: ReportRenewal[]; overdue: ReportRenewal[]; unknownDates: Link[];
+  recurring: MoneyRow[]; groupings: ReportGrouping[];
+  oneOff: { items: (Link & { cost: string; renewsOn: string })[]; totals: OneOffMoneyRow[] };
+  planned: { items: (Link & { cycle: string; cost: string; monthly: string; yearly: string })[]; recurring: MoneyRow[]; oneOff: OneOffMoneyRow[] };
+  incomplete: (Link & { status: string; unknown: string })[];
+}
+interface SiteBase {
+  version: string; title: string; colors: Partial<Record<SiteColorName, string>>;
   map: Themed & { lines: LineSummary[]; zones: { name: string; title: string }[]; symbols: (Themed & { label: string })[] };
   rows: SoftwareRow[]; filters: { kind: string[]; zone: string[]; state: string[]; owner: string[] };
   components: ComponentPage[]; licences: LicencePage[]; journeys: JourneyPage[];
 }
+export interface StaffSiteData extends SiteBase { view: 'staff' }
+export interface FullSiteData extends SiteBase { view: 'full'; report: ReportPage }
+export type SiteData = StaffSiteData | FullSiteData;
 
 const fieldLabels: Readonly<Record<LicenceField, string>> = {
   vendor: 'Vendor', status: 'Status', cycle: 'Cycle', cost: 'Cost', currency: 'Currency', renewsOn: 'Renews on',
@@ -165,6 +191,44 @@ class PageBuilder {
   }
 }
 
+const NO_AMOUNT = '—';
+const shown = (amount: Amount | null): string => (amount === null ? NO_AMOUNT : formatAmount(amount));
+const currencyLabel = (currency: string | null): string => currency ?? 'Unknown currency';
+const moneyRows = (rows: TotalRow[]): MoneyRow[] =>
+  rows.map(row => ({ currency: currencyLabel(row.currency), monthly: shown(row.monthly), yearly: shown(row.yearly), incomplete: row.incomplete }));
+const oneOffRows = (rows: OneOffRow[]): OneOffMoneyRow[] =>
+  rows.map(row => ({ currency: currencyLabel(row.currency), total: shown(row.total), incomplete: row.incomplete }));
+const priced = (cost: Amount | null, currency: string | null): string => (cost === null ? 'unknown' : `${formatAmount(cost)} ${currency ?? 'unknown currency'}`);
+
+/** The Reports page's data: the report's lists with page links and shown amounts. */
+function reportPage(report: Report, pages: PageBuilder): ReportPage {
+  const link = (entry: LicenceLink): Link => pages.link(entry.ref);
+  const renewal = (entry: RenewalEntry): ReportRenewal =>
+    ({ ...link(entry), date: entry.renewsOn, vendor: entry.vendor, cycle: entry.cycle, cost: priced(entry.cost, entry.currency) });
+  const grouping = (key: ReportGrouping['key'], title: string, column: string, groups: Group[]): ReportGrouping =>
+    ({ key, title, column, groups: groups.map(group => ({ label: group.label, synthetic: group.synthetic, rows: moneyRows(group.totals) })) });
+  return {
+    date: report.date, to: report.to, days: report.days, empty: report.licences === 0, calendar: CALENDAR_FILE,
+    renewals: report.renewals.map(renewal), overdue: report.overdue.map(renewal), unknownDates: report.unknownDates.map(link),
+    recurring: moneyRows(report.recurring),
+    groupings: [
+      grouping('owner', 'By owner', 'Owner', report.groups.owner),
+      grouping('payer', 'By payer', 'Paid by', report.groups.payer),
+      grouping('zone', 'By zone', 'Zone', report.groups.zone),
+    ],
+    oneOff: {
+      items: report.oneOff.items.map(item => ({ ...link(item), cost: priced(item.cost, item.currency), renewsOn: item.renewsOn ?? NO_AMOUNT })),
+      totals: oneOffRows(report.oneOff.totals),
+    },
+    planned: {
+      items: report.planned.items.map(item => ({ ...link(item), cycle: item.cycle, cost: priced(item.cost, item.currency), monthly: shown(item.monthly), yearly: shown(item.yearly) })),
+      recurring: moneyRows(report.planned.recurring),
+      oneOff: oneOffRows(report.planned.oneOff),
+    },
+    incomplete: report.incomplete.map(item => ({ ...link(item), status: item.status, unknown: item.unknown.join(', ') })),
+  };
+}
+
 function themed(render: (theme: Theme) => string): Themed {
   return { light: render(themes.light), dark: render(themes.dark) };
 }
@@ -183,8 +247,9 @@ function options(rows: SoftwareRow[], column: 'kind' | 'zone' | 'state' | 'owner
   return [...new Set(rows.map(entry => entry[column]).filter(value => value !== ''))].sort((one, two) => (one < two ? -1 : one > two ? 1 : 0));
 }
 
-/** SiteData of one view, plus the full map geometry for the build report (suggestions, unrouted hops). */
-export function buildSiteData(catalogue: Catalogue, view: ViewName, version: string, date?: string, owners: ReadonlyMap<string, string> = new Map()): { data: SiteData; geometry: MapGeometry } {
+/** SiteData of one view, plus the full map geometry for the build report (suggestions, unrouted
+ * hops) and, for the full view only, the text of renewals.ics. */
+export function buildSiteData(catalogue: Catalogue, view: ViewName, version: string, date?: string, owners: ReadonlyMap<string, string> = new Map()): { data: SiteData; geometry: MapGeometry; calendar?: string } {
   if (view === 'full' && date === undefined) throw new Error('A full site needs the map date');
   const served = applyView(catalogue.served, view, resolveHidden(catalogue));
   const graph = buildGraph(served);
@@ -197,10 +262,10 @@ export function buildSiteData(catalogue: Catalogue, view: ViewName, version: str
   const components = items.filter((item): item is Extract<Item, { kind: 'component' }> => item.kind === 'component');
   const licences = items.filter((item): item is Extract<Item, { kind: 'licence' }> => item.kind === 'licence');
   const rows = [...components, ...licences].sort((one, two) => compareRefs(one.ref, two.ref)).map(item => row(item, owners));
-  const data: SiteData = {
-    view,
+  const settings = siteSettings(catalogue);
+  const base: SiteBase = {
     version,
-    ...siteSettings(catalogue),
+    ...settings,
     map: {
       light: renderSvg(geometry, themes.light, { chrome: false }),
       dark: renderSvg(darkGeometry, themes.dark, { chrome: false }),
@@ -214,5 +279,9 @@ export function buildSiteData(catalogue: Catalogue, view: ViewName, version: str
     licences: licences.map(item => pages.licence(item)),
     journeys: model.lines.map(line => pages.journey(line)),
   };
-  return { data, geometry };
+  if (view === 'staff') return { data: { view, ...base }, geometry };
+  // The report exists only here, after the staff branch: nothing of it is computed for staff.
+  const report = buildReport(graph, date!, REPORT_DAYS, { ownerLabel: owner => displayOwner(owners, owner) });
+  const calendar = renderCalendar(report, { title: settings.title, namespace: calendarNamespace(catalogue) });
+  return { data: { view, ...base, report: reportPage(report, pages) }, geometry, calendar };
 }

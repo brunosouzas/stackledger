@@ -1,17 +1,19 @@
 ---
 // Sticky header from brunosouzas.com (Astroplate theme, MIT): brand, navigation, theme switch.
+// Reports is linked only when the site's data has a report, which only the full site's has.
 import ThemeSwitch from './ThemeSwitch.astro';
 import { href, site } from '../lib/site';
 
 interface Props {
   root: string;
-  current?: 'map' | 'software' | 'journeys' | undefined;
+  current?: 'map' | 'software' | 'journeys' | 'reports' | undefined;
 }
 const { root, current } = Astro.props;
 const links = [
   { key: 'map', title: 'Map', path: '' },
   { key: 'software', title: 'Software', path: 'software/' },
   { key: 'journeys', title: 'Journeys', path: 'journeys/' },
+  ...('report' in site ? [{ key: 'reports', title: 'Reports', path: 'reports/' }] : []),
 ];
 ---
 
