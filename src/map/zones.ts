@@ -35,8 +35,8 @@ export function zoneGeometry(model: MapModel, points: Map<string, Point>): ZoneG
       .filter(station => station.zone === zone.name.toLowerCase())
       .map(station => points.get(station.ref)!);
     if (!members.length) return [];
-    const left = Math.min(...members.map(point => point[0])) - 24;
-    const top = Math.min(...members.map(point => point[1])) - 56;
+    const left = members.reduce((least, point) => Math.min(least, point[0]), Infinity) - 24;
+    const top = members.reduce((least, point) => Math.min(least, point[1]), Infinity) - 56;
     const titleBox: Box = { x: left, y: top, w: textWidth(zone.title), h: 17 };
     return [{ ...zone, hull: convexHull(members), padding: PADDING, titleBox }];
   });

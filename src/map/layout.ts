@@ -30,12 +30,21 @@ export interface MapGeometry {
 const TICK_LENGTH = 11;
 const LICENCE_RADIUS = 6;
 
+/** Bounding box of any number of points, computed without spreading them into Math.min/Math.max. */
 function bounding(points: Point[], padding: number): Box {
-  const xs = points.map(point => point[0]);
-  const ys = points.map(point => point[1]);
-  const x = Math.min(...xs) - padding;
-  const y = Math.min(...ys) - padding;
-  return { x, y, w: Math.max(...xs) - x + padding, h: Math.max(...ys) - y + padding };
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const [px, py] of points) {
+    if (px < minX) minX = px;
+    if (px > maxX) maxX = px;
+    if (py < minY) minY = py;
+    if (py > maxY) maxY = py;
+  }
+  const x = minX - padding;
+  const y = minY - padding;
+  return { x, y, w: maxX - x + padding, h: maxY - y + padding };
 }
 
 const atGridPoint = (grid: Point, point: Point): boolean => grid[0] * GRID === point[0] && grid[1] * GRID === point[1];
@@ -105,7 +114,7 @@ export function layoutMap(model: MapModel, lineWidth = 7): MapGeometry {
   const frame = bounding(extent, 48);
 
   const symbols = ['interchange', 'licence', 'licence to buy', 'suggested position', ...(model.view === 'full' ? ['renewal within 30 days'] : [])];
-  const legendWidth = Math.max(310, ...model.lines.map(line => textWidth(line.title) + badgeWidth(line.badge) + 96));
+  const legendWidth = model.lines.reduce((width, line) => Math.max(width, textWidth(line.title) + badgeWidth(line.badge) + 96), 310);
   const legendBox: Box = { x: frame.x + frame.w + 28, y: frame.y + 12, w: legendWidth, h: 110 + model.lines.length * 30 + symbols.length * 32 };
   const viewBox: Box = {
     x: frame.x - 16,

@@ -75,7 +75,7 @@ export function suggestPositions(model: MapModel): { positions: Map<string, Poin
   const positions = new Map([...model.positions].map(([ref, point]) => [ref, [...point] as Point]));
   const taken = new Set(model.occupied.map(pointKey));
   const suggestions: Suggestion[] = [];
-  let maxColumn = Math.max(-1, ...model.occupied.map(point => point[0]));
+  let maxColumn = model.occupied.reduce((largest, point) => Math.max(largest, point[0]), -1);
   for (const station of model.stations) {
     if (positions.has(station.ref)) continue;
     const neighbours = neighbourPoints(model, station.ref, positions);

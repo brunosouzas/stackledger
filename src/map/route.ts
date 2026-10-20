@@ -169,7 +169,8 @@ export function routeMap(model: MapModel, positions: Map<string, Point>): Routes
       }
       if (!hop.lines.includes(line.ref)) hop.lines.push(line.ref);
       const points = hop.from === from ? hop.points : [...hop.points].reverse();
-      path.push(...(path.length ? points.slice(1) : points));
+      // A loop, not push(...points): a long journey must not hit the argument limit.
+      for (let j = path.length ? 1 : 0; j < points.length; j++) path.push(points[j]!);
     }
     paths.set(line.ref, path);
   }

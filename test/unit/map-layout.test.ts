@@ -6,6 +6,8 @@ import { routeHop, routeMap, edgeKey } from '../../src/map/route.js';
 import { parallelLines } from '../../src/map/parallel.js';
 import { wrapLabel, textWidth, labelCandidates, chooseLabel, overlapArea, placeLabels, segmentObstacle } from '../../src/map/labels.js';
 import { layoutMap } from '../../src/map/layout.js';
+import { renderSvg } from '../../src/map/svg.js';
+import { themes } from '../../src/map/themes.js';
 import { component, journey, positions, set, viewOf } from './map-helpers.js';
 const model = (...docs: unknown[]) => buildMapModel(viewOf(docs),'2027-06-01');
 const base = () => [component('a'),component('b'),journey('ship',['a','b']),positions({ a:[3,2],b:[6,2] })];
@@ -31,6 +33,13 @@ test('Suggestions next to a huge stored column end and use safe integers',()=>{
  expect(suggestPositions(lone).suggestions).toEqual([{ref:'component:b',point:[0,0]},{ref:'component:c',point:[1,0]}]);
  const g=layoutMap(near);expect(g.stations.find(s=>s.name==='b')!.point.every(Number.isFinite)).toBe(true);
 },5000);
+test('Very long journeys do not overflow the call stack',()=>{
+ const stops=Array.from({length:50000},(_,i)=>i%2?'b':'a');
+ const m=model(component('a'),component('b'),journey('one',stops,'1'),journey('two',stops,'2'),journey('three',stops,'3'),positions({a:[0,0],b:[2,0]}));
+ expect(m.lines.map(l=>l.stops.length)).toEqual([50000,50000,50000]);
+ const g=layoutMap(m);expect(g.lines).toHaveLength(3);expect(g.frame.w).toBeGreaterThan(0);
+ expect(renderSvg(g,themes.light).startsWith('<svg')).toBe(true);
+},60000);
 test('Neighbours come from every occurrence of a repeated stop',()=>{
  const m=model(component('a'),component('b'),component('c'),component('d'),journey('ship',['b','a','c','a','d']),positions({b:[0,0],c:[6,0],d:[12,0]}));
  // Distinct neighbours b, c and d have mean [6,0], held by c; the nearest free cells are [5,0], [7,0] and [6,1]; row then column picks [5,0].
