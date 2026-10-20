@@ -3,7 +3,7 @@
  */
 import { readdir, lstat, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { parseAllDocuments, LineCounter, isMap, isSeq, isAlias, isScalar, type Document, type Node } from 'yaml';
+import { parseAllDocuments, LineCounter, isMap, isSeq, isAlias, type Document, type Node } from 'yaml';
 
 export type FieldPath = (string | number)[];
 export interface Problem {
@@ -13,7 +13,7 @@ export interface Problem {
 export interface Source {
   path: string; document: Document; counter: LineCounter; value: Record<string, unknown>;
 }
-/** settingsUnread: a file that may hold Settings failed to parse or expand, so its Settings cannot be trusted. */
+/** settingsUnread: a file, folder, link or document was not read, so it may hide a Settings document. */
 export interface Loaded { files: number; sources: Source[]; problems: Problem[]; settingsUnread?: boolean }
 export const MAX_FILE_BYTES = 1024 * 1024;
 
@@ -66,35 +66,18 @@ export function problem(source: Source, path: FieldPath, message: string,
     severity, field: fieldName(path), message };
 }
 
-/** Whether a document's top-level kind is Settings in any case, read from the syntax tree so tags,
- * anchors and escapes count; an alias that cannot be resolved counts too. Other fields are never read.
- */
-function mayBeSettings(document: Document): boolean {
-  const resolve = (node: unknown): unknown => {
-    const seen = new Set<unknown>();
-    while (isAlias(node)) {
-      if (seen.has(node)) return undefined;
-      seen.add(node);
-      try { node = node.resolve(document); } catch { return undefined; }
-    }
-    return node;
-  };
-  if (!isMap(document.contents)) return false;
-  return document.contents.items.some(pair => {
-    const key = resolve(pair.key);
-    if (!isScalar(key) || String(key.value) !== 'kind') return false;
-    const value = resolve(pair.value);
-    return value === undefined || (isScalar(value) && String(value.value).toLowerCase() === 'settings');
-  });
+/** Problems that mean a document may exist that was never read; a non-mapping document cannot be Settings. */
+export function unread(problems: Problem[]): boolean {
+  return problems.some(p => p.field === null && p.message !== 'Document must be a mapping');
 }
-/** Fail closed: a file that failed to parse or expand and holds a Settings-like document counts as broken settings. */
+/** settingsUnread: some YAML was not read, so a Settings document in it cannot be ruled out (fail closed). */
 export function parseSource(path: string, text: string): { sources: Source[]; problems: Problem[]; settingsUnread: boolean } {
+  const parsed = parseDocuments(path, text);
+  return { ...parsed, settingsUnread: unread(parsed.problems) };
+}
+function parseDocuments(path: string, text: string): { sources: Source[]; problems: Problem[] } {
   const counter = new LineCounter();
   const documents = parseAllDocuments(text, { lineCounter: counter, prettyErrors: false, uniqueKeys: true, logLevel: 'silent' });
-  const parsed = parseDocuments(path, documents, counter);
-  return { ...parsed, settingsUnread: parsed.problems.some(p => p.severity === 'error') && documents.some(mayBeSettings) };
-}
-function parseDocuments(path: string, documents: ReturnType<typeof parseAllDocuments>, counter: LineCounter): { sources: Source[]; problems: Problem[] } {
   // A syntax failure invalidates the entire file, including earlier documents.
   const errors = documents.flatMap(document => document.errors);
   if (errors.length) return { sources: [], problems: errors.map(error => {
@@ -154,11 +137,11 @@ export async function loadFolder(folder: string): Promise<Loaded> {
         if (!(stat.mode & 0o444)) { loaded.problems.push(fileProblem(path, 'File cannot be read')); continue; }
         const parsed = parseSource(path, await readFile(absolute, 'utf8'));
         loaded.sources.push(...parsed.sources); loaded.problems.push(...parsed.problems);
-        if (parsed.settingsUnread) loaded.settingsUnread = true;
       } catch { loaded.problems.push(fileProblem(path, 'File cannot be read')); }
     }
   }
   await walk('');
   loaded.sources.sort((a, b) => compareText(a.path, b.path));
+  if (unread(loaded.problems)) loaded.settingsUnread = true;
   return loaded;
 }
