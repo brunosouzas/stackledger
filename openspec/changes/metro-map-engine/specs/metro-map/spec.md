@@ -99,11 +99,15 @@ Line order SHALL be: lines with a `code` first, by `code` upper-cased and compar
 - **THEN** the line order is `secrets`, `ship`, `alpha`
 
 ### Requirement: Parallel lines
-Two lines SHALL NOT be drawn along the same grid edge at the same offset: every line using a grid edge is drawn side by side on it, whichever hops they belong to. Lines connecting the same two stations consecutively share one route. Walking an edge from its end whose coordinates sort first, lines are placed left to right in line order, whatever direction they travel. Offset transitions SHALL use horizontal, vertical or 45-degree connectors.
+Two lines SHALL NOT be drawn along the same grid edge at the same offset: every line using a grid edge is drawn side by side on it, whichever hops they belong to. Lines connecting the same two stations consecutively share one route. Walking an edge from its end whose coordinates sort first, lines are placed left to right in line order, whatever direction they travel, except that a bundle whose lines all continue together onto the next edge keeps its order through the bend. Offset transitions SHALL use horizontal, vertical or 45-degree connectors.
 
 #### Scenario: Two lines on one hop
 - **WHEN** lines `ship` and `secrets` both go from `actions` to `deploy`
 - **THEN** both use the same route, drawn as two parallel strokes
+
+#### Scenario: Bundle keeps its sides through a bend
+- **WHEN** lines `ship` and `secrets` run together along a horizontal edge and both turn onto the same diagonal edge
+- **THEN** the corner is mitred and neither line crosses the other
 
 #### Scenario: Different hops on one edge
 - **WHEN** hop A–B of `ship` and hop C–D of `secrets` both use the edge `[3, 2]`–`[4, 2]`
