@@ -47,7 +47,7 @@ test('Parseable output',()=>{const f=folder({'catalogue.yaml':yaml(component('a'
 test('Global help lists both commands',()=>{const r=run(['--help']);expect(r.status).toBe(0);for(const c of ['validate','mcp','map'])expect(r.stdout).toContain(`stackledger ${c}`);});
 test('Explicit staff and dark options select their output',()=>{const r=run(['map',fixture(),'--view','staff','--theme','dark','--date','2027-06-01']);expect(r.status).toBe(0);expect(r.stderr).toBe('');expect(r.stdout).toContain(`fill="${themes.dark.background}"`);expect(parse(r.stdout).documentElement.textContent).toContain('staff view');expect(r.stdout).not.toContain('Renewal within 30 days');});
 test('Map library bundles for the browser without Node filesystem imports',()=>{
- // esbuild is already pinned in the existing Vite development dependency graph.
+ // esbuild is a pinned development dependency (Vite 8 no longer brings it in).
  const source=['model:buildMapModel','layout:layoutMap','svg:renderSvg'].map(entry=>{const [file,name]=entry.split(':');return `export { ${name} } from './src/map/${file}.ts';`;}).join('\n');
  const result=spawnSync(join(root,'node_modules/.bin/esbuild'),['--bundle','--platform=browser','--format=esm','--loader=ts'],{cwd:root,input:source,encoding:'utf8'});
  expect(result.error).toBeUndefined();expect(result.status,result.stderr).toBe(0);for(const name of ['buildMapModel','layoutMap','renderSvg'])expect(result.stdout).toContain(name);expect(result.stdout).not.toContain('node:fs');
