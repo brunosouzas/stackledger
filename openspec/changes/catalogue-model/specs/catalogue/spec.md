@@ -73,7 +73,7 @@ A file with a YAML syntax error or a duplicate key SHALL get an error at the pos
 - **THEN** that document gets an error
 
 ### Requirement: Order of document checks
-Each document SHALL be checked in this order, stopping where a step says so: `kind` present; ignored kind (stop); supported `apiVersion` and `kind` pair (stop on error); identity; non-licence `Resource` (stop); fields of its kind; secret scan. Cross-document rules run after every document is checked and use only documents that passed identity.
+Each document SHALL be checked in this order, and SHALL stop at the first step that reports an error or says stop: `kind` present; ignored kind (stop); `apiVersion` and `kind` pair; name; non-licence `Resource` (stop); fields of its kind; secret scan. Cross-document rules run last and use only documents that passed the name step and are not later duplicates.
 
 #### Scenario: Ignored kind without a name
 - **WHEN** a `System` document has no `metadata.name`
@@ -83,16 +83,31 @@ Each document SHALL be checked in this order, stopping where a step says so: `ki
 - **WHEN** a document has `apiVersion: example.com/v1`, `kind: Component` and no `metadata.name`
 - **THEN** it gets one error, about the pair, and none about the name
 
+#### Scenario: Nothing but a name
+- **WHEN** a document has `metadata.name` and neither `apiVersion` nor `kind`
+- **THEN** it gets exactly one error, on `kind`
+
+#### Scenario: Invalid name stops the checks
+- **WHEN** a component has the name `café` and no `spec.owner`
+- **THEN** it gets one error, on `metadata.name`, and none on `spec.owner`
+
 ### Requirement: Document identity
-Every checked document SHALL have `apiVersion`, `kind` and `metadata.name`. A name SHALL be 1 to 63 ASCII letters, digits, `-`, `_` and `.`, starting and ending with a letter or digit. Two documents of the same kind SHALL NOT share a name, ignoring case. `kind` is matched exactly, with its case.
+Every checked document SHALL have `apiVersion`, `kind` and `metadata.name`. A name SHALL be 1 to 63 ASCII letters, digits, `-`, `_` and `.`, starting and ending with a letter or digit. `kind` is matched exactly, with its case.
 
 #### Scenario: Missing kind
 - **WHEN** a document has `apiVersion` and `metadata.name` but no `kind`
 - **THEN** it gets an error naming the missing field `kind`
 
+### Requirement: Duplicate names
+Two documents of the same kind SHALL NOT share a name, ignoring case. The later one SHALL get an error naming the earlier one's file, and SHALL NOT be used by any cross-document rule; the earlier one stays in use.
+
 #### Scenario: Duplicate name across files
 - **WHEN** `a.yaml` and `b.yaml` both define a `Component` named `slack`, one written `Slack`
 - **THEN** the one in `b.yaml` gets an error naming `a.yaml`
+
+#### Scenario: References use the earlier duplicate
+- **WHEN** two components are named `slack` and a line stops at `component:slack`
+- **THEN** the stop matches the earlier component and gets no error
 
 #### Scenario: Name too long
 - **WHEN** a name has 64 characters
@@ -165,11 +180,22 @@ A `Component` SHALL have `spec.type`, `spec.lifecycle` and `spec.owner` as non-e
 - **THEN** it gets an error on `spec.owner`
 
 #### Scenario: Minimal valid component
-- **WHEN** a `Component` has only `metadata.name`, `spec.type: tool`, `spec.lifecycle: active` and `spec.owner: user:alex`
+- **WHEN** a document has only `apiVersion: backstage.io/v1alpha1`, `kind: Component`, `metadata.name`, `spec.type: tool`, `spec.lifecycle: active` and `spec.owner: user:alex`
 - **THEN** it has no problem
 
+### Requirement: Metadata types
+When present, `metadata.title` and `metadata.description` SHALL be non-empty strings, `metadata.labels` and `metadata.annotations` mappings from string keys to string values, and `metadata.tags` a list of strings. A licence's `spec.owner` SHALL be a non-empty string.
+
+#### Scenario: Labels that are a number
+- **WHEN** a component has `metadata.labels: 42`
+- **THEN** it gets an error on `metadata.labels`
+
+#### Scenario: Owner that is a list
+- **WHEN** a licence has `spec.owner: []`
+- **THEN** it gets an error on `spec.owner`
+
 ### Requirement: Entity reference syntax
-An entity reference SHALL be written `<kind>:<name>` or `<kind>:default/<name>`, with the kind in any case. It matches a document of that kind whose name is equal, ignoring case. A reference without a kind SHALL be an error wherever references appear: `spec.dependsOn`, `spec.stops` and the keys of `spec.stations`.
+An entity reference SHALL be written `<kind>:<name>` or `<kind>:<namespace>/<name>`, with the kind in any case. It matches a document of that kind whose name is equal, ignoring case. A reference without a kind SHALL be an error in `spec.dependsOn`, `spec.stops` and the keys of `spec.stations`. In stops and station keys, a namespace other than `default` SHALL be an error.
 
 #### Scenario: Reference without kind
 - **WHEN** a component lists `caddy` in `spec.dependsOn`
@@ -179,8 +205,16 @@ An entity reference SHALL be written `<kind>:<name>` or `<kind>:default/<name>`,
 - **WHEN** a component lists `Component:default/Caddy` and a component named `caddy` exists
 - **THEN** there is no problem
 
+#### Scenario: Stop in another namespace
+- **WHEN** a line stop is `component:payments/caddy`
+- **THEN** it gets an error on that stop
+
+#### Scenario: Dependency in another namespace
+- **WHEN** a component lists `component:payments/caddy` in `spec.dependsOn`
+- **THEN** it gets a warning that the reference is not checked, and no error
+
 ### Requirement: Dependency targets
-In `spec.dependsOn`, a reference to kind `component` or `resource` SHALL match a document that passed identity, ignored non-licence resources included. A reference to any other kind, or to a namespace other than `default`, SHALL get a warning that it is not checked.
+In `spec.dependsOn`, a reference to kind `component` or `resource` SHALL match a document that passed the name step, ignored non-licence resources included. A reference to any other kind, or to a namespace other than `default`, SHALL get a warning that it is not checked.
 
 #### Scenario: Dangling dependency
 - **WHEN** a component lists `component:caddy` in `spec.dependsOn` and no component `caddy` exists
@@ -300,7 +334,11 @@ A component that is a stop of a line and has no position SHALL get one warning, 
 - **THEN** each component that is a stop gets one warning, and there is no error
 
 ### Requirement: Zones
-A `MapLayout` MAY declare `spec.zones`, a list of zones each with `name` (unique, ignoring case), `title` (non-empty) and `color` (as for lines). A component joins a zone with the label `stackledger/zone: <zone name>`, which SHALL name a declared zone.
+A `MapLayout` MAY declare `spec.zones`, a list of zones each with `name` (unique, ignoring case), `title` (non-empty) and `color` (as for lines). A component joins a zone with the label `stackledger/zone: <zone name>`, which SHALL name a declared zone, compared ignoring case.
+
+#### Scenario: Zone name in another case
+- **WHEN** a component has the label `stackledger/zone: Finance` and the zone `finance` is declared
+- **THEN** there is no problem
 
 #### Scenario: Undeclared zone
 - **WHEN** a component has the label `stackledger/zone: finance` and no zone `finance` is declared

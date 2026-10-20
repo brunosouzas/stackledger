@@ -50,11 +50,11 @@ None. This is the first change.
 
 ## Open questions
 
-These choices become part of the public file format. The specs are written with the recommended answer; Bruno confirms or changes them at the proposal review.
+None. Three format choices were put to Bruno and confirmed on 2026-10-20:
 
-1. **Our own kinds use `apiVersion: stackledger/v1alpha1`** (`Line`, `MapLayout`), and a component joins a zone with the label `stackledger/zone`. Recommended: yes (design D1, D2).
-2. **Licence fields from the `mac-setup` register.** `kind` (subscription, perpetual, free) is dropped because `cycle` and `cost` already say it. `owner_scope` becomes the optional free-text `paidBy` (for example `self`, `employer`). `status: retired` becomes `cancelled`. `spec.lifecycle` on a licence is kept as an accepted Backstage field with no rule. Recommended: yes (design D8).
-3. **An e-mail address in a value is a warning, not an error.** Recommended: warning, because a vendor's support address is legitimate; the rule exists so a personal address is noticed.
+1. Our own kinds use `apiVersion: stackledger/v1alpha1` (`Line`, `MapLayout`), and a component joins a zone with the label `stackledger/zone` (design D1, D2).
+2. Licence fields from the `mac-setup` register: `kind` is dropped because `cycle` and `cost` already say it; `owner_scope` becomes the optional free-text `paidBy`; `status: retired` becomes `cancelled`; `spec.lifecycle` on a licence is an accepted Backstage field with no rule (design D8).
+3. An e-mail address in a value is a warning, not an error: a vendor's support address is legitimate, and the rule exists so a personal address is noticed.
 
 ## Documentation
 

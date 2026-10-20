@@ -18,11 +18,15 @@ Defines how `stackledger validate` checks a catalogue folder from the command li
 - **THEN** no file in or outside the folder is created, changed or deleted
 
 ### Requirement: Usage
-`stackledger --help` and `stackledger validate --help` SHALL print usage on stdout and exit 0. A missing or unknown command, an unknown option or more than one folder SHALL print the reason and usage on stderr, print nothing on stdout, and exit 2.
+When `--help` is among the arguments, the command SHALL print usage on stdout and exit 0, whatever the other arguments are. Otherwise, a missing or unknown command, an unknown option or more than one folder SHALL print the reason and usage on stderr, print nothing on stdout, and exit 2.
 
 #### Scenario: Help
 - **WHEN** the command runs as `stackledger validate --help`
 - **THEN** stdout shows usage and the exit code is 0
+
+#### Scenario: Help wins
+- **WHEN** the command runs as `stackledger validate --help --fast a b`
+- **THEN** stdout shows usage, stderr is empty and the exit code is 0
 
 #### Scenario: Unknown option
 - **WHEN** the command runs as `stackledger validate --fast`
@@ -63,25 +67,33 @@ By default each problem SHALL be one line on stdout: `<path>:<line>:<column> <er
 - **THEN** stdout has only the counts line, with 0 errors and 0 warnings
 
 ### Requirement: Field paths
-A field SHALL be written as keys joined by `.`, with list indexes as `[n]` from 0. A key holding `.`, `/`, a space, `[` or `"` SHALL be written as `["key"]`. A problem about a whole file or document SHALL use `-` as field in text and `null` in JSON.
+A field SHALL be written as keys joined by `.`, with list indexes as `[n]` from 0. A key holding anything but ASCII letters, digits, `-` and `_` SHALL be written as `[` + the key as a JSON string literal + `]`. A problem about a whole file or document SHALL use `-` as field in text and `null` in JSON.
 
 #### Scenario: Annotation key with a slash
 - **WHEN** the annotation `deploy/Token` is a secret key
 - **THEN** the field is `metadata.annotations["deploy/Token"]`
+
+#### Scenario: Key with a quote
+- **WHEN** an unlisted field in a line is named `a"b`
+- **THEN** the field is `spec["a\"b"]`
 
 #### Scenario: Problem about a file
 - **WHEN** a file exceeds 1 MiB
 - **THEN** its problem line is `<path>:1:1 error - <message>`
 
 ### Requirement: Problem position
-A problem SHALL point to the line and column, from 1, of the value of its field. A missing field points to the start of its document's mapping; a file not read, or a parse error without a position, points to `1:1`; a parse error with a position points there.
+A problem SHALL point to the line and column, from 1, of the value of its field. A problem about a key itself (a station reference, a secret key name, an unlisted field) points to the key. A missing field points to the start of its document's mapping; a file not read, or a parse error without a position, to `1:1`.
 
 #### Scenario: Error on a nested field
 - **WHEN** `spec.licence.cost: -5` is on line 12 and its value starts at column 11
 - **THEN** the problem line starts with `<path>:12:11`
 
+#### Scenario: Error on a station key
+- **WHEN** the station key `component:ghost` starts at line 7, column 5, and no such component exists
+- **THEN** the problem line starts with `<path>:7:5`
+
 ### Requirement: Counts
-`files` SHALL count the YAML files found, read or not. `documents` SHALL count the documents checked past the ignored-kind step. `ignored` SHALL count the ignored documents. Skipped empty documents SHALL count in none of them.
+`files` SHALL count the YAML files found, read or not. `ignored` SHALL count the ignored documents (ignored kinds and non-licence resources). `documents` SHALL count every other document that was read. Skipped empty documents SHALL count in none of them.
 
 #### Scenario: Mixed folder
 - **WHEN** the folder holds a valid component file, a file with a `System` and an empty document, and an oversized file
