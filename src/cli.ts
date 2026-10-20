@@ -1,13 +1,14 @@
 #!/usr/bin/env node
-/** Command line: stackledger validate [folder] [--json] and stackledger mcp <folder> [--view full|staff].
- * Usage/folder failures exit 2 on stderr with empty stdout; catalogue problems stay on stdout (exit 0 or 1).
+/** Command line: validate, mcp and map; run node dist/cli.js --help for their options.
+ * Usage/folder failures exit 2 on stderr with empty stdout. Validate reports problems on stdout;
+ * map writes SVG on stdout and diagnostics on stderr. MCP stdout contains protocol messages only.
  */
 import { parseArgs } from 'node:util';
 import { resolve } from 'node:path';
 import { validateFolder, type Result } from './validate.js';
 import { loadFolder } from './source.js';
 import { viewNames, type ViewName } from './views.js';
-const usage = 'Usage: stackledger validate [folder] [--json]\n       stackledger mcp <folder> [--view full|staff]\n       stackledger --help\n';
+const usage = 'Usage: stackledger validate [folder] [--json]\n       stackledger mcp <folder> [--view full|staff]\n       stackledger map <folder> [--view full|staff] [--theme light|dark] [--date YYYY-MM-DD]\n       stackledger --help\n';
 function text(result: Result): string {
   const lines = result.problems.map(p => `${p.path}:${p.line}:${p.column} ${p.severity} ${p.field ?? '-'} ${p.message}`);
   const s = result.summary;
@@ -40,12 +41,13 @@ async function main(args: string[]): Promise<void> {
   if (args.includes('--help')) { process.stdout.write(usage); return; }
   try {
     // Find the command first; each command then parses its own options strictly.
-    const { positionals } = parseArgs({ args, strict: false, allowPositionals: true, options: { json: { type: 'boolean' }, view: { type: 'string' } } });
+    const { positionals } = parseArgs({ args, strict: false, allowPositionals: true, options: { json: { type: 'boolean' }, view: { type: 'string' }, theme: { type: 'string' }, date: { type: 'string' } } });
     const command = positionals[0];
     if (!command) throw new Error('A command is required');
     if (command === 'validate') await validate(args);
     else if (command === 'mcp') await mcp(args);
-    else throw new Error('Unknown command; expected validate or mcp');
+    else if (command === 'map') { const { mapCommand } = await import('./map/command.js'); await mapCommand(args); }
+    else throw new Error('Unknown command; expected validate, mcp or map');
   } catch (error) {
     process.stderr.write(`${error instanceof Error ? error.message : 'Cannot run command'}\n${usage}`);
     process.exitCode = 2;
