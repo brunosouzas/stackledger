@@ -61,7 +61,12 @@ test('Staff ignores hidden fields and the date',()=>{
  const custom=[...fixtures[0]!,settings('settings',{views:{staff:{hide:[]}}})];expect(renderSvg(geometry(custom,'staff','invalid date'),themes.light)).toBe(renderSvg(geometry(custom,'staff','9999-12-31'),themes.light));
  for(const fields of variants)for(const value of [fields.renewsOn,fields.paidBy,fields.vaultItem,fields.note])expect(first).not.toContain(value);
 });
-test('Cross-document errors with repeated consecutive stops still produce a map',()=>{for(const stops of [['a','a'],['a','a','b'],['a','b','b'],['a','b','a']]){const g=geometry([component('a'),component('b'),journey('ship',stops),positions({a:[0,0],b:[3,0]})]);expect(g.lines).toHaveLength(1);expect(g.stations).toHaveLength(new Set(stops).size);safe(renderSvg(g,themes.light));}});
+test('Repeated consecutive stops collapse before the two-stop rule',()=>{
+ const draw=(stops:string[])=>geometry([component('a'),component('b'),journey('ship',stops),positions({a:[0,0],b:[3,0]})]);
+ const single=draw(['a','a']);expect(single.lines).toHaveLength(0);expect(single.stations).toHaveLength(0);expect(single.badges).toHaveLength(0);safe(renderSvg(single,themes.light));
+ for(const stops of [['a','a','b'],['a','b','b']]){const g=draw(stops);expect(g.lines).toHaveLength(1);expect(g.lines[0]!.stops).toEqual(['component:a','component:b']);expect(g.lines[0]!.points).toEqual([[0,0],[192,0]]);expect(g.badges).toHaveLength(2);expect(g.badges[0]!.box).not.toEqual(g.badges[1]!.box);safe(renderSvg(g,themes.light));}
+ const back=draw(['a','b','a']);expect(back.lines[0]!.stops).toHaveLength(3);safe(renderSvg(back,themes.light));
+});
 test('Legend badges fit long codes without covering the line sample',()=>{
  const g=geometry([component('a'),component('b'),journey('ship',['a','b'],'WWW'),positions({a:[0,0],b:[4,0]})]);
  const doc=parseSvg(renderSvg(g,themes.light)),inside=(e:any)=>Number(e.getAttribute('x'))>=g.legend.box.x;

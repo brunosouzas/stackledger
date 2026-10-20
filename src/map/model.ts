@@ -49,11 +49,12 @@ function drawnLines(view: View, components: Map<string, Component>): MapLine[] {
     title: line.metadata.title ?? line.metadata.name,
     badge: line.spec.code ?? Array.from(line.metadata.name)[0]!.toUpperCase(),
     color: line.spec.color,
+    // A stop repeated back to back (after skipping unserved stops) is one stop, not a zero-length hop.
     stops: line.spec.stops.flatMap(value => {
       const target = reference(value);
       const found = target?.kind === 'component' && target.namespace === 'default' ? components.get(target.key) : undefined;
       return found ? [`component:${found.metadata.name}`] : [];
-    }),
+    }).filter((stop, index, stops) => index === 0 || stop !== stops[index - 1]),
   })).filter(line => line.stops.length >= 2);
 }
 

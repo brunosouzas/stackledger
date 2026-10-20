@@ -29,7 +29,7 @@ function terminals(strokes: Stroke[]): Terminal[] {
     const first = stroke.edges[0];
     const last = stroke.edges.at(-1);
     if (!first || !last) {
-      // A line that repeats one stop has no edge: badges go left and right of its station.
+      // Defensive: the model collapses repeated stops, but a stroke without edges still gets two badges.
       const station = stroke.points[0]!;
       result.push({ stroke, station, direction: [-1, 0], end: station }, { stroke, station, direction: [1, 0], end: station });
       continue;

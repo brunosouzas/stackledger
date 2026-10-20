@@ -15,7 +15,7 @@ The command reads local files only. It does not write the catalogue, open networ
 
 ## Reading the map
 
-A line is an ordered journey; a station is a component on a drawn journey. Components on no journey remain in the catalogue. Missing or invalid components are skipped, and journeys with fewer than two served stops disappear. Codes sort before uncoded lines, by uppercase Unicode code point, with names breaking ties. The legend follows that order.
+A line is an ordered journey; a station is a component on a drawn journey. Components on no journey remain in the catalogue. Missing or invalid components are skipped, a stop repeated back to back counts once, and journeys with fewer than two served stops disappear. Codes sort before uncoded lines, by uppercase Unicode code point, with names breaking ties. The legend follows that order.
 
 A single-line station is a tick; a shared station is an interchange spanning its lines. Each terminal has a badge with its line's code, or the first character of its name in uppercase. The badge sits beyond the station along the line's last segment. Lines ending at one station in the same direction share a row, stacked when they end horizontally and side by side otherwise. The row moves outwards until it clears station and licence markers, strokes and other badges. A deprecated component has a muted station and label. Its journeys keep their colours.
 
