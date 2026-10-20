@@ -16,7 +16,7 @@ Levels: U unit, I integration (built files or CLI), B browser (Playwright). Ever
 | catalogue-site | Theme remembered; Zoom; Station link; Highlight a line; Search; Nothing matches; Without JavaScript | `test/browser/site.spec.ts` | B |
 | site-security | No trace of the cost; Staff ignores hidden fields and the date; Custom-hidden vendor and status; Broken settings hide the defaults; Same policy everywhere; Only local URLs; Root headers; Root robots; Hostile title | `test/integration/site.test.ts` | I |
 | site-security | Pages work under the policy; Two sites on one host | `test/browser/site.spec.ts` | B |
-| build-command | Two sites; Missing out; Impossible date; Output inside the catalogue; Unrelated non-empty folder; Rebuild; Failure leaves the old site (one case per publication step); Documented; Sandboxed build; One error; Proxy reminder; Built twice; Large catalogue | `test/integration/build.test.ts` | I |
+| build-command | Two sites; Missing out; Impossible date; Output inside the catalogue; Unrelated non-empty folder; Rebuild; Failure leaves the old site (one case per publication step); Documented; Sandboxed build; One error; Proxy reminder; Built twice; Large catalogue; Marker that is not a file; Linked published entry; Undo finished by the next build; Undo impossible; Folder swapped during a build | `test/integration/build.test.ts` | I |
 
 ## 1. Catalogue and data
 
