@@ -1,0 +1,16 @@
+apiVersion: stackledger/v1alpha1
+kind: Settings
+metadata:
+  name: settings
+spec:
+  views:
+    staff:
+      hide:
+        - cost
+        - currency
+        - cycle
+        - renewsOn
+        - paidBy
+        - seats
+        - vaultItem
+        - note

@@ -18,6 +18,8 @@ The first version (v1) is split into OpenSpec changes, delivered in this order. 
 
 - `map-backgrounds`: a city backdrop behind the map (`neutral`, `london`, `sao-paulo` to start), chosen in `Settings` or with `--background`. Drawn from OpenStreetMap data (rivers, coastline, parks), simplified and attributed, never from official metro maps, which are copyrighted. The map engine already draws an empty background layer for it.
 
+- `map-theme-ink`: an illustrated theme matching the diagrams of brunosouzas.com (ink outline `#0A1033`, hard offset shadow, light tinted panel, Lato font stack), added as theme data; icons and line badges drawn with the site's designer style.
+
 - Merge catalogues from several repositories (for example, one per team), like Backstage catalogue locations.
 - A remote MCP server over HTTP, behind the identity-aware proxy, and an MCP tool that proposes edits.
 - Edit from the website by opening a pull request on the catalogue repository.
