@@ -16,7 +16,7 @@ Levels: U unit, I integration (CLI or built files), B browser (Playwright). Ever
 ## 1. Report model
 
 - [x] 1.1 `src/money.ts` (exact decimal amounts) and `src/reports.ts` (`buildReport`: renewals via `graph.renewals`, recurring totals per currency, one-off, planned, incomplete, groups with synthetic keys); unit tests.
-- [ ] 1.2 `src/ics.ts`: the calendar file; unit tests with a small reader that unfolds and unescapes the output.
+- [x] 1.2 `src/ics.ts`: the calendar file; unit tests with a small reader that unfolds and unescapes the output.
 
 ## 2. Command
 
