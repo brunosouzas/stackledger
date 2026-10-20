@@ -1,0 +1,55 @@
+## ADDED Requirements
+
+### Requirement: Command
+`stackledger map <folder> [--view full|staff] [--theme light|dark] [--date YYYY-MM-DD]` SHALL print the map of the catalogue in `folder` as SVG on stdout and exit 0. The defaults are `--view full`, `--theme light` and `--date` the machine's local date. The command SHALL only read files.
+
+#### Scenario: Default options
+- **WHEN** the command runs as `stackledger map ./catalogue`
+- **THEN** stdout is the SVG of the `full` view in the `light` theme and the exit code is 0
+
+#### Scenario: Read-only
+- **WHEN** the command draws a map
+- **THEN** no file in or outside the folder is created, changed or deleted
+
+### Requirement: Usage errors
+When `--help` is among the arguments, the command SHALL print usage on stdout and exit 0. Otherwise a missing folder, an unknown option, a `--view` or `--theme` outside the allowed values, a `--date` that is not a real `YYYY-MM-DD` date, more than one folder, or a folder that does not exist, is not a folder or cannot be read SHALL print the reason and usage on stderr, print nothing on stdout, and exit 2.
+
+#### Scenario: Unknown theme
+- **WHEN** the command runs as `stackledger map ./catalogue --theme blue`
+- **THEN** the exit code is 2, stdout is empty and stderr names the allowed themes
+
+#### Scenario: Impossible date
+- **WHEN** the command runs with `--date 2027-02-30`
+- **THEN** the exit code is 2 and stdout is empty
+
+#### Scenario: Global help
+- **WHEN** the command runs as `stackledger --help`
+- **THEN** stdout shows usage for `validate`, `mcp` and `map`
+
+### Requirement: Catalogue with errors
+A catalogue with errors SHALL still be drawn from the documents the view serves, with exit 0. In the `full` view the command SHALL write one stderr line with the error and warning counts and a hint to run `stackledger validate`; in the `staff` view it SHALL NOT write counts.
+
+#### Scenario: One error in full
+- **WHEN** the catalogue has one error and the view is `full`
+- **THEN** the SVG is printed, the exit code is 0 and stderr says there is 1 error
+
+### Requirement: Suggestions on stderr
+For each station that got a suggested position, the command SHALL write to stderr a YAML snippet the owner can copy into `spec.stations` of the `MapLayout`, one line per station: `    component:<name>: [<column>, <row>]`, in reference order, after one header line.
+
+#### Scenario: Two unplaced stops
+- **WHEN** two stops have no position
+- **THEN** stderr has a header line and two lines in the `spec.stations` format
+
+### Requirement: Unrouted hops reported
+For each hop drawn as a straight segment because no route was found, the command SHALL write one stderr line naming the line and the two stations.
+
+#### Scenario: Unroutable hop
+- **WHEN** a hop cannot be routed
+- **THEN** stderr names the line and both stations, and the exit code is 0
+
+### Requirement: Clean stdout
+stdout SHALL contain only the SVG document followed by one newline.
+
+#### Scenario: Parseable output
+- **WHEN** the command runs with suggestions and errors to report
+- **THEN** stdout parses as one XML document and everything else is on stderr
