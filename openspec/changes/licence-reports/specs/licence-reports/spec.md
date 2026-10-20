@@ -57,11 +57,15 @@ Totals SHALL be given per currency, sorted by currency code, and never converted
 - **THEN** there is a GBP total of 10.00 and a USD total of 20.00 per month, and no combined total
 
 ### Requirement: One-off costs
-Complete `one-off` licences with status `active` or `to-confirm` SHALL be listed with their cost, with a total per currency, and SHALL add nothing to the recurring totals. A one-off licence with a real `renewsOn` is also in the renewals and the calendar, without a repeat rule.
+Complete `one-off` licences with status `active` or `to-confirm` SHALL be listed with their cost, with a total per currency, and SHALL add nothing to the recurring totals. Their renewal dates follow "Renewals"; in the calendar they have no repeat rule.
 
 #### Scenario: One-off with a date
-- **WHEN** an active `one-off` licence costs 300 GBP and renews on `2027-07-01`
+- **WHEN** the report date is `2027-06-01` and an active `one-off` licence costs 300 GBP and renews on `2027-07-01`
 - **THEN** it is in the one-off list at 300.00 GBP, in the renewals, and in the calendar with no `RRULE`
+
+#### Scenario: One-off beyond the window
+- **WHEN** an active `one-off` licence renews one day after the window ends
+- **THEN** it is in the one-off list but not in the renewals nor the calendar
 
 ### Requirement: Planned purchases
 Every licence with status `to-buy` SHALL be in the planned list. Complete monthly and yearly ones have monthly and yearly amounts and a total per currency; complete one-off ones have a planned one-off total; `none` adds zero; incomplete ones add to no total and show no amount. `cancelled` and `expired` licences are in no list and no total.
@@ -75,7 +79,7 @@ Every licence with status `to-buy` SHALL be in the planned list. Complete monthl
 - **THEN** it is in no total and no list of the report
 
 ### Requirement: Incomplete licences
-A licence with status `active`, `to-confirm` or `to-buy` whose `cost`, `currency` or `cycle` is `unknown` SHALL add to no total and SHALL be listed as incomplete, naming each unknown field. Each total SHALL show how many licences of its own population (status category, currency, group) are incomplete; those with an unknown currency are counted on their own line.
+A licence with status `active`, `to-confirm` or `to-buy` whose `cost`, `currency` or `cycle` is `unknown` SHALL add to no amount and be listed as incomplete, naming each unknown field. It counts in the one-off population if its cycle is `one-off`, else in the recurring one. Every total row SHALL show its population's incomplete count, with a `null` amount when nothing complete adds to it; unknown currencies get their own row.
 
 #### Scenario: Unknown cost
 - **WHEN** an active `yearly` GBP licence has `cost: unknown`
@@ -85,8 +89,16 @@ A licence with status `active`, `to-confirm` or `to-buy` whose `cost`, `currency
 - **WHEN** an active licence has `currency: unknown`
 - **THEN** it is counted as incomplete on the unknown-currency line, not under any currency
 
+#### Scenario: Incomplete one-off and planned
+- **WHEN** an active `one-off` licence and a `to-buy` `yearly` licence both have `cost: unknown` in GBP
+- **THEN** the GBP one-off total and the GBP planned total each show 1 incomplete and a `null` amount
+
+#### Scenario: Group with only an unknown currency
+- **WHEN** owner `group:ops` has one active licence, with `currency: unknown`
+- **THEN** the `group:ops` owner group has one unknown-currency row with 1 incomplete and no amount
+
 ### Requirement: Groups
-Recurring totals SHALL also be given per licence owner (`spec.owner`), per payer (`spec.licence.paidBy`, or `Not set`) and per zone. A licence's zone comes from the served components that list it in `spec.dependsOn`: one zone, `Several zones` if more, `No zone` if none. Zones are identified by declared name ignoring case; unresolved labels count as no zone. Groups with only incomplete licences stay, with no amount.
+Recurring totals SHALL also be given per licence owner (`spec.owner`), per payer (`spec.licence.paidBy`, or `Not set`) and per zone. A licence's zone comes from the served components that list it in `spec.dependsOn`: one zone, `Several zones` if more, `No zone` if none. Zones are keyed by declared name, lower-cased; unresolved labels count as no zone. Groups with only incomplete licences stay. Real groups come first, by display text (code points), then key; synthetic groups last.
 
 #### Scenario: Licence used in two zones
 - **WHEN** a licence is used by a component in zone `Finance` and one in zone `Delivery`
@@ -99,6 +111,10 @@ Recurring totals SHALL also be given per licence owner (`spec.owner`), per payer
 #### Scenario: Name that looks like a synthetic group
 - **WHEN** one licence's `paidBy` is the text `Not set` and another has no `paidBy`
 - **THEN** they are in two different payer groups
+
+#### Scenario: Zones with the same title
+- **WHEN** zones `fin-a` and `fin-b` both have the title `Finance` and the component documents are read in a different order
+- **THEN** there are two `Finance` zone groups, `fin-a` before `fin-b`, in the same order both times
 
 ### Requirement: No licences
 With no served licence, every list and total SHALL be empty and the report says so.

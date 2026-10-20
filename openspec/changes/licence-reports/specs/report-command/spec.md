@@ -31,11 +31,15 @@ When `--help` is among the arguments, the command SHALL print usage on stdout an
 - **THEN** the exit code is 2, stdout is empty and stderr says the folder was not found
 
 ### Requirement: Internal failure
-An unexpected failure while computing or writing the report SHALL exit 1 with stdout empty and one stderr line, without usage.
+A failure while computing or serialising the report SHALL exit 1 with stdout empty and one error line on stderr, without usage. A failure while writing stdout SHALL exit 1 with one error line on stderr; bytes already written may remain. A catalogue counts line written before either failure stays.
 
 #### Scenario: Amount too large
 - **WHEN** a licence cost cannot be written faithfully as a JSON number
 - **THEN** the exit code is 1, stdout is empty and stderr names the licence
+
+#### Scenario: Closed pipe
+- **WHEN** stdout is closed after the first bytes
+- **THEN** the exit code is 1 and stderr has one error line without usage
 
 ### Requirement: Formats
 `text` SHALL be plain tables for a terminal. `json` SHALL follow the shape in `docs/reports.md`: report date, window, renewals, overdue, unknown dates, totals, groups, one-off, planned and incomplete, amounts as numbers rounded to two decimals and `null` where no amount exists. `ics` SHALL be the calendar file.
@@ -48,8 +52,8 @@ An unexpected failure while computing or writing the report SHALL exit 1 with st
 `csv` SHALL have the header `ref,title,vendor,status,cycle,cost,currency,monthly,yearly,renewsOn,owner,paidBy,zone,counted` and one row per licence with status `active`, `to-confirm` or `to-buy`, in reference order. `counted` is `true` only for licences in the recurring totals; `monthly` and `yearly` are empty for one-off and incomplete licences; `unknown` values stay `unknown`; absent optional values are empty.
 
 #### Scenario: CSV rows
-- **WHEN** the catalogue has an active, a to-buy and a cancelled licence
-- **THEN** the CSV has the header and two rows, and only the active one has `counted` `true`
+- **WHEN** the catalogue has complete active `monthly` and `one-off` licences, an active `monthly` licence with `cost: unknown`, a complete `to-buy` `yearly` licence and a cancelled licence
+- **THEN** the CSV has four data rows, only the complete active monthly row has `counted` `true`, and `monthly` and `yearly` are empty for the one-off and the incomplete rows
 
 ### Requirement: Safe CSV
 Every CSV field SHALL be quoted and embedded quotes doubled, and a field starting with `=`, `+`, `-`, `@`, tab, carriage return, line feed, `＝`, `＋`, `－` or `＠` SHALL be prefixed with `'`. This protects the exported file as written; a spreadsheet that rewrites it is out of scope.

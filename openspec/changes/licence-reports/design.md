@@ -51,19 +51,22 @@ JSON shape (stable within v1; documented in `docs/reports.md`):
   "date": "2027-06-01", "days": 90, "to": "2027-08-30",
   "renewals": [{ "ref": "", "title": "", "vendor": "", "status": "", "cycle": "", "renewsOn": "", "cost": 0, "currency": "" }],
   "overdue": [], "unknownDates": ["resource:..."],
-  "recurring": [{ "currency": "GBP", "monthly": 0, "yearly": 0, "incomplete": 0 }],
-  "unknownCurrency": { "incomplete": 0 },
+  "recurring": [{ "currency": "GBP", "monthly": 0, "yearly": 0, "incomplete": 0 }, { "currency": null, "monthly": null, "yearly": null, "incomplete": 0 }],
   "groups": {
-    "owner": [{ "key": "", "label": "", "synthetic": false, "totals": [{ "currency": "", "monthly": 0, "yearly": 0, "incomplete": 0 }] }],
+    "owner": [{ "key": "", "label": "", "synthetic": false, "totals": [{ "currency": "GBP", "monthly": 0, "yearly": 0, "incomplete": 0 }] }],
     "payer": [], "zone": []
   },
-  "oneOff": { "items": [{ "ref": "", "title": "", "cost": 0, "currency": "", "renewsOn": null }], "totals": [{ "currency": "", "total": 0 }] },
-  "planned": { "items": [{ "ref": "", "title": "", "cycle": "", "cost": null, "currency": null, "monthly": null, "yearly": null }], "recurring": [], "oneOff": [] },
+  "oneOff": { "items": [{ "ref": "", "title": "", "cost": 0, "currency": "", "renewsOn": null }], "totals": [{ "currency": "GBP", "total": 0, "incomplete": 0 }] },
+  "planned": {
+    "items": [{ "ref": "", "title": "", "cycle": "", "cost": null, "currency": null, "monthly": null, "yearly": null }],
+    "recurring": [{ "currency": "EUR", "monthly": 0, "yearly": 0, "incomplete": 0 }],
+    "oneOff": [{ "currency": "EUR", "total": 0, "incomplete": 0 }]
+  },
   "incomplete": [{ "ref": "", "title": "", "status": "", "unknown": ["cost"] }]
 }
 ```
 
-Lists are sorted (renewals by date then reference; everything else by reference or label); empty lists are `[]`; missing amounts are `null`.
+Lists are sorted (renewals by date then reference; total rows by currency with the unknown-currency row, `currency: null`, last; groups as the spec says; everything else by reference); empty lists are `[]`; an amount is `null` when no complete licence adds to it.
 
 ## Risks / Trade-offs
 
@@ -71,3 +74,5 @@ Lists are sorted (renewals by date then reference; everything else by reference 
 - **Zone by use** can surprise when a shared tool lands in `Several zones`; the page explains it.
 - **DTSTAMP at the report date** trades strict "last revised" accuracy for reproducible files.
 - **CSV protection** covers the file as exported; a spreadsheet that re-saves it may undo it.
+- **UID uniqueness** (review round 2 asked for a required UUID in `Settings`; declined as too heavy for this tool): UIDs are unique within a catalogue and across catalogues with different `Settings` names. Two catalogues with the same Settings name, or both without one, can produce the same UID for the same licence reference; it matters only to someone importing both calendars into one calendar. `docs/reports.md` advises a distinctive `Settings` name.
+- **DTSTAMP and revisions** (review round 2 asked for an independent revision timestamp; declined to keep the file reproducible): editing a licence and exporting again with the same `--date` keeps the same `DTSTAMP`. The file is meant to be imported, and importers replace events by UID; a calendar that relies on `DTSTAMP` to accept an update needs a new `--date`. Documented.

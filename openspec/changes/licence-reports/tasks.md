@@ -4,10 +4,10 @@ Levels: U unit, I integration (CLI or built files), B browser (Playwright). Ever
 
 | Spec | Scenarios | File | Level |
 | --- | --- | --- | --- |
-| licence-reports | Ninety-day window; Overdue; Window of zero days; Window of 366 days; Monthly and yearly; Seats and none; Exact sum; Two currencies; One-off with a date (report part); Planned purchase; Cancelled; Unknown cost; Unknown currency; Licence used in two zones; Unused licence; Name that looks like a synthetic group | `test/unit/reports.test.ts` | U |
+| licence-reports | Ninety-day window; Overdue; Window of zero days; Window of 366 days; Monthly and yearly; Seats and none; Exact sum; Two currencies; One-off with a date (report part); One-off beyond the window; Planned purchase; Cancelled; Unknown cost; Unknown currency; Incomplete one-off and planned; Group with only an unknown currency; Licence used in two zones; Unused licence; Name that looks like a synthetic group; Zones with the same title | `test/unit/reports.test.ts` | U |
 | licence-reports | Yearly renewal; Calendar text escaped; Long non-ASCII title; Same input; Two catalogues; One-off with a date (calendar part) | `test/unit/ics.test.ts` | U |
 | licence-reports | Not in staff; Site report date; Page content; Empty report (page part) | `test/integration/site.test.ts` | I |
-| report-command | Default options; Read-only; Days out of range; Unknown format; Missing folder; Amount too large; JSON totals; CSV rows; Formula in a title; One error; Large catalogue; Empty report (command part) | `test/integration/report.test.ts` | I |
+| report-command | Default options; Read-only; Days out of range; Unknown format; Missing folder; Amount too large; Closed pipe; JSON totals; CSV rows; Formula in a title; One error; Large catalogue; Empty report (command part) | `test/integration/report.test.ts` | I |
 | build-command | Two sites | `test/integration/build.test.ts` | I |
 | catalogue-site | Item pages; No journeys; Reports in full only; Site title; View in the footer; Reports link | `test/integration/site.test.ts` | I |
 | catalogue-site | Theme remembered; the Reports page under the CSP | `test/browser/site.spec.ts` | B |
