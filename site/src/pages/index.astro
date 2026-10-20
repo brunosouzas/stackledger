@@ -1,0 +1,63 @@
+---
+// Map page (catalogue-site, Map page and Map interaction): the view's map in both themes, zoom,
+// pan, line highlight and zone filter. Without JavaScript the whole map is shown and the tools stay hidden.
+import Base from '../layouts/Base.astro';
+import Themed from '../components/Themed.astro';
+import { site } from '../lib/site';
+
+const { lines, zones } = site.map;
+---
+
+<Base title="Map" current="map">
+  <section class="container section">
+    <h1>Map</h1>
+    {
+      lines.length === 0 ? (
+        <p class="lead">No journeys yet. Add a Line to the catalogue to draw one.</p>
+      ) : (
+        <p class="lead">Each line is a journey through the software; each station opens its page.</p>
+      )
+    }
+    <div class="map-tools" data-map-tools hidden>
+      <div class="map-zoom" role="group" aria-label="Zoom">
+        <button type="button" class="btn" data-zoom="in" aria-label="Zoom in">+</button>
+        <button type="button" class="btn" data-zoom="out" aria-label="Zoom out">−</button>
+        <button type="button" class="btn" data-zoom="reset">Reset</button>
+      </div>
+      {
+        zones.length > 0 && (
+          <label class="field map-zone">
+            Zone
+            <select data-zone-filter>
+              <option value="">All zones</option>
+              {zones.map((zone) => <option value={zone.name}>{zone.title}</option>)}
+            </select>
+          </label>
+        )
+      }
+    </div>
+    <div class="map-frame" data-map>
+      <Themed light={site.map.light} dark={site.map.dark} class="map-canvas" />
+    </div>
+    {
+      lines.length > 0 && (
+        <div class="map-lines" data-map-lines hidden>
+          <h2 class="visually-hidden">Highlight a line</h2>
+          <ul class="line-chips">
+            {lines.map((line) => (
+              <li>
+                <button type="button" class="btn" data-line={line.ref} aria-pressed="false">
+                  <span class="badge" set:html={line.badgeSvg} />
+                  {line.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )
+    }
+  </section>
+  <script>
+    import '../scripts/map.ts';
+  </script>
+</Base>

@@ -1,0 +1,55 @@
+---
+// Impact of removing an item, as the MCP impact tool computes it (catalogue-site, Impact of removal).
+import LinkOrText from './LinkOrText.astro';
+
+interface Props {
+  root: string;
+  impact: {
+    dependants: { ref: string; title: string; href?: string; depth: number }[];
+    lines: { ref: string; title: string; href?: string }[];
+    truncated: boolean;
+  };
+}
+const { root, impact } = Astro.props;
+---
+
+<section aria-labelledby="impact">
+  <h2 id="impact">Impact of removing it</h2>
+  {
+    impact.dependants.length === 0 ? (
+      <p>Nothing depends on this item.</p>
+    ) : (
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Depends on it</th>
+              <th scope="col">Depth</th>
+            </tr>
+          </thead>
+          <tbody>
+            {impact.dependants.map((entry) => (
+              <tr>
+                <td><LinkOrText root={root} item={entry} /></td>
+                <td>{entry.depth}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+  {impact.truncated && <p class="muted">The list stops at 500 items.</p>}
+  <h3>Journeys affected</h3>
+  {
+    impact.lines.length === 0 ? (
+      <p>No journey is affected.</p>
+    ) : (
+      <ul class="plain-list">
+        {impact.lines.map((line) => (
+          <li><LinkOrText root={root} item={line} /></li>
+        ))}
+      </ul>
+    )
+  }
+</section>

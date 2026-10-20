@@ -1,0 +1,71 @@
+---
+// Software list (catalogue-site, Software list): every served component and licence, sorted by
+// reference. Search and filters work on the table rows themselves; without JavaScript the full table shows.
+import Base from '../../layouts/Base.astro';
+import { href, rootFor, site } from '../../lib/site';
+
+const root = rootFor(Astro.url.pathname);
+const filters = [
+  { key: 'kind', label: 'Kind', options: site.filters.kind },
+  { key: 'zone', label: 'Zone', options: site.filters.zone },
+  { key: 'state', label: 'Lifecycle or status', options: site.filters.state },
+  { key: 'owner', label: 'Owner', options: site.filters.owner },
+];
+---
+
+<Base title="Software" current="software">
+  <section class="container section">
+    <h1>Software</h1>
+    <p class="lead">{site.rows.length} items: components and the licences they use.</p>
+    <div class="list-tools" data-list-tools hidden>
+      <label class="field list-search">
+        Search
+        <input type="search" data-search autocomplete="off" placeholder="Name, type, owner…" />
+      </label>
+      {
+        filters.map((filter) => (
+          <label class="field">
+            {filter.label}
+            <select data-filter={filter.key}>
+              <option value="">All</option>
+              {filter.options.map((option) => <option value={option}>{option}</option>)}
+            </select>
+          </label>
+        ))
+      }
+    </div>
+    <p class="muted" data-count aria-live="polite"></p>
+    <div class="table-wrap">
+      <table data-software>
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Kind</th>
+            <th scope="col">Type</th>
+            <th scope="col">Lifecycle or status</th>
+            <th scope="col">Owner</th>
+            <th scope="col">Zone</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            site.rows.map((row) => (
+              <tr>
+                <td data-column="title"><a href={href(root, row.href)}>{row.title}</a></td>
+                <td data-column="kind">{row.kind}</td>
+                <td data-column="type">{row.type}</td>
+                <td data-column="state">{row.state}</td>
+                <td data-column="owner">{row.owner}</td>
+                <td data-column="zone">{row.zone}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="no-match" data-no-match hidden>No item matches.</p>
+  </section>
+  <script>
+    import '../../scripts/software.ts';
+  </script>
+</Base>
