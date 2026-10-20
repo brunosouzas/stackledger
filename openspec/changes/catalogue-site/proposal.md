@@ -55,7 +55,7 @@ People who govern software want to open a website and see their software and lic
 
 ## Open questions
 
-None. The owner decided on 2026-10-20: keep Astro with the guardrails in design.md, own SVG diagrams instead of Mermaid, and the four kinds of page above.
+None. Gate 1 approved by the owner on 2026-10-20, including the Node 22.12 floor, the staging folder inside `--out` with the publishing rule, and the spike first. The owner decided on 2026-10-20: keep Astro with the guardrails in design.md, own SVG diagrams instead of Mermaid, and the four kinds of page above.
 
 ## Documentation
 
