@@ -5,6 +5,10 @@
  * "Neighbourhood diagram"). Call neighbourhood(graph, item) for the plain input, then
  * renderNeighbourhood(input, themes.light). Pure functions, no I/O.
  *
+ * Layout: each column is as wide as its longest title (within bounds), the columns sit at the left
+ * edge, the middle and the right edge of a 1200-unit drawing that the page scales to its width, and
+ * the item, short columns and the "Nothing" placeholders are centred vertically.
+ *
  * Safety: every element goes through tag() and every catalogue text through escapeXml (src/map/xml.ts);
  * only boxes with a page carry data-ref, which the page script turns into a link. A text list on the
  * page holds the same items, so the diagram is never the only way to reach them.
@@ -18,13 +22,18 @@ import { escapeXml, SVG_NAMESPACE, tag, type Attributes } from './xml.js';
 export interface DiagramNode { ref: string; title: string; kind: 'component' | 'licence' | 'resource'; linked: boolean }
 export interface Neighbourhood { centre: DiagramNode; dependencies: DiagramNode[]; dependants: DiagramNode[] }
 
-const BOX_WIDTH = 220;
+/** Width of the drawing in viewBox units; the page scales it to its column, so it fills the width. */
+const DIAGRAM_WIDTH = 1200;
 const BOX_HEIGHT = 46;
 const ROW_GAP = 14;
-const COLUMN_GAP = 96;
+const MIN_COLUMN_GAP = 96;
 const PADDING = 24;
 const HEADING_HEIGHT = 34;
-const TITLE_WIDTH = BOX_WIDTH - 24;
+const TEXT_INSET = 12;
+/** Boxes are sized to their longest title (bold text is about a tenth wider), within these bounds. */
+const MIN_BOX_WIDTH = 160;
+const MAX_BOX_WIDTH = 300;
+const BOLD_FACTOR = 1.1;
 
 /** The diagram node of an item: components and licences have pages, other resources do not. */
 export function diagramNode(item: Item): DiagramNode {
@@ -46,37 +55,56 @@ export function neighbourhood(graph: Graph, item: Item): Neighbourhood {
   };
 }
 
-/** Cut a title so it fits the box at 13 units, ending with an ellipsis. */
-function fit(title: string, width = TITLE_WIDTH): string {
-  if (textWidth(title) <= width) return title;
+/** Cut a title so it fits a box of `width`, ending with an ellipsis. */
+function fit(title: string, width: number): string {
+  const room = width - TEXT_INSET * 2;
+  const measure = (text: string) => textWidth(text) * BOLD_FACTOR;
+  if (measure(title) <= room) return title;
   const chars = Array.from(title);
-  while (chars.length > 1 && textWidth(chars.join('') + '…') > width) chars.pop();
+  while (chars.length > 1 && measure(chars.join('') + '…') > room) chars.pop();
   return chars.join('') + '…';
 }
 
-function box(node: DiagramNode, x: number, y: number, theme: Theme, centre: boolean): string {
+/** One width for a column: its longest title, within the bounds. */
+function columnWidth(nodes: DiagramNode[]): number {
+  const widest = nodes.reduce((most, node) => Math.max(most, textWidth(node.title) * BOLD_FACTOR + TEXT_INSET * 2), 0);
+  return Math.ceil(Math.min(MAX_BOX_WIDTH, Math.max(MIN_BOX_WIDTH, widest)));
+}
+
+const stackHeight = (count: number) => count * (BOX_HEIGHT + ROW_GAP) - ROW_GAP;
+
+function box(node: DiagramNode, x: number, y: number, width: number, theme: Theme, centre: boolean): string {
   const fill = centre ? theme.header : theme.panel;
   const ink = centre ? theme.headerText : theme.text;
-  const rectAttrs: Attributes = { x, y, width: BOX_WIDTH, height: BOX_HEIGHT, rx: 6, fill, stroke: centre ? theme.header : theme.outline, 'stroke-width': 1.5 };
+  const rectAttrs: Attributes = { x, y, width, height: BOX_HEIGHT, rx: 6, fill, stroke: centre ? theme.header : theme.outline, 'stroke-width': 1.5 };
   // A resource without a page is drawn dashed and muted, so it does not look clickable.
   if (!node.linked) Object.assign(rectAttrs, { stroke: theme.muted, 'stroke-dasharray': '5 4' });
   const content = tag('title', {}, escapeXml(`${node.title} (${node.ref})`))
     + tag('rect', rectAttrs)
-    + tag('text', { x: x + 12, y: y + 20, fill: node.linked ? ink : theme.muted, 'font-size': 13, 'font-weight': 700 }, escapeXml(fit(node.title)))
-    + tag('text', { x: x + 12, y: y + 37, fill: centre ? theme.headerText : theme.muted, 'font-size': 11 }, escapeXml(node.kind));
+    + tag('text', { x: x + TEXT_INSET, y: y + 20, fill: node.linked ? ink : theme.muted, 'font-size': 13, 'font-weight': 700 }, escapeXml(fit(node.title, width)))
+    + tag('text', { x: x + TEXT_INSET, y: y + 37, fill: centre ? theme.headerText : theme.muted, 'font-size': 11 }, escapeXml(node.kind));
   return tag('g', node.linked ? { 'data-ref': node.ref } : {}, content);
 }
 
-function column(nodes: DiagramNode[], x: number, top: number, theme: Theme): string {
-  if (!nodes.length) return tag('text', { x: x + 12, y: top + 28, fill: theme.muted, 'font-size': 13 }, 'Nothing');
-  return nodes.map((node, i) => box(node, x, top + i * (BOX_HEIGHT + ROW_GAP), theme, false)).join('');
+/** An empty column: a dashed placeholder level with the centre box, so the diagram stays balanced. */
+function nothing(x: number, y: number, width: number, theme: Theme): string {
+  return tag('rect', { x, y, width, height: BOX_HEIGHT, rx: 6, fill: 'none', stroke: theme.muted, 'stroke-width': 1, 'stroke-dasharray': '5 4' })
+    + tag('text', { x: x + width / 2, y: y + 28, fill: theme.muted, 'font-size': 13, 'text-anchor': 'middle' }, 'Nothing');
 }
 
-/** Curved edges from each box of one column to the centre box. */
-function edges(count: number, fromX: number, toX: number, top: number, centreY: number, theme: Theme): string {
+interface Column { nodes: DiagramNode[]; x: number; width: number; top: number }
+
+/** Boxes of one column, stacked and centred on the centre box. */
+function column(input: Column, centreTop: number, theme: Theme): string {
+  if (!input.nodes.length) return nothing(input.x, centreTop, input.width, theme);
+  return input.nodes.map((node, i) => box(node, input.x, input.top + i * (BOX_HEIGHT + ROW_GAP), input.width, theme, false)).join('');
+}
+
+/** Curved edges from the inner side of each box of a column to the centre box. */
+function edges(input: Column, fromX: number, toX: number, centreY: number, theme: Theme): string {
   const middle = (fromX + toX) / 2;
-  return Array.from({ length: count }, (_, i) => {
-    const y = top + i * (BOX_HEIGHT + ROW_GAP) + BOX_HEIGHT / 2;
+  return input.nodes.map((_, i) => {
+    const y = input.top + i * (BOX_HEIGHT + ROW_GAP) + BOX_HEIGHT / 2;
     const d = `M${fromX},${y} C${middle},${y} ${middle},${centreY} ${toX},${centreY}`;
     return tag('path', { d, fill: 'none', stroke: theme.muted, 'stroke-width': 2 });
   }).join('');
@@ -84,24 +112,30 @@ function edges(count: number, fromX: number, toX: number, top: number, centreY: 
 
 export function renderNeighbourhood(input: Neighbourhood, theme: Theme): string {
   const rows = Math.max(input.dependencies.length, input.dependants.length, 1);
-  const columnHeight = rows * (BOX_HEIGHT + ROW_GAP) - ROW_GAP;
   const top = PADDING + HEADING_HEIGHT;
-  const width = PADDING * 2 + BOX_WIDTH * 3 + COLUMN_GAP * 2;
-  const height = top + columnHeight + PADDING;
-  const [left, centre, right] = [0, 1, 2].map(i => PADDING + i * (BOX_WIDTH + COLUMN_GAP)) as [number, number, number];
-  const centreTop = top + (columnHeight - BOX_HEIGHT) / 2;
+  const height = top + stackHeight(rows) + PADDING;
+  const centreTop = top + (stackHeight(rows) - BOX_HEIGHT) / 2;
   const centreY = centreTop + BOX_HEIGHT / 2;
+  const centreWidth = columnWidth([input.centre]);
+  const leftWidth = columnWidth(input.dependencies);
+  const rightWidth = columnWidth(input.dependants);
+  // Spread the columns over the whole drawing: left edge, middle, right edge.
+  const width = Math.max(DIAGRAM_WIDTH, PADDING * 2 + leftWidth + centreWidth + rightWidth + MIN_COLUMN_GAP * 2);
+  const centreX = Math.round((width - centreWidth) / 2);
+  const stackTop = (count: number) => top + (stackHeight(rows) - stackHeight(Math.max(count, 1))) / 2;
+  const left: Column = { nodes: input.dependencies, x: PADDING, width: leftWidth, top: stackTop(input.dependencies.length) };
+  const right: Column = { nodes: input.dependants, x: width - PADDING - rightWidth, width: rightWidth, top: stackTop(input.dependants.length) };
   const heading = (text: string, x: number) => tag('text', { x, y: PADDING + 14, fill: theme.text, 'font-size': 13, 'font-weight': 700 }, text);
   const body = [
     tag('rect', { x: 0, y: 0, width, height, fill: theme.background }),
-    heading('Depends on', left),
-    heading('This item', centre),
-    heading('Used by', right),
-    edges(input.dependencies.length, left + BOX_WIDTH, centre, top, centreY, theme),
-    edges(input.dependants.length, right, centre + BOX_WIDTH, top, centreY, theme),
-    column(input.dependencies, left, top, theme),
-    box(input.centre, centre, centreTop, theme, true),
-    column(input.dependants, right, top, theme),
+    heading('Depends on', left.x),
+    heading('This item', centreX),
+    heading('Used by', right.x),
+    edges(left, left.x + left.width, centreX, centreY, theme),
+    edges(right, right.x, centreX + centreWidth, centreY, theme),
+    column(left, centreTop, theme),
+    box(input.centre, centreX, centreTop, centreWidth, theme, true),
+    column(right, centreTop, theme),
   ].join('');
   const attrs: Attributes = { xmlns: SVG_NAMESPACE, role: 'img', viewBox: `0 0 ${width} ${height}`, width, height, 'font-family': theme.font };
   const head = tag('title', {}, escapeXml(`Neighbourhood of ${input.centre.title}`))

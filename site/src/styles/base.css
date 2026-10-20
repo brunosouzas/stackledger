@@ -423,6 +423,13 @@ tbody tr:last-child td {
   height: auto;
 }
 
+/* The neighbourhood diagram is drawn for a wide column and scaled to fill it; on a narrow screen it
+   keeps a readable size and scrolls instead. */
+.diagram-wide svg {
+  width: 100%;
+  min-width: 52rem;
+}
+
 .themed-dark {
   display: none;
 }

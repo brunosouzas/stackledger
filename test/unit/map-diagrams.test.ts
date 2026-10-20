@@ -93,3 +93,48 @@ test('Diagrams are deterministic and reject unsafe colours', () => {
   expect(() => renderStrip({ ...input, color: 'url(javascript:alert(1))' }, themes.light)).toThrow(/colour/);
   expect(() => renderLineBadge({ badge: 'S', color: 'red', title: 'Ship' })).toThrow(/colour/);
 });
+
+/** Box rectangles of a rendered neighbourhood by reference (the first rect of each data-ref group). */
+function boxes(svg: string): Map<string, { x: number; y: number; width: number }> {
+  return new Map(groups(svg).filter(group => group.getAttribute('data-ref')).map(group => {
+    const rect = group.getElementsByTagName('rect')[0]!;
+    return [group.getAttribute('data-ref')!, { x: Number(rect.getAttribute('x')), y: Number(rect.getAttribute('y')), width: Number(rect.getAttribute('width')) }];
+  }));
+}
+
+test('Neighbourhood boxes fit their titles and fill the width', () => {
+  const long = set(component('crm'), 'metadata.title', 'Customer Portal Manager');
+  const graph = graphOf([depends('forge', ['component:crm', 'component:vault']), long, component('vault'), depends('editor', ['component:forge'])]);
+  const svg = renderNeighbourhood(neighbourhood(graph, graph.items.get('component:forge')!), themes.light);
+  const all = boxes(svg);
+  const width = Number(safe(svg).documentElement.getAttribute('width'));
+  expect(width).toBe(1200);
+  // One width per column, from its longest title; the short centre title gets the minimum.
+  expect(all.get('component:crm')!.width).toBeGreaterThan(all.get('component:forge')!.width);
+  expect(all.get('component:vault')!.width).toBe(all.get('component:crm')!.width);
+  expect(all.get('component:forge')!.width).toBe(160);
+  expect(svg).toContain('>Customer Portal Manager<');
+  // Columns at the left edge, in the middle and at the right edge.
+  expect(all.get('component:crm')!.x).toBe(24);
+  expect(all.get('component:forge')!.x + all.get('component:forge')!.width / 2).toBeCloseTo(width / 2, 0);
+  expect(all.get('component:editor')!.x + all.get('component:editor')!.width).toBe(width - 24);
+});
+
+test('Neighbourhood centres the item and short columns vertically', () => {
+  const graph = graphOf([depends('forge', ['component:a', 'component:b', 'component:c']), component('a'), component('b'), component('c'), depends('editor', ['component:forge'])]);
+  const all = boxes(renderNeighbourhood(neighbourhood(graph, graph.items.get('component:forge')!), themes.light));
+  // The single dependant sits level with the centre box, which sits level with the middle dependency.
+  expect(all.get('component:forge')!.y).toBe(all.get('component:b')!.y);
+  expect(all.get('component:editor')!.y).toBe(all.get('component:forge')!.y);
+});
+
+test('Neighbourhood without relations keeps placeholders level with the item', () => {
+  const graph = graphOf([component('alone')]);
+  const svg = renderNeighbourhood(neighbourhood(graph, graph.items.get('component:alone')!), themes.light);
+  const doc = safe(svg);
+  const placeholders = Array.from(doc.getElementsByTagName('rect')).filter(rect => rect.getAttribute('fill') === 'none');
+  expect(placeholders).toHaveLength(2);
+  const centre = boxes(svg).get('component:alone')!;
+  for (const rect of placeholders) expect(Number(rect.getAttribute('y'))).toBe(centre.y);
+  expect(Array.from(doc.getElementsByTagName('text')).filter(text => text.textContent === 'Nothing')).toHaveLength(2);
+});

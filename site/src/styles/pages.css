@@ -113,6 +113,29 @@
   border-color: var(--color-primary);
 }
 
+.map-symbols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  color: var(--color-text-light);
+  font-size: 0.9rem;
+  list-style: none;
+}
+
+.map-symbols li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.map-symbol svg {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
 /* Software list. */
 
 .list-tools {

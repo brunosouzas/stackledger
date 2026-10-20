@@ -1,4 +1,14 @@
 # Fictitious Northwind Studio inventory. No real subscriptions or people.
+# The Group gives the owner group:northwind its display name on the site.
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: northwind
+  title: Northwind team
+spec:
+  type: team
+  children: []
+---
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:

@@ -3,6 +3,9 @@
  * Every visual choice comes from Theme data. Invalid colours/nonfinite geometry throw.
  * Strokes, stations, labels, terminal badges and legend entries carry data-line (and stations
  * and labels data-zone) for the site's map script; those values are escaped like text.
+ * renderSvg(geometry, theme, { chrome: false }) leaves out the title band and the legend panel and
+ * crops to the map frame: the site's map page shows the title, the line legend and the symbols in
+ * HTML (renderSymbol draws one symbol). The default output is what `stackledger map` writes.
  */
 import type { MapGeometry, Marker, Badge, StationGeometry } from './layout.js';
 import type { Point } from './model.js';
@@ -16,6 +19,7 @@ import { tag, escapeXml, number, color, tint, SVG_NAMESPACE, type Attributes } f
 export { escapeXml } from './xml.js';
 
 const HEADER_HEIGHT = 64;
+const FRAME_MARGIN = 16;
 
 /** Element builders bound to one theme. Catalogue text only ever passes through `text` or `title`. */
 function painter(theme: Theme) {
@@ -166,9 +170,27 @@ function legendLayer(geometry: MapGeometry, theme: Theme, paint: Painter): strin
   return parts.join('');
 }
 
-export function renderSvg(geometry: MapGeometry, theme: Theme): string {
+/** chrome (default true): draw the title band and the legend panel around the map. */
+export interface RenderOptions { chrome?: boolean }
+
+/** The frame with a small margin: the viewBox of a map drawn without title band and legend. */
+function frameView(geometry: MapGeometry): Box {
+  const { frame } = geometry;
+  return { x: frame.x - FRAME_MARGIN, y: frame.y - FRAME_MARGIN, w: frame.w + FRAME_MARGIN * 2, h: frame.h + FRAME_MARGIN * 2 };
+}
+
+/** One legend symbol on its own (24 x 24), for the HTML legend under the site's map. */
+export function renderSymbol(symbol: string, theme: Theme): string {
+  const size = 24;
+  const attrs: Attributes = { xmlns: SVG_NAMESPACE, role: 'img', viewBox: `0 0 ${size} ${size}`, width: size, height: size };
+  return tag('svg', attrs, legendSymbol(symbol, [size / 2, size / 2], theme, painter(theme)));
+}
+
+export function renderSvg(geometry: MapGeometry, theme: Theme, options: RenderOptions = {}): string {
+  const chrome = options.chrome ?? true;
+  const viewBox = chrome ? geometry.viewBox : frameView(geometry);
   const paint = painter(theme);
-  const background = paint.rect(geometry.viewBox, { fill: theme.background });
+  const background = paint.rect(viewBox, { fill: theme.background });
   const drawnZones = new Set(geometry.zones.map(zone => zone.name.toLowerCase()));
   const badges = geometry.badges.map(badge => tag('g', { 'data-line': badge.line }, paint.badge(badge))).join('');
   const lines = geometry.lines.map(stroke => lineGroup(stroke, theme, paint)).join('') + badges;
@@ -183,10 +205,8 @@ export function renderSvg(geometry: MapGeometry, theme: Theme): string {
     lines,
     stations,
     labelsLayer(geometry, drawnZones, theme, paint) + empty,
-    headerLayer(geometry, theme, paint),
-    legendLayer(geometry, theme, paint),
+    ...(chrome ? [headerLayer(geometry, theme, paint), legendLayer(geometry, theme, paint)] : []),
   ].map(content => tag('g', {}, content)).join('\n');
-  const { viewBox } = geometry;
   const attrs: Attributes = {
     xmlns: SVG_NAMESPACE,
     role: 'img',

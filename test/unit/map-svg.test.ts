@@ -2,7 +2,7 @@
  * Run npm test. Differential catalogues prove the hidden/date paths actually affect full output.
  */
 import { test, expect } from 'vitest';
-import { renderSvg, escapeXml } from '../../src/map/svg.js';
+import { renderSvg, renderSymbol, escapeXml } from '../../src/map/svg.js';
 import { themes } from '../../src/map/themes.js';
 import { tag } from '../../src/map/xml.js';
 import { buildMapModel } from '../../src/map/model.js';
@@ -106,4 +106,34 @@ test('Interchange in a zone',()=>{
   // Two terminal badges and one legend entry per line, besides the stroke.
   expect(groups.filter(e=>e.getAttribute('data-line')===ref&&!e.hasAttribute('data-ref'))).toHaveLength(3);
  }
+});
+
+// Site map page: no title band or legend panel, cropped to the frame; the default output keeps both.
+test('Map without title band and legend', () => {
+  const g = geometry();
+  for (const theme of Object.values(themes)) {
+    const bare = renderSvg(g, theme, { chrome: false });
+    const doc = safe(bare);
+    const texts = Array.from(doc.getElementsByTagName('text')).map(element => element.textContent);
+    for (const chromeText of ['Software map', 'stackledger · full view', 'Lines (journeys)', 'Symbols', 'Interchange']) expect(texts).not.toContain(chromeText);
+    const { frame } = g;
+    expect(doc.documentElement.getAttribute('viewBox')).toBe([frame.x - 16, frame.y - 16, frame.w + 32, frame.h + 32].join(' '));
+    // Strokes, stations and labels are all still there.
+    expect(bare).toContain('data-ref="component:a"');
+    expect(bare).toContain('data-ref="line:ship"');
+    const full = renderSvg(g, theme);
+    expect(renderSvg(g, theme, {})).toBe(full);
+    expect(renderSvg(g, theme, { chrome: true })).toBe(full);
+    expect(full).toContain('Lines (journeys)');
+  }
+});
+
+test('Legend symbols on their own', () => {
+  for (const theme of Object.values(themes)) {
+    for (const symbol of geometry().legend.symbols) {
+      const doc = safe(renderSymbol(symbol, theme));
+      expect(doc.documentElement.getAttribute('viewBox')).toBe('0 0 24 24');
+      expect(doc.getElementsByTagName('circle').length, symbol).toBeGreaterThan(0);
+    }
+  }
 });

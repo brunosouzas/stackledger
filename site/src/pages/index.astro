@@ -1,11 +1,13 @@
 ---
 // Map page (catalogue-site, Map page and Map interaction): the view's map in both themes, zoom,
-// pan, line highlight and zone filter. Without JavaScript the whole map is shown and the tools stay hidden.
+// pan, line highlight and zone filter. The map SVG has no title band or legend: the line chips are
+// the legend (buttons that highlight a line) and the symbols are listed under them. Without
+// JavaScript the whole map and both legends are shown; only the zoom and zone tools stay hidden.
 import Base from '../layouts/Base.astro';
 import Themed from '../components/Themed.astro';
 import { site } from '../lib/site';
 
-const { lines, zones } = site.map;
+const { lines, zones, symbols } = site.map;
 ---
 
 <Base title="Map" current="map">
@@ -41,8 +43,8 @@ const { lines, zones } = site.map;
     </div>
     {
       lines.length > 0 && (
-        <div class="map-lines" data-map-lines hidden>
-          <h2 class="visually-hidden">Highlight a line</h2>
+        <div class="map-lines" data-map-lines>
+          <h2 class="visually-hidden">Lines (journeys)</h2>
           <ul class="line-chips">
             {lines.map((line) => (
               <li>
@@ -56,6 +58,19 @@ const { lines, zones } = site.map;
         </div>
       )
     }
+    <h2 class="visually-hidden">Symbols</h2>
+    <ul class="map-symbols">
+      {
+        symbols.map((symbol) => (
+          <li>
+            <div class="map-symbol" aria-hidden="true">
+              <Themed light={symbol.light} dark={symbol.dark} class="symbol" />
+            </div>
+            {symbol.label}
+          </li>
+        ))
+      }
+    </ul>
   </section>
   <script>
     import '../scripts/map.ts';

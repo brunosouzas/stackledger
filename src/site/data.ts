@@ -7,6 +7,8 @@
  * The staff data never reads the date (the map model ignores it for staff), so staff output depends
  * only on what the staff view serves. A full build without a real date throws. Links are paths from
  * the site's root without a leading slash ('software/editor/'); the layout makes them relative.
+ * Owners show by name when `owners` (from src/site/owners.ts) names them, else as the raw reference.
+ * The map is drawn without its title band and legend: the page shows both in HTML (`symbols`).
  */
 import { compareRefs } from '../identity.js';
 import { buildGraph, impact, linesOf, summary, type Graph, type Item } from '../graph.js';
@@ -14,7 +16,8 @@ import { buildMapModel, type MapLine, type MapModel } from '../map/model.js';
 import { layoutMap, type MapGeometry } from '../map/layout.js';
 import { neighbourhood, renderNeighbourhood, type DiagramNode } from '../map/neighbourhood.js';
 import { renderLineBadge, renderStrip, strip } from '../map/strip.js';
-import { renderSvg } from '../map/svg.js';
+import { renderSvg, renderSymbol } from '../map/svg.js';
+import { displayOwner } from './owners.js';
 import { themes, type Theme } from '../map/themes.js';
 import { applyView, resolveHidden, settingsInError, type ViewName } from '../views.js';
 import type { Catalogue } from '../validate.js';
@@ -37,7 +40,7 @@ export interface LicencePage { ref: string; slug: string; name: string; title: s
 export interface JourneyPage extends LineSummary { strip: Themed; stopList: (Link & { lines: Link[] })[] }
 export interface SiteData {
   view: ViewName; version: string; title: string; colors: Partial<Record<SiteColorName, string>>;
-  map: Themed & { lines: LineSummary[]; zones: { name: string; title: string }[] };
+  map: Themed & { lines: LineSummary[]; zones: { name: string; title: string }[]; symbols: (Themed & { label: string })[] };
   rows: SoftwareRow[]; filters: { kind: string[]; zone: string[]; state: string[]; owner: string[] };
   components: ComponentPage[]; licences: LicencePage[]; journeys: JourneyPage[];
 }
@@ -75,7 +78,7 @@ function siteSettings(catalogue: Catalogue): { title: string; colors: Partial<Re
 class PageBuilder {
   private readonly drawn: Map<string, MapLine>;
 
-  constructor(private readonly graph: Graph, private readonly model: MapModel) {
+  constructor(private readonly graph: Graph, private readonly model: MapModel, private readonly owners: ReadonlyMap<string, string>) {
     this.drawn = new Map(model.lines.map(line => [line.ref.toLowerCase(), line]));
   }
 
@@ -116,7 +119,7 @@ class PageBuilder {
     return {
       ref: item.ref, slug: item.name.toLowerCase(), name: item.name, title: titleOf(item),
       ...(metadata.description === undefined ? {} : { description: metadata.description }),
-      type: spec.type, lifecycle: spec.lifecycle, owner: spec.owner, ...(zone === undefined ? {} : { zone }),
+      type: spec.type, lifecycle: spec.lifecycle, owner: displayOwner(this.owners, spec.owner), ...(zone === undefined ? {} : { zone }),
       tags: (metadata.tags ?? []).filter(tag => typeof tag === 'string'),
       licences,
       journeys: linesOf(this.graph, item).map(ref => this.link(ref)),
@@ -133,7 +136,7 @@ class PageBuilder {
   licence(item: Extract<Item, { kind: 'licence' }>): LicencePage {
     const near = neighbourhood(this.graph, item);
     return {
-      ref: item.ref, slug: item.name.toLowerCase(), name: item.name, title: titleOf(item), owner: item.entity.spec.owner,
+      ref: item.ref, slug: item.name.toLowerCase(), name: item.name, title: titleOf(item), owner: displayOwner(this.owners, item.entity.spec.owner),
       fields: fields(item.entity),
       usedBy: near.dependants.map(node => this.nodeLink(node)),
       impact: this.impact(item),
@@ -161,12 +164,12 @@ function themed(render: (theme: Theme) => string): Themed {
   return { light: render(themes.light), dark: render(themes.dark) };
 }
 
-function row(item: Extract<Item, { kind: 'component' | 'licence' }>): SoftwareRow {
+function row(item: Extract<Item, { kind: 'component' | 'licence' }>, owners: ReadonlyMap<string, string>): SoftwareRow {
   const info = summary(item);
   const state = item.kind === 'component' ? item.entity.spec.lifecycle : item.entity.spec.licence?.status ?? '';
   return {
     ref: item.ref, href: pagePath(item)!, title: info.title ?? item.name, kind: item.kind,
-    type: info.type ?? '', state, owner: info.owner ?? '', zone: info.zone ?? '',
+    type: info.type ?? '', state, owner: info.owner === undefined ? '' : displayOwner(owners, info.owner), zone: info.zone ?? '',
   };
 }
 
@@ -176,7 +179,7 @@ function options(rows: SoftwareRow[], column: 'kind' | 'zone' | 'state' | 'owner
 }
 
 /** SiteData of one view, plus the full map geometry for the build report (suggestions, unrouted hops). */
-export function buildSiteData(catalogue: Catalogue, view: ViewName, version: string, date?: string): { data: SiteData; geometry: MapGeometry } {
+export function buildSiteData(catalogue: Catalogue, view: ViewName, version: string, date?: string, owners: ReadonlyMap<string, string> = new Map()): { data: SiteData; geometry: MapGeometry } {
   if (view === 'full' && date === undefined) throw new Error('A full site needs the map date');
   const served = applyView(catalogue.served, view, resolveHidden(catalogue));
   const graph = buildGraph(served);
@@ -184,20 +187,21 @@ export function buildSiteData(catalogue: Catalogue, view: ViewName, version: str
   const model = buildMapModel(served, view === 'full' ? date! : '');
   const geometry = layoutMap(model, themes.light.lineWidth);
   const darkGeometry = themes.dark.lineWidth === themes.light.lineWidth ? geometry : layoutMap(model, themes.dark.lineWidth);
-  const pages = new PageBuilder(graph, model);
+  const pages = new PageBuilder(graph, model, owners);
   const items = [...graph.items.values()].sort((one, two) => compareRefs(one.ref, two.ref));
   const components = items.filter((item): item is Extract<Item, { kind: 'component' }> => item.kind === 'component');
   const licences = items.filter((item): item is Extract<Item, { kind: 'licence' }> => item.kind === 'licence');
-  const rows = [...components, ...licences].sort((one, two) => compareRefs(one.ref, two.ref)).map(row);
+  const rows = [...components, ...licences].sort((one, two) => compareRefs(one.ref, two.ref)).map(item => row(item, owners));
   const data: SiteData = {
     view,
     version,
     ...siteSettings(catalogue),
     map: {
-      light: renderSvg(geometry, themes.light),
-      dark: renderSvg(darkGeometry, themes.dark),
+      light: renderSvg(geometry, themes.light, { chrome: false }),
+      dark: renderSvg(darkGeometry, themes.dark, { chrome: false }),
       lines: model.lines.map(line => pages.lineSummary(line)),
       zones: geometry.zones.map(zone => ({ name: zone.name.toLowerCase(), title: zone.title })),
+      symbols: geometry.legend.symbols.map(symbol => ({ label: symbol[0]!.toUpperCase() + symbol.slice(1), ...themed(theme => renderSymbol(symbol, theme)) })),
     },
     rows,
     filters: { kind: options(rows, 'kind'), zone: options(rows, 'zone'), state: options(rows, 'state'), owner: options(rows, 'owner') },

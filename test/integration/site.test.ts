@@ -191,7 +191,7 @@ test('Interchange on a strip', () => {
 
 test('Diagram alternative', () => {
   const html = read(main.full, 'software/forge/index.html');
-  expect(html).toMatch(/<div class="diagram themed-light"><svg [^>]*role="img"/);
+  expect(html).toMatch(/<div class="diagram[^"]* themed-light"><svg [^>]*role="img"/);
   const dependencies = /<ul class="plain-list" data-dependencies>([\s\S]*?)<\/ul>/.exec(html)![1]!;
   expect(dependencies).toContain('<span>orders-db</span>');
   expect(dependencies).toContain('<a href="../../software/vault/">vault</a>');
@@ -205,6 +205,33 @@ test('Without JavaScript (table present)', () => {
   expect(rows).toHaveLength(17 + 13);
   expect(html).not.toMatch(/<tr[^>]*hidden/);
   expect(html).toMatch(/data-list-tools hidden/);
+});
+
+test('Map page legends in HTML, not in the map', () => {
+  for (const site of [example.full, example.staff]) {
+    const html = read(site, 'index.html');
+    const svg = /<div class="map-canvas themed-light">([\s\S]*?)<\/div>/.exec(html)![1]!;
+    for (const chrome of ['Lines (journeys)', '>Symbols<', 'stackledger · ']) expect(svg).not.toContain(chrome);
+    expect(svg).toContain('data-ref="component:slack"');
+    // The line chips are the legend, shown without JavaScript too; the symbols are listed under them.
+    expect(html).toMatch(/<div class="map-lines" data-map-lines>/);
+    const symbols = /<ul class="map-symbols">([\s\S]*?)<\/ul>/.exec(html)![1]!;
+    for (const label of ['Interchange', 'Licence', 'Licence to buy']) expect(symbols).toContain(label);
+    expect(symbols.includes('Renewal within 30 days')).toBe(site === example.full);
+  }
+});
+
+test('Owners by name', () => {
+  for (const site of [example.full, example.staff]) {
+    expect(read(site, 'software/slack/index.html')).toContain('<dt>Owner</dt><dd>Northwind team</dd>');
+    expect(read(site, 'licences/licence-slack/index.html')).toContain('<dt>Owner</dt><dd>Northwind team</dd>');
+    const list = read(site, 'software/index.html');
+    expect(list).toContain('<td data-column="owner">Northwind team</td>');
+    expect(list).toContain('<option value="Northwind team">Northwind team</option>');
+    expect(list).not.toContain('group:northwind');
+  }
+  // Without an owner document, the reference itself is shown.
+  expect(read(main.full, 'software/editor/index.html')).toContain('<dt>Owner</dt><dd>user:alex</dd>');
 });
 
 // site-security

@@ -28,6 +28,7 @@ import type { ViewName } from '../views.js';
 import { siteColorNames } from '../schema.js';
 import { mapNotes } from '../map/command.js';
 import { buildSiteData, type SiteData } from './data.js';
+import { ownerNames } from './owners.js';
 import { HEADERS, MARKER, MARKER_NAME, POLICY, ROBOTS } from './policy.js';
 import { listFiles, relativise, scan } from './relative.js';
 
@@ -166,8 +167,9 @@ export async function prepareBuild(folder: string | Loaded, stagingPath: string,
   const loaded = typeof folder === 'string' ? await loadFolder(folder) : folder;
   const catalogue = validateLoaded(loaded);
   // The staff site is built first, before the full data exists anywhere (site-security, One view per site).
-  const staff = await buildView(staging, 'staff', buildSiteData(catalogue, 'staff', version).data);
-  const fullData = buildSiteData(catalogue, 'full', version, date);
+  const owners = ownerNames(loaded.sources);
+  const staff = await buildView(staging, 'staff', buildSiteData(catalogue, 'staff', version, undefined, owners).data);
+  const fullData = buildSiteData(catalogue, 'full', version, date, owners);
   const full = await buildView(staging, 'full', fullData.data);
   const root = join(staging, 'root');
   mkdirSync(root);
