@@ -1,7 +1,7 @@
 # catalogue-views Specification
 
 ## Purpose
-TBD - created by archiving change mcp-server. Update Purpose after archive.
+Defines the two views of a catalogue, `full` and `staff`: which fields each contains, how the hidden licence fields are configured, and the guarantee that a hidden value never reaches a `staff` consumer.
 
 ## Requirements
 

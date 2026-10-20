@@ -1,7 +1,7 @@
 # mcp-server Specification
 
 ## Purpose
-TBD - created by archiving change mcp-server. Update Purpose after archive.
+Defines `stackledger mcp`, the read-only Model Context Protocol server over stdio that lets an AI agent query and check a catalogue: its command line, tools, results, errors and logs.
 
 ## Requirements
 
