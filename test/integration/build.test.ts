@@ -2,8 +2,9 @@
  * Build first with npm run build. Each case runs the real command in a child process; folders live
  * in one temporary directory removed after the file. Heavy cases run concurrently.
  *
- * Failures at every publication step are injected through build-with-faults.mjs, a test-only entry
- * point that passes BuildFaults (src/site/command.ts) to the command. Catalogues are fictitious.
+ * Failures and output-folder swaps are injected through build-with-faults.mjs, a test-only entry
+ * point that passes a wrapped FsOps (test/fs-wrapper.mjs) to the command. test/unit/site-publish.test.ts
+ * covers every publication and undo step in process. Catalogues are fictitious.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { execFile, spawnSync } from 'node:child_process';
@@ -14,8 +15,8 @@ import { dirname, join } from 'node:path';
 import { component, layout, licence, line, set } from '../unit/helpers.js';
 import { yaml } from './mcp-helpers.js';
 import { cli, root } from './helpers.js';
-import type { BuildFaults, CheckPoint } from '../../src/site/command.js';
 import { MARKER, MARKER_NAME } from '../../src/site/policy.js';
+import { manualRestore } from '../manual-restore.js';
 
 const DATE = '2027-06-01';
 const PROXY = /identity-aware proxy/;
@@ -24,16 +25,22 @@ interface Result { status: number; stdout: string; stderr: string; ms: number }
 
 const faultEntry = join(root, 'test', 'integration', 'build-with-faults.mjs');
 
-/** BuildFaults as JSON, plus the entry point's `swap` of the output folder for a link (no functions). */
-type Faults = Omit<BuildFaults, 'at'> & { swap?: { at: CheckPoint; to: string } };
+/** The plan test/fs-wrapper.mjs documents: calls that fail, and where the output folder is swapped. */
+interface Fault { op: 'mkdir' | 'rename' | 'rmdir' | 'rm'; nth: number }
+interface Plan {
+  out: string;
+  fail?: Fault[];
+  swap?: { to: string; kind: 'link' | 'folder'; after?: Fault; atCheck?: number };
+  readOnlyStaging?: boolean;
+}
 
-interface BuildOptions { env?: Record<string, string>; flags?: string[]; faults?: Faults }
+interface BuildOptions { env?: Record<string, string>; flags?: string[]; plan?: Plan }
 
-/** Run the built CLI asynchronously, so several builds can run at the same time. With `faults`, run
- * the test-only entry point instead, which passes them to the command. */
+/** Run the built CLI asynchronously, so several builds can run at the same time. With `plan`, run
+ * the test-only entry point instead, which passes a wrapped FsOps to the command. */
 function build(args: string[], options: BuildOptions = {}): Promise<Result> {
   const start = performance.now();
-  const entry = options.faults ? [faultEntry, JSON.stringify(options.faults)] : [cli];
+  const entry = options.plan ? [faultEntry, JSON.stringify(options.plan)] : [cli];
   return new Promise(resolve => {
     execFile(process.execPath, [...(options.flags ?? []), ...entry, ...args],
       { env: { ...process.env, NODE_OPTIONS: '', ...options.env }, timeout: 180_000, maxBuffer: 64 * 1024 * 1024 },
@@ -347,121 +354,158 @@ describe('Atomic replace', () => {
       expect(result.status, result.stderr).toBe(0);
     }, 120_000);
 
-    // A rebuild over an earlier build renames 10 times: old then new, for staff, full, _headers,
-    // robots.txt and the marker. The tenth rename (the marker) is the commit point.
-    const steps: [string, BuildFaults][] = [['prepare', { prepare: true }], ...Array.from({ length: 10 }, (_, i): [string, BuildFaults] => [`step ${i + 1}`, { step: i + 1 }])];
-    test.concurrent.each(steps)('Failure leaves the old site (%s)', async (_, faults) => {
-      const out = fresh('fail');
+    const copySeed = (name: string) => {
+      const out = fresh(name);
       cpSync(seed, out, { recursive: true });
-      const before = snapshot(out);
-      const other = writeFolder(fresh('other'), smallCatalogue([component('extra')]));
-      const result = await build(['build', other, '--out', out, '--date', '2031-01-01'], { faults });
-      expect(result.status, result.stderr).toBe(1);
-      expect(result.stderr).toMatch(/^stackledger build: internal error: injected failure/);
-      expect(staging(out)).toEqual([]);
-      expect(snapshot(out)).toEqual(before);
-    }, 120_000);
-
-    // A failed undo leaves previous entries under the staging folder's old/; its journal lets the
-    // next build finish the undo before it removes any staging folder.
-    const UNDO_FAILED = /^stackledger build: publication failed and could not be undone; the previous entries are in .*\/old/;
-    const interrupt = async (out: string, step: number) => {
-      const other = writeFolder(fresh('other'), smallCatalogue([component('extra')]));
-      const result = await build(['build', other, '--out', out, '--date', '2031-01-01'], { faults: { step, undo: 1 } });
-      expect(result.status, result.stderr).toBe(1);
-      expect(result.stderr).toMatch(UNDO_FAILED);
-      expect(staging(out)).toHaveLength(1);
-      return join(out, staging(out)[0]!);
+      return out;
     };
+    const otherCatalogue = () => writeFolder(fresh('other'), smallCatalogue([component('extra')]));
 
-    test.concurrent.each([5, 10])('An undo that failed at step %i is finished by the next build', async step => {
-      const out = fresh('undo');
-      cpSync(seed, out, { recursive: true });
+    // A rebuild over an earlier build creates the staging folder (mkdir 1) and its old/ (mkdir 2),
+    // then renames 10 times: old then new, for staff, full, _headers, robots.txt and the marker.
+    // The tenth rename (the marker) is the commit point.
+    const steps: [string, Omit<Plan, 'out'>][] = [
+      ['prepare', { readOnlyStaging: true }],
+      ['old/', { fail: [{ op: 'mkdir', nth: 2 }] }],
+      ...Array.from({ length: 10 }, (_, i): [string, Omit<Plan, 'out'>] => [`rename ${i + 1}`, { fail: [{ op: 'rename', nth: i + 1 }] }]),
+    ];
+    test.concurrent.each(steps)('Failure leaves the old site (%s)', async (_, plan) => {
+      const out = copySeed('fail');
       const before = snapshot(out);
-      await interrupt(out, step);
-      expect(snapshot(out)).not.toEqual(before);
-      // The next build recovers first, then fails while preparing: the output is the earlier build again.
-      const next = await build(['build', catalogue, '--out', out, '--date', DATE], { faults: { prepare: true } });
-      expect(next.status, next.stderr).toBe(1);
-      expect(next.stderr).toMatch(/injected failure while preparing/);
+      const result = await build(['build', otherCatalogue(), '--out', out, '--date', '2031-01-01'], { plan: { out, ...plan } });
+      expect(result.status, result.stderr).toBe(1);
+      expect(result.stderr).toMatch(/^stackledger build: internal error: /);
       expect(staging(out)).toEqual([]);
       expect(snapshot(out)).toEqual(before);
     }, 120_000);
 
-    test.concurrent('A recovered publication is reported, and the build then succeeds', async () => {
-      const out = fresh('undo-report');
-      cpSync(seed, out, { recursive: true });
-      const interrupted = await interrupt(out, 7);
-      const next = await build(['build', catalogue, '--out', out, '--date', DATE]);
-      expect(next.status, next.stderr).toBe(0);
-      expect(next.stderr).toContain(`Note: finished undoing the publication interrupted in ${interrupted}`);
-      expect(staging(out)).toEqual([]);
-      expect(snapshot(out)).toEqual(snapshot(seed));
-    }, 120_000);
-
-    test.concurrent('An interrupted publication that cannot be undone stops the build and deletes nothing', async () => {
-      const out = fresh('undo-stuck');
-      cpSync(seed, out, { recursive: true });
+    test.concurrent('Undo failed; Next build after a failed undo; the documented manual restore', async () => {
+      const out = copySeed('undo');
       const before = snapshot(out);
-      const interrupted = await interrupt(out, 5);
-      // A read-only staging folder: the new full site cannot be moved back into it.
-      chmodSync(interrupted, 0o555);
+      // Rename 5 (the old _headers into old/) fails, then the first undo rename fails too.
+      const failed = await build(['build', otherCatalogue(), '--out', out, '--date', '2031-01-01'], { plan: { out, fail: [{ op: 'rename', nth: 5 }, { op: 'rename', nth: 6 }] } });
+      expect(failed.status, failed.stderr).toBe(1);
+      expect(staging(out)).toHaveLength(1);
+      const kept = join(out, staging(out)[0]!);
+      expect(failed.stderr).toMatch(/^stackledger build: publication failed \(injected rename failure \(call 5\)\) and could not be undone/);
+      expect(failed.stderr).toContain(`The staging folder ${kept} was kept: restore by hand as docs/site.md, section "Restoring after a failed publication" explains`);
+      expect(readdirSync(join(kept, 'old')).length).toBeGreaterThan(0);
+
+      // The next build refuses the output folder, naming the staging folder, and changes nothing.
       const stuck = snapshot(out);
       const next = await build(['build', catalogue, '--out', out, '--date', DATE]);
       expect(next.status, next.stderr).toBe(1);
-      expect(next.stderr).toContain(`the publication interrupted in ${interrupted} could not be undone`);
-      expect(next.stderr).toContain('nothing was deleted');
+      expect(next.stderr).toBe(`stackledger build: ${kept} holds entries that an earlier publication replaced (its old/ folder); nothing was changed. Restore them by hand as docs/site.md, section "Restoring after a failed publication" explains, then remove that folder\n`);
       expect(snapshot(out)).toEqual(stuck);
-      // Once the folder is writable again, the next build restores the earlier one.
-      chmodSync(interrupted, 0o755);
-      const again = await build(['build', catalogue, '--out', out, '--date', DATE], { faults: { prepare: true } });
-      expect(again.status, again.stderr).toBe(1);
+
+      // Following docs/site.md brings the earlier build back byte for byte; then builds work again.
+      manualRestore(out, kept);
       expect(snapshot(out)).toEqual(before);
+      const again = await build(['build', catalogue, '--out', out, '--date', DATE]);
+      expect(again.status, again.stderr).toBe(0);
+      expect(snapshot(out)).toEqual(snapshot(seed));
     }, 120_000);
 
-    // The build cannot hold the output folder open; it re-checks the folder's real path and
-    // identity before each change, and stops when the folder was swapped for a link.
-    test.concurrent.each(['staging', 'publish', 'cleanup'] as const)('An output folder swapped for a link before %s: exit 1, nothing outside changes', async point => {
-      const out = fresh('swapped');
-      cpSync(seed, out, { recursive: true });
-      const elsewhere = writeFolder(fresh('elsewhere'), { [MARKER_NAME]: MARKER, 'staff/index.html': 'another site\n' });
-      const before = snapshot(elsewhere);
-      const other = writeFolder(fresh('other'), smallCatalogue([component('extra')]));
-      const result = await build(['build', other, '--out', out, '--date', DATE], { faults: { swap: { at: point, to: elsewhere } } });
+    test.concurrent('Stale staging before publication', async () => {
+      // A build that crashed before publishing left staging folders without old/, one holding a link.
+      const elsewhere = writeFolder(fresh('elsewhere'), { 'keep.txt': 'keep me\n' });
+      const elsewhereBefore = snapshot(elsewhere);
+      const rebuilt = copySeed('stale');
+      const first = fresh('stale-first');
+      for (const out of [rebuilt, first]) {
+        writeFolder(join(out, '.stackledger-tmp-crashed'), { 'site-full/secret.html': 'full view file\n' });
+        symlinkSync(elsewhere, join(out, '.stackledger-tmp-crashed', 'site-staff'));
+      }
+      // `first` holds only the staging folder: a first build that crashed, so there is no marker yet.
+      const results = await Promise.all([rebuilt, first].map(out => build(['build', catalogue, '--out', out, '--date', DATE])));
+      for (const result of results) expect(result.status, result.stderr).toBe(0);
+      for (const out of [rebuilt, first]) {
+        expect(staging(out)).toEqual([]);
+        expect(snapshot(out)).toEqual(snapshot(seed));
+      }
+      expect(snapshot(elsewhere)).toEqual(elsewhereBefore);
+    }, 120_000);
+
+    test('Staging folders that are not removable: old/ of any kind (exit 1), a link or a file (exit 2), nothing changes', async () => {
+      const elsewhere = writeFolder(fresh('elsewhere'), { 'keep.txt': 'keep me\n' });
+      const cases: [string, number, (out: string) => void][] = [
+        ['old/ is a file', 1, out => writeFolder(join(out, '.stackledger-tmp-a'), { old: 'x\n' })],
+        ['old/ is a link', 1, out => symlinkSync(elsewhere, join(writeFolder(join(out, '.stackledger-tmp-a'), {}), 'old'))],
+        ['staging is a link', 2, out => symlinkSync(elsewhere, join(out, '.stackledger-tmp-a'))],
+        ['staging is a file', 2, out => writeFileSync(join(out, '.stackledger-tmp-a'), 'x\n')],
+      ];
+      const outs = cases.map(([, , make]) => {
+        const out = copySeed('refused');
+        make(out);
+        return { out, before: snapshot(out) };
+      });
+      const elsewhereBefore = snapshot(elsewhere);
+      const results = await Promise.all(outs.map(({ out }) => build(['build', catalogue, '--out', out, '--date', DATE])));
+      results.forEach((result, i) => {
+        const [label, status] = cases[i]!;
+        expect(result.status, `${label}: ${result.stderr}`).toBe(status);
+        expect(result.stderr, label).toContain('.stackledger-tmp-a');
+        expect(snapshot(outs[i]!.out), label).toEqual(outs[i]!.before);
+      });
+      expect(snapshot(elsewhere)).toEqual(elsewhereBefore);
+    }, 120_000);
+
+    // The build cannot hold the output folder open; it re-checks the folder's real path and identity
+    // immediately before each change, and stops when the folder was swapped for a link or for another
+    // real folder. Check 1 records the identity; check 2 comes before the staging folder is created,
+    // check 3 after the sites are prepared (before old/); rename 10 is the commit, before the cleanup.
+    const swaps: [string, 'link' | 'folder', { atCheck?: number; after?: Fault }][] = [];
+    for (const kind of ['link', 'folder'] as const) {
+      swaps.push([`${kind}, before the staging folder`, kind, { atCheck: 2 }]);
+      swaps.push([`${kind}, before publication`, kind, { atCheck: 3 }]);
+      swaps.push([`${kind}, before the cleanup`, kind, { after: { op: 'rename', nth: 10 } }]);
+    }
+    test.concurrent.each(swaps)('Folder swapped during a build (%s)', async (label, kind, point) => {
+      const out = copySeed('swapped');
+      const other = writeFolder(fresh('elsewhere'), { [MARKER_NAME]: MARKER, 'staff/index.html': 'another site\n' });
+      const otherBefore = snapshot(other);
+      const result = await build(['build', otherCatalogue(), '--out', out, '--date', DATE], { plan: { out, swap: { to: other, kind, ...point } } });
       expect(result.status, result.stderr).toBe(1);
-      expect(result.stderr).toMatch(new RegExp(`^stackledger build: the output folder ${out} was moved or replaced during the build; stopped without further changes`));
-      expect(snapshot(elsewhere)).toEqual(before);
+      expect(result.stderr).toBe(`stackledger build: the output folder ${out} was moved or replaced during the build; stopped without further changes\nchanges after the swap: none\n`);
+      expect(snapshot(kind === 'link' ? other : out)).toEqual(otherBefore);
       // The real folder, now at <out>-moved, holds a complete build (the earlier one, or the new one
-      // after the commit) and, from the publish point on, the staging folder left as it was.
+      // after the commit) and, from the publication on, the staging folder left as it was.
       const moved = `${out}-moved`;
       expect(readFileSync(join(moved, MARKER_NAME), 'utf8')).toBe(MARKER);
-      expect(staging(moved)).toHaveLength(point === 'staging' ? 0 : 1);
-      if (point !== 'cleanup') {
+      expect(staging(moved)).toHaveLength(point.atCheck === 2 ? 0 : 1);
+      if (!point.after) {
         const published = (dir: string) => Object.fromEntries(Object.entries(snapshot(dir)).filter(([path]) => !path.startsWith('.stackledger-tmp-')));
-        expect(published(moved)).toEqual(snapshot(seed));
+        expect(published(moved), label).toEqual(snapshot(seed));
       }
     }, 120_000);
 
     test.concurrent('There is no eleventh step: the marker rename is the last one', async () => {
-      const out = fresh('eleven');
-      cpSync(seed, out, { recursive: true });
-      const result = await build(['build', catalogue, '--out', out, '--date', DATE], { faults: { step: 11 } });
+      const out = copySeed('eleven');
+      const result = await build(['build', catalogue, '--out', out, '--date', DATE], { plan: { out, fail: [{ op: 'rename', nth: 11 }] } });
       expect(result.status, result.stderr).toBe(0);
       expect(snapshot(out)).toEqual(snapshot(seed));
     }, 120_000);
 
+    // After the commit the cleanup removes old/ (rm 1), then the staging folder (rm 2).
     test.concurrent('A cleanup failure after the commit is a warning', async () => {
-      const out = fresh('cleanup');
-      cpSync(seed, out, { recursive: true });
-      const result = await build(['build', catalogue, '--out', out, '--date', DATE], { faults: { cleanup: true } });
+      const [partly, kept] = [copySeed('cleanup'), copySeed('cleanup-old')];
+      const [result, keptResult] = await Promise.all([
+        build(['build', catalogue, '--out', partly, '--date', DATE], { plan: { out: partly, fail: [{ op: 'rm', nth: 2 }] } }),
+        build(['build', catalogue, '--out', kept, '--date', DATE], { plan: { out: kept, fail: [{ op: 'rm', nth: 1 }] } }),
+      ]);
       expect(result.status, result.stderr).toBe(0);
-      expect(result.stderr).toMatch(/Warning: the build is published, but .*\.stackledger-tmp-\w+ could not be removed/);
+      expect(result.stderr).toMatch(/Warning: the build is published, but .*\.stackledger-tmp-\w+ could not be removed \(injected rm failure \(call 2\)\); the next build removes it/);
       expect(lines(result.stderr).at(-1)).toMatch(PROXY);
-      expect(staging(out)).toHaveLength(1);
-      // The next build removes the leftover staging folder.
-      expect((await build(['build', catalogue, '--out', out, '--date', DATE])).status).toBe(0);
-      expect(staging(out)).toEqual([]);
-      expect(snapshot(out)).toEqual(snapshot(seed));
+      expect(staging(partly)).toHaveLength(1);
+      // Without old/, the leftover staging folder is removed by the next build.
+      expect((await build(['build', catalogue, '--out', partly, '--date', DATE])).status).toBe(0);
+      expect(staging(partly)).toEqual([]);
+      expect(snapshot(partly)).toEqual(snapshot(seed));
+
+      // With old/ still there, the warning says to remove it by hand; the next build refuses meanwhile.
+      expect(keptResult.status, keptResult.stderr).toBe(0);
+      expect(keptResult.stderr).toMatch(/could not be removed \(injected rm failure \(call 1\)\); it holds only the entries this build replaced: remove it by hand/);
+      expect((await build(['build', catalogue, '--out', kept, '--date', DATE])).status).toBe(1);
     }, 120_000);
   });
 });
@@ -486,6 +530,8 @@ test('Documented', () => {
   const text = readFileSync(join(root, 'docs', 'site.md'), 'utf8').replace(/\s+/g, ' ');
   expect(text).toMatch(/Never serve the output folder while a build runs/);
   expect(text).toMatch(/Publish only these four entries of the output folder: `full\/`, `staff\/`, `_headers` and `robots\.txt`/);
+  // The manual restore that an Undo failed message points to.
+  expect(text).toContain('### Restoring after a failed publication');
 });
 
 const permission = spawnSync(process.execPath, ['--help'], { encoding: 'utf8' }).stdout;

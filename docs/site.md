@@ -17,8 +17,8 @@ node dist/cli.js build examples/northwind --out ./public --date 2027-06-01
 | Exit | When |
 | --- | --- |
 | 0 | Both sites are published. A catalogue with errors still builds from what the views serve. |
-| 1 | An internal failure. Nothing published changed: the previous build, if any, is still there byte for byte. |
-| 2 | A usage or folder problem: `--help` aside, a missing folder or `--out`, an unknown option, an impossible date, more than one folder, a catalogue folder that is missing, not a folder or unreadable, or an `--out` that is a file. Nothing is created or changed. |
+| 1 | An internal failure. Nothing published changed: the previous build, if any, is still there byte for byte. The exceptions are a failed undo and a staging folder an earlier failed undo left behind: stderr names the staging folder, and [Restoring after a failed publication](#restoring-after-a-failed-publication) says what to do. |
+| 2 | A usage or folder problem: `--help` aside, a missing folder or `--out`, an unknown option, an impossible date, more than one folder, a catalogue folder that is missing, not a folder or unreadable, an `--out` that is a file, or a `.stackledger-tmp-*` entry in it that is a symbolic link or a file. Nothing is created or changed. |
 
 The output folder is refused (exit 2) when, after resolving symbolic links, it is the catalogue folder, inside it, contains it, or is a non-empty folder without the marker of an earlier build. The marker counts only as a regular file (not a link or a folder) holding exactly the text stackledger writes. The folder is also refused when `full`, `staff`, `_headers`, `robots.txt` or the marker is a symbolic link: the build never renames or removes through a link. A missing output folder is created. Building again into the same folder replaces the previous build completely.
 
@@ -35,11 +35,31 @@ node --permission --allow-fs-read=/path/to/catalogue --allow-fs-read=/path/to/st
 
 Create `/path/to/out` first and give real paths (without symbolic links): the build reads back what it writes in the staging folder, and the permission model checks paths as written.
 
-**Atomic replace.** Both sites are fully built in the staging folder before anything published changes. Then each entry (`staff`, `full`, `_headers`, `robots.txt`, `.stackledger-build`) is swapped by renames; the rename of the marker is the commit point. A failure before it undoes every rename, so the previous build stays as it was. A failure to remove the staging folder after it is only a warning; the next build removes stale staging folders first.
+**Atomic replace.** Both sites are fully built in the staging folder before anything published changes. Then each entry (`staff`, `full`, `_headers`, `robots.txt`, `.stackledger-build`) is swapped by renames: the previous entry moves into the staging folder's `old/`, created just before the first rename, and the new one moves into place. The rename of the marker is the commit point. A failure before it undoes every rename, so the previous build stays as it was. After the commit the replaced entries and the staging folder are removed; a failure there is only a warning.
 
-Each rename is first written to a journal in the staging folder. If the undo itself fails (for example a folder made read-only during the build) or the process dies during publication, the previous entries stay in the staging folder's `old/` and the command exits 1 saying where they are. The next build reads the journal before it removes anything: it finishes the undo, says so in its report, and only then builds. When it cannot finish the undo (an entry is not where the journal expects it, or cannot be moved), it exits 1, names the staging folder and deletes nothing; move the entries in its `old/` back by hand, then remove it.
+**Interrupted publication.** A staging folder without `old/` never touched a published entry (a build that crashed or failed before publishing): the next build removes it. A staging folder with `old/` may hold the only copy of the previous build, after a failed undo (for example a folder made read-only during the build) or a process killed during publication. stackledger never moves those entries back by itself: while such a folder exists, every build exits 1, names it and changes nothing, until you restore by hand as described below. Automatic recovery was tried and dropped, because trusting what a staging folder says about itself could move or delete the published site.
 
 **Deterministic.** The same catalogue, `--date` and stackledger version produce byte-identical files, whatever the order of files and documents in the catalogue folder.
+
+### Restoring after a failed publication
+
+When a build says a staging folder `<out>/.stackledger-tmp-…` was kept, or refuses an output folder because of one, put the output folder back by hand. Nothing else runs meanwhile: each build refuses that output folder and changes nothing. Below, `<out>` is the output folder and `<staging>` the staging folder the message names.
+
+1. Look for `<staging>/root/.stackledger-build`. If it is **not** there, the publication had reached its commit point: `<out>` already holds the new build, and `<staging>/old/` only the build it replaced. Go to step 4.
+2. Otherwise the publication stopped before its commit point. For each entry below whose new version is **no longer** in the staging folder, the entry of that name in `<out>` belongs to the failed build: delete it.
+
+   | Entry in `<out>` | Its new version in the staging folder |
+   | --- | --- |
+   | `staff` | `<staging>/site-staff` |
+   | `full` | `<staging>/site-full` |
+   | `_headers` | `<staging>/root/_headers` |
+   | `robots.txt` | `<staging>/root/robots.txt` |
+
+3. Move every entry of `<staging>/old/` (`ls -A` shows `.stackledger-build` too) back into `<out>`, keeping its name, for example `mv "<staging>/old/full" "<out>/full"`.
+4. Delete the staging folder: `rm -rf "<staging>"` (it removes symbolic links inside without following them).
+5. Run the build again.
+
+After step 3, `<out>` holds the previous build byte for byte; the build tests follow these steps to prove it (`test/manual-restore.ts`).
 
 ## Pages
 
@@ -71,7 +91,7 @@ The look follows brunosouzas.com (based on the Astroplate theme, MIT), with the 
 - `noindex, nofollow` on every page, `X-Robots-Tag` in `_headers`, and a `robots.txt` that disallows everything, at the root of the output and in each site.
 - The `staff` site is built first, from the staff view only: no file of it contains a hidden field's value.
 - Catalogue text is escaped everywhere; titles such as `<img onerror=…>` show as text.
-- The build writes only inside the output folder and never renames or removes through a symbolic link. Node.js cannot hold a folder open, so the build works with paths: it records the output folder's real path and identity (device and inode) once the folder is checked, compares them again before it creates the staging folder, before each rename and before each removal, and stops with exit 1, changing nothing more, when they differ. It assumes that no other process renames the output folder or its parents during a build, the same trust you give any program you run as yourself.
+- The build writes only inside the output folder and never renames or removes through a symbolic link: entries are looked at with `lstat`, and a staging folder is removed only when it is a real folder. Node.js cannot hold a folder open, so the build works with paths: it records the output folder's real path and identity (device and inode) once the folder is checked, compares them again immediately before it creates the staging folder, before each rename (an undo's included) and before each removal, and stops with exit 1, changing nothing more, when they differ. **Trust assumption:** no other process renames or replaces the output folder or its parents during a build. A swap between a check and the change right after it, or while the sites are being prepared in the staging folder, is outside what the build can detect; this is the same trust you give any program you run as yourself.
 
 ## Publishing the output
 
