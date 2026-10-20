@@ -1,12 +1,12 @@
 ## 1. Settings, served documents and views
 
-- [ ] 1.1 Add the `Settings` kind to the schemas and the validator (supported pair, strict fields, metadata, allowed and unique hide names, one settings document with the `MapLayout` duplicate rule); tests for every scenario of the `catalogue` delta in `test/unit/settings.test.ts`; update the supported-kinds message.
-- [ ] 1.2 Return `served` from `validateLoaded`: documents that passed every document check, secret scan included, and are not later duplicates, plus non-licence resources as `ref` and `type`; keep every existing `validate` test passing.
-- [ ] 1.3 Add `src/views.ts` (`resolveHidden`, `applyView`) with the default list, the fail-closed rule for broken settings, and the staff allow-lists for licences and components; tests for every `catalogue-views` scenario in `test/unit/views.test.ts`.
+- [x] 1.1 Add the `Settings` kind to the schemas and the validator (supported pair, strict fields, metadata, allowed and unique hide names, one settings document with the `MapLayout` duplicate rule); tests for every scenario of the `catalogue` delta in `test/unit/settings.test.ts`; update the supported-kinds message.
+- [x] 1.2 Return `served` from `validateLoaded`: documents that passed every document check, secret scan included, and are not later duplicates, plus non-licence resources as `ref` and `type`; keep every existing `validate` test passing.
+- [x] 1.3 Add `src/views.ts` (`resolveHidden`, `applyView`) with the default list, the fail-closed rule for broken settings, and the staff allow-lists for licences and components; tests for every `catalogue-views` scenario in `test/unit/views.test.ts`.
 
 ## 2. Graph queries
 
-- [ ] 2.1 Add `src/graph.ts`: reference parsing and lookup, `dependsOn` and `unresolved`, `dependants`, `linesAt`, `impact` (visited set, smallest depth, cap 500 with lines from every dependant), `gaps`, renewals window with `overdue`; unit tests in `test/unit/graph.test.ts` for chains, cycles, the cap, gaps, sort order and window edges.
+- [x] 2.1 Add `src/graph.ts`: reference parsing and lookup, `dependsOn` and `unresolved`, `dependants`, `linesAt`, `impact` (visited set, smallest depth, cap 500 with lines from every dependant), `gaps`, renewals window with `overdue`; unit tests in `test/unit/graph.test.ts` for chains, cycles, the cap, gaps, sort order and window edges.
 
 ## 3. MCP server
 

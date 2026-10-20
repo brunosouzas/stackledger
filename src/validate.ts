@@ -4,15 +4,21 @@
  */
 import { z } from 'zod';
 import { isMap, isScalar, type Node } from 'yaml';
-import { name, schemas, type Entity } from './schema.js';
+import { name, schemas, type Entity, type Component, type Licence, type Line, type MapLayout, type Settings } from './schema.js';
 import { scanSecrets } from './secrets.js';
 import { compareText, loadFolder, problem, resolveNode, sourceNode, type Source, type Problem, type FieldPath, type Loaded } from './source.js';
 export interface Summary { files: number; documents: number; ignored: number; errors: number; warnings: number }
 export interface Result { problems: Problem[]; summary: Summary }
-export interface Catalogue extends Result { entities: Entity[] }
-interface Identified { source: Source; kind: keyof typeof schemas; name: string }
+/** A non-licence resource is served by identity only: none of its other fields was checked or scanned. */
+export interface OtherResource { ref: string; type?: string }
+/** Documents that passed every document check, secret scan included, without later duplicates, in document order. */
+export interface Served { components: Component[]; licences: Licence[]; resources: OtherResource[]; lines: Line[]; layouts: MapLayout[]; settings: Settings[] }
+/** `entities` predates the secret scan and duplicate removal; consumers read `served`. */
+export interface Catalogue extends Result { entities: Entity[]; served: Served; settingsBroken: boolean }
+interface Identified { source: Source; kind: keyof typeof schemas; name: string; passed?: Entity; other?: OtherResource }
 const ignoredKinds = new Set(['System', 'API', 'Group', 'User', 'Domain', 'Location', 'Template']);
-const pairs: Record<string, string> = { Component: 'backstage.io/v1alpha1', Resource: 'backstage.io/v1alpha1', Line: 'stackledger/v1alpha1', MapLayout: 'stackledger/v1alpha1' };
+const pairs: Record<string, string> = { Component: 'backstage.io/v1alpha1', Resource: 'backstage.io/v1alpha1', Line: 'stackledger/v1alpha1', MapLayout: 'stackledger/v1alpha1', Settings: 'stackledger/v1alpha1' };
+const typePattern = /^[A-Za-z0-9._-]{1,63}$/;
 function object(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
@@ -20,8 +26,9 @@ function spec(entity: Identified): Record<string, unknown> { return object(entit
 function metadata(entity: Identified): Record<string, unknown> { return object(entity.source.value.metadata); }
 function strings(value: unknown): string[] { return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []; }
 function identityKey(kind: string, entityName: string): string { return `${kind.toLowerCase()}:${entityName.toLowerCase()}`; }
-interface Reference { kind: string; namespace: string; name: string; key: string }
-function reference(value: string): Reference | undefined {
+export interface Reference { kind: string; namespace: string; name: string; key: string }
+/** Catalogue reference syntax; kind, namespace and name lower-cased, key is kind:name. */
+export function reference(value: string): Reference | undefined {
   const match = /^([A-Za-z][A-Za-z0-9]*):(?:([A-Za-z0-9._-]+)\/)?([A-Za-z0-9][A-Za-z0-9._-]*)$/.exec(value);
   if (!match) return;
   const kind = match[1]!.toLowerCase(), namespace = match[2]?.toLowerCase() ?? 'default', name = match[3]!.toLowerCase();
@@ -55,30 +62,33 @@ export function validateLoaded(loaded: Loaded): Catalogue {
   const problems = [...loaded.problems];
   const identities: Identified[] = [];
   const entities: Entity[] = [];
-  let ignored = 0;
-  for (const source of loaded.sources) {
+  let ignored = 0, settingsBroken = false;
+  // Any error on a document that looks like Settings must make the staff view fail closed.
+  const settingsLike = (source: Source) => typeof source.value.kind === 'string' && source.value.kind.toLowerCase() === 'settings';
+  function check(source: Source): void {
     const value = source.value;
     const kind = value.kind;
-    if (typeof kind !== 'string' || !kind) { problems.push(problem(source, ['kind'], 'kind is required')); continue; }
-    if (ignoredKinds.has(kind)) { ignored++; continue; }
+    if (typeof kind !== 'string' || !kind) { problems.push(problem(source, ['kind'], 'kind is required')); return; }
+    if (ignoredKinds.has(kind)) { ignored++; return; }
     if (!Object.hasOwn(pairs, kind) || value.apiVersion !== pairs[kind]) {
       problems.push(problem(source, [Object.hasOwn(pairs, kind) ? 'apiVersion' : 'kind'],
-        Object.hasOwn(pairs, kind) ? `Supported pair: ${pairs[kind]} ${kind}` : 'Supported kinds: Component, Resource, Line, MapLayout')); continue;
+        Object.hasOwn(pairs, kind) ? `Supported pair: ${pairs[kind]} ${kind}` : 'Supported kinds: Component, Resource, Line, MapLayout, Settings')); return;
     }
     const entityName = object(value.metadata).name;
     const parsedName = name.safeParse(entityName);
-    if (!parsedName.success) { problems.push(problem(source, ['metadata', 'name'], 'Name must be 1–63 ASCII letters, digits, dots, underscores or hyphens, with alphanumeric ends')); continue; }
+    if (!parsedName.success) { problems.push(problem(source, ['metadata', 'name'], 'Name must be 1–63 ASCII letters, digits, dots, underscores or hyphens, with alphanumeric ends')); return; }
     const entity: Identified = { source, kind: kind as Identified['kind'], name: parsedName.data };
     identities.push(entity);
     const namespace = metadata(entity).namespace;
     if (namespace !== undefined && namespace !== 'default') problems.push(problem(source, ['metadata', 'namespace'], 'Namespaces are not supported; treated as default', 'warning'));
     if (kind === 'Resource') {
       const type = spec(entity).type;
-      if (typeof type !== 'string' || !type) { problems.push(problem(source, ['spec', 'type'], 'spec.type is required')); continue; }
+      if (typeof type !== 'string' || !type) { problems.push(problem(source, ['spec', 'type'], 'spec.type is required')); return; }
       if (type !== 'licence') {
         ignored++;
         if (/^(licence|license)$/i.test(type)) problems.push(problem(source, ['spec', 'type'], 'Not read as a licence; use exactly licence', 'warning'));
-        continue;
+        entity.other = typePattern.test(type) ? { ref: `resource:${entity.name}`, type } : { ref: `resource:${entity.name}` };
+        return;
       }
     }
     const parsed = schemas[entity.kind].safeParse(value);
@@ -95,23 +105,44 @@ export function validateLoaded(loaded: Loaded): Catalogue {
         }
       }
     }
-    if (fieldProblems.length || !parsed.success) { problems.push(...fieldProblems); continue; }
+    if (fieldProblems.length || !parsed.success) { problems.push(...fieldProblems); return; }
     entities.push(parsed.data);
-    problems.push(...scanSecrets(source));
+    const secrets = scanSecrets(source);
+    problems.push(...secrets);
+    if (!secrets.some(p => p.severity === 'error')) entity.passed = parsed.data;
+  }
+  for (const source of loaded.sources) {
+    const before = problems.length;
+    check(source);
+    if (settingsLike(source) && problems.slice(before).some(p => p.severity === 'error')) settingsBroken = true;
   }
   // Duplicate identity has precedence over every cross-document use, regardless of field validity.
   const first = new Map<string, Identified>();
   const unique: Identified[] = [];
   for (const entity of identities) {
     const key = identityKey(entity.kind, entity.name), earlier = first.get(key);
-    if (earlier) problems.push(problem(entity.source, ['metadata', 'name'], `Duplicate name; earlier document is in ${earlier.source.path}`));
-    else { first.set(key, entity); unique.push(entity); }
+    if (earlier) {
+      problems.push(problem(entity.source, ['metadata', 'name'], `Duplicate name; earlier document is in ${earlier.source.path}`));
+      if (entity.kind === 'Settings') settingsBroken = true;
+    } else { first.set(key, entity); unique.push(entity); }
   }
   crossCheck(unique, first, problems);
+  if (unique.filter(e => e.kind === 'Settings').length > 1) settingsBroken = true;
   sortProblems(problems);
+  const served: Served = { components: [], licences: [], resources: [], lines: [], layouts: [], settings: [] };
+  for (const entity of unique) {
+    if (entity.other) served.resources.push(entity.other);
+    else if (entity.passed) {
+      if (entity.kind === 'Component') served.components.push(entity.passed as Component);
+      else if (entity.kind === 'Resource') served.licences.push(entity.passed as Licence);
+      else if (entity.kind === 'Line') served.lines.push(entity.passed as Line);
+      else if (entity.kind === 'MapLayout') served.layouts.push(entity.passed as MapLayout);
+      else served.settings.push(entity.passed as Settings);
+    }
+  }
   // Valid non-mapping documents also count, although they have no Source to check.
   const documents = loaded.sources.length - ignored + loaded.problems.filter(p => p.message === 'Document must be a mapping' || p.message === 'Document cannot be expanded safely').length;
-  return { entities, problems, summary: { files: loaded.files, documents, ignored,
+  return { entities, served, settingsBroken, problems, summary: { files: loaded.files, documents, ignored,
     errors: problems.filter(p => p.severity === 'error').length, warnings: problems.filter(p => p.severity === 'warning').length } };
 }
 function crossCheck(unique: Identified[], first: Map<string, Identified>, problems: Problem[]): void {
@@ -134,6 +165,8 @@ function crossCheck(unique: Identified[], first: Map<string, Identified>, proble
   const layouts = unique.filter(e => e.kind === 'MapLayout');
   const layout = layouts[0];
   for (const later of layouts.slice(1)) add(later, [], `Only one MapLayout is allowed; earlier document is in ${layout!.source.path}`);
+  const settings = unique.filter(e => e.kind === 'Settings');
+  for (const later of settings.slice(1)) add(later, [], `Only one Settings is allowed; earlier document is in ${settings[0]!.source.path}`);
   for (const component of components) {
     const dependencies = spec(component).dependsOn;
     if (Array.isArray(dependencies)) dependencies.forEach((value, index) => { if (typeof value === 'string') target(component, value, ['spec', 'dependsOn', index], true); });
