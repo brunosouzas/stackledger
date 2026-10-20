@@ -11,6 +11,14 @@
  * HTML is read tag by tag: catalogue text is escaped by Astro and the SVG renderers, so `<` and `>`
  * never appear inside text or attribute values, and a hostile title cannot look like an attribute.
  * Deterministic: files are visited in sorted order and only rewritten, never renamed.
+ *
+ * URLs are checked as a browser reads them: attribute values are decoded with the HTML character
+ * reference rules (`&#47;`, `&#x2f;`, `&sol;`, `&Tab;`…), ASCII tab, line feed and carriage return
+ * are dropped as the URL parser drops them, and the result is resolved with WHATWG URL against a
+ * made-up origin. A URL with a scheme, a leading `/` or `\`, another origin or a path outside the
+ * site folder is refused. Named references outside a small table of the ones that can form URL
+ * syntax are refused too, so an unknown name can never hide a separator. CSS escapes are not
+ * decoded: a CSS URL holding a backslash is refused instead.
  */
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, posix, relative, sep } from 'node:path';
@@ -21,6 +29,28 @@ const TAG = /<([A-Za-z][A-Za-z0-9:-]*)((?:\s[^<>]*?)?)(\/?)>/g;
 const ATTRIBUTE = /([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
 const SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*:/;
 const ASTRO_ASSET = /^\/_astro\//;
+
+/** Named character references that can spell URL syntax, or that Astro writes. Any other name in a
+ * URL is refused rather than decoded (see decodeAttribute). */
+const NAMED_REFERENCES: Readonly<Record<string, string>> = {
+  amp: '&', AMP: '&', lt: '<', LT: '<', gt: '>', GT: '>', quot: '"', QUOT: '"', apos: "'",
+  sol: '/', bsol: '\\', colon: ':', Tab: '\t', NewLine: '\n', period: '.', percnt: '%', quest: '?',
+  num: '#', commat: '@', excl: '!', dollar: '$', lpar: '(', rpar: ')', ast: '*', midast: '*', plus: '+',
+  comma: ',', semi: ';', equals: '=', lsqb: '[', lbrack: '[', rsqb: ']', rbrack: ']', lcub: '{',
+  lbrace: '{', rcub: '}', rbrace: '}', verbar: '|', vert: '|', VerticalLine: '|', lowbar: '_',
+  UnderBar: '_', Hat: '^', grave: '`', DiacriticalGrave: '`', nbsp: '\u00a0', NonBreakingSpace: '\u00a0',
+};
+
+/** Numeric references to 0x80-0x9F mean Windows-1252 characters in browsers (HTML standard). */
+const WINDOWS_1252: Readonly<Record<number, number>> = {
+  0x80: 0x20ac, 0x82: 0x201a, 0x83: 0x0192, 0x84: 0x201e, 0x85: 0x2026, 0x86: 0x2020, 0x87: 0x2021,
+  0x88: 0x02c6, 0x89: 0x2030, 0x8a: 0x0160, 0x8b: 0x2039, 0x8c: 0x0152, 0x8e: 0x017d, 0x91: 0x2018,
+  0x92: 0x2019, 0x93: 0x201c, 0x94: 0x201d, 0x95: 0x2022, 0x96: 0x2013, 0x97: 0x2014, 0x98: 0x02dc,
+  0x99: 0x2122, 0x9a: 0x0161, 0x9b: 0x203a, 0x9c: 0x0153, 0x9e: 0x017e, 0x9f: 0x0178,
+};
+
+/** A numeric reference (the semicolon is optional for browsers) or a named one with its semicolon. */
+const CHARACTER_REFERENCE = /&#(\d+);?|&#[xX]([0-9A-Fa-f]+);?|&([A-Za-z][A-Za-z0-9]*);/g;
 
 interface Attribute { name: string; value: string | undefined }
 
@@ -39,25 +69,52 @@ function attributes(text: string): Attribute[] {
   return [...text.matchAll(ATTRIBUTE)].map(match => ({ name: match[1]!.toLowerCase(), value: match[2] ?? match[3] ?? match[4] }));
 }
 
-/** A URL that leaves the site: root-absolute, protocol-relative or with a scheme. */
-const leaves = (url: string): boolean => url.startsWith('/') || SCHEME.test(url);
+/** The text of an HTML attribute value as a browser reads it, and the named references in it that
+ * are not in NAMED_REFERENCES (left as they are; a URL holding one is refused). */
+export function decodeAttribute(value: string): { text: string; unknown: string[] } {
+  const unknown: string[] = [];
+  const text = value.replace(CHARACTER_REFERENCE, (whole: string, decimal?: string, hex?: string, name?: string) => {
+    if (name !== undefined) {
+      const named = NAMED_REFERENCES[name];
+      if (named === undefined) unknown.push(whole);
+      return named ?? whole;
+    }
+    return fromCodePoint(decimal !== undefined ? Number.parseInt(decimal, 10) : Number.parseInt(hex!, 16));
+  });
+  return { text, unknown };
+}
 
-/** A made-up origin and folder for the site root; any URL resolving outside the folder escapes. */
+/** The character a numeric reference stands for, with the browser's replacements. */
+function fromCodePoint(code: number): string {
+  const invalid = code === 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff) || Number.isNaN(code);
+  return invalid ? '\ufffd' : String.fromCodePoint(WINDOWS_1252[code] ?? code);
+}
+
+/** A made-up origin and folder for the site root; any URL resolving elsewhere leaves the site. */
+const SITE_ORIGIN = 'https://site.invalid';
 const SITE_FOLDER = '/root/';
-const SITE_ROOT = `https://site.invalid${SITE_FOLDER}`;
 /** Encoded `/` and `\`: a server that decodes them before resolving the path could climb out. */
 const ENCODED_SEPARATOR = /%2f|%5c/i;
+/** What the WHATWG URL parser removes before parsing: tab, line feed and carriage return anywhere,
+ * and C0 controls or spaces at either end. */
+const URL_IGNORED = /[\t\n\r]/g;
+const URL_TRIMMED = /^[\u0000-\u0020]+|[\u0000-\u0020]+$/g;
 
-/** True when a relative `url`, resolved as a browser does against `file` (a path from the site
- * root), lands outside the site folder: `../` past the root, `%2e%2e`, backslashes or an encoded
- * separator. A URL the parser rejects counts as escaping. */
-function escapes(file: string, url: string): boolean {
+/** Why `url` (already decoded from HTML) is not a local URL of `file`, or undefined when it is.
+ * `file` is a path from the site root; the URL is resolved as a browser would resolve it there. */
+function urlProblem(file: string, url: string): 'leaves the site' | 'leaves the site folder' | undefined {
+  const cleaned = url.replace(URL_IGNORED, '').replace(URL_TRIMMED, '');
+  // Root-absolute, protocol-relative (a backslash counts as a slash) or with a scheme.
+  if (/^[\\/]/.test(cleaned) || SCHEME.test(cleaned)) return 'leaves the site';
+  let resolved: URL;
   try {
-    const { pathname } = new URL(url, SITE_ROOT + file);
-    return !pathname.startsWith(SITE_FOLDER) || ENCODED_SEPARATOR.test(pathname);
+    resolved = new URL(cleaned, `${SITE_ORIGIN}${SITE_FOLDER}${file}`);
   } catch {
-    return true;
+    return 'leaves the site';
   }
+  if (resolved.origin !== SITE_ORIGIN) return 'leaves the site';
+  if (!resolved.pathname.startsWith(SITE_FOLDER) || ENCODED_SEPARATOR.test(resolved.pathname)) return 'leaves the site folder';
+  return undefined;
 }
 
 /** Rewrite `/_astro/...` into a path relative to the folder of `file` (both relative to the site root). */
@@ -95,8 +152,6 @@ export function relativise(siteDir: string): void {
   }
 }
 
-const decode = (value: string): string => value.replaceAll('&#39;', "'").replaceAll('&apos;', "'").replaceAll('&quot;', '"').replaceAll('&amp;', '&');
-
 function scanHtml(file: string, html: string): string[] {
   const problems: string[] = [];
   const policies: string[] = [];
@@ -107,37 +162,44 @@ function scanHtml(file: string, html: string): string[] {
     if (name === 'script' && !has('src')) problems.push(`${file}: inline <script>`);
     if (name === 'style') problems.push(`${file}: <style> element`);
     for (const attr of attrs) {
-      const value = attr.value === undefined ? '' : decode(attr.value);
       if (attr.name === 'style') problems.push(`${file}: style attribute`);
       if (attr.name.startsWith('on')) problems.push(`${file}: event-handler attribute ${attr.name}`);
-      if (URL_ATTRIBUTES.has(attr.name)) problems.push(...urlProblems(file, `${attr.name}="${value}"`, value.trim()));
-      if (attr.name === 'srcset') {
-        for (const part of value.split(',').map(item => item.trim())) {
-          problems.push(...urlProblems(file, `srcset part "${part}"`, part.split(/\s+/)[0] ?? ''));
-        }
-      }
+      if (URL_ATTRIBUTES.has(attr.name) || attr.name === 'srcset') problems.push(...urlAttributeProblems(file, attr));
     }
     const equiv = attrs.find(attr => attr.name === 'http-equiv')?.value;
     if (name === 'meta' && equiv?.toLowerCase() === 'content-security-policy') {
-      policies.push(decode(attrs.find(attr => attr.name === 'content')?.value ?? ''));
+      policies.push(decodeAttribute(attrs.find(attr => attr.name === 'content')?.value ?? '').text);
     }
   }
   if (policies.length !== 1 || policies[0] !== POLICY) problems.push(`${file}: CSP meta ${JSON.stringify(policies)}`);
   return problems;
 }
 
-/** The problem with one URL of `file`, if any: it leaves the site (absolute, scheme) or escapes the
- * site folder once resolved. `label` names the URL in the message. */
+/** The problems of one URL attribute (or each URL of a srcset), its value decoded first. */
+function urlAttributeProblems(file: string, attr: Attribute): string[] {
+  const { text, unknown } = decodeAttribute(attr.value ?? '');
+  if (unknown.length) return [`${file}: ${attr.name}="${attr.value}" has an unknown character reference ${unknown[0]}`];
+  if (attr.name !== 'srcset') return urlProblems(file, `${attr.name}="${text}"`, text);
+  return text.split(',').map(item => item.trim()).flatMap(part => urlProblems(file, `srcset part "${part}"`, part.split(/\s+/)[0] ?? ''));
+}
+
+/** The problem with one URL of `file`, if any. `label` names the URL in the message. */
 function urlProblems(file: string, label: string, url: string): string[] {
-  if (leaves(url)) return [`${file}: ${label}`];
-  if (escapes(file, url)) return [`${file}: ${label} leaves the site folder`];
+  const problem = urlProblem(file, url);
+  if (problem === 'leaves the site') return [`${file}: ${label}`];
+  if (problem) return [`${file}: ${label} ${problem}`];
   return [];
 }
 
 function scanCss(file: string, css: string): string[] {
   const problems: string[] = [];
-  for (const match of css.matchAll(/url\(\s*(["']?)([^"')]*)\1\s*\)/g)) problems.push(...urlProblems(file, `url(${match[2]})`, match[2]!.trim()));
-  for (const match of css.matchAll(/@import\s+(?:url\()?\s*(["']?)([^"')\s;]*)\1/g)) problems.push(...urlProblems(file, `@import ${match[2]}`, match[2]!));
+  const check = (label: string, url: string) => {
+    // CSS escapes (`\2f`) are not decoded here: refuse any backslash instead.
+    if (url.includes('\\')) problems.push(`${file}: ${label} has a CSS escape`);
+    else problems.push(...urlProblems(file, label, url));
+  };
+  for (const match of css.matchAll(/url\(\s*(["']?)([^"')]*)\1\s*\)/g)) check(`url(${match[2]})`, match[2]!.trim());
+  for (const match of css.matchAll(/@import\s+(?:url\()?\s*(["']?)([^"')\s;]*)\1/g)) check(`@import ${match[2]}`, match[2]!);
   return problems;
 }
 
@@ -149,7 +211,7 @@ function scanJs(file: string, js: string): string[] {
   for (const match of js.matchAll(/(?:\bimport|\bexport)\s*(?:[\w*{}\s,$]*?\bfrom\s*)?["']([^"']+)["']/g)) {
     const specifier = match[1]!;
     if (!specifier.startsWith('./') && !specifier.startsWith('../')) problems.push(`${file}: import specifier "${specifier}"`);
-    else if (escapes(file, specifier)) problems.push(`${file}: import specifier "${specifier}" leaves the site folder`);
+    else if (urlProblem(file, specifier)) problems.push(`${file}: import specifier "${specifier}" leaves the site folder`);
   }
   return problems;
 }

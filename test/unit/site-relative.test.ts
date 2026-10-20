@@ -5,7 +5,7 @@
 import { test, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { relativise, scan } from '../../src/site/relative.js';
+import { decodeAttribute, relativise, scan } from '../../src/site/relative.js';
 import { POLICY } from '../../src/site/policy.js';
 import { folder } from '../helpers.js';
 
@@ -80,4 +80,57 @@ test('Catalogue text naming staging folders is not a leak; the build\'s own path
     'leak.js': 'const path = "/out/.stackledger-tmp-3f9a/work-full/src";',
   });
   expect(scan(site, ['/out/.stackledger-tmp-3f9a', '/out/.stackledger-tmp-3f9a/work-full'])).toEqual(['leak.js: staging path in the output']);
+});
+
+test('Character references are decoded as a browser decodes them', () => {
+  expect(decodeAttribute('&#47;&#x2F;&#X2f;&sol;&colon;&Tab;&NewLine;&amp;&#46&#0;&#x110000;&#128;')).toEqual({
+    text: '////:\t\n&.\ufffd\ufffd\u20ac',
+    unknown: [],
+  });
+  // A named reference needs its semicolon; an unknown name is reported, not guessed.
+  expect(decodeAttribute('&sol x &copy; &frasl;')).toEqual({ text: '&sol x &copy; &frasl;', unknown: ['&copy;', '&frasl;'] });
+});
+
+test('The scan decodes character references and drops tabs and newlines before it checks a URL', () => {
+  const tab = '\t';
+  const site = folder({
+    'index.html': page([
+      '<a href="&#47;full/">a</a>',
+      '<a href="&#x2F;&#x2F;evil.example/">b</a>',
+      '<a href="ht&Tab;tps://x/root/">c</a>',
+      `<a href="ht${tab}tps://x/root/">d</a>`,
+      '<a href="&sol;&sol;evil.example">e</a>',
+      '<a href="javascript&colon;alert(1)">f</a>',
+      '<a href="&#46;&#46;/full/">g</a>',
+      '<a href="&NewLine;/full/">h</a>',
+      '<a href="&#47">i</a>',
+      '<a href="x&frasl;y">j</a>',
+    ].join('')),
+  });
+  expect(scan(site)).toEqual([
+    'index.html: href="/full/"',
+    'index.html: href="//evil.example/"',
+    `index.html: href="ht${tab}tps://x/root/"`,
+    `index.html: href="ht${tab}tps://x/root/"`,
+    'index.html: href="//evil.example"',
+    'index.html: href="javascript:alert(1)"',
+    'index.html: href="../full/" leaves the site folder',
+    'index.html: href="\n/full/"',
+    'index.html: href="/"',
+    'index.html: href="x&frasl;y" has an unknown character reference &frasl;',
+  ]);
+});
+
+test('Relative URLs with query strings, fragments and escaped ampersands still pass', () => {
+  const site = folder({
+    'index.html': page('<a href="software/?view=table&amp;sort=name#licences">a</a><a href="?q=a&#38;b=c#top">b</a><a href="#main">c</a><a href="">d</a>'),
+    'software/editor/index.html': page('<a href="../../journeys/?line=ship&amp;from=editor#stop-2">a</a><a href="./#neighbourhood">b</a><a href="../">c</a>'),
+    '_astro/site.css': 'a{background:url("icons.svg#map")}',
+  });
+  expect(scan(site)).toEqual([]);
+});
+
+test('A CSS URL holding an escape is refused', () => {
+  const site = folder({ '_astro/site.css': 'a{background:url(\\2f full/x.png)}' });
+  expect(scan(site)).toEqual(['_astro/site.css: url(\\2f full/x.png) has a CSS escape']);
 });
