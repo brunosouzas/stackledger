@@ -34,11 +34,11 @@ Grid point `[c, r]` is `(64c, 64r)` in map units; padding, header and legend liv
 
 ### D3. Routing
 
-A* per hop over grid points inside the bounding box of the hop's two ends widened by three cells, eight directions, with a binary heap. Cost = length + turn penalty (0 for straight, small for 45°, larger for 90°; sharper turns forbidden) + a crossing penalty for running diagonally across another route, and a small discount for reusing an edge already used by other hops, which pulls lines into tidy corridors as the spike did. Points holding stations other than the hop's ends are blocked. Hops are routed in line order, each hop key once (D4). The spike's preference for keeping a line straight through a station is kept.
+A* per hop over grid points inside the bounding box of the hop's two ends widened by three cells, eight directions, with a binary heap and a budget of 50,000 expanded states (then straight fallback). The route is a centreline on grid points; offsets (D4) move strokes off-grid. Cost = length + turn penalty (0 for straight, small for 45°, larger for 90°; sharper turns forbidden) + a crossing penalty for running diagonally across another route, and a small discount for reusing an edge already used by other hops, which pulls lines into tidy corridors as the spike did. Points holding stations other than the hop's ends are blocked. Hops are routed in line order, each hop key once (D4). The spike's preference for keeping a line straight through a station is kept.
 
 ### D4. Parallel lines per grid edge
 
-After routing, every grid edge records the lines using it, whichever hop they come from. Each line gets an offset on that edge: lines in line order, left to right when walking the edge from its end whose coordinates sort first, so two lines never coincide and the order does not flip with direction. Where a line's offset changes between consecutive edges, the corner joins the two offset segments. Bundle-crossing minimisation is not attempted; the fixed order is predictable.
+After routing, every grid edge records the lines using it, whichever hop they come from. Each line gets an offset on that edge: lines in line order, left to right when walking the edge from its end whose coordinates sort first, so two lines never coincide and the order does not flip with direction. Where a line's offset changes between consecutive edges, a short horizontal, vertical or 45-degree connector joins the two offset segments. Bundle-crossing minimisation is not attempted; the fixed order is predictable.
 
 ### D5. Labels
 
@@ -54,7 +54,7 @@ Solid marker for `active` or `to-confirm` licences, hollow for `to-buy`; one fix
 
 ### D8. SVG safety
 
-One `escapeXml` for all catalogue text (`& < > " '`, characters outside XML 1.0 replaced by U+FFFD). Element and attribute names come from fixed allow-lists; no `href`, `style`, `id` or `on*` attribute. Catalogue text appears only in text nodes and in `data-ref` (built from validated names). Colours are written only after matching `#RRGGBB`. Tests parse the SVG with a real XML parser added as a **development** dependency (no runtime dependency) and walk every element and attribute against the allow-lists, on a hostile fixture.
+Element names, attribute names and paint values come from fixed allow-lists written in the spec (the test keeps its own copy, not the renderer's). One `escapeXml` for all catalogue text (`& < > " '`, characters outside XML 1.0 replaced by U+FFFD). Element and attribute names come from fixed allow-lists; no `href`, `style`, `id` or `on*` attribute. Catalogue text appears only in text nodes and in `data-ref` (built from validated names). Colours are written only after matching `#RRGGBB`. Tests parse the SVG with a real XML parser added as a **development** dependency (no runtime dependency) and walk every element and attribute against the allow-lists, on a hostile fixture.
 
 ### D9. Command
 

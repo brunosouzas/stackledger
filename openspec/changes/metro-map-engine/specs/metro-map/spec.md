@@ -59,14 +59,18 @@ Stations without a usable stored position SHALL get suggestions one by one in re
 - **THEN** `forge` is suggested at `[3, 2]`
 
 ### Requirement: Suggestion without neighbours
-A station with no placed or already-suggested neighbour SHALL be suggested at the free cell in row 0 with the smallest column greater than every stored and suggested column, or column 0 when there is none. A suggested station SHALL be drawn as a hollow disc with a dashed outline in the theme's muted colour.
+A station with no placed or already-suggested neighbour SHALL be suggested at the free cell in row 0 with the smallest column greater than every stored and suggested column, or column 0 when there is none. A suggested station SHALL keep its normal tick or interchange marker and additionally carry a hollow disc with a dashed outline in the theme's muted colour, centred on its grid point.
 
 #### Scenario: Nothing placed
 - **WHEN** line `ship` stops at `a`, `b` and `c` and there is no `MapLayout`
 - **THEN** `a` is suggested at `[0, 0]`, `b` at `[1, 0]` and `c` at `[2, 0]`
 
+#### Scenario: Suggested interchange
+- **WHEN** unplaced `slack` is a stop of two lines
+- **THEN** it has the interchange marker spanning both lines and the dashed suggestion disc
+
 ### Requirement: Octilinear routing
-Each hop between consecutive stations of a line SHALL be drawn along horizontal, vertical and 45-degree segments between grid points. It SHALL NOT pass through the point of any station other than its two ends, and SHALL NOT turn by more than 90 degrees at a grid point. Routing stays inside the bounding box of the hop's two ends widened by three cells; with no valid route there, the hop is drawn straight and reported as unrouted.
+Each hop SHALL first get a centreline of horizontal, vertical and 45-degree segments between grid points. The centreline SHALL NOT pass through the point of any station other than its two ends, and SHALL NOT turn by more than 90 degrees at a grid point. It stays inside the bounding box of the hop's two ends widened by three cells. Rendered parallel strokes MAY lie off-grid.
 
 #### Scenario: Station in the way
 - **WHEN** line `ship` goes from `[0, 0]` to `[4, 0]` and component `vault` is at `[2, 0]`
@@ -78,7 +82,14 @@ Each hop between consecutive stations of a line SHALL be drawn along horizontal,
 
 #### Scenario: Angles
 - **WHEN** a map is laid out
-- **THEN** every segment of every routed hop is horizontal, vertical or at 45 degrees
+- **THEN** every segment of every rendered stroke, offset connectors included, is horizontal, vertical or at 45 degrees, except reported straight fallbacks
+
+### Requirement: Routing budget
+A hop search SHALL expand at most 50,000 direction states. When no valid route is found within the routing box or the budget, the hop SHALL be drawn as a straight segment and reported as unrouted.
+
+#### Scenario: Far-away typo
+- **WHEN** consecutive stops are at `[0, 0]` and `[100000, 100000]`
+- **THEN** the map is drawn within the time limit and that hop is reported as unrouted
 
 ### Requirement: Line order
 Line order SHALL be: lines with a `code` first, by `code` upper-cased and compared by Unicode code point, then lines without a code; ties by name. Hops are routed and legends listed in line order.
@@ -88,7 +99,7 @@ Line order SHALL be: lines with a `code` first, by `code` upper-cased and compar
 - **THEN** the line order is `secrets`, `ship`, `alpha`
 
 ### Requirement: Parallel lines
-Two lines SHALL NOT be drawn along the same grid edge at the same offset: every line using a grid edge is drawn side by side on it, whichever hops they belong to. Lines connecting the same two stations consecutively share one route. Walking an edge from its end whose coordinates sort first, lines are placed left to right in line order, whatever direction they travel.
+Two lines SHALL NOT be drawn along the same grid edge at the same offset: every line using a grid edge is drawn side by side on it, whichever hops they belong to. Lines connecting the same two stations consecutively share one route. Walking an edge from its end whose coordinates sort first, lines are placed left to right in line order, whatever direction they travel. Offset transitions SHALL use horizontal, vertical or 45-degree connectors.
 
 #### Scenario: Two lines on one hop
 - **WHEN** lines `ship` and `secrets` both go from `actions` to `deploy`
@@ -162,8 +173,8 @@ In the `full` view only, a station SHALL carry a renewal ring when a licence tha
 - **THEN** station `editor` has a renewal ring
 
 #### Scenario: Staff ignores hidden fields and the date
-- **WHEN** two catalogues differ only in default-hidden licence fields and are drawn in the `staff` view with different map dates
-- **THEN** the two SVGs are byte-identical, while their `full` SVGs differ
+- **WHEN** two catalogues are identical except that a drawn component's active licence renews on `2027-06-15` in the first and `2027-08-01` in the second, and their `staff` maps are drawn with dates `2027-06-01` and `2027-09-01`
+- **THEN** the two `staff` SVGs are byte-identical, and the two `full` maps drawn with date `2027-06-01` differ, with a renewal ring only in the first
 
 ### Requirement: Safe SVG structure
 The SVG SHALL be one XML document with `role="img"`, a `title`, one element per station with `data-ref="component:<name>"` and one per line with `data-ref="line:<name>"`, names as in `metadata.name`. Element names SHALL be limited to `svg`, `title`, `desc`, `g`, `path`, `line`, `rect`, `circle`, `ellipse`, `polygon`, `polyline`, `text` and `tspan`. No attribute named `href`, `style`, `id` or starting with `on` SHALL appear; fonts come from a system font stack.
@@ -171,6 +182,20 @@ The SVG SHALL be one XML document with `role="img"`, a `title`, one element per 
 #### Scenario: Allowed names only
 - **WHEN** any map is drawn
 - **THEN** every element and attribute name in the SVG is on the allow-lists
+
+### Requirement: Allowed attributes
+Attribute names SHALL be limited to `xmlns`, `role`, `viewBox`, `width`, `height`, `x`, `y`, `x1`, `y1`, `x2`, `y2`, `cx`, `cy`, `r`, `rx`, `ry`, `d`, `points`, `fill`, `stroke`, `stroke-width`, `stroke-linecap`, `stroke-linejoin`, `stroke-dasharray`, `opacity`, `fill-opacity`, `stroke-opacity`, `font-family`, `font-size`, `font-weight`, `text-anchor`, `dominant-baseline` and `data-ref`.
+
+#### Scenario: Unknown attribute
+- **WHEN** the hostile fixture is drawn
+- **THEN** no attribute outside this list appears, `xml:base` included
+
+### Requirement: Allowed attribute values
+`xmlns` SHALL be `http://www.w3.org/2000/svg` and `role` SHALL be `img`. Paint values SHALL be theme constants, validated `#RRGGBB` colours or `none`; no URL-valued paint is emitted. Numeric values SHALL be finite. The document SHALL contain no DOCTYPE, entity declaration or processing instruction.
+
+#### Scenario: Paint values
+- **WHEN** any map is drawn
+- **THEN** every `fill` and `stroke` is `none`, a theme constant or a `#RRGGBB` colour, and no value contains `url(`
 
 ### Requirement: Safe SVG text
 Every text taken from the catalogue SHALL be XML-escaped (`&`, `<`, `>`, `"`, `'`), with characters not allowed in XML 1.0 replaced by U+FFFD. No catalogue text SHALL appear in an attribute except `data-ref`, and colours are written only after matching `#RRGGBB`.
