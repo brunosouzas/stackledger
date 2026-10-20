@@ -4,6 +4,7 @@
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { validateFolder, type Summary } from './validate.js';
 import type { Problem } from './source.js';
@@ -93,7 +94,25 @@ const tools: Tool[] = [
 function oneLine(text: string): string {
   return text.replace(/[\u0000-\u001f\u007f\u2028\u2029]/g, c => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
 }
-export function toolsFor(view: ViewName): string[] { return tools.filter(tool => tool.views.includes(view)).map(tool => tool.name); }
+/** Log every failed tools/call answer, also those the SDK builds itself (an unknown tool, for example). */
+function logToolErrors(transport: StdioServerTransport): void {
+  const calls = new Map<string | number, string>();
+  const receive = transport.onmessage, send = transport.send.bind(transport);
+  transport.onmessage = (message: JSONRPCMessage) => {
+    if ('method' in message && message.method === 'tools/call' && 'id' in message) calls.set(message.id, String(message.params?.name));
+    receive?.(message);
+  };
+  transport.send = async (message: JSONRPCMessage) => {
+    const name = 'id' in message && message.id !== undefined ? calls.get(message.id) : undefined;
+    if (name !== undefined && 'id' in message) {
+      calls.delete(message.id!);
+      const result = 'result' in message ? message.result as { isError?: boolean; content?: { text?: unknown }[] } : undefined;
+      const reason = 'error' in message ? 'Protocol error' : result?.isError ? String(result.content?.[0]?.text ?? 'Tool error') : undefined;
+      if (reason !== undefined) process.stderr.write(`stackledger mcp: ${oneLine(name)}: ${oneLine(reason)}\n`);
+    }
+    return send(message);
+  };
+}
 export async function serve(folder: string, view: ViewName): Promise<void> {
   const server = new McpServer({ name: 'stackledger', version }, { instructions: `Read-only stackledger catalogue in the ${view} view. References are component:<name>, resource:<name> or line:<name>.` });
   const offered = tools.filter(tool => tool.views.includes(view));
@@ -110,14 +129,14 @@ export async function serve(folder: string, view: ViewName): Promise<void> {
           ...tool.run(args ?? {}, { graph, problems: loaded.problems, summary: loaded.summary }) };
         return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], structuredContent: result };
       } catch (error) {
-        const reason = error instanceof ToolError ? error.message : 'Internal error';
-        process.stderr.write(`stackledger mcp: ${tool.name}: ${oneLine(reason)}\n`);
-        return { isError: true, content: [{ type: 'text' as const, text: reason }] };
+        // Never pass an unexpected exception's text on: it could quote catalogue content.
+        return { isError: true, content: [{ type: 'text' as const, text: error instanceof ToolError ? error.message : 'Internal error' }] };
       }
     });
   }
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  logToolErrors(transport);
   // When the client closes stdin, nothing keeps the event loop alive: pending calls finish and the process exits with 0.
   process.stderr.write(`stackledger mcp: serving ${oneLine(folder)} in the ${view} view with ${offered.length} tools\n`);
 }

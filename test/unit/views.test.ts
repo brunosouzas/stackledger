@@ -28,6 +28,14 @@ test('Typo next to valid names', () => { const result = check(hiding(['vendor', 
 test('Typo in the path', () => { const result = check(settings('settings', { view: { staff: { hide: ['vendor'] } } }), full()); expect(details(result)).not.toHaveProperty('vendor'); expect(resolveHidden(result)).toEqual(allFields); });
 test('Real list in a second settings document', () => { const result = checkFiles({ 'a.yaml': [settings('settings')], 'b.yaml': [hiding(['vendor'], 'company')], 'c.yaml': [full()] }); expect(details(result)).not.toHaveProperty('vendor'); });
 test('Syntax error in stackledger.yaml', () => { const result = checkFiles({ 'stackledger.yaml': ['spec: "unclosed\n'], 'c.yaml': [full()] }); expect(result.served.licences).toHaveLength(1); expect(view(result).licences[0]!.spec).not.toHaveProperty('licence'); });
+test('Settings in a file that cannot be parsed or expanded fail closed', () => {
+ const custom = 'apiVersion: stackledger/v1alpha1\nkind: Settings\nmetadata: {name: settings}\nspec: {views: {staff: {hide: [vendor]}}}\n';
+ for (const broken of [custom + 'extra: *missing\n', custom + 'extra: "unclosed\n', custom.replace('kind: Settings', '{kind: "settings"')]) {
+  const result = checkFiles({ 'policy.yaml': [broken], 'c.yaml': [full()] });
+  expect(result.served.settings).toEqual([]); expect(resolveHidden(result)).toEqual(allFields);
+ }
+ expect(resolveHidden(checkFiles({ 'notes.yaml': ['note: "unclosed\n'], 'c.yaml': [full()] }))).toEqual(['cost', 'currency', 'cycle', 'renewsOn', 'paidBy', 'seats', 'vaultItem', 'note']);
+});
 test('Settings-like documents fail closed', () => {
  for (const broken of [set(settings(), 'kind', 'settings'), set(settings(), 'apiVersion', 'backstage.io/v1alpha1'), set(settings(), 'metadata.name', 'café'), set(hiding([]), 'metadata.description', '-----BEGIN OPENSSH PRIVATE KEY-----')]) expect(resolveHidden(check(broken, full()))).toEqual(allFields);
  expect(resolveHidden(checkFiles({ 'team/stackledger.yml': [set(component(), 'spec.owner', undefined)], 'c.yaml': [hiding([])] }))).toEqual(allFields);

@@ -289,3 +289,11 @@ test('Failed call line', async () => {
     expect(lines).toHaveLength(2); expect(lines[1]).toMatch(/get_item.*component:ghost/);
   });
 });
+test('Failed call line for a tool the view does not offer', async () => {
+  await withSession(catalogue(component()), 'staff', async session => {
+    await waitFor(session.stderr, 'tools\n');
+    failed(await session.call('renewals', { from: '2027-06-01' }));
+    const lines = (await waitFor(session.stderr, 'renewals')).split('\n').filter(Boolean);
+    expect(lines).toHaveLength(2); expect(lines[1]).toMatch(/renewals.*not found/);
+  });
+});

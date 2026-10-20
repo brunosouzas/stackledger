@@ -10,7 +10,7 @@ export function settings(name = 'settings', spec: unknown = {}) { return { apiVe
 /** Validate documents saved under the given file names, for rules that name files. */
 export function checkFiles(files: Record<string, unknown[]>) {
  const parsed = Object.entries(files).map(([path, docs]) => parseSource(path, docs.map(doc => typeof doc === 'string' ? doc : stringify(doc)).join('---\n')));
- return validateSources(parsed.flatMap(p => p.sources), parsed.flatMap(p => p.problems), parsed.length);
+ return validateSources(parsed.flatMap(p => p.sources), parsed.flatMap(p => p.problems), parsed.length, parsed.some(p => p.settingsUnread));
 }
 export function check(...documents: unknown[]) {
  const parsed = documents.map((doc, i) => parseSource(`${String(i).padStart(3, '0')}.yaml`, stringify(doc)));

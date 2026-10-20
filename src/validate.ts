@@ -62,7 +62,7 @@ export function validateLoaded(loaded: Loaded): Catalogue {
   const problems = [...loaded.problems];
   const identities: Identified[] = [];
   const entities: Entity[] = [];
-  let ignored = 0, settingsBroken = false;
+  let ignored = 0, settingsBroken = loaded.settingsUnread ?? false;
   // Any error on a document that looks like Settings must make the staff view fail closed.
   const settingsLike = (source: Source) => typeof source.value.kind === 'string' && source.value.kind.toLowerCase() === 'settings';
   function check(source: Source): void {
@@ -224,6 +224,6 @@ function crossCheck(unique: Identified[], first: Map<string, Identified>, proble
 export async function validateFolder(folder: string): Promise<Catalogue> { return validateLoaded(await loadFolder(folder)); }
 
 /** In-memory entry point preserves exactly the same ordering and parser behavior as disk input. */
-export function validateSources(sources: Source[], problems: Problem[] = [], files = new Set(sources.map(s => s.path)).size): Catalogue {
-  return validateLoaded({ sources: [...sources].sort((a, b) => compareText(a.path, b.path)), problems, files });
+export function validateSources(sources: Source[], problems: Problem[] = [], files = new Set(sources.map(s => s.path)).size, settingsUnread = false): Catalogue {
+  return validateLoaded({ sources: [...sources].sort((a, b) => compareText(a.path, b.path)), problems, files, settingsUnread });
 }

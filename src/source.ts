@@ -13,7 +13,8 @@ export interface Problem {
 export interface Source {
   path: string; document: Document; counter: LineCounter; value: Record<string, unknown>;
 }
-export interface Loaded { files: number; sources: Source[]; problems: Problem[] }
+/** settingsUnread: a file that may hold Settings failed to parse or expand, so its Settings cannot be trusted. */
+export interface Loaded { files: number; sources: Source[]; problems: Problem[]; settingsUnread?: boolean }
 export const MAX_FILE_BYTES = 1024 * 1024;
 
 /** Compare Unicode code points, not locale collation or UTF-16 surrogate order. */
@@ -65,7 +66,13 @@ export function problem(source: Source, path: FieldPath, message: string,
     severity, field: fieldName(path), message };
 }
 
-export function parseSource(path: string, text: string): { sources: Source[]; problems: Problem[] } {
+/** Fail closed: a broken file that mentions a Settings kind, in any case or YAML style, counts as broken settings. */
+const settingsText = /kind["']?\s*:\s*["']?settings\b/i;
+export function parseSource(path: string, text: string): { sources: Source[]; problems: Problem[]; settingsUnread: boolean } {
+  const parsed = parseDocuments(path, text);
+  return { ...parsed, settingsUnread: parsed.problems.some(p => p.severity === 'error') && settingsText.test(text) };
+}
+function parseDocuments(path: string, text: string): { sources: Source[]; problems: Problem[] } {
   const counter = new LineCounter();
   const documents = parseAllDocuments(text, { lineCounter: counter, prettyErrors: false, uniqueKeys: true, logLevel: 'silent' });
   // A syntax failure invalidates the entire file, including earlier documents.
@@ -127,6 +134,7 @@ export async function loadFolder(folder: string): Promise<Loaded> {
         if (!(stat.mode & 0o444)) { loaded.problems.push(fileProblem(path, 'File cannot be read')); continue; }
         const parsed = parseSource(path, await readFile(absolute, 'utf8'));
         loaded.sources.push(...parsed.sources); loaded.problems.push(...parsed.problems);
+        if (parsed.settingsUnread) loaded.settingsUnread = true;
       } catch { loaded.problems.push(fileProblem(path, 'File cannot be read')); }
     }
   }

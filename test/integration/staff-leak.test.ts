@@ -34,3 +34,30 @@ test('No trace of the cost', async () => {
   expect(results.filter(r => hidden.includes(r.args.query as string))).toHaveLength(hidden.length);
   expect(await session.transport.exit).toBe(0);
 });
+/** Two catalogues that differ only in hidden or dropped values must give byte-identical staff answers. */
+function variant(values: { cost: number; renewsOn: [string, string, string]; note: string; seats: number; misplaced: number; vendor?: string; status?: string }, settings?: string): string {
+  const licences = ['licence-a', 'licence-b', 'licence-c'].map((name, i) => {
+    let value: unknown = licence(name);
+    for (const [field, v] of Object.entries({ cost: values.cost + i, renewsOn: values.renewsOn[i], note: values.note, seats: values.seats, ...(values.vendor ? { vendor: values.vendor } : {}), ...(values.status ? { status: values.status } : {}) })) value = set(value, `spec.licence.${field}`, v);
+    return set(set(value, 'spec.cost', values.misplaced), 'spec.dependsOn', [`resource:x-${values.misplaced}`]);
+  });
+  const editor = set(set(component('editor'), 'spec.dependsOn', ['resource:licence-b']), 'spec.licence', { cost: values.misplaced });
+  return folder({ 'catalogue.yaml': yaml(editor, component('forge'), ...licences, set(line('ship'), 'spec.stops', ['component:editor', 'component:forge'])), ...(settings ? { 'stackledger.yaml': settings } : {}) });
+}
+async function answers(root: string): Promise<string[]> {
+  const session = await raw(root, 'staff');
+  const calls: [string, Record<string, unknown>][] = [['find_items', {}], ['find_items', { kind: 'licence' }], ['find_items', { kind: 'licence', limit: 2 }], ['find_items', { query: 'licence' }], ['find_items', { query: 'a' }], ['gaps', {}], ['get_item', { ref: 'resource:licence-z' }]];
+  for (const ref of ['component:editor', 'component:forge', 'resource:licence-a', 'resource:licence-b', 'resource:licence-c', 'line:ship']) calls.push(['get_item', { ref }], ['impact', { ref }]);
+  const texts = [];
+  for (const [name, args] of calls) texts.push((await session.call(name, args)).content[0]!.text);
+  await session.close(); return texts;
+}
+test('Hidden values change no staff answer', async () => {
+  const first = { cost: 10, renewsOn: ['2027-01-01', '2027-06-01', '2027-12-01'] as [string, string, string], note: 'renew early', seats: 3, misplaced: 11111 };
+  const second = { cost: 90000, renewsOn: ['2029-12-01', '2028-06-01', '2027-03-01'] as [string, string, string], note: 'zzz final term', seats: 400, misplaced: 99999 };
+  expect(await answers(variant(second))).toEqual(await answers(variant(first)));
+  const hideAll = 'apiVersion: stackledger/v1alpha1\nkind: Settings\nmetadata: {name: settings}\nspec: {views: {staff: {hide: [vendor, status, cost, renewsOn, note, seats]}}}\n';
+  const custom = await answers(variant({ ...first, vendor: 'Northwind Studio', status: 'active' }, hideAll));
+  expect(await answers(variant({ ...second, vendor: 'Zeta Supplies', status: 'expired' }, hideAll))).toEqual(custom);
+  expect(custom.join('\n')).not.toContain('Northwind Studio');
+});
