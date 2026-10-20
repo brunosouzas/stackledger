@@ -54,7 +54,7 @@ test('Different hops on one edge',()=>{
  const routes={hops:[],paths:new Map([['line:secrets',[[1,1],[2,0],[3,0],[4,0],[5,1]]],['line:ship',[[0,0],[1,0],[2,0],[3,0],[4,0],[5,0],[6,0]]]])} as any;
  const strokes=parallelLines(m,routes);const edge=strokes.map(s=>s.edges.find(e=>e.key===edgeKey([3,0],[4,0]))!);expect(edge.every(Boolean)).toBe(true);expect(edge[0]!.offset).not.toBe(edge[1]!.offset);expect(edge[0]!.a[1]).not.toBe(edge[1]!.a[1]);for(const s of strokes)octilinear(s.points);
 });
-test('Bends are mitred and a bundle keeps its sides through the bend',()=>{
+test('Bundle keeps its sides through a bend: bends are mitred',()=>{
  const m=model(component('a'),component('b'),journey('ship',['a','b'],'1'),journey('secrets',['a','b'],'2'),positions({a:[0,1],b:[1,0]}));
  const routes={hops:[],paths:new Map([['line:ship',[[0,1],[1,1],[1,0]]],['line:secrets',[[0,1],[1,1],[1,0]]]])} as any;
  const strokes=parallelLines(m,routes);
