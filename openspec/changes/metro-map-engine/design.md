@@ -24,7 +24,7 @@ flowchart LR
 
 - `src/map/model.ts`: `buildMapModel(view, date)` picks drawn lines (in line order, stops reduced to served components, lines with fewer than two stops dropped), stations, usable positions (first key wins, first in file keeps a shared cell), zones and markers. It reads only the view, so hidden fields cannot reach the map; in `staff` it ignores the date entirely.
 - `src/map/layout.ts`: suggestions, routing, parallel offsets, labels, zone hulls, legend. Output is plain data (`MapGeometry`): station points, polylines per line with offsets, label boxes, hull polygons, unrouted hops and suggestions.
-- `src/map/svg.ts`: `renderSvg(geometry, theme)` writes the SVG text.
+- `src/map/svg.ts`: `renderSvg(geometry, theme)` writes the SVG text in layers, each its own `g`: background, grid, zones, lines, stations, labels, header and legend. The background layer is empty in this change (theme colour only); the planned `map-backgrounds` change fills it with a city backdrop without touching the other layers.
 
 Tests assert on geometry (angles, collisions, positions) and a smaller set checks the SVG itself (safety, determinism, themes). The website will use the geometry to add interactivity.
 
