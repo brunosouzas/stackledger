@@ -11,10 +11,14 @@ export interface View { name: ViewName; components: Component[]; licences: Licen
 const metadataFields = ['name', 'namespace', 'title', 'description', 'labels', 'annotations', 'tags'] as const;
 const settingsFiles = new Set(['stackledger.yaml', 'stackledger.yml']);
 
+/** Whether the Settings in use has an error: a broken Settings document or any error in stackledger.yaml. */
+export function settingsInError(catalogue: Pick<Catalogue, 'problems' | 'settingsBroken'>): boolean {
+  const brokenFile = catalogue.problems.some(p => p.severity === 'error' && settingsFiles.has(p.path.split('/').at(-1)!.toLowerCase()));
+  return catalogue.settingsBroken || brokenFile;
+}
 /** Hidden licence fields for the staff view: the earliest valid Settings list, the default, or all when broken. */
 export function resolveHidden(catalogue: Pick<Catalogue, 'problems' | 'served' | 'settingsBroken'>): LicenceField[] {
-  const brokenFile = catalogue.problems.some(p => p.severity === 'error' && settingsFiles.has(p.path.split('/').at(-1)!.toLowerCase()));
-  if (catalogue.settingsBroken || brokenFile) return [...licenceFields];
+  if (settingsInError(catalogue)) return [...licenceFields];
   const hide = catalogue.served.settings[0]?.spec.views?.staff?.hide;
   return [...(hide ?? defaultHidden)];
 }

@@ -21,7 +21,7 @@ Levels: U unit, I integration (built files or CLI), B browser (Playwright). Ever
 ## 1. Catalogue and data
 
 - [x] 1.1 `spec.site` in the `Settings` schema and validator; unit tests (`test/unit/settings.test.ts`) for every scenario of the `catalogue` delta; global help and unknown-command message list `build` (`test/integration/cli.test.ts`).
-- [ ] 1.2 `src/site/data.ts`: `SiteData` per view; unit tests (`test/unit/site-data.test.ts`) that staff data carries no hidden value and ignores the date.
+- [x] 1.2 `src/site/data.ts`: `SiteData` per view; unit tests (`test/unit/site-data.test.ts`) that staff data carries no hidden value and ignores the date.
 
 ## 2. Map engine and diagrams
 
