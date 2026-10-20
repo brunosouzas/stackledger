@@ -3,6 +3,8 @@
  */
 import { readdir, lstat, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { compareText } from './identity.js';
+export { compareText } from './identity.js';
 import { parseAllDocuments, LineCounter, isMap, isSeq, isAlias, isScalar, type Document, type Node } from 'yaml';
 
 export type FieldPath = (string | number)[];
@@ -17,15 +19,6 @@ export interface Source {
 export interface Loaded { files: number; sources: Source[]; problems: Problem[]; settingsUnread?: boolean }
 export const MAX_FILE_BYTES = 1024 * 1024;
 
-/** Compare Unicode code points, not locale collation or UTF-16 surrogate order. */
-export function compareText(left: string, right: string): number {
-  const a = Array.from(left, c => c.codePointAt(0)!);
-  const b = Array.from(right, c => c.codePointAt(0)!);
-  for (let i = 0; i < Math.min(a.length, b.length); i++) {
-    if (a[i] !== b[i]) return a[i]! - b[i]!;
-  }
-  return a.length - b.length;
-}
 export function fieldName(path: FieldPath): string | null {
   if (!path.length) return null;
   return path.map((key, i) => typeof key === 'number' ? `[${key}]`
