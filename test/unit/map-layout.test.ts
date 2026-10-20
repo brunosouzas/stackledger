@@ -21,6 +21,16 @@ test('Suggestions deduplicate neighbours, use earlier suggestions, and break tie
  m.occupied.push([3,2],[2,3]); expect(suggestPositions(m).positions.get('component:b')).toEqual([2,1]);
 });
 test('No-neighbour suggestion uses all stored columns and does not mutate input',()=>{ const m=model(component('a'),component('b'),journey('ship',['a','b']),positions({old:[100000,8]})); const snapshot=structuredClone(m); expect(suggestPositions(m).suggestions[0]!.point).toEqual([100001,0]); expect(m).toEqual(snapshot); });
+test('Suggestions next to a huge stored column end and use safe integers',()=>{
+ const max=Number.MAX_SAFE_INTEGER;
+ const near=model(component('a'),component('b'),journey('ship',['a','b']),positions({a:[max,0]}));
+ const point=suggestPositions(near).positions.get('component:b')!;
+ expect(point).toEqual([max-1,0]);expect(point.every(Number.isSafeInteger)).toBe(true);
+ // No neighbour and no safe column after the stored one: the documented fallback is the first free cell of row 0.
+ const lone=model(component('a'),component('b'),component('c'),journey('ship',['b','c']),positions({a:[max,0]}));
+ expect(suggestPositions(lone).suggestions).toEqual([{ref:'component:b',point:[0,0]},{ref:'component:c',point:[1,0]}]);
+ const g=layoutMap(near);expect(g.stations.find(s=>s.name==='b')!.point.every(Number.isFinite)).toBe(true);
+},5000);
 test('Station in the way',()=>{ const r=routeHop([0,0],[4,0],new Set(['2,0'])); expect(r.unrouted).toBe(false); expect(r.points).not.toContainEqual([2,0]); octilinear(r.points); });
 test('Straight when nothing is in the way',()=>{ const r=routeHop([0,0],[3,0],new Set()); expect(r.points).toEqual([[0,0],[1,0],[2,0],[3,0]]); expect(r.unrouted).toBe(false); });
 test('Far-away typo',()=>{ const start=performance.now();const r=routeHop([0,0],[100000,100000],new Set());expect(r.unrouted).toBe(true);expect(r.expanded).toBeLessThanOrEqual(50000); expect(r.points).toEqual([[0,0],[100000,100000]]);expect(performance.now()-start).toBeLessThan(1000); });
