@@ -1,0 +1,15 @@
+{
+  "/Applications/Northwind Editor.app/Contents/Info.plist": { "CFBundleIdentifier": "com.northwind.editor", "CFBundleName": "Northwind Editor", "CFBundleShortVersionString": "5.0.1" },
+  "/Applications/Northwind Sync.app/Contents/Info.plist": { "CFBundleIdentifier": "com.northwind.sync", "CFBundleDisplayName": "Northwind Sync", "CFBundleShortVersionString": "2.0.0" },
+  "/Applications/Northwind Notes.app/Contents/Info.plist": { "CFBundleIdentifier": "com.northwind.notes", "CFBundleName": "Northwind Notes", "CFBundleShortVersionString": "4.2" },
+  "/Applications/Northwind Notes.app/Contents/_MASReceipt/receipt": "fictitious receipt",
+  "/Applications/Utilities/Northwind Monitor.app/Contents/Info.plist": { "CFBundleIdentifier": "com.northwind.monitor", "CFBundleShortVersionString": "1.1" },
+  "/Users/username/Applications/Northwind Draw.app/Contents/Info.plist": { "CFBundleIdentifier": "com.northwind.draw", "CFBundleName": "Northwind Draw" },
+  "/Users/username/Library/LaunchAgents/com.northwind.sync.plist": { "Label": "com.northwind.sync", "ProgramArguments": ["/Applications/Northwind Sync.app/Contents/MacOS/sync", "--quiet"] },
+  "/Library/LaunchAgents/com.northwind.updater.plist": { "Label": "com.northwind.updater", "Program": "/opt/homebrew/opt/forge/bin/forge" },
+  "/Library/LaunchDaemons/com.northwind.backup.plist": { "Label": "com.northwind.backup", "ProgramArguments": ["/usr/local/bin/northwind-backup"] },
+  "/Users/username/.local/share/mise/installs/node/22.12.0/bin/node": "fictitious",
+  "/Users/username/.local/share/mise/installs/node/24.1.0/bin/node": "fictitious",
+  "/Users/username/.local/share/mise/installs/python/3.13.1/bin/python": "fictitious",
+  "/Users/username/.local/pipx/venvs/northwind-docs/pipx_metadata.json": { "main_package": { "package": "northwind-docs", "package_version": "1.6.0" }, "pipx_metadata_version": "0.5" }
+}

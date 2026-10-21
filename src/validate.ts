@@ -8,6 +8,7 @@ export { reference, type Reference } from './identity.js';
 import { isMap, isScalar, type Node } from 'yaml';
 import { name, schemas, type Entity, type Component, type Licence, type Line, type MapLayout, type Settings } from './schema.js';
 import { scanSecrets } from './secrets.js';
+import { ANNOTATION_KEYS, ANNOTATION_PREFIX, annotationSource, identifiers, normaliseId } from './discovery/annotations.js';
 import { compareText, loadFolder, problem, resolveNode, sourceNode, type Source, type Problem, type FieldPath, type Loaded } from './source.js';
 export interface Summary { files: number; documents: number; ignored: number; errors: number; warnings: number }
 export interface Result { problems: Problem[]; summary: Summary }
@@ -122,6 +123,7 @@ export function validateLoaded(loaded: Loaded): Catalogue {
     } else { first.set(key, entity); unique.push(entity); }
   }
   crossCheck(unique, first, problems);
+  discoveryAnnotations(unique, problems);
   if (unique.filter(e => e.kind === 'Settings').length > 1) settingsBroken = true;
   sortProblems(problems);
   const served: Served = { components: [], licences: [], resources: [], lines: [], layouts: [], settings: [] };
@@ -214,6 +216,30 @@ function crossCheck(unique: Identified[], first: Map<string, Identified>, proble
   for (const component of components) {
     const zone = object(metadata(component).labels)['stackledger/zone'];
     if (typeof zone === 'string' && !zones.has(zone.toLowerCase())) add(component, ['metadata', 'labels', 'stackledger/zone'], 'Zone is not declared in the layout');
+  }
+}
+/** Discovery annotations of served components (design D8): all warnings, never errors.
+ * Only components that passed every document check, secret scan included, are read, in document order,
+ * so the earlier component of a claimed identifier is the one `stackledger drift` lists first too. */
+function discoveryAnnotations(unique: Identified[], problems: Problem[]): void {
+  const claimed = new Map<string, string>();
+  for (const entity of unique) {
+    if (entity.kind !== 'Component' || !entity.passed) continue;
+    const annotations = (entity.passed as Component).metadata.annotations ?? {};
+    const ref = `component:${entity.name}`;
+    for (const [key, value] of Object.entries(annotations)) {
+      if (!key.startsWith(ANNOTATION_PREFIX)) continue;
+      const path: FieldPath = ['metadata', 'annotations', key];
+      const source = annotationSource(key);
+      if (!source) { problems.push(problem(entity.source, path, `Unknown discovery annotation; allowed keys: ${ANNOTATION_KEYS.join(', ')}`, 'warning', true)); continue; }
+      const { ids, empty } = identifiers(value);
+      if (empty) problems.push(problem(entity.source, path, 'Empty identifier in the list', 'warning'));
+      for (const id of new Set(ids.map(id => normaliseId(source, id)))) {
+        const earlier = claimed.get(`${source}\0${id}`);
+        if (earlier === undefined) claimed.set(`${source}\0${id}`, ref);
+        else if (earlier !== ref) problems.push(problem(entity.source, path, `Identifier already listed by ${earlier}`, 'warning'));
+      }
+    }
   }
 }
 export async function validateFolder(folder: string): Promise<Catalogue> { return validateLoaded(await loadFolder(folder)); }

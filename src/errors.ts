@@ -1,7 +1,10 @@
 /** Failure classes for the command line. Used by src/cli.ts and the commands.
  * Usage and folder errors exit 2 with usage text; an InternalError is a bug in stackledger
- * itself and exits 1 with one line and no usage. Messages never span lines.
+ * itself and exits 1 with one line and no usage. Messages never span lines, and reportFailure removes
+ * their control characters: a usage message may echo an option or a path the user typed.
  */
+import { withoutControls } from './control.js';
+
 export class InternalError extends Error {
   override name = 'InternalError';
 }
@@ -14,6 +17,6 @@ export function internal(command: string, error: unknown): InternalError {
 
 /** The stderr text and exit code for a failure caught at the top of the command line. */
 export function reportFailure(error: unknown, usage: string): { stderr: string; exitCode: number } {
-  if (error instanceof InternalError) return { stderr: `${error.message}\n`, exitCode: 1 };
-  return { stderr: `${error instanceof Error ? error.message : 'Cannot run command'}\n${usage}`, exitCode: 2 };
+  if (error instanceof InternalError) return { stderr: `${withoutControls(error.message)}\n`, exitCode: 1 };
+  return { stderr: `${withoutControls(error instanceof Error ? error.message : 'Cannot run command')}\n${usage}`, exitCode: 2 };
 }

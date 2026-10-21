@@ -19,10 +19,20 @@ export interface Source {
 export interface Loaded { files: number; sources: Source[]; problems: Problem[]; settingsUnread?: boolean }
 export const MAX_FILE_BYTES = 1024 * 1024;
 
+const SHORT_ESCAPES: Record<string, string> = { b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' };
+/** A bracketed key as JSON text, with U+0000–U+001F and U+007F–U+009F always as `\u` escapes:
+ * a hostile annotation key can neither break a line nor send a terminal escape (catalogue spec). */
+function quotedKey(key: string): string {
+  // Each match is one whole JSON escape or one C1 character, so `\\n` (an escaped backslash) stays.
+  return JSON.stringify(key).replace(/\\(["\\/bfnrtu])|[\u007f-\u009f]/g, (match, escape: string | undefined) => {
+    const character = escape === undefined ? match : SHORT_ESCAPES[escape];
+    return character === undefined ? match : `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`;
+  });
+}
 export function fieldName(path: FieldPath): string | null {
   if (!path.length) return null;
   return path.map((key, i) => typeof key === 'number' ? `[${key}]`
-    : /^[A-Za-z0-9_-]+$/.test(key) ? `${i ? '.' : ''}${key}` : `[${JSON.stringify(key)}]`).join('');
+    : /^[A-Za-z0-9_-]+$/.test(key) ? `${i ? '.' : ''}${key}` : `[${quotedKey(key)}]`).join('');
 }
 export function fileProblem(path: string, message: string, severity: Problem['severity'] = 'error'): Problem {
   return { path, line: 1, column: 1, field: null, severity, message };

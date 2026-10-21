@@ -21,6 +21,36 @@ test('Unknown command', () => { const result = run(['publish']); expect(result.s
 test('Fictitious demo validates with every checked kind', () => { const result = run(['validate', demo]); expect(result.status).toBe(0); expect(result.stdout).toBe('files: 1, documents: 5, ignored: 0, errors: 0, warnings: 0\n'); });
 test('Global help lists both commands', () => {
  const help = run(['--help']); expect(help.status).toBe(0);
- for (const command of ['validate', 'mcp', 'map', 'build', 'report']) expect(help.stdout).toContain(`stackledger ${command} `);
- const unknown = run(['publish']); expect(unknown.status).toBe(2); expect(unknown.stderr).toContain('expected validate, mcp, map, build or report');
+ for (const command of ['validate', 'mcp', 'map', 'build', 'report', 'drift']) expect(help.stdout).toContain(`stackledger ${command} `);
+ expect(help.stdout).toContain('stackledger discover\n');
+ const unknown = run(['publish']); expect(unknown.status).toBe(2); expect(unknown.stderr).toContain('expected validate, mcp, map, build, report, discover or drift');
+});
+test('Hostile annotation key', () => {
+ // YAML's \x9b escape puts a raw U+009B (CSI) into the key; output must show it only as \u009b.
+ const root = folder({ 'a.yaml': component().replace('  name: a\n', '  name: a\n  annotations:\n    "stackledger/brew\\x9b2J": git\n') });
+ const text = run(['validate', root]), json = run(['validate', root, '--json']);
+ expect(text.status).toBe(0); expect(json.status).toBe(0);
+ expect(text.stdout).toContain('metadata.annotations["stackledger/brew\\u009b2J"]');
+ expect(JSON.parse(json.stdout).problems[0].field).toBe('metadata.annotations["stackledger/brew\\u009b2J"]');
+ for (const output of [text.stdout, json.stdout]) expect(output).not.toContain('\u009b');
+});
+test('Hostile file name in validate output', () => {
+ // A catalogue file whose name holds ESC and a raw U+009B (CSI), with one error so its path is printed.
+ const name = 'nw\u001b[2J\u009b2J.yaml', root = folder({ [name]: component().replace('  owner: user:alex\n', '') });
+ const text = run(['validate', root]), json = run(['validate', root, '--json']);
+ expect(text.status).toBe(1); expect(json.status).toBe(1);
+ expect(text.stdout).toMatch(/^nw\[2J2J\.yaml:\d+:\d+ error /);
+ for (const line of text.stdout.split('\n')) expect(line).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/);
+ expect(json.stdout).toContain('nw\\u001b[2J\\u009b2J.yaml');
+ expect(json.stdout).not.toMatch(/[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/);
+ expect(JSON.parse(json.stdout).problems[0].path).toBe(name);
+});
+test('Hostile option in a usage error', () => {
+ for (const args of [['drift', '--nw\u001b[2J\u009b2J'], ['validate', '--nw\u001b]0;x\u0007\u009b2J'], ['nw\u009b2J\u001b[2J']]) {
+  const result = run(args);
+  expect(result.status, JSON.stringify(args)).toBe(2); expect(result.stdout).toBe('');
+  expect(result.stderr).toContain('Usage:');
+  expect(result.stderr).not.toMatch(/[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/);
+ }
+ expect(run(['drift', '--nw\u009b2J']).stderr).toContain("'--nw2J'");
 });

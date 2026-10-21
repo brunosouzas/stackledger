@@ -13,6 +13,7 @@
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { InternalError, internal } from './errors.js';
+import { writeStdout } from './stdout.js';
 import { buildGraph, isDate, localDate } from './graph.js';
 import { calendarNamespace, renderCalendar } from './ics.js';
 import { problemCounts } from './map/command.js';
@@ -60,25 +61,6 @@ function render(report: Report, format: ReportFormat, catalogue: Catalogue): str
   return formatText(report);
 }
 
-/** Write all of `text` to stdout, or throw InternalError when the stream fails (EPIPE). */
-async function writeStdout(text: string): Promise<void> {
-  await new Promise<void>((done, fail) => {
-    // The stream reports a closed pipe both to the write callback and as an 'error' event; without
-    // a listener the event would crash the process with a stack trace instead of one line.
-    const onError = (error: Error) => fail(error);
-    process.stdout.on('error', onError);
-    process.stdout.write(text, error => {
-      if (error) fail(error);
-      else {
-        process.stdout.off('error', onError);
-        done();
-      }
-    });
-  }).catch((error: NodeJS.ErrnoException) => {
-    throw new InternalError(`stackledger report: cannot write the report to stdout (${error.code ?? error.message})`);
-  });
-}
-
 export async function reportCommand(args: string[]): Promise<void> {
   const options = parseReportArgs(args);
   const loaded = await loadFolder(resolve(options.folder));
@@ -95,5 +77,5 @@ export async function reportCommand(args: string[]): Promise<void> {
     if (error instanceof AmountTooLarge) throw new InternalError(`stackledger report: ${error.message}`);
     throw internal('report', error);
   }
-  await writeStdout(output);
+  await writeStdout(output, 'stackledger report: cannot write the report to stdout');
 }

@@ -22,7 +22,7 @@ Validation reads only: no writes, network requests or telemetry. Exit codes are 
 
 Text problems are `<path>:<line>:<column> <error|warning> <field> <message>`, followed by `files`, `documents`, `ignored`, `errors` and `warnings` counts. Paths are relative with `/` separators. JSON output is one object with `problems` and `summary`, containing the same fields and counts. Problems sort by Unicode code-point path, line, column, field, severity (error first), then message.
 
-Positions are one-based. Values point at their value; secret keys, unknown fields and station references point at the key. Missing fields point at the document mapping's start; unread files point at 1:1. Field paths join keys with dots and list indexes with `[n]`. Keys outside ASCII letters, digits, `-` and `_` use a bracketed JSON string, for example `metadata.labels["stackledger/zone"]`. Whole-file/document problems use `-` in text and `null` in JSON.
+Positions are one-based. Values point at their value; secret keys, unknown fields and station references point at the key. Missing fields point at the document mapping's start; unread files point at 1:1. Field paths join keys with dots and list indexes with `[n]`. Keys outside ASCII letters, digits, `-` and `_` use a bracketed JSON string, for example `metadata.labels["stackledger/zone"]`. Inside the brackets, characters U+0000 to U+001F and U+007F to U+009F are always written as `\u` escapes, in text and JSON output, so a hostile annotation key can neither break a line nor send a terminal escape. Whole-file/document problems use `-` in text and `null` in JSON.
 
 ## Files and document order
 
@@ -72,6 +72,46 @@ For each document, checks run in order: kind present; ignored kind (stop); suppo
 Unlisted Component fields are accepted and ignored (for example `metadata.links`, `spec.system`, `spec.providesApis` and other Backstage relations). They still participate in the secret scan.
 
 A reference is `kind:name` or `kind:namespace/name`. Kinds and target names match ignoring case. Omitting the kind is an error. In `dependsOn`, component/resource targets must exist and have passed identity, including ignored non-licence resources. Other kinds and non-default namespaces warn that the reference is not checked. Only `default` is supported in stops and station keys; other namespaces there are errors.
+
+## Discovery annotations
+
+`stackledger drift` ([docs/discovery.md](discovery.md)) matches what is installed on a Mac to components only through these annotations, never through names or titles. Each key names one discovery source; its value is a list of identifiers separated by commas, with spaces around each one ignored.
+
+| Key | Identifier | Compared |
+| --- | --- | --- |
+| `stackledger/brew` | Homebrew formula full name: `git`, or `northwind/tools/ledger` for a tap formula | Exactly |
+| `stackledger/cask` | Homebrew cask full token | Exactly |
+| `stackledger/mas` | App Store identifier (digits); quote it, or YAML reads a number and the field is an error | Exactly |
+| `stackledger/app` | Bundle identifier (`CFBundleIdentifier`) | Ignoring ASCII case |
+| `stackledger/launchd` | launchd job `Label` | Exactly |
+| `stackledger/mise` | mise tool name | Exactly |
+| `stackledger/npm` | Global npm package name | Exactly |
+| `stackledger/pipx` | pipx package name | Lower case, each run of `-`, `_` and `.` read as one `-` |
+
+```yaml
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: editor
+  title: Northwind Editor
+  annotations:
+    stackledger/cask: northwind-editor
+    stackledger/app: com.northwind.editor
+    stackledger/launchd: com.northwind.sync, com.northwind.helper
+    stackledger/mas: "1234567890"
+spec:
+  type: tool
+  lifecycle: active
+  owner: user:alex
+```
+
+These are **warnings**, never errors:
+
+- A key that starts with `stackledger/` but is none of the eight above, for example `stackledger/brews`. The warning is on the key and names the allowed keys. `stackledger/zone` is a label, not an annotation, and is not affected.
+- An empty identifier in the list, such as `git,,gh`, a trailing comma or a blank value. The other identifiers are still read.
+- An identifier that an earlier component, in document order, already lists for the same source, compared as drift compares them. The later component gets the warning, naming the earlier one. The same identifier for two sources (`stackledger/brew: forge` and `stackledger/npm: forge`) is fine.
+
+Only components that passed every check are read for discovery; annotations on other kinds are not. An identifier with a comma, a control character or white space at either end cannot be written here; drift lists such an item with the note `cannot be annotated`.
 
 ## Licences
 
@@ -171,7 +211,7 @@ After kind-field checks pass, every key/value in checked documents is scanned, i
 - Text containing `-----BEGIN` and then `PRIVATE KEY-----` on the same line.
 - A run of 13–19 digits that passes Luhn, allowing single spaces/hyphens between digits but no adjacent digit, quoted or not. Invalid field types still fail their field check before the scan.
 
-An e-mail address in a value is a **warning**, not an error: a vendor support address may be legitimate. The address is not repeated in the message. Ignored documents are not scanned.
+An e-mail address in a value is a **warning**, not an error: a vendor support address may be legitimate. The domain must end in a label of two or more letters, so a versioned Homebrew name such as `python@3.12` is not taken for an address. The address is not repeated in the message. Ignored documents are not scanned.
 
 This guard is not a guarantee. Also run a secret scanner such as **gitleaks in the catalogue repository**. Never commit real credentials or payment-card data; reference a password-manager item instead.
 

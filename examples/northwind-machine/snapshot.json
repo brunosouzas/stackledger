@@ -1,0 +1,309 @@
+{
+  "format": "stackledger-snapshot/v1",
+  "takenAt": "2026-10-21T07:30:00Z",
+  "machine": {
+    "name": "username-macbook-air",
+    "user": "username",
+    "macos": "27.2"
+  },
+  "sources": [
+    {
+      "source": "brew",
+      "status": "ok",
+      "reason": null,
+      "items": 5,
+      "ignored": 0
+    },
+    {
+      "source": "cask",
+      "status": "ok",
+      "reason": null,
+      "items": 6,
+      "ignored": 0
+    },
+    {
+      "source": "mas",
+      "status": "skipped",
+      "reason": "not found",
+      "items": 0,
+      "ignored": 0
+    },
+    {
+      "source": "app",
+      "status": "ok",
+      "reason": null,
+      "items": 8,
+      "ignored": 0
+    },
+    {
+      "source": "launchd",
+      "status": "ok",
+      "reason": null,
+      "items": 3,
+      "ignored": 1
+    },
+    {
+      "source": "mise",
+      "status": "ok",
+      "reason": null,
+      "items": 1,
+      "ignored": 0
+    },
+    {
+      "source": "npm",
+      "status": "ok",
+      "reason": null,
+      "items": 2,
+      "ignored": 0
+    },
+    {
+      "source": "pipx",
+      "status": "ok",
+      "reason": null,
+      "items": 1,
+      "ignored": 0
+    }
+  ],
+  "items": [
+    {
+      "source": "brew",
+      "id": "dopplerhq/cli/doppler",
+      "versions": [
+        "3.75.1"
+      ],
+      "onRequest": true,
+      "dependsOn": []
+    },
+    {
+      "source": "brew",
+      "id": "forge",
+      "versions": [
+        "2.1.0"
+      ],
+      "onRequest": true,
+      "dependsOn": [
+        "libnorth"
+      ]
+    },
+    {
+      "source": "brew",
+      "id": "gh",
+      "versions": [
+        "2.82.0"
+      ],
+      "onRequest": true,
+      "dependsOn": []
+    },
+    {
+      "source": "brew",
+      "id": "libnorth",
+      "versions": [
+        "1.4.2"
+      ],
+      "onRequest": false,
+      "dependsOn": []
+    },
+    {
+      "source": "brew",
+      "id": "stripe/stripe-cli/stripe",
+      "versions": [
+        "1.31.0"
+      ],
+      "onRequest": true,
+      "dependsOn": []
+    },
+    {
+      "source": "cask",
+      "id": "1password",
+      "versions": [
+        "8.11.4"
+      ],
+      "apps": [
+        "1Password.app"
+      ]
+    },
+    {
+      "source": "cask",
+      "id": "figma",
+      "versions": [
+        "125.8.8"
+      ],
+      "apps": [
+        "Figma.app"
+      ]
+    },
+    {
+      "source": "cask",
+      "id": "northwind-editor",
+      "versions": [
+        "5.0.1"
+      ],
+      "apps": [
+        "Northwind Editor.app"
+      ]
+    },
+    {
+      "source": "cask",
+      "id": "notion",
+      "versions": [
+        "4.20.0"
+      ],
+      "apps": [
+        "Notion.app"
+      ]
+    },
+    {
+      "source": "cask",
+      "id": "slack",
+      "versions": [
+        "4.46.101"
+      ],
+      "apps": [
+        "Slack.app"
+      ]
+    },
+    {
+      "source": "cask",
+      "id": "visual-studio-code",
+      "versions": [
+        "1.105.1"
+      ],
+      "apps": [
+        "Visual Studio Code.app"
+      ]
+    },
+    {
+      "source": "app",
+      "id": "com.1password.1password",
+      "versions": [
+        "8.11.4"
+      ],
+      "title": "1Password",
+      "path": "/Applications/1Password.app",
+      "appStore": false
+    },
+    {
+      "source": "app",
+      "id": "com.apple.northwindsample",
+      "versions": [
+        "1.0"
+      ],
+      "title": "Northwind Sample",
+      "path": "/Applications/Northwind Sample.app",
+      "appStore": false
+    },
+    {
+      "source": "app",
+      "id": "com.figma.Desktop",
+      "versions": [
+        "125.8.8"
+      ],
+      "title": "Figma",
+      "path": "/Applications/Figma.app",
+      "appStore": false
+    },
+    {
+      "source": "app",
+      "id": "com.microsoft.VSCode",
+      "versions": [
+        "1.105.1"
+      ],
+      "title": "Code",
+      "path": "/Applications/Visual Studio Code.app",
+      "appStore": false
+    },
+    {
+      "source": "app",
+      "id": "com.northwind.draw",
+      "versions": [
+        "3.2"
+      ],
+      "title": "Northwind Draw",
+      "path": "/Users/username/Applications/Northwind Draw.app",
+      "appStore": false
+    },
+    {
+      "source": "app",
+      "id": "com.northwind.editor",
+      "versions": [
+        "5.0.1"
+      ],
+      "title": "Northwind Editor",
+      "path": "/Applications/Northwind Editor.app",
+      "appStore": false
+    },
+    {
+      "source": "app",
+      "id": "com.tinyspeck.slackmacgap",
+      "versions": [
+        "4.46.101"
+      ],
+      "title": "Slack",
+      "path": "/Applications/Slack.app",
+      "appStore": false
+    },
+    {
+      "source": "app",
+      "id": "notion.id",
+      "versions": [
+        "4.20.0"
+      ],
+      "title": "Notion",
+      "path": "/Applications/Notion.app",
+      "appStore": false
+    },
+    {
+      "source": "launchd",
+      "id": "com.apple.northwind.helper",
+      "versions": [],
+      "scope": "daemon",
+      "path": "/Library/LaunchDaemons/com.apple.northwind.helper.plist",
+      "program": "/usr/libexec/northwind-helper"
+    },
+    {
+      "source": "launchd",
+      "id": "com.northwind.secrets-sync",
+      "versions": [],
+      "scope": "user-agent",
+      "path": "/Users/username/Library/LaunchAgents/com.northwind.secrets-sync.plist",
+      "program": "/opt/homebrew/opt/doppler/bin/doppler"
+    },
+    {
+      "source": "launchd",
+      "id": "com.northwind.sync,helper",
+      "versions": [],
+      "scope": "agent",
+      "path": "/Library/LaunchAgents/com.northwind.sync.helper.plist",
+      "program": "/Applications/Northwind Editor.app/Contents/MacOS/sync-helper"
+    },
+    {
+      "source": "mise",
+      "id": "node",
+      "versions": [
+        "22.12.0",
+        "24.1.0"
+      ]
+    },
+    {
+      "source": "npm",
+      "id": "northwind-cli",
+      "versions": [
+        "3.0.0"
+      ]
+    },
+    {
+      "source": "npm",
+      "id": "vercel",
+      "versions": [
+        "48.2.0"
+      ]
+    },
+    {
+      "source": "pipx",
+      "id": "northwind-docs",
+      "versions": [
+        "1.6.0"
+      ]
+    }
+  ]
+}

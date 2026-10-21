@@ -1,0 +1,7 @@
+{
+  "name": "lib",
+  "dependencies": {
+    "northwind-cli": { "version": "3.0.0", "overridden": false },
+    "npm": { "version": "11.0.0", "overridden": false }
+  }
+}

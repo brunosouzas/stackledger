@@ -2,7 +2,7 @@
  * Examples are standalone folders: accidental dangling references cannot be hidden by other blocks.
  */
 import { test, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { folder } from '../helpers.js';
 import { parse } from 'yaml';
@@ -34,4 +34,16 @@ test('docs/mcp.md client examples parse and name every tool', () => {
  }
  expect(toml).toContain('[mcp_servers.stackledger]\ncommand = "node"\nargs = ["/path/to/stackledger/dist/cli.js", "mcp", "/path/to/catalogue"]');
  for (const tool of ['find_items', 'get_item', 'impact', 'gaps', 'renewals', 'validate']) expect(document).toContain(`| \`${tool}\``);
+});
+test('Fictitious user in the repository', () => {
+ // Documentation, examples and test fixtures name the macOS user `username` in every /Users/<name>/ path.
+ const files: string[] = [];
+ const walk = (path: string) => { for (const entry of readdirSync(join(root, path), { withFileTypes: true })) {
+  const relative = join(path, entry.name);
+  if (entry.isDirectory()) { if (entry.name !== 'node_modules') walk(relative); } else files.push(relative);
+ } };
+ for (const path of ['docs', 'examples', 'test/fixtures']) walk(path);
+ files.push('README.md', 'AGENTS.md');
+ const users = files.flatMap(file => [...readFileSync(join(root, file), 'utf8').matchAll(/\/Users\/([^/\s"'`]+)\//g)].map(match => `${file}: ${match[1]}`));
+ expect(users.filter(user => !user.endsWith(': username'))).toEqual([]);
 });
