@@ -68,11 +68,15 @@ A separate `deploy` job, on a fresh runner, SHALL run only after `site` succeeds
 - **THEN** the `deploy` job has no checkout, installs wrangler with `--ignore-scripts` in a step without secrets, and its deploy step contains no `npx`, `npm install` or `npm exec`
 
 ### Requirement: Deployment identity
-Each deployment SHALL be labelled with the commit and the build date, so a previous one can be found and rolled back to.
+Each deployment SHALL be labelled with the commit and the build date, the date the `site` job computed once and handed on with the files, so a previous deployment can be found and rolled back to in Cloudflare Pages.
 
 #### Scenario: Labelled deployment
 - **WHEN** the template workflow is read
-- **THEN** the deploy command passes `--commit-hash` with the run's commit and a `--commit-message` holding the build date
+- **THEN** the deploy command passes `--commit-hash` with the run's commit and a `--commit-message` holding the date read from the file the `site` job wrote, not a new date
+
+#### Scenario: Build date travels with the files
+- **WHEN** the `site` job's commands run with the date fixed to `2026-10-21` and the deploy command is printed with the date fixed to `2026-10-22`
+- **THEN** the build used `2026-10-21` and the label says `2026-10-21`
 
 ### Requirement: Template hardening
 The workflow SHALL check out without persisting credentials, grant `site` only `contents: read` and `deploy` no permissions, use one concurrency group per ref that does not cancel a running deploy, and pass `actionlint`.

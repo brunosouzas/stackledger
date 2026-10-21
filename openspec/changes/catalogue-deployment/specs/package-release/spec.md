@@ -64,15 +64,19 @@ A second job SHALL run only after the first succeeds, in the GitHub environment 
 - **THEN** the second job `needs` the first, uses environment `npm`, checks out without credentials, runs the script from the checkout, has no install or build step, and the script publishes with `--provenance` and `--ignore-scripts`
 
 ### Requirement: Completing a partial release
-Before publishing, the script SHALL ask npm for the version's integrity: a 404 means absent and it publishes; the same integrity skips publishing; another integrity, or any other npm error, fails with nothing changed. For the GitHub release, "not found" creates it with the SBOM, an existing one gets the SBOM replaced, and any other error fails.
+The script SHALL ask npm for the version: a 404 means absent and it publishes; the same integrity with a provenance attestation skips publishing; another integrity, no attestation, or any other npm error fails with nothing changed. For the GitHub release, "not found" creates it with the SBOM, an existing one gets the SBOM replaced, and any other error fails.
 
 #### Scenario: Version absent
 - **WHEN** npm answers 404 for the version
 - **THEN** the script publishes the tarball with `--provenance`, `--access public` and `--ignore-scripts`
 
 #### Scenario: Re-run after the release step failed
-- **WHEN** the version is already on npm with the same integrity as the packed tarball
+- **WHEN** the version is already on npm with the same integrity as the packed tarball and a provenance attestation
 - **THEN** the publish step is skipped and the GitHub release is created or its SBOM replaced
+
+#### Scenario: Same bytes without provenance
+- **WHEN** the version is on npm with the same integrity but no provenance attestation
+- **THEN** the script exits 1 without touching the GitHub release
 
 #### Scenario: Version already published with other bytes
 - **WHEN** the version is on npm with a different integrity
