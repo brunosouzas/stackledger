@@ -24,3 +24,12 @@ test('Global help lists both commands', () => {
  for (const command of ['validate', 'mcp', 'map', 'build', 'report']) expect(help.stdout).toContain(`stackledger ${command} `);
  const unknown = run(['publish']); expect(unknown.status).toBe(2); expect(unknown.stderr).toContain('expected validate, mcp, map, build or report');
 });
+test('Hostile annotation key', () => {
+ // YAML's \x9b escape puts a raw U+009B (CSI) into the key; output must show it only as \u009b.
+ const root = folder({ 'a.yaml': component().replace('  name: a\n', '  name: a\n  annotations:\n    "stackledger/brew\\x9b2J": git\n') });
+ const text = run(['validate', root]), json = run(['validate', root, '--json']);
+ expect(text.status).toBe(0); expect(json.status).toBe(0);
+ expect(text.stdout).toContain('metadata.annotations["stackledger/brew\\u009b2J"]');
+ expect(JSON.parse(json.stdout).problems[0].field).toBe('metadata.annotations["stackledger/brew\\u009b2J"]');
+ for (const output of [text.stdout, json.stdout]) expect(output).not.toContain('\u009b');
+});

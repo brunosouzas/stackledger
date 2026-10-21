@@ -26,7 +26,7 @@ Levels: U unit, I integration (CLI, entry script or built files), P performance 
 ## 1. Spike and annotations
 
 - [ ] 1.1 `docs/spikes/2026-10-21-mac-discovery/README.md`: what each source returned, timings and the sandbox results, with no real names, paths or counts from the spike machine. Check: `test/integration/docs.test.ts` (Fictitious user in the repository) passes.
-- [ ] 1.2 `src/discovery/annotations.ts` (keys, list parsing, identifier comparison) and the validate stage of D8; `fieldName` in `src/source.ts` writes U+0000–U+001F and U+007F–U+009F as `\u` escapes inside bracketed keys; `test/unit/annotations.test.ts` and the hostile-key test in `test/integration/cli.test.ts`. Check: `npm test`, existing field-path tests unchanged.
+- [x] 1.2 `src/discovery/annotations.ts` (keys, list parsing, identifier comparison) and the validate stage of D8; `fieldName` in `src/source.ts` writes U+0000–U+001F and U+007F–U+009F as `\u` escapes inside bracketed keys; `test/unit/annotations.test.ts` and the hostile-key test in `test/integration/cli.test.ts`. Check: `npm test`, existing field-path tests unchanged.
 
 ## 2. Runner and machine name
 
