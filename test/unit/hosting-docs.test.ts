@@ -6,6 +6,16 @@ import { readFileSync } from 'node:fs';
 
 const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 
+test('docs/hosting.md protects every address under both applications and checks every anonymous path', () => {
+  const hosting = read('docs/hosting.md');
+  for (const application of ['stackledger full', 'stackledger staff']) {
+    const section = hosting.split(`### ${application}\n`)[1]?.split(/^###? /m)[0] ?? '';
+    for (const address of ['catalogue.example.org', '<project>.pages.dev', '*.<project>.pages.dev']) expect(section).toContain(address);
+  }
+  for (const path of ['/', '/staff/', '/full/', '/full/renewals.ics', '/full/_astro/', '/staff/_astro/']) expect(hosting).toContain(`\`${path}\``);
+  for (const term of ['302', 'cloudflareaccess.com', 'staff-only', 'before', 'oauth2-proxy', '--set-xauthrequest', 'Rollback']) expect(hosting).toContain(term);
+});
+
 test('docs/release.md has each first-version bootstrap step', () => {
   const release = read('docs/release.md');
   const steps = [

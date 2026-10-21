@@ -30,7 +30,7 @@ Levels: U unit, I integration (built CLI, packed package, or workflow steps run 
 
 ## 3. Access recipes
 
-- [ ] 3.1 `docs/hosting.md` and `examples/hosting/Caddyfile` (D4); `docs/site.md` links them; `test/integration/hosting-caddy.test.ts`. Check: `npm test` with Caddy on `PATH` runs the Caddy tests (not skipped).
+- [x] 3.1 `docs/hosting.md` and `examples/hosting/Caddyfile` (D4); `docs/site.md` links them; `test/integration/hosting-caddy.test.ts`. Check: `npm test` with Caddy on `PATH` runs the Caddy tests (not skipped).
 
 ## 4. Documentation and roadmap
 
