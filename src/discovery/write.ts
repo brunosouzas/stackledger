@@ -26,7 +26,9 @@ import { serialise, type Snapshot } from './snapshot.js';
 export const MAX_SNAPSHOT_BYTES = 32 * 1024 * 1024;
 export const SNAPSHOT_FILE = 'snapshot.json';
 const PRIVATE_FOLDER = 0o700, PRIVATE_FILE = 0o600;
-const WRITABLE_BY_OTHERS = 0o022, ANY_PERMISSION_FOR_OTHERS = 0o077;
+/** Mode bits; src/drift-command.ts checks the `--scaffold` folders with the same rules. */
+export const WRITABLE_BY_OTHERS = 0o022;
+const ANY_PERMISSION_FOR_OTHERS = 0o077;
 
 export interface WriteOps {
   stat(path: string): Stats;
@@ -64,6 +66,11 @@ const code = (error: unknown) => (error as NodeJS.ErrnoException).code ?? 'unkno
 
 interface Checked { path: string; dev: number; ino: number }
 
+/** Whether `status` (from lstat) is still the folder checked earlier: no link, a folder, same device and inode. */
+export function sameFolder(status: Stats, folder: { dev: number; ino: number }): boolean {
+  return !status.isSymbolicLink() && status.isDirectory() && status.dev === folder.dev && status.ino === folder.ino;
+}
+
 /** Check one snapshot folder, creating it when absent; refuses anything another user could change. */
 function checkFolder(ops: WriteOps, path: string, label: string): Checked {
   let status: Stats;
@@ -82,10 +89,7 @@ function checkFolder(ops: WriteOps, path: string, label: string): Checked {
 
 function unchanged(ops: WriteOps, folders: Checked[]): boolean {
   return folders.every(folder => {
-    try {
-      const status = ops.lstat(folder.path);
-      return !status.isSymbolicLink() && status.isDirectory() && status.dev === folder.dev && status.ino === folder.ino;
-    } catch { return false; }
+    try { return sameFolder(ops.lstat(folder.path), folder); } catch { return false; }
   });
 }
 

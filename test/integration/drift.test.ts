@@ -6,7 +6,7 @@
 import { test, expect } from 'vitest';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { cpSync, existsSync, readdirSync, readFileSync, statSync, symlinkSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, lstatSync, readdirSync, readFileSync, statSync, symlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { cli, root, run } from './helpers.js';
 import { catalogue, defaultSnapshot, driftEntryRun, driftRun, snapshotFile } from './drift-helpers.js';
@@ -360,4 +360,47 @@ test('Scaffold folder created meanwhile', () => {
   expect(result.stdout).toBe('');
   expect(result.stderr).toContain('already exists');
   expect(readdirSync(dir)).toEqual([]);
+});
+
+test('Scaffold folder replaced during the write', () => {
+  // After the first (or the last) file is written, the folder is moved aside and a link to another
+  // folder takes its place: the command sees it before the next create (or before it finishes), stops
+  // with exit 1, and nothing is written through the link.
+  for (const after of [1, 2]) {
+    const example = twoCasks(), dir = join(folder(), 'new-items');
+    const result = driftEntryRun({ faults: { replaceFolderAfterWrite: after } }, [example.path, '--snapshot', example.file, '--scaffold', dir]);
+    expect(result.status, `after write ${after}`).toBe(1);
+    expect(result.stdout).toBe('');
+    expect(oneLine(result.stderr)).toBe(true);
+    expect(result.stderr).toContain('scaffold folder was replaced');
+    expect(readdirSync(`${dir}-elsewhere`)).toEqual([]);
+    expect(lstatSync(dir).isSymbolicLink()).toBe(true);
+  }
+});
+
+test('Scaffold parent writable by others', () => {
+  // Another user who can write the parent could swap the new folder for a link: refused before any write.
+  const example = twoCasks();
+  for (const permissions of [0o777, 0o770, 0o707]) {
+    const parent = folder();
+    chmodSync(parent, permissions);
+    const result = driftRun([example.path, '--snapshot', example.file, '--scaffold', join(parent, 'new-items')]);
+    chmodSync(parent, 0o700);
+    expect(result.status, permissions.toString(8)).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toContain('can be written by other users');
+    expect(readdirSync(parent)).toEqual([]);
+  }
+  // With the sticky bit, as /tmp has, other users cannot rename or remove the user's folder.
+  const sticky = folder();
+  chmodSync(sticky, 0o1777);
+  expect(driftRun([example.path, '--snapshot', example.file, '--scaffold', join(sticky, 'new-items')]).status).toBe(0);
+  chmodSync(sticky, 0o700);
+  // A parent owned by another user (reported through the ScaffoldOps seam) is refused too.
+  const owned = folder();
+  const other = driftEntryRun({ faults: { parentUid: 4242 } }, [example.path, '--snapshot', example.file, '--scaffold', join(owned, 'new-items')]);
+  expect(other.status).toBe(2);
+  expect(other.stdout).toBe('');
+  expect(other.stderr).toContain('not owned by the current user');
+  expect(readdirSync(owned)).toEqual([]);
 });

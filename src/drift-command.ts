@@ -17,16 +17,21 @@
  * Without `--scaffold` it only reads the catalogue folder and the snapshot. With `--scaffold <dir>` it
  * also writes the draft files of src/scaffold.ts, and only there: `dir` must not exist yet and must be
  * neither inside the catalogue folder nor contain it (real paths compared; a usage error otherwise).
+ * Its parent must not be writable by group or others unless it has the sticky bit (as /tmp has), and
+ * must be owned by the user or root: otherwise another user could swap `dir` for a link (usage error).
  * Everything is built and checked in memory first; then `dir` is created with an exclusive mkdir (no
- * `recursive`, so a folder created meanwhile is exit 2), each file is written with `wx` and mode 0644,
- * and only then stdout. A failed write removes the files this run created (a path counts only once its
- * exclusive open succeeded, so a file another process put there is kept) and `dir` when that leaves it
- * empty, and exits 1 with one line.
+ * `recursive`, so a folder created meanwhile is exit 2) and mode 0700, and its device and inode are
+ * remembered, as src/discovery/write.ts does for the snapshot folders. Before each file is created
+ * (`wx`, mode 0644) and before stdout, `dir` must still be that folder and no link, else exit 1. A
+ * failed write removes the files this run created (a path counts only once its exclusive open
+ * succeeded, so a file another process put there is kept) and `dir` when that leaves it empty, and
+ * exits 1 with one line. Like write.ts this only detects a swap by the user's own processes: Node has
+ * no openat to close the window between the check and the create.
  *
  * `host` and `ops` exist for the tests (test/integration/drift-entry.mjs); src/cli.ts passes nothing,
  * so the shipped command reads the real machine and writes through node:fs.
  */
-import { closeSync, constants, lstatSync, mkdirSync, openSync, realpathSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { closeSync, constants, lstatSync, mkdirSync, openSync, realpathSync, rmdirSync, unlinkSync, writeFileSync, type Stats } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { basename, dirname, join, resolve, sep } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -34,7 +39,7 @@ import { InternalError, internal } from './errors.js';
 import { createHost, type Host } from './discovery/host.js';
 import { machineName } from './discovery/machine.js';
 import { checkSnapshot, type Snapshot } from './discovery/snapshot.js';
-import { MAX_SNAPSHOT_BYTES } from './discovery/write.js';
+import { MAX_SNAPSHOT_BYTES, sameFolder, WRITABLE_BY_OTHERS } from './discovery/write.js';
 import { buildDrift } from './drift.js';
 import { formatDriftJson, formatDriftText } from './drift-formats.js';
 import { problemCounts } from './map/command.js';
@@ -53,7 +58,7 @@ interface DriftArgs { folder: string; snapshot: string | undefined; format: Drif
 /** The file system calls of `--scaffold` (as src/site/fs-ops.ts does for build), so tests can inject a
  * failure or a folder created between the checks and the mkdir. Synchronous; each throws what node:fs throws. */
 export interface ScaffoldOps {
-  lstat(path: string): void;
+  lstat(path: string): Stats;
   realpath(path: string): string;
   /** Create one folder, failing with EEXIST when it exists (never recursive). */
   mkdir(path: string): void;
@@ -65,7 +70,7 @@ export interface ScaffoldOps {
   rmdir(path: string): void;
 }
 export const NODE_SCAFFOLD_OPS: ScaffoldOps = {
-  lstat: path => { lstatSync(path); },
+  lstat: path => lstatSync(path),
   realpath: path => realpathSync.native(path),
   mkdir: path => { mkdirSync(path, { mode: 0o700 }); },
   create: path => openSync(path, 'wx', 0o644),
@@ -74,6 +79,7 @@ export const NODE_SCAFFOLD_OPS: ScaffoldOps = {
   rmdir: path => rmdirSync(path),
 };
 const code = (error: unknown) => (error as NodeJS.ErrnoException).code ?? 'unknown';
+const STICKY = 0o1000, ROOT = 0;
 
 function parseDriftArgs(args: string[]): DriftArgs {
   const { values, positionals } = parseArgs({ args, strict: true, allowPositionals: true,
@@ -156,6 +162,12 @@ function scaffoldTarget(dir: string, catalogueFolder: string, ops: ScaffoldOps):
   if (exists) throw new Error('The scaffold folder already exists; name a new folder');
   let parent: string;
   try { parent = ops.realpath(dirname(absolute)); } catch { throw new Error('The folder that should hold the scaffold folder was not found'); }
+  // Another user who can write the parent could replace the new folder with a link; the sticky bit
+  // (as on /tmp) stops them renaming or removing a folder they do not own.
+  let holder: Stats;
+  try { holder = ops.lstat(parent); } catch { throw new Error('The folder that should hold the scaffold folder cannot be checked'); }
+  if ((holder.mode & WRITABLE_BY_OTHERS) && !(holder.mode & STICKY)) throw new Error('The folder that should hold the scaffold folder can be written by other users; name a folder in a private place');
+  if (holder.uid !== process.getuid!() && holder.uid !== ROOT) throw new Error('The folder that should hold the scaffold folder is not owned by the current user or root; name a folder in a private place');
   const target = join(parent, basename(absolute)), catalogueReal = ops.realpath(catalogueFolder);
   if (target === catalogueReal || target.startsWith(catalogueReal + sep)) throw new Error('The scaffold folder must be outside the catalogue folder');
   if (catalogueReal.startsWith(target + sep)) throw new Error('The scaffold folder must not contain the catalogue folder');
@@ -171,24 +183,44 @@ function componentNames(loaded: Loaded): string[] {
   });
 }
 
+/** A swap of the scaffold folder seen during the write (exit 1). */
+class FolderReplaced extends InternalError {
+  constructor() { super('stackledger drift: the scaffold folder was replaced while writing; the command stopped and wrote nothing through the new path'); }
+}
+
 /** Create `target` and write every file in it; on a failure remove what was written, then throw. */
 function writeScaffold(target: string, files: ScaffoldFile[], ops: ScaffoldOps): void {
   try { ops.mkdir(target); } catch (error) {
     if (code(error) === 'EEXIST') throw new Error('The scaffold folder already exists; name a new folder');
     throw new InternalError(`stackledger drift: cannot create the scaffold folder (${code(error)})`);
   }
+  // The folder just made, by device and inode; every later step first checks `target` still is it.
+  let folder: { dev: number; ino: number };
+  try {
+    const status = ops.lstat(target);
+    if (!status.isDirectory() || status.isSymbolicLink()) throw new FolderReplaced();
+    folder = { dev: status.dev, ino: status.ino };
+  } catch (error) {
+    if (error instanceof FolderReplaced) throw error;
+    throw new InternalError(`stackledger drift: cannot check the scaffold folder (${code(error)})`);
+  }
+  const stillOurs = () => { try { return sameFolder(ops.lstat(target), folder); } catch { return false; } };
   // Only paths whose exclusive create succeeded: a file that was already there (EEXIST, another
   // process writing into the new folder) is not this run's to remove.
   const created: string[] = [];
   try {
     for (const file of files) {
+      if (!stillOurs()) throw new FolderReplaced();
       const path = join(target, file.file);
       const fd = ops.create(path);
       created.push(path);
       ops.write(fd, file.text);
     }
+    if (!stillOurs()) throw new FolderReplaced();
   } catch (error) {
-    // Created files may be partly written; one already gone needs no removal.
+    // Created files may be partly written; one already gone needs no removal. A replaced folder is
+    // not this run's: it is left alone, and so is whatever its path now leads to.
+    if (!stillOurs()) throw error instanceof FolderReplaced ? error : new FolderReplaced();
     for (const path of created) { try { ops.unlink(path); } catch { /* already gone: nothing to remove */ } }
     let removed = true;
     try { ops.rmdir(target); } catch { removed = false; }

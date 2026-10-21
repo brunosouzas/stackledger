@@ -203,7 +203,7 @@ The same snapshot and catalogue SHALL give byte-identical output. Items SHALL be
 - **THEN** the shared entry lists `component:Zed` before `component:alpha`
 
 ### Requirement: Scaffold folder
-With `--scaffold <dir>`, the command SHALL also write catalogue files for the items it lists as not declared into `dir`, which SHALL NOT exist yet and SHALL be neither inside the catalogue folder nor contain it; otherwise it is a usage error (exit 2, nothing written). It SHALL write nothing else and SHALL never write in the catalogue folder. stdout is the same as without the option.
+With `--scaffold <dir>`, the command SHALL also write catalogue files for the items it lists as not declared into `dir`. `dir` SHALL NOT exist yet, be inside the catalogue folder or contain it; its parent SHALL be owned by the user or root and not writable by group or others unless it has the sticky bit. Otherwise it is a usage error (exit 2, nothing written). It SHALL write nothing else and never in the catalogue folder. stdout is the same as without the option.
 
 #### Scenario: Scaffold written
 - **WHEN** the command runs with `--scaffold ./new-items` and two casks are not declared
@@ -215,6 +215,10 @@ With `--scaffold <dir>`, the command SHALL also write catalogue files for the it
 
 #### Scenario: Scaffold inside the catalogue
 - **WHEN** `--scaffold` names a folder inside the catalogue folder
+- **THEN** the exit code is 2, stdout is empty and nothing is written
+
+#### Scenario: Scaffold parent writable by others
+- **WHEN** `--scaffold` names a new folder whose parent has mode 0777 without the sticky bit
 - **THEN** the exit code is 2, stdout is empty and nothing is written
 
 ### Requirement: Scaffold content
@@ -266,7 +270,7 @@ Undeclared items with the same source and identifier (as matching compares them)
 - **THEN** `stackledger validate` reports no more errors or warnings than before
 
 ### Requirement: Scaffold write
-The command SHALL create `dir` itself with an exclusive create that fails when it already exists (exit 2), write only inside it, and write the files before stdout. A write failure SHALL exit 1 with one error line, remove the files it wrote and `dir`, and write nothing on stdout. Text in the files SHALL be YAML-escaped so any title stays one scalar.
+The command SHALL create `dir` itself with mode 0700 and an exclusive create that fails when it already exists (exit 2), write only inside it, and write the files before stdout. Before each file and before stdout, `dir` SHALL still be that folder (same device and inode, no link), else exit 1. A write failure SHALL exit 1 with one error line, remove the files it wrote and `dir`, and write nothing on stdout. Text in the files SHALL be YAML-escaped so any title stays one scalar.
 
 #### Scenario: Scaffold write fails
 - **WHEN** writing the second file fails
@@ -275,6 +279,10 @@ The command SHALL create `dir` itself with an exclusive create that fails when i
 #### Scenario: Scaffold folder created meanwhile
 - **WHEN** `dir` is created by another process after the checks and before the command creates it
 - **THEN** the exit code is 2, stdout is empty, and nothing is written in `dir`
+
+#### Scenario: Scaffold folder replaced during the write
+- **WHEN** after the first file is written, `dir` is moved away and a link to another folder takes its place
+- **THEN** the exit code is 1, stdout is empty, and nothing is written in the link's target
 
 #### Scenario: Title that looks like YAML
 - **WHEN** an app title is `Northwind: Editor # beta` and holds a line break
