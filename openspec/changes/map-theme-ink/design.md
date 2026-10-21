@@ -14,7 +14,7 @@ Options: (a) an SVG `filter` or `transform="translate()"`, as the reference does
 
 ### 3. Scale to the map
 
-The map is drawn at about a third of the reference's scale (line 7 against pipe 22), so: casing 5 units wider than the line, outline 2.5, shadow offset 3. The diagrams, drawn at about twice the map's scale, use twice the map's outline and shadow.
+The map is drawn at about a third of the reference's scale (line 7 against pipe 22), so: casing 5 units wider than the line, outline 2.5, shadow offset 2.5. The neighbourhood diagram, drawn larger, scales outline and shadow by 1.6 (outline 4, as in the reference); the strip uses the map's values. Ticks and renewal rings have no shadow: on the first PNG review a tick's shadow read as a detached dark block and a ring's shadow muddied the station under it.
 
 ### 4. Layout counts the ink
 

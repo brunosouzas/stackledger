@@ -7,7 +7,8 @@ The owner decided on 2026-10-21 that v1 ships with the map and the page diagrams
 - The `light` and `dark` themes get the new look as Theme data; theme names and CLI options stay the same.
 - Lines are drawn as pipes: an ink casing with the catalogue colour inside.
 - Stations, interchanges, terminal badges, licence markers, renewal rings and the legend panel get an ink outline and a hard offset shadow: an ink copy shifted down and right in `light`, an indigo copy with a light rim in `dark`. Shadows are offset geometry, never `transform` or `filter`.
-- The map background is the tinted panel `#EEF2FF` (`light`) or navy `#14215A` (`dark`); labels are bold, in `Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif`.
+- The map background is the tinted panel `#EEF2FF` (`light`) or navy `#14215A` (`dark`); labels are bold, in `Lato, Helvetica Neue, Helvetica, Arial, sans-serif` (unquoted, so no quote character reaches an SVG attribute).
+- Lines and ticks are pipes without a shadow; renewal rings get an ink outline and no shadow.
 - Label and badge placement count the casing, outline and shadow of markers, badges and segments as obstacles.
 - The neighbourhood and strip diagrams use the same style.
 - The site ships Lato from the pinned `@fontsource/lato` package, copied locally like Heebo and Signika. Standalone `stackledger map` SVGs name the font stack and embed no font.

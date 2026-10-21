@@ -1,11 +1,14 @@
 ## ADDED Requirements
 
-### Requirement: Ink outline and offset shadow
-In both themes every drawn line SHALL have a casing in the ink `#0A1033` wider than the line, with the catalogue colour inside. Interchanges, terminal badges, licence markers and the legend panel SHALL have an outline in the ink, and they and the station ticks SHALL have a hard offset shadow: a copy of the shape in the theme's shadow colour, moved right and down by the theme's offset, drawn before the shape in the same group, without `transform` or `filter`.
+### Requirement: Ink casing and outline
+In both themes every drawn line and station tick SHALL have a casing in the ink `#0A1033` wider than its stroke, with the catalogue colour inside. Interchanges, terminal badges, licence markers, renewal rings and the legend panel SHALL have an ink outline.
 
 #### Scenario: Pipe line
 - **WHEN** line `ship` in `#FF0000` is drawn in either theme
 - **THEN** its group holds a path stroked `#0A1033` wider than the line, followed by the same path stroked `#FF0000`
+
+### Requirement: Hard offset shadow
+Interchanges, terminal badges, licence markers and the legend panel SHALL have a hard offset shadow: a copy of the shape in the theme's shadow colour, moved right and down by the theme's offset, drawn first in the same group, without `transform` or `filter`. Lines, ticks and renewal rings have no shadow.
 
 #### Scenario: Shadow under an interchange
 - **WHEN** `slack` is an interchange drawn in the `light` theme
@@ -18,7 +21,7 @@ In both themes every drawn line SHALL have a casing in the ink `#0A1033` wider t
 ## MODIFIED Requirements
 
 ### Requirement: Themes
-The map SHALL support a `light` and a `dark` theme. Line and zone colours come from the catalogue in both themes; background, text, station, outline and shadow colours come from the theme. The `light` background SHALL be the tinted panel `#EEF2FF` and the `dark` background the navy `#14215A`. Text SHALL use the font stack `Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif`, and station labels are bold.
+The map SHALL support a `light` and a `dark` theme. Line and zone colours come from the catalogue in both themes; background, text, station, outline and shadow colours come from the theme. The `light` background SHALL be the tinted panel `#EEF2FF` and the `dark` background the navy `#14215A`. Text SHALL use the font stack `Lato, Helvetica Neue, Helvetica, Arial, sans-serif`, and station labels are bold.
 
 #### Scenario: Dark theme
 - **WHEN** the map is drawn with the `dark` theme
