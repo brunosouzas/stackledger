@@ -6,7 +6,7 @@ Defines `stackledger drift`, the command that compares a machine snapshot with t
 ## ADDED Requirements
 
 ### Requirement: Command
-`stackledger drift <folder> [--snapshot <file>] [--format text|json]` SHALL compare a snapshot with the components of the catalogue's `full` view, print the result on stdout and exit 0, whether or not anything differs. The default snapshot is this machine's `~/.stackledger/<machine>/snapshot.json`; the default format is `text`. The command SHALL only read files and SHALL NOT edit the catalogue.
+`stackledger drift <folder> [--snapshot <file>] [--format text|json] [--scaffold <dir>]` SHALL compare a snapshot with the components of the catalogue's `full` view, print the result on stdout and exit 0, whether or not anything differs. The default snapshot is this machine's `~/.stackledger/<machine>/snapshot.json`; the default format is `text`. Without `--scaffold` it SHALL only read files; it SHALL never edit the catalogue.
 
 #### Scenario: Explicit snapshot
 - **WHEN** the command runs as `stackledger drift examples/northwind --snapshot examples/northwind-machine/snapshot.json`
@@ -201,6 +201,57 @@ The same snapshot and catalogue SHALL give byte-identical output. Items SHALL be
 #### Scenario: Names in mixed case
 - **WHEN** components `Zed` and `alpha` both list one cask
 - **THEN** the shared entry lists `component:Zed` before `component:alpha`
+
+### Requirement: Scaffold folder
+With `--scaffold <dir>`, the command SHALL also write catalogue files for the items it lists as not declared into `dir`, which SHALL NOT exist yet and SHALL be neither inside the catalogue folder nor contain it; otherwise it is a usage error (exit 2, nothing written). It SHALL write nothing else and SHALL never write in the catalogue folder. stdout is the same as without the option.
+
+#### Scenario: Scaffold written
+- **WHEN** the command runs with `--scaffold ./new-items` and two casks are not declared
+- **THEN** `./new-items` holds two `.yaml` files, stdout is the same as without `--scaffold`, and the catalogue folder is unchanged
+
+#### Scenario: Scaffold folder exists
+- **WHEN** `--scaffold` names a folder that already exists
+- **THEN** the exit code is 2, stdout is empty and nothing is written
+
+#### Scenario: Scaffold inside the catalogue
+- **WHEN** `--scaffold` names a folder inside the catalogue folder
+- **THEN** the exit code is 2, stdout is empty and nothing is written
+
+### Requirement: Scaffold content
+Each file SHALL hold one `Component` (`backstage.io/v1alpha1`) with `metadata.name`, `metadata.title` (the item's title, else its `id`, control characters removed), the discovery annotations, `spec.type` (`service` for `launchd`, else `tool`), `spec.lifecycle: active`, `spec.owner: unknown`, and `spec.dependsOn` when the rule below gives any. A leading comment SHALL say the file is a draft to review. No path, version or user name SHALL appear.
+
+#### Scenario: Scaffold of a cask
+- **WHEN** the cask `northwind-editor` is not declared
+- **THEN** its file holds a component with the annotation `stackledger/cask: northwind-editor`, `owner: unknown` and no version or path
+
+### Requirement: Scaffold grouping and relations
+An undeclared `app` whose folder name is in the `apps` of an undeclared cask SHALL go into that cask's file, with both annotations. An item that has suggested components, cannot be annotated, or is only counted SHALL get no file. `spec.dependsOn` SHALL list each component, in the catalogue or in the scaffold, that matches an item the file's items need, in reference order.
+
+#### Scenario: Cask and its app in one file
+- **WHEN** the cask `northwind-editor` and its app `com.northwind.editor` are both not declared
+- **THEN** one file holds both `stackledger/cask` and `stackledger/app` annotations, and no other file names that app
+
+#### Scenario: Scaffold relation
+- **WHEN** the formula `forge` is not declared, needs `libnorth`, and `component:libnorth` lists `libnorth`
+- **THEN** the file for `forge` has `dependsOn: [component:libnorth]`
+
+### Requirement: Scaffold names
+`metadata.name` SHALL be the item's title, else the part of its `id` after the last `/`, folded as the machine name is folded; an empty result is `item`. When that name, ignoring case, is used by a catalogue `Component` or an earlier file, `-2`, `-3` and so on are added, the base cut so the name stays at most 63 characters. Files are named `<name>.yaml` and get names in the order of the not-declared list.
+
+#### Scenario: Name already in the catalogue
+- **WHEN** the catalogue has `component:northwind-editor` without annotations and the cask `northwind-editor` is not declared
+- **THEN** the scaffold file is `northwind-editor-2.yaml` with that name
+
+#### Scenario: Scaffold passes validate
+- **WHEN** the scaffold files are copied into the Northwind catalogue
+- **THEN** `stackledger validate` reports no more errors or warnings than before
+
+### Requirement: Scaffold write
+The command SHALL write the files into a new temporary folder beside `dir` and rename it to `dir` only when every file is written, so `dir` either does not exist or is complete. A write failure SHALL exit 1 with one error line, remove the temporary folder and write nothing on stdout. Text in the files SHALL be YAML-escaped so any title stays one scalar.
+
+#### Scenario: Title that looks like YAML
+- **WHEN** an app title is `Northwind: Editor # beta` and holds a line break
+- **THEN** its file parses back to one component whose title is that text on one line
 
 ### Requirement: Drift failures
 A failure while comparing or serialising SHALL exit 1 with stdout empty and one error line on stderr, without usage. A failure while writing stdout SHALL exit 1 with one error line on stderr.

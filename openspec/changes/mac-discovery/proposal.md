@@ -11,6 +11,7 @@ A catalogue is only useful while it matches what is really installed. Today the 
 - `stackledger drift <folder>`: compares the snapshot with the catalogue and lists what is installed but not declared, what is declared but missing, and what could not be checked because its source was skipped.
 - Matching is only through package-manager annotations on components (`stackledger/brew: git`, `stackledger/app: <bundle id>`, and so on). It never matches by name.
 - `drift` prints the annotation an undeclared item would need and the `dependsOn` relations it can infer (Homebrew dependencies, the program a launchd job runs, the app a cask installs). It never edits the catalogue: a person confirms them.
+- `drift --scaffold <dir>` also writes, into a new folder outside the catalogue, one draft catalogue file per item not declared (name, title, discovery annotations, inferred `dependsOn`; owner `unknown`), so a person or their agent can review and copy them into the catalogue instead of writing each file by hand. Journeys, licences and prices stay manual. Requested by the owner at gate 1 (2026-10-21).
 - `stackledger validate` warns about an unknown `stackledger/` annotation key, an empty identifier and an identifier claimed by two components.
 
 ## Capabilities
@@ -35,7 +36,8 @@ A catalogue is only useful while it matches what is really installed. Today the 
 
 ## Out of scope
 
-- Writing to the catalogue, opening pull requests, or applying a proposed annotation or relation.
+- Writing to the catalogue folder, opening pull requests, or applying a proposed annotation or relation to an existing component (the scaffold only creates new draft files elsewhere).
+- Running discovery on a schedule: a person or their agent can run it from cron or launchd; the docs show how.
 - Comparing several machines at once, or recording which machine a component should be on (later: several Macs, Fleet).
 - Windows and Linux collectors; system software inside `/System`.
 - Reading the arguments, environment or other keys of a launchd job beyond its label and program path; whether a job is loaded or running.
@@ -57,18 +59,13 @@ A catalogue is only useful while it matches what is really installed. Today the 
 
 Decided by the owner on 2026-10-21 (not reopened): the sources; snapshots outside the catalogue repository in `~/.stackledger/<computer-name>/`; the macOS user name kept in snapshot paths and replaced by `username` in anything public; matching only through `stackledger/<source>` annotations, never by name; discovery prints annotations but never edits the catalogue; this change comes before `map-theme-ink` and `map-backgrounds`.
 
-Open for gate 1 (each with a recommendation in `design.md`, Open questions):
+Gate 1, approved by the owner on 2026-10-21 with every recommendation of `design.md`, Open questions: snapshots in `~/.stackledger/<machine>/`; the machine name is the folded `ComputerName`; several identifiers per annotation, comma-separated; dependency-only formulae and macOS items are counted, not listed; no `sandbox-exec` means `discover` refuses to run; Homebrew is read with `brew info --json=v2 --installed`. At the same gate the owner asked for draft catalogue files (`drift --scaffold`), added to this change.
 
-1. Snapshot folder in the home folder (`~/.stackledger/`) or next to the catalogue but outside Git.
-2. Machine name: slug of the computer name, or `LocalHostName`.
-3. Several identifiers in one annotation (comma-separated).
-4. What `drift` leaves out of "installed but not declared": Homebrew formulae installed only as dependencies, and macOS's own items.
-5. A source whose sandbox cannot start (no `sandbox-exec`): fail closed.
-6. A Homebrew formula's version and dependency data come from `brew info --json=v2 --installed`, run offline inside the sandbox.
+None open.
 
 ## Documentation
 
-- `docs/discovery.md` (new): sources, the exact commands and files read, the sandbox, the snapshot format with a fictitious example (`username`), the machine-name rule, `drift` output and exit codes.
+- `docs/discovery.md` (new): the flow from `discover` to a reviewed catalogue pull request, `--scaffold`, a weekly launchd example, sources, the exact commands and files read, the sandbox, the snapshot format with a fictitious example (`username`), the machine-name rule, `drift` output and exit codes.
 - `docs/catalogue-format.md`: the `stackledger/<source>` annotations and their warnings.
 - `README.md`: Usage rows for `discover` and `drift`.
 - `AGENTS.md`: implemented list and the discovery rule for tests (no real machine data in fixtures).

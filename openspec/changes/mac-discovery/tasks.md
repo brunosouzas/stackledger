@@ -16,6 +16,8 @@ Levels: U unit, I integration (CLI, entry script or built files), P performance 
 | drift-command | Name is not enough; Bundle identifier in another case; Python package spelling; Undeclared cask; Formula installed as a dependency; Apple app; Missing app; Source skipped; Missing from an incomplete source; Two components for one item; Job inside an app; Job of a formula; Job of a tap formula; Two formulae with one short name; Prefix that only looks alike; Formula dependency proposed; Relation already declared; App installed by a cask; App installed by a shared cask; Label with a comma; Dependency that cannot be annotated; Names in mixed case | `test/unit/drift.test.ts` | U |
 | drift-command | Explicit snapshot; Default snapshot; Drift read-only; Unknown drift format; No catalogue folder; No snapshot yet; Snapshot in another format; Inconsistent snapshot; Secret in a snapshot; Default snapshot on Linux; Catalogue error; Nothing differs; Control characters removed; JSON lists; C1 character in JSON; Same input twice; Drift closed pipe | `test/integration/drift.test.ts` | I |
 | drift-command | Large drift | `test/perf/drift.perf.test.ts` | P |
+| drift-command | Scaffold of a cask; Cask and its app in one file; Scaffold relation; Name already in the catalogue; Title that looks like YAML | `test/unit/scaffold.test.ts` | U |
+| drift-command | Scaffold written; Scaffold folder exists; Scaffold inside the catalogue; Scaffold passes validate | `test/integration/drift.test.ts` | I |
 | mcp-server | Global help lists both commands | `test/integration/cli.test.ts` | I |
 | mcp-server | No folder; Unknown view; Missing folder; Help (unchanged, tests already exist) | `test/integration/mcp.test.ts` | I |
 
@@ -45,9 +47,10 @@ Levels: U unit, I integration (CLI, entry script or built files), P performance 
 
 - [ ] 5.1 `src/drift.ts` (`buildDrift`: matching, not declared with the left-out counts, missing, not checked, shared, inferred needs, proposed relations, cask app suggestions); `test/unit/drift.test.ts`.
 - [ ] 5.2 `src/drift-command.ts` (arguments, snapshot reading and its limits, text and JSON, stdout writer); `test/integration/drift.test.ts`; `test/perf/drift.perf.test.ts`. Check: `npm test` and `npm run test:perf`.
+- [ ] 5.3 `src/scaffold.ts` (D10: grouping, names, `dependsOn`, YAML text) and the `--scaffold` option of `src/drift-command.ts` (folder checks, temporary folder and rename); `test/unit/scaffold.test.ts` and the scaffold tests in `test/integration/drift.test.ts`. Check: `npm test`.
 
 ## 6. Example, documentation and a real run
 
 - [ ] 6.1 `examples/northwind-machine/snapshot.json` (fictitious, user `username`) and discovery annotations on the Northwind components, so `stackledger drift examples/northwind --snapshot examples/northwind-machine/snapshot.json` shows every section. Check: `Explicit snapshot`.
-- [ ] 6.2 `docs/discovery.md` (sources, exact commands and files read, sandbox, snapshot and drift JSON shapes, machine-name rule, exit codes), `docs/catalogue-format.md` (annotations), README Usage rows, AGENTS.md, `skills/stackledger/SKILL.md`. Check: `npm test` (docs tests), `npm audit` reports 0.
+- [ ] 6.2 `docs/discovery.md` (the flow from `discover` to a reviewed pull request on the catalogue, sources, exact commands and files read, sandbox, snapshot and drift JSON shapes, machine-name rule, `--scaffold`, a weekly launchd example, exit codes), `docs/catalogue-format.md` (annotations), README Usage rows, AGENTS.md, `skills/stackledger/SKILL.md`. Check: `npm test` (docs tests), `npm audit` reports 0.
 - [ ] 6.3 One manual run on the owner's Mac, outside the repository: a scratch copy under `~/.hermes/cache/scratch/` runs `discover` through the entry script with the real sources and the snapshot folder inside the scratch copy, then `drift` against a scratch copy of the owner's catalogue; findings go to the pull request in words, not data; the scratch copy is deleted. Check: the scratch folder no longer exists.

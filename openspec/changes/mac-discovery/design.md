@@ -129,6 +129,31 @@ An item is named in drift output by `{ "source", "id", "path" }`, where `path` i
 - `shared` items are also in `matched`.
 - Text output shows the same lists with one line per entry, for example `cask  northwind-editor 5.0.1  -> stackledger/cask: northwind-editor`, `missing  component:legacy  app com.northwind.legacy (incomplete source)` and `propose  component:forge dependsOn component:libnorth  (brew forge needs brew libnorth)`.
 
+### D10. Scaffold
+
+`src/scaffold.ts` exports `buildScaffold(drift, snapshot, catalogueNames): ScaffoldFile[]`, pure; `src/drift-command.ts` writes them. Flow: from `notDeclared`, drop entries with suggested components or no annotation; attach each undeclared app to the undeclared cask whose `apps` holds its folder name (the cask's file wins the title when it has one, else the app's title); assign names in list order with the machine fold of `src/discovery/machine.ts` and the `-2`, `-3` suffixes; then `dependsOn` from the inferred needs of the file's items, to catalogue components that match the needed item or to other scaffold files, sorted with `compareRefs`. Names already taken are every `metadata.name` of a catalogue document whose kind is `Component`, including ones with errors, compared ignoring case.
+
+Each file:
+
+```yaml
+# Draft written by stackledger drift --scaffold from a snapshot taken 2026-10-21T07:30:00Z.
+# Review the owner, lifecycle, description and journeys, then move it into the catalogue.
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: northwind-editor
+  title: Northwind Editor
+  annotations:
+    stackledger/app: com.northwind.editor
+    stackledger/cask: northwind-editor
+spec:
+  type: tool
+  lifecycle: active
+  owner: unknown
+```
+
+Serialised with the `yaml` package already in use (`stringify`, default quoting), annotation keys in source order. The comment names only the snapshot's `takenAt`, never the machine name, which usually holds the user's name. The folder is written as `.<dir-name>.scaffold-<random>` beside `dir` (mode `0700`), files `0644`, then renamed to `dir`; when `dir` appeared meanwhile, the rename fails and the temporary folder is removed. The checks "inside the catalogue" and "contains the catalogue" compare resolved real paths of the catalogue and of `dir`'s parent.
+
 ## Risks / Trade-offs
 
 - `sandbox-exec` is deprecated → it has been deprecated since 2016 and still ships; failing closed keeps the promise, and docs say so.
@@ -139,7 +164,7 @@ An item is named in drift output by `{ "source", "id", "path" }`, where `path` i
 
 ## Open questions
 
-Each has a recommendation; gate 1 answers them.
+Each had a recommendation; the owner approved all six at gate 1 (2026-10-21).
 
 1. **Snapshot folder.** Recommend `~/.stackledger/<machine>/`, as already decided. `discover` needs no catalogue, so it can run on any Mac without one; a file next to the catalogue but outside Git relies on `.gitignore` to keep real inventory and the user name out of a repository, and one mistake publishes it.
 2. **Machine name.** Recommend the folded `ComputerName` (`username-macbook-air`), with `LocalHostName` and then `mac` as fall-backs. `LocalHostName` keeps case and runs of hyphens (`username---MacBook-Air`) and is less readable.
