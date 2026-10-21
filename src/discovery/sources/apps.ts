@@ -3,9 +3,9 @@
  *
  * Node lists the folders itself with readdir/lstat, never following a symbolic link (a linked `.app`,
  * such as Apple's Safari into the system cryptex, is counted as ignored) and never looking inside an
- * `.app`; other folders are searched one level down. An `.app` entry lstat cannot examine and a
- * subfolder that cannot be listed are each counted as ignored: they may hide an app, so drift marks a
- * missing app `incomplete`. Each bundle's `Contents/Info.plist` goes to sandboxed
+ * `.app`; other folders are searched one level down. An `.app` entry lstat cannot examine, any other
+ * top-level entry lstat cannot examine (it may be a subfolder) and a subfolder that cannot be listed
+ * are each counted as ignored: they may hide an app, so drift marks a missing app `incomplete`. Each bundle's `Contents/Info.plist` goes to sandboxed
  * `plutil -convert json`; when that fails (a date or data value cannot become JSON) each of
  * the four keys is extracted on its own. The title is the display name, else the bundle name, else the
  * folder name, else (a bundle named `.app`) the identifier. A bundle without an identifier, or whose
@@ -21,7 +21,7 @@ type Fields = Partial<Record<typeof KEYS[number], string>>;
 type Found = { kind: 'app'; path: string } | { kind: 'ignored' };
 
 /** The `.app` folders in one root and its subfolders, plus the ignored entries (linked or unexaminable
- * `.app` entries, unlistable subfolders). */
+ * `.app` entries, unexaminable top-level entries, unlistable subfolders). */
 async function bundlesIn(host: Host, root: string, depth: number): Promise<Found[] | 'absent' | 'unreadable'> {
   const names = await listFolder(host, root);
   if (typeof names === 'string') return names;
@@ -38,6 +38,9 @@ async function bundlesIn(host: Host, root: string, depth: number): Promise<Found
       if (Array.isArray(inner)) found.push(...inner);
       // A subfolder that cannot be listed may hide apps: one ignored entry. One that vanished meanwhile hides nothing.
       else if (inner === 'unreadable') found.push({ kind: 'ignored' });
+    } else if (kind === 'missing' && depth === 0) {
+      // A top-level entry lstat cannot examine may be a subfolder hiding apps: one ignored entry.
+      found.push({ kind: 'ignored' });
     }
   }
   return found;

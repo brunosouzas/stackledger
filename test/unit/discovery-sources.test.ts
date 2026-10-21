@@ -138,6 +138,13 @@ test('Unreadable subfolder', async () => {
   expect(apps.items).toHaveLength(5);
 });
 
+test('Unexaminable entry in Applications', async () => {
+  // A top-level entry not named .app whose lstat fails (EACCES) may be a subfolder hiding apps: one ignored.
+  const apps = await readApps(virtualHost({ files: machine({ '/Applications/Northwind Tools': { dir: true, unstatable: true } }) }));
+  expect(apps).toMatchObject({ status: 'ok', ignored: 1 });
+  expect(apps.items).toHaveLength(5);
+});
+
 test('App Store receipt', async () => {
   const apps = await readApps(virtualHost());
   expect(item(apps, 'com.northwind.notes')).toMatchObject({ appStore: true });

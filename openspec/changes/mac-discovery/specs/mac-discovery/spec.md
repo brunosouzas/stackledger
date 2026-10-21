@@ -105,7 +105,7 @@ Program output that is not the expected top-level JSON (an object with `formulae
 - **THEN** that line is counted as ignored and the source is `ok`
 
 ### Requirement: Applications found
-`app` SHALL look at the folders named `*.app` directly inside `/Applications` and `~/Applications`, and inside their subfolders one level down. It SHALL NOT follow symbolic links, which are counted as ignored, and SHALL NOT look inside an `.app`. An `.app` entry that cannot be examined, and a subfolder that cannot be listed, are each counted as ignored. When neither folder exists the source is `skipped`.
+`app` SHALL look at the folders named `*.app` directly inside `/Applications` and `~/Applications`, and inside their subfolders one level down. It SHALL NOT follow symbolic links, which are counted as ignored, and SHALL NOT look inside an `.app`. An `.app` entry or other top-level entry that cannot be examined, and a subfolder that cannot be listed, are each counted as ignored. When neither folder exists the source is `skipped`.
 
 #### Scenario: App in a subfolder
 - **WHEN** `/Applications/Utilities/Northwind Monitor.app` exists
@@ -121,6 +121,10 @@ Program output that is not the expected top-level JSON (an object with `formulae
 
 #### Scenario: Unreadable subfolder
 - **WHEN** the subfolder `/Applications/Northwind Suite` cannot be listed
+- **THEN** `app` is `ok` and `ignored` counts it once
+
+#### Scenario: Unexaminable entry in Applications
+- **WHEN** the entry `/Applications/Northwind Tools`, not named `.app`, cannot be examined (lstat fails)
 - **THEN** `app` is `ok` and `ignored` counts it once
 
 ### Requirement: Application fields
