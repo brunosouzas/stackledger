@@ -9,6 +9,8 @@ import { join } from 'node:path';
 import { folder } from '../helpers.js';
 import { fakeProgram, onMac, REAL_SANDBOX } from '../discovery-helpers.js';
 import { createRunner, failureReason } from '../../src/discovery/run.js';
+import { diskMachine, discoverRun } from './discover-helpers.js';
+import { root } from './helpers.js';
 
 function runner(bin: string, env: Record<string, string> = {}, timeoutMs = 60_000) {
   return createRunner({ sandbox: REAL_SANDBOX, env: { PATH: bin, HOME: folder(), ...env }, programDirs: [], timeoutMs });
@@ -58,5 +60,22 @@ describe.runIf(onMac)('sandbox', () => {
     expect(stdout).not.toContain('NORTHWIND_TOKEN');
     expect(stdout).not.toContain('nw-example-value');
     expect(stdout).toContain('HOMEBREW_NO_AUTO_UPDATE=1');
+  });
+
+  test('Writes only the snapshot', () => {
+    const machine = diskMachine({ sandbox: REAL_SANDBOX });
+    // Node may read anything and start the sandboxed programs, but write only under the snapshot root.
+    // The root does not exist yet, so both the folder itself and everything below it are granted.
+    const flags = ['--no-warnings', '--permission', '--allow-fs-read=*', '--allow-child-process', `--allow-fs-write=${machine.snapshotRoot}`, `--allow-fs-write=${machine.snapshotRoot}/*`];
+    const result = discoverRun(machine, [], flags);
+    expect(result.stderr).toBe('');
+    expect(result.status).toBe(0);
+    // Every fictitious source was read through the real sandbox.
+    expect(result.stdout).not.toMatch(/failed|skipped/);
+    expect(existsSync(join(machine.snapshotRoot, 'username-macbook-air', 'snapshot.json'))).toBe(true);
+    // The same flags really deny a write elsewhere: not a no-op under a permissive flag.
+    const probe = discoverRun(machine, [], ['--no-warnings', '--permission', '--allow-fs-read=*', '--allow-child-process', `--allow-fs-write=${join(root, 'nowhere')}`]);
+    expect(probe.status).toBe(1);
+    expect(probe.stderr).toContain('ERR_ACCESS_DENIED');
   });
 });

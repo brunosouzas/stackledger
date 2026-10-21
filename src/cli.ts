@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Command line: validate, mcp, map, build and report; run node dist/cli.js --help for their options.
+/** Command line: validate, mcp, map, build, report and discover; run node dist/cli.js --help for their options.
  * Usage/folder failures exit 2 on stderr with empty stdout; internal failures exit 1 without usage. Validate reports problems on stdout;
  * map writes SVG and report writes the licence report on stdout, diagnostics on stderr. MCP stdout contains protocol messages only.
  */
@@ -9,7 +9,7 @@ import { validateFolder, type Result } from './validate.js';
 import { loadFolder } from './source.js';
 import { viewNames, type ViewName } from './views.js';
 import { reportFailure } from './errors.js';
-const usage = 'Usage: stackledger validate [folder] [--json]\n       stackledger mcp <folder> [--view full|staff]\n       stackledger map <folder> [--view full|staff] [--theme light|dark] [--date YYYY-MM-DD]\n       stackledger build <folder> --out <dir> [--date YYYY-MM-DD]\n       stackledger report <folder> [--date YYYY-MM-DD] [--days N] [--format text|json|csv|ics]\n       stackledger --help\n';
+const usage = 'Usage: stackledger validate [folder] [--json]\n       stackledger mcp <folder> [--view full|staff]\n       stackledger map <folder> [--view full|staff] [--theme light|dark] [--date YYYY-MM-DD]\n       stackledger build <folder> --out <dir> [--date YYYY-MM-DD]\n       stackledger report <folder> [--date YYYY-MM-DD] [--days N] [--format text|json|csv|ics]\n       stackledger discover\n       stackledger --help\n';
 function text(result: Result): string {
   const lines = result.problems.map(p => `${p.path}:${p.line}:${p.column} ${p.severity} ${p.field ?? '-'} ${p.message}`);
   const s = result.summary;
@@ -50,7 +50,8 @@ async function main(args: string[]): Promise<void> {
     else if (command === 'map') { const { mapCommand } = await import('./map/command.js'); await mapCommand(args); }
     else if (command === 'build') { const { buildCommand } = await import('./site/command.js'); await buildCommand(args); }
     else if (command === 'report') { const { reportCommand } = await import('./report-command.js'); await reportCommand(args); }
-    else throw new Error('Unknown command; expected validate, mcp, map, build or report');
+    else if (command === 'discover') { const { discoverCommand } = await import('./discover-command.js'); await discoverCommand(args); }
+    else throw new Error('Unknown command; expected validate, mcp, map, build, report or discover');
   } catch (error) {
     const { stderr, exitCode } = reportFailure(error, usage);
     process.stderr.write(stderr);

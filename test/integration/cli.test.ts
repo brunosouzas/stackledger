@@ -19,10 +19,12 @@ test('Top-level file and unreadable folder cannot be checked', () => {
 });
 test('Unknown command', () => { const result = run(['publish']); expect(result.status).toBe(2); expect(result.stdout).toBe(''); expect(result.stderr).toContain('Unknown command'); });
 test('Fictitious demo validates with every checked kind', () => { const result = run(['validate', demo]); expect(result.status).toBe(0); expect(result.stdout).toBe('files: 1, documents: 5, ignored: 0, errors: 0, warnings: 0\n'); });
+// mac-discovery: `drift` joins this list (and the unknown-command message) when it is wired in task 5.2.
 test('Global help lists both commands', () => {
  const help = run(['--help']); expect(help.status).toBe(0);
  for (const command of ['validate', 'mcp', 'map', 'build', 'report']) expect(help.stdout).toContain(`stackledger ${command} `);
- const unknown = run(['publish']); expect(unknown.status).toBe(2); expect(unknown.stderr).toContain('expected validate, mcp, map, build or report');
+ expect(help.stdout).toContain('stackledger discover\n');
+ const unknown = run(['publish']); expect(unknown.status).toBe(2); expect(unknown.stderr).toContain('expected validate, mcp, map, build, report or discover');
 });
 test('Hostile annotation key', () => {
  // YAML's \x9b escape puts a raw U+009B (CSI) into the key; output must show it only as \u009b.
