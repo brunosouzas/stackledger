@@ -120,6 +120,13 @@ test('App without identifier', async () => {
   expect(apps.items).toHaveLength(5);
 });
 
+test('App with an empty name', async () => {
+  // A bundle named `.app` with an identifier and no name keys: the folder name is empty too, so the
+  // title is the identifier (an empty title would break the snapshot's own shape check).
+  const apps = await readApps(virtualHost({ files: machine({ '/Applications/.app/Contents/Info.plist': { CFBundleIdentifier: 'com.northwind.blank' } }) }));
+  expect(item(apps, 'com.northwind.blank')).toEqual({ source: 'app', id: 'com.northwind.blank', versions: [], title: 'com.northwind.blank', path: '/Applications/.app', appStore: false });
+});
+
 test('App in the home folder', async () => {
   const apps = await readApps(virtualHost());
   expect(item(apps, 'com.northwind.draw')).toEqual({ source: 'app', id: 'com.northwind.draw', versions: [], title: 'Northwind Draw', path: '/Users/username/Applications/Northwind Draw.app', appStore: false });

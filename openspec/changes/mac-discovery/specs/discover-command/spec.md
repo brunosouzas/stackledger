@@ -76,7 +76,7 @@ After creating its temporary file and again before the rename, the command SHALL
 - **THEN** the exit code is 1, neither the moved folder nor the link's target gets a new `snapshot.json`, and the link's target holds no temporary file
 
 ### Requirement: Write failures
-A failure to create or write the file, a `machine` field that fails the snapshot secret guard, or a snapshot whose JSON is larger than 32 MiB, SHALL exit 1 with one error line, remove the temporary file and leave any previous snapshot unchanged.
+A failure to create or write the file, a `machine` field that fails the snapshot secret guard, a finished snapshot that fails the checks `drift` reads it with (shape, consistency, secret guard), or a snapshot whose JSON is larger than 32 MiB, SHALL exit 1 with one error line, remove the temporary file and leave any previous snapshot unchanged.
 
 #### Scenario: Folder not writable
 - **WHEN** the machine folder exists and cannot be written
@@ -85,6 +85,10 @@ A failure to create or write the file, a `machine` field that fails the snapshot
 #### Scenario: Snapshot too large
 - **WHEN** the discovered items serialise to more than 32 MiB
 - **THEN** the exit code is 1, stderr says the snapshot is too large, and the previous `snapshot.json` is unchanged
+
+#### Scenario: Invalid snapshot is not written
+- **WHEN** the finished snapshot fails its own shape check (for example an empty user name)
+- **THEN** the exit code is 1, stderr has one fixed line, and the previous `snapshot.json` is unchanged
 
 ### Requirement: Summary text
 The summary SHALL contain no C0 or C1 control character: any such character in the snapshot path is removed. Program output never reaches stdout or stderr.

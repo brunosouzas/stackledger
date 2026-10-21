@@ -5,8 +5,9 @@
  * such as Apple's Safari into the system cryptex, is counted as ignored) and never looking inside an
  * `.app`; other folders are searched one level down. Each bundle's `Contents/Info.plist` goes to
  * sandboxed `plutil -convert json`; when that fails (a date or data value cannot become JSON) each of
- * the four keys is extracted on its own. A bundle without an identifier, or whose plutil run hit a
- * limit, is ignored. No `plutil` means the source is skipped.
+ * the four keys is extracted on its own. The title is the display name, else the bundle name, else the
+ * folder name, else (a bundle named `.app`) the identifier. A bundle without an identifier, or whose
+ * plutil run hit a limit, is ignored. No `plutil` means the source is skipped.
  */
 import { join } from 'node:path';
 import type { Host } from '../host.js';
@@ -74,7 +75,8 @@ async function readBundle(host: Host, path: string): Promise<BundleRead> {
   return { item: {
     source: 'app', id: fields.CFBundleIdentifier,
     versions: fields.CFBundleShortVersionString ? [fields.CFBundleShortVersionString] : [],
-    title: fields.CFBundleDisplayName ?? fields.CFBundleName ?? folderName,
+    // A bundle named `.app` has an empty folder name; the identifier keeps the title non-empty.
+    title: fields.CFBundleDisplayName || fields.CFBundleName || folderName || fields.CFBundleIdentifier,
     path, appStore: receipt !== 'missing',
   } };
 }

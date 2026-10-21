@@ -3,8 +3,10 @@
  *
  * The command takes no folder and no option: any argument is a usage error (exit 2, nothing run).
  * Off macOS, or without /usr/bin/sandbox-exec, it exits 1 with one line before any program runs.
- * Otherwise it runs discovery (src/discovery/index.ts), writes the file (src/discovery/write.ts, the
- * only write) and prints the snapshot path and one line per source: status, items, ignored and the
+ * Otherwise it runs discovery (src/discovery/index.ts), checks the finished snapshot with the checks
+ * drift reads it with (src/discovery/snapshot.ts checkSnapshot, on its serialised JSON; a failure is
+ * exit 1 with one fixed line and the previous snapshot is kept), writes the file (src/discovery/write.ts,
+ * the only write) and prints the snapshot path and one line per source: status, items, ignored and the
  * fixed reason. Skipped and failed sources still exit 0. Control characters are removed from the
  * summary; program output never reaches stdout or stderr (the runner drops it).
  *
@@ -15,7 +17,7 @@ import { parseArgs } from 'node:util';
 import { InternalError } from './errors.js';
 import { discover } from './discovery/index.js';
 import { createHost, type Host } from './discovery/host.js';
-import type { Snapshot } from './discovery/snapshot.js';
+import { checkSnapshot, serialise, type Snapshot } from './discovery/snapshot.js';
 import { NODE_WRITE_OPS, writeSnapshot, type WriteOps } from './discovery/write.js';
 import { writeStdout } from './stdout.js';
 
@@ -45,6 +47,10 @@ export async function discoverCommand(args: string[], host: Host = createHost(),
   checkArgs(args);
   if (host.platform !== 'darwin') throw new InternalError('stackledger discover: discovery runs only on macOS');
   const snapshot = await discover(host);
+  // A snapshot drift would refuse must not replace a good one: check it as drift reads it, before writing.
+  if (!('snapshot' in checkSnapshot(JSON.parse(serialise(snapshot))))) {
+    throw new InternalError('stackledger discover: the snapshot does not pass its own checks; the previous snapshot was kept');
+  }
   const path = writeSnapshot(snapshot, { home: host.home, root: host.snapshotRoot }, ops);
   await writeStdout(summary(path, snapshot), 'stackledger discover: cannot write the summary to stdout');
 }

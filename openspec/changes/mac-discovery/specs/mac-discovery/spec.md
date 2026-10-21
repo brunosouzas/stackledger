@@ -112,7 +112,7 @@ Program output that is not the expected top-level JSON (an object with `formulae
 - **THEN** it is not recorded and `ignored` counts it
 
 ### Requirement: Application fields
-`app` SHALL read each bundle's `Contents/Info.plist` with `plutil`. The item has `id` = `CFBundleIdentifier`; `title` = `CFBundleDisplayName`, else `CFBundleName`, else the folder name without `.app`; `versions` = `CFBundleShortVersionString` when present; `path`; and `appStore` = whether `Contents/_MASReceipt` exists. A bundle without a readable identifier is counted as ignored.
+`app` SHALL read each bundle's `Contents/Info.plist` with `plutil`. The item has `id` = `CFBundleIdentifier`; `title` = `CFBundleDisplayName`, else `CFBundleName`, else the folder name without `.app`, else (all three empty) the `id`; `versions` = `CFBundleShortVersionString` when present; `path`; and `appStore` = whether `Contents/_MASReceipt` exists. A bundle without a readable identifier is counted as ignored.
 
 #### Scenario: App Store receipt
 - **WHEN** `Northwind Notes.app` has `Contents/_MASReceipt`
@@ -121,6 +121,10 @@ Program output that is not the expected top-level JSON (an object with `formulae
 #### Scenario: App without identifier
 - **WHEN** an `.app` has an `Info.plist` without `CFBundleIdentifier`
 - **THEN** it is not recorded and `ignored` counts it
+
+#### Scenario: App with an empty name
+- **WHEN** a bundle named `.app` has `CFBundleIdentifier` `com.northwind.blank` and no display or bundle name
+- **THEN** its item's `title` is `com.northwind.blank`
 
 ### Requirement: launchd jobs
 `launchd` SHALL read the `.plist` files directly inside `~/Library/LaunchAgents` (scope `user-agent`), `/Library/LaunchAgents` (scope `agent`) and `/Library/LaunchDaemons` (scope `daemon`), not following links. The item has `id` = `Label`, `scope`, `path` of the file and `program` = `Program`, else the first entry of `ProgramArguments`, else null. A file that cannot be read or has no `Label` is counted as ignored.

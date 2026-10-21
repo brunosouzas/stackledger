@@ -55,7 +55,7 @@ pipx     ok       items 1     ignored 0
 | Exit | When |
 | --- | --- |
 | 0 | The snapshot is written, also when sources are skipped or failed. |
-| 1 | Not macOS, no sandbox, a secret in a `machine` field, an unsafe or unwritable snapshot folder, a snapshot larger than 32 MiB, or a failed write: stderr has one line and any earlier snapshot is left as it was. |
+| 1 | Not macOS, no sandbox, a secret in a `machine` field, an unsafe or unwritable snapshot folder, a snapshot larger than 32 MiB, a snapshot that fails the checks `drift` reads it with, or a failed write: stderr has one line and any earlier snapshot is left as it was. |
 | 2 | Any argument or option (`--help` aside): stderr has the reason and usage; nothing runs. |
 
 ### Sources
@@ -66,7 +66,7 @@ Sources are read in this order. A source whose program or folders are absent is 
 | --- | --- | --- |
 | `brew` and `cask` | One run of `brew info --json=v2 --installed` | Formula: full name (`northwind/tools/ledger` for a tap), installed versions, `onRequest`, runtime dependencies declared directly. Cask: full token, version, the `.app` bundles it installs |
 | `mas` | `mas list` | App Store identifier, name, version |
-| `app` | The `*.app` folders directly in `/Applications` and `~/Applications` and one folder level below; for each, `plutil -convert json -o - <app>/Contents/Info.plist`, or when that fails `plutil -extract <key> raw -expect string -o - <file>` for `CFBundleIdentifier`, `CFBundleDisplayName`, `CFBundleName` and `CFBundleShortVersionString`; whether `Contents/_MASReceipt` exists | Bundle identifier, title, version, path, `appStore` |
+| `app` | The `*.app` folders directly in `/Applications` and `~/Applications` and one folder level below; for each, `plutil -convert json -o - <app>/Contents/Info.plist`, or when that fails `plutil -extract <key> raw -expect string -o - <file>` for `CFBundleIdentifier`, `CFBundleDisplayName`, `CFBundleName` and `CFBundleShortVersionString`; whether `Contents/_MASReceipt` exists | Bundle identifier, title (display name, else bundle name, else folder name, else the identifier), version, path, `appStore` |
 | `launchd` | The `.plist` files in `~/Library/LaunchAgents`, `/Library/LaunchAgents` and `/Library/LaunchDaemons`; for each, `plutil -extract Label raw -expect string -o - <file>`, then `Program`, else `ProgramArguments.0` the same way | Label, scope (`user-agent`, `agent`, `daemon`), path, program |
 | `mise` | The folders in `installs` of the mise data folder (`$MISE_DATA_DIR`, else `$XDG_DATA_HOME/mise`, else `~/.local/share/mise`); `mise` itself is never run | Tool name and its version folders (links such as `latest` left out) |
 | `npm` | `npm ls --global --depth=0 --json --offline`, with the `npm` found on `PATH` | Package name and version |

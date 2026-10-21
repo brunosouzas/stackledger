@@ -145,6 +145,20 @@ test('Folder not writable', () => {
   expect(readdirSync(machineFolder)).toEqual(['snapshot.json']);
 });
 
+test('Invalid snapshot is not written', () => {
+  // An empty user name (set through the test host) gives a snapshot that fails its own shape check:
+  // drift could not read it, so discover refuses it and keeps the previous file.
+  const machine = diskMachine({ host: { user: '' } }), machineFolder = join(machine.snapshotRoot, MACHINE);
+  mkdirSync(machineFolder, { recursive: true, mode: 0o700 });
+  writeFileSync(join(machineFolder, 'snapshot.json'), 'previous', { mode: 0o600 });
+  const result = discoverRun(machine);
+  expect(result.status).toBe(1);
+  expect(result.stdout).toBe('');
+  expect(result.stderr).toBe('stackledger discover: the snapshot does not pass its own checks; the previous snapshot was kept\n');
+  expect(readFileSync(join(machineFolder, 'snapshot.json'), 'utf8')).toBe('previous');
+  expect(readdirSync(machineFolder)).toEqual(['snapshot.json']);
+});
+
 test('Program output kept out', () => {
   const noisy = "printf '\\033[2J\\033]0;northwind\\007'\nprintf '\\033[31mnorthwind\\233' >&2\nexit 1";
   const machine = diskMachine({ programs: { brew: noisy, npm: noisy, mas: noisy } });
