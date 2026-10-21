@@ -41,7 +41,7 @@ Levels: U unit, I integration (CLI, entry script or built files), P performance 
 
 - [x] 4.1 `src/discovery/snapshot.ts` (schema of D3, consistency checks, sorting, serialiser with C1 escapes, the secret guard through one value check exported from `src/secrets.ts`) and `src/discovery/index.ts` (`discover(host)`); `test/unit/discovery-snapshot.test.ts`. Check: `npm test`, with `test/unit/secrets.test.ts` unchanged and green.
 - [x] 4.2 `src/discovery/write.ts` (D4, with `FsOps`) and `src/discover-command.ts`; `test/unit/discovery-write.test.ts`; `src/cli.ts` usage and dispatch; `test/integration/discover-entry.mjs` and `test/integration/discover.test.ts`; the global help test in `test/integration/cli.test.ts`.
-- [ ] 4.3 `.github/workflows/test.yml`: a `macos-latest` job (Node 22) that builds and runs the discovery tests. Check: CI green on the pull request.
+- [x] 4.3 `.github/workflows/test.yml`: a `macos-latest` job (Node 22) that builds and runs the discovery tests. Check: CI green on the pull request.
 
 ## 5. `drift`
 
