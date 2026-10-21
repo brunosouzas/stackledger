@@ -45,7 +45,7 @@ Levels: U unit, I integration (CLI, entry script or built files), P performance 
 
 ## 5. `drift`
 
-- [ ] 5.1 `src/drift.ts` (`buildDrift`: matching, not declared with the left-out counts, missing, not checked, shared, inferred needs, proposed relations, cask app suggestions); `test/unit/drift.test.ts`.
+- [x] 5.1 `src/drift.ts` (`buildDrift`: matching, not declared with the left-out counts, missing, not checked, shared, inferred needs, proposed relations, cask app suggestions); `test/unit/drift.test.ts`.
 - [ ] 5.2 `src/drift-command.ts` (arguments, snapshot reading and its limits, text and JSON, stdout writer); `test/integration/drift.test.ts`; `test/perf/drift.perf.test.ts`. Check: `npm test` and `npm run test:perf`.
 - [ ] 5.3 `src/scaffold.ts` (D10: grouping, names, `dependsOn`, YAML text) and the `--scaffold` option of `src/drift-command.ts` (folder checks, temporary folder and rename); `test/unit/scaffold.test.ts` and the scaffold tests in `test/integration/drift.test.ts`. Check: `npm test`.
 
