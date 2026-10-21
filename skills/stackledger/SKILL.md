@@ -1,6 +1,6 @@
 ---
 name: stackledger
-description: "Use when maintaining a stackledger catalogue: adding a software item or licence, linking a licence to the software that uses it, drawing a journey line, placing a station on the map, or checking catalogue YAML with stackledger validate or the stackledger MCP tools."
+description: "Use when maintaining a stackledger catalogue: adding a software item or licence, linking a licence to the software that uses it, drawing a journey line, placing a station on the map, bringing the catalogue in step with a Mac through stackledger drift, or checking catalogue YAML with stackledger validate or the stackledger MCP tools."
 ---
 
 # stackledger catalogue
@@ -123,6 +123,23 @@ spec:
 ```
 
 Two stations cannot share a cell. A stop without a position, or a position for a component on no line, is a warning.
+
+## Bring the catalogue in step with a Mac
+
+`stackledger discover` records what a Mac has installed; `stackledger drift` compares it with the catalogue through the `stackledger/<source>` annotations ([docs/discovery.md](../../docs/discovery.md)). Neither edits the catalogue: you propose the changes in a branch and a pull request, and a person reviews them.
+
+1. On the Mac: `node dist/cli.js discover` (read-only; it writes only `~/.stackledger/<machine>/snapshot.json`). Never commit the snapshot: it holds the user name and paths.
+2. `node dist/cli.js drift /path/to/catalogue --format json` and read the object:
+   - `notDeclared`: each entry's `annotation` is the line to add, for example `stackledger/cask: northwind-editor`. When `suggestedComponents` is not empty, add the annotation to those components (an app their cask installs). An entry with `note: cannot be annotated` cannot be matched; mention it, do not work around it.
+   - `missing`: a component lists something not installed. Ask whether it was removed (its `lifecycle` may need to change) or the identifier is wrong; `incomplete: true` means the source skipped some entries, so it may be installed after all.
+   - `notChecked`: the source was skipped or failed on that Mac. Conclude nothing.
+   - `shared`: two components claim one item; `validate` warns too. Ask which one owns it.
+   - `proposedRelations`: `from dependsOn to`, with the items that suggest it in `reasons`. Add it to `from`'s `spec.dependsOn` only when it is true for the people who use the catalogue.
+   - `counts.dependencies` and `counts.macos` are only counted: dependency formulae and Apple's own items need no component.
+3. For items that need a new component, run `drift` again with `--scaffold /path/outside/the/catalogue/new-items` (a folder that does not exist yet). Review each draft: replace `owner: unknown` with the real owner, which you ask for and never guess; write the description; add it to lines and the map only when you know the journey. Never invent a licence, cost or renewal date for it. Then move it into the catalogue.
+4. Run `validate`, fix every error, and open a pull request that lists what you added, the relations you proposed and the questions left open.
+
+Annotation values are comma-separated identifiers; quote an App Store identifier (`stackledger/mas: "1234567890"`) so YAML reads it as text.
 
 ## Validate
 

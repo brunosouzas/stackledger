@@ -5,7 +5,7 @@ Govern your software stack and licences, drawn as a metro map.
 [![OpenSpec](https://github.com/brunosouzas/stackledger/actions/workflows/openspec.yml/badge.svg)](https://github.com/brunosouzas/stackledger/actions/workflows/openspec.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-stackledger is a small, local-first tool for people and small companies who want to know what software they run, who owns it, which licences they pay for and when those renew. You describe your software in YAML files kept in Git, in the [Backstage](https://backstage.io/docs/features/software-catalog/descriptor-format) format. stackledger checks them and turns them into a static website you host behind your own sign-in.
+stackledger is a small, local-first tool for people and small companies who want to know what software they run, who owns it, which licences they pay for and when those renew. You describe your software in YAML files kept in Git, in the [Backstage](https://backstage.io/docs/features/software-catalog/descriptor-format) format. stackledger checks them and turns them into a static website you host behind your own sign-in. On a Mac it can also record what is installed and compare it with the catalogue, without changing either: you or your agent then update the catalogue through a reviewed pull request.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/map-dark.svg">
@@ -30,7 +30,7 @@ stackledger is a small, local-first tool for people and small companies who want
 
 ## Status
 
-Early development. Nothing is released to npm yet. The catalogue format, the `validate`, `map` and `build` commands and the `mcp` server work from source (see [Usage](#usage)); licence reports (`stackledger report` and the Reports page) are in review. The order of the rest is in the [roadmap](docs/roadmap.md).
+Early development. Nothing is released to npm yet. The catalogue format, the `validate`, `map` and `build` commands and the `mcp` server work from source (see [Usage](#usage)); licence reports (`stackledger report` and the Reports page) are in review, and so is Mac discovery (`stackledger discover` and `stackledger drift`). The order of the rest is in the [roadmap](docs/roadmap.md).
 
 ## Features
 
@@ -54,7 +54,9 @@ flowchart LR
     proxy --> finance["Owners and finance"]
     proxy --> people["Everyone else"]
     repo -->|stackledger mcp| agent["Your AI agent"]
-    mac["Your Mac"] -->|stackledger discover| repo
+    mac["Your Mac"] -->|stackledger discover| snapshot["Snapshot<br/>(outside the catalogue)"]
+    snapshot -->|stackledger drift| person["You or your agent"]
+    person -->|pull request| repo
 ```
 
 1. **The catalogue lives in its own repository**, private when it holds real data. stackledger never holds your data. A company that already uses Backstage can point it at the same files. Why: [ADR 2](docs/adr/0002-catalogue-in-backstage-format-in-its-own-repository.md).
@@ -95,6 +97,8 @@ node dist/cli.js mcp /path/to/catalogue --view staff
 node dist/cli.js map examples/northwind --date 2027-06-01 > map.svg
 node dist/cli.js build examples/northwind --out ./public --date 2027-06-01
 node dist/cli.js report examples/northwind --date 2027-06-01 --format csv > licences.csv
+node dist/cli.js discover
+node dist/cli.js drift examples/northwind --snapshot examples/northwind-machine/snapshot.json
 ```
 
 | Command | Does | Status |
@@ -104,9 +108,10 @@ node dist/cli.js report examples/northwind --date 2027-06-01 --format csv > lice
 | `stackledger map <folder> [--view full\|staff] [--theme light\|dark] [--date YYYY-MM-DD]` | Draws a self-contained SVG on stdout; diagnostics and suggestions on stderr. Exit 0 even with catalogue errors; 2 for usage/folder problems. See [docs/map.md](docs/map.md) | Available from source |
 | `stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` | Builds the `full` and `staff` static sites into `<dir>/full/` and `<dir>/staff/`, with `_headers` and `robots.txt`, replacing an earlier build atomically; report on stderr. Exit 0 even with catalogue errors; 1: internal failure (the earlier build is left as it was); 2: usage or folder problem. See [docs/site.md](docs/site.md) | Available from source |
 | `stackledger report <folder> [--date YYYY-MM-DD] [--days N] [--format text\|json\|csv\|ics]` | Prints the licence report of the `full` view on stdout: renewals in the next `--days` (default 90), recurring cost per currency by owner, payer and zone, one-off and planned costs, incomplete licences; or the renewal calendar. Exit 0 even with catalogue errors; 1: the report could not be computed or written; 2: usage or folder problem. See [docs/reports.md](docs/reports.md) | Available from source |
-| `stackledger discover`, `stackledger drift` | Records what a Mac has installed, and compares it with the catalogue | Planned: `mac-discovery` |
+| `stackledger discover` | Reads what this Mac has installed (Homebrew, App Store, applications, launchd, mise, npm, pipx), with every program in the macOS sandbox, and writes `~/.stackledger/<machine>/snapshot.json`; one summary line per source on stdout. Exit 0 also with skipped sources; 1: not macOS, no sandbox or the file could not be written safely; 2: usage problem. See [docs/discovery.md](docs/discovery.md) | Available from source |
+| `stackledger drift <folder> [--snapshot <file>] [--format text\|json] [--scaffold <dir>]` | Compares the snapshot with the catalogue through `stackledger/<source>` annotations: what is not declared (with the annotation to add), what is missing, what could not be checked, and `dependsOn` relations to confirm; `--scaffold` writes draft component files into a new folder outside the catalogue. Exit 0 even with catalogue errors; 1: internal or write failure; 2: usage, folder or snapshot problem. See [docs/discovery.md](docs/discovery.md) | Available from source |
 
-`validate`, `mcp`, `map` and `report` only read files; `build` writes only inside its output folder. None of them makes network calls or sends telemetry.
+`validate`, `mcp`, `map`, `report` and `drift` only read files (`drift --scaffold` writes only inside the new folder it names); `build` writes only inside its output folder; `discover` writes only its snapshot file. None of them makes network calls or sends telemetry, and none edits the catalogue.
 
 ## The website
 
