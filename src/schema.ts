@@ -53,10 +53,19 @@ const site = z.strictObject({
   title: text.max(60, 'Must have maximum 60 characters').optional(),
   colors: z.strictObject(Object.fromEntries(siteColorNames.map(key => [key, color.optional()])) as Record<SiteColorName, z.ZodOptional<typeof color>>).optional(),
 });
+/** Sites stackledger build writes: [full] is the personal mode, [full, staff] (the default) the corporate one. */
+export const siteNames = ['full', 'staff'] as const;
+export type SiteName = typeof siteNames[number];
+const sites = z.array(z.enum(siteNames)).superRefine((list, context) => {
+  list.forEach((value, index) => {
+    if (list.indexOf(value) < index) context.addIssue({ code: 'custom', message: 'Site is already listed', path: [index] });
+  });
+  if (!list.includes('full')) context.addIssue({ code: 'custom', message: 'Must include full: use [full] or [full, staff]' });
+});
 export const settingsSchema = z.strictObject({
   apiVersion: z.literal('stackledger/v1alpha1'), kind: z.literal('Settings'),
   metadata: z.strictObject({ ...identity, title: text.optional() }),
-  spec: z.strictObject({ views: z.strictObject({ staff: z.strictObject({ hide: hide.optional() }).optional() }).optional(), site: site.optional() }),
+  spec: z.strictObject({ views: z.strictObject({ staff: z.strictObject({ hide: hide.optional() }).optional() }).optional(), site: site.optional(), sites: sites.optional() }),
 });
 export const schemas = { Component: componentSchema, Resource: licenceSchema, Line: lineSchema, MapLayout: layoutSchema, Settings: settingsSchema };
 export type Component = z.infer<typeof componentSchema>;

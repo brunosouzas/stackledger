@@ -2,7 +2,7 @@
  * Staff entities are rebuilt from allow-lists, never by deleting keys, so a misplaced field cannot pass.
  * Broken settings fail closed: every licence field is hidden until they are fixed.
  */
-import { licenceFields, type Component, type Licence, type Line, type MapLayout, type LicenceField } from './schema.js';
+import { licenceFields, type Component, type Licence, type Line, type MapLayout, type LicenceField, type SiteName } from './schema.js';
 import type { Catalogue, OtherResource, Served } from './validate.js';
 export type ViewName = 'full' | 'staff';
 export const viewNames: readonly ViewName[] = ['full', 'staff'];
@@ -21,6 +21,11 @@ export function resolveHidden(catalogue: Pick<Catalogue, 'problems' | 'served' |
   if (settingsInError(catalogue)) return [...licenceFields];
   const hide = catalogue.served.settings[0]?.spec.views?.staff?.hide;
   return [...(hide ?? defaultHidden)];
+}
+/** Sites to build, in build order: the earliest valid Settings `sites`, or both (the default, also when broken). */
+export function resolveSites(catalogue: Pick<Catalogue, 'problems' | 'served' | 'settingsBroken'>): SiteName[] {
+  const sites = settingsInError(catalogue) ? undefined : catalogue.served.settings[0]?.spec.sites;
+  return sites && !sites.includes('staff') ? ['full'] : ['full', 'staff'];
 }
 function pick(source: Record<string, unknown>, keys: readonly string[]): Record<string, unknown> {
   const result: Record<string, unknown> = {};
