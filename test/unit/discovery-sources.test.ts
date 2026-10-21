@@ -108,6 +108,20 @@ test('Linked app', async () => {
   expect(apps.items.map(app => (app as { path: string }).path)).not.toContain('/Applications/Northwind Viewer.app');
 });
 
+test('Unreadable app entry', async () => {
+  // lstat of the entry fails (EACCES): it may be an app, so drift must see the source as incomplete.
+  const apps = await readApps(virtualHost({ files: machine({ '/Applications/Northwind Vault.app': { dir: true, unstatable: true } }) }));
+  expect(apps).toMatchObject({ status: 'ok', ignored: 1 });
+  expect(apps.items).toHaveLength(5);
+});
+
+test('Unreadable subfolder', async () => {
+  // The subfolder exists but cannot be listed: it may hide apps, so it counts as one ignored entry.
+  const apps = await readApps(virtualHost({ files: machine({ '/Applications/Northwind Suite': { dir: true, unreadable: true } }) }));
+  expect(apps).toMatchObject({ status: 'ok', ignored: 1 });
+  expect(apps.items).toHaveLength(5);
+});
+
 test('App Store receipt', async () => {
   const apps = await readApps(virtualHost());
   expect(item(apps, 'com.northwind.notes')).toMatchObject({ appStore: true });

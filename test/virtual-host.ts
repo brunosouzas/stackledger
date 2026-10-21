@@ -15,11 +15,12 @@ import type { RunResult } from '../src/discovery/run.js';
 export const fixtures = fileURLToPath(new URL('./fixtures/discovery/', import.meta.url));
 export const fixture = (name: string) => readFileSync(`${fixtures}${name}`, 'utf8');
 
-/** A virtual entry: a file's text (an object is written as JSON), a folder, or a symbolic link. */
-export type Entry = string | object | { dir: true; unreadable?: boolean } | { link: string } | { file: string; unreadable?: boolean; hang?: boolean };
+/** A virtual entry: a file's text (an object is written as JSON), a folder, or a symbolic link. A folder
+ * that is `unreadable` cannot be listed; one that is `unstatable` cannot be examined (lstat fails). */
+export type Entry = string | object | { dir: true; unreadable?: boolean; unstatable?: boolean } | { link: string } | { file: string; unreadable?: boolean; hang?: boolean };
 export type Program = (args: string[], host: VirtualHost) => RunResult | Promise<RunResult>;
 export interface VirtualHost extends Host { calls: { program: string; args: string[] }[]; files: Map<string, Node> }
-type Node = { kind: 'dir'; unreadable: boolean } | { kind: 'link'; target: string } | { kind: 'file'; text: string; unreadable: boolean; hang: boolean };
+type Node = { kind: 'dir'; unreadable: boolean; unstatable?: boolean } | { kind: 'link'; target: string } | { kind: 'file'; text: string; unreadable: boolean; hang: boolean };
 
 const exited = (stdout: string, code = 0): RunResult => ({ kind: 'exited', code, stdout });
 const fsError = (code: string) => Object.assign(new Error(code), { code });
@@ -59,7 +60,7 @@ export function virtualHost(options: { files?: Record<string, Entry>; programs?:
   for (const [path, entry] of Object.entries(options.files ?? machineFiles())) {
     addDirs(path);
     if (typeof entry === 'string') files.set(path, { kind: 'file', text: entry, unreadable: false, hang: false });
-    else if ('dir' in entry) files.set(path, { kind: 'dir', unreadable: entry.unreadable ?? false });
+    else if ('dir' in entry) files.set(path, { kind: 'dir', unreadable: entry.unreadable ?? false, unstatable: entry.unstatable ?? false });
     else if ('link' in entry) files.set(path, { kind: 'link', target: entry.link });
     else if ('file' in entry && typeof entry.file === 'string') files.set(path, { kind: 'file', text: entry.file, unreadable: entry.unreadable ?? false, hang: entry.hang ?? false });
     else files.set(path, { kind: 'file', text: JSON.stringify(entry), unreadable: false, hang: false });
@@ -91,7 +92,12 @@ export function virtualHost(options: { files?: Record<string, Entry>; programs?:
       if (node.unreadable) throw fsError('EACCES');
       return [...files.keys()].filter(key => dirname(key) === path && key !== path).map(key => key.slice(path.length + 1));
     },
-    lstat: async path => { const node = files.get(path); if (!node) throw fsError('ENOENT'); return status(node); },
+    lstat: async path => {
+      const node = files.get(path);
+      if (!node) throw fsError('ENOENT');
+      if (node.kind === 'dir' && node.unstatable) throw fsError('EACCES');
+      return status(node);
+    },
     readFile: async path => {
       let node = files.get(path);
       if (node?.kind === 'link') node = files.get(node.target);

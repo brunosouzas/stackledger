@@ -3,8 +3,10 @@
  *
  * Node lists the folders itself with readdir/lstat, never following a symbolic link (a linked `.app`,
  * such as Apple's Safari into the system cryptex, is counted as ignored) and never looking inside an
- * `.app`; other folders are searched one level down. Each bundle's `Contents/Info.plist` goes to
- * sandboxed `plutil -convert json`; when that fails (a date or data value cannot become JSON) each of
+ * `.app`; other folders are searched one level down. An `.app` entry lstat cannot examine and a
+ * subfolder that cannot be listed are each counted as ignored: they may hide an app, so drift marks a
+ * missing app `incomplete`. Each bundle's `Contents/Info.plist` goes to sandboxed
+ * `plutil -convert json`; when that fails (a date or data value cannot become JSON) each of
  * the four keys is extracted on its own. The title is the display name, else the bundle name, else the
  * folder name, else (a bundle named `.app`) the identifier. A bundle without an identifier, or whose
  * plutil run hit a limit, is ignored. No `plutil` means the source is skipped.
@@ -18,7 +20,8 @@ const KEYS = ['CFBundleIdentifier', 'CFBundleDisplayName', 'CFBundleName', 'CFBu
 type Fields = Partial<Record<typeof KEYS[number], string>>;
 type Found = { kind: 'app'; path: string } | { kind: 'ignored' };
 
-/** The `.app` folders in one root and its subfolders, plus a count of linked `.app` entries. */
+/** The `.app` folders in one root and its subfolders, plus the ignored entries (linked or unexaminable
+ * `.app` entries, unlistable subfolders). */
 async function bundlesIn(host: Host, root: string, depth: number): Promise<Found[] | 'absent' | 'unreadable'> {
   const names = await listFolder(host, root);
   if (typeof names === 'string') return names;
@@ -27,11 +30,14 @@ async function bundlesIn(host: Host, root: string, depth: number): Promise<Found
     const path = join(root, name), kind = await entryKind(host, path);
     if (name.endsWith('.app')) {
       if (kind === 'dir') found.push({ kind: 'app', path });
-      else if (kind === 'link') found.push({ kind: 'ignored' });
+      // A link is not followed; an entry lstat cannot examine may be an app. Both are counted, so drift
+      // marks a missing app `incomplete` instead of certain.
+      else if (kind === 'link' || kind === 'missing') found.push({ kind: 'ignored' });
     } else if (kind === 'dir' && depth === 0) {
       const inner = await bundlesIn(host, path, 1);
-      // A subfolder that cannot be listed hides nothing the user installed through a source; skip it.
       if (Array.isArray(inner)) found.push(...inner);
+      // A subfolder that cannot be listed may hide apps: one ignored entry. One that vanished meanwhile hides nothing.
+      else if (inner === 'unreadable') found.push({ kind: 'ignored' });
     }
   }
   return found;

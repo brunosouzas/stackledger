@@ -101,7 +101,7 @@ Program output that is not the expected top-level JSON (an object with `formulae
 - **THEN** that line is counted as ignored and the source is `ok`
 
 ### Requirement: Applications found
-`app` SHALL look at the folders named `*.app` directly inside `/Applications` and `~/Applications`, and inside their subfolders one level down. It SHALL NOT follow symbolic links, which are counted as ignored, and SHALL NOT look inside an `.app`. When neither folder exists the source is `skipped`.
+`app` SHALL look at the folders named `*.app` directly inside `/Applications` and `~/Applications`, and inside their subfolders one level down. It SHALL NOT follow symbolic links, which are counted as ignored, and SHALL NOT look inside an `.app`. An `.app` entry that cannot be examined, and a subfolder that cannot be listed, are each counted as ignored. When neither folder exists the source is `skipped`.
 
 #### Scenario: App in a subfolder
 - **WHEN** `/Applications/Utilities/Northwind Monitor.app` exists
@@ -110,6 +110,14 @@ Program output that is not the expected top-level JSON (an object with `formulae
 #### Scenario: Linked app
 - **WHEN** `/Applications/Northwind Viewer.app` is a symbolic link
 - **THEN** it is not recorded and `ignored` counts it
+
+#### Scenario: Unreadable app entry
+- **WHEN** `/Applications/Northwind Vault.app` cannot be examined
+- **THEN** `app` is `ok` and `ignored` counts it
+
+#### Scenario: Unreadable subfolder
+- **WHEN** the subfolder `/Applications/Northwind Suite` cannot be listed
+- **THEN** `app` is `ok` and `ignored` counts it once
 
 ### Requirement: Application fields
 `app` SHALL read each bundle's `Contents/Info.plist` with `plutil`. The item has `id` = `CFBundleIdentifier`; `title` = `CFBundleDisplayName`, else `CFBundleName`, else the folder name without `.app`, else (all three empty) the `id`; `versions` = `CFBundleShortVersionString` when present; `path`; and `appStore` = whether `Contents/_MASReceipt` exists. A bundle without a readable identifier is counted as ignored.
