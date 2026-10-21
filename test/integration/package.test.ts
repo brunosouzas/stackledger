@@ -7,7 +7,7 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { readFileSync, rmSync } from 'node:fs';
+import { readFileSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { folder } from '../helpers.js';
 import { root } from './helpers.js';
@@ -55,6 +55,23 @@ describe('package contents from a clean checkout', () => {
     const lock = JSON.parse(extracted.stdout) as { packages: Record<string, { dev?: boolean; devOptional?: boolean; devDependencies?: unknown }> };
     expect(Object.entries(lock.packages).filter(([, entry]) => entry.dev || entry.devOptional)).toEqual([]);
     expect(lock.packages['']?.devDependencies).toBeUndefined();
+  }, 180_000);
+
+  test('Release SBOM contains every required package in the packed shrinkwrap', () => {
+    const packed = pack(checkout, output, cache);
+    const extracted = join(output, 'sbom-extracted');
+    mkdirSync(extracted, { recursive: true });
+    const untar = spawnSync('tar', ['-xzf', join(output, packed.filename), '-C', extracted, 'package/package.json', 'package/npm-shrinkwrap.json'], { encoding: 'utf8' });
+    expect(untar.status, untar.stderr).toBe(0);
+    const lock = JSON.parse(readFileSync(join(extracted, 'package/npm-shrinkwrap.json'), 'utf8')) as { packages: Record<string, { version?: string; optional?: boolean }> };
+    const result = npm(['sbom', '--package-lock-only', '--sbom-format', 'cyclonedx', '--cache', cache], join(extracted, 'package'));
+    expect(result.status, result.stderr).toBe(0);
+    const sbom = JSON.parse(result.stdout) as { components: { name: string; version: string }[] };
+    const actual = new Set(sbom.components.map(component => `${component.name}@${component.version}`));
+    const required = Object.entries(lock.packages).filter(([path, entry]) => path !== '' && !entry.optional)
+      .map(([path, entry]) => `${path.slice(path.lastIndexOf('node_modules/') + 13)}@${entry.version}`);
+    expect(required.length).toBeGreaterThan(0);
+    expect(required.filter(id => !actual.has(id))).toEqual([]);
   }, 180_000);
 
   test('Pack without a build: the tarball holds dist/cli.js', () => {

@@ -94,8 +94,16 @@ describe.skipIf(offline)('installed package', () => {
     expect([...installed].filter(id => !locked.has(id))).toEqual([]);
     for (const target of installs) {
       const result = npm(['ls', '--prefix', target, '--all', '--json', '--cache', cache], target);
-      expect(result.status, result.stdout).toBe(0);
-      expect(result.stdout).not.toContain('"extraneous": true');
+      expect(result.status, result.stderr).toBe(0);
+      const tree = JSON.parse(result.stdout) as Tree & { problems?: string[] };
+      // npm 10 can install optional WASM children of platform-incompatible packages and
+      // subsequently label them extraneous. They are locked production optionals, not dev leaks.
+      const optional = new Set(entries.filter(({ entry }) => entry.optional).map(({ id }) => id));
+      const unexpected = (tree.problems ?? []).filter(problem => {
+        const match = /^extraneous: (.+?@[^ ]+) /.exec(problem);
+        return !match || !optional.has(match[1]!);
+      });
+      expect(unexpected).toEqual([]);
     }
   }, 180_000);
 });

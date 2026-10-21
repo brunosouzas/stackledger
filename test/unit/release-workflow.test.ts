@@ -31,10 +31,14 @@ test('Checks job: contents: read only; tag check, npm ci, build, tests, audit, p
   expect(checks.permissions).toEqual({ contents: 'read' });
   const order = [
     /node scripts\/check-release-tag\.mjs "\$GITHUB_REF_NAME"/, /^npm ci\b/m, /^npm run build\b/m, /^npm test\b/m,
-    /^npm audit --audit-level=low\b/m, /^node scripts\/pack-production\.mjs\b/m, /^npm sbom --sbom-format cyclonedx --omit dev\b/m,
+    /^npm audit --audit-level=low\b/m, /^node scripts\/pack-production\.mjs\b/m, /^\s*npm sbom --package-lock-only --sbom-format cyclonedx\b/m,
   ].map(pattern => runIndex(checks, pattern));
   expect(order.every(index => index >= 0), String(order)).toBe(true);
   expect([...order].sort((a, b) => a - b)).toEqual(order);
+  const sbomStep = checks.steps[order.at(-1)!]!.run!;
+  expect(sbomStep).toMatch(/tar -xzf "\$RUNNER_TEMP\/release\/stackledger-.*\.tgz"/);
+  expect(sbomStep).toContain('package/package.json package/npm-shrinkwrap.json');
+  expect(sbomStep).toMatch(/cd "\$RUNNER_TEMP\/sbom\/package"/);
   // The tag check is the first command the job runs: nothing of the repository runs before it.
   expect(checks.steps.findIndex(step => step.run !== undefined)).toBe(order[0]);
   expect(checks.steps.some(step => step.uses?.startsWith('actions/upload-artifact@'))).toBe(true);

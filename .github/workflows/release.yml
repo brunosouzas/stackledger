@@ -53,8 +53,14 @@ jobs:
             require("node:fs").writeFileSync(process.argv[2], packed.integrity + "\n");
             console.log(packed.filename, packed.integrity);
           ' "$RUNNER_TEMP/pack.json" "$RUNNER_TEMP/release/integrity"
-      - name: Software bill of materials
-        run: npm sbom --sbom-format cyclonedx --omit dev > "$RUNNER_TEMP/release/stackledger-${GITHUB_REF_NAME#v}.cdx.json"
+      - name: Software bill of materials from the packed production lock
+        run: |
+          mkdir -p "$RUNNER_TEMP/sbom/package"
+          tar -xzf "$RUNNER_TEMP/release/stackledger-${GITHUB_REF_NAME#v}.tgz" \
+            -C "$RUNNER_TEMP/sbom" package/package.json package/npm-shrinkwrap.json
+          (cd "$RUNNER_TEMP/sbom/package" && \
+            npm sbom --package-lock-only --sbom-format cyclonedx) \
+            > "$RUNNER_TEMP/release/stackledger-${GITHUB_REF_NAME#v}.cdx.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release

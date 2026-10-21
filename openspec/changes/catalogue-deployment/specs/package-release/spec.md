@@ -25,7 +25,7 @@ The repository SHALL keep its development lock file as `npm-shrinkwrap.json` for
 
 #### Scenario: Two installs agree
 - **WHEN** the packed tarball is installed into two empty folders
-- **THEN** `npm ls --all --json` gives the same production dependency versions in both, equal to the repository shrinkwrap's production entries, with no extraneous or development-only packages; the tarball's shrinkwrap has no development-only entries
+- **THEN** `npm ls --all --json` gives the same production dependency versions in both, equal to the repository shrinkwrap's production entries, with no development-only or untracked packages (npm may label locked optional platform packages extraneous), the tarball's shrinkwrap has no development-only entries
 
 ### Requirement: Package metadata
 `package.json` SHALL NOT be private and SHALL name the package `stackledger`, its `bin`, the Apache-2.0 licence, `engines.node` `>=22.12`, and the `repository`, `homepage` and `bugs` of `github.com/brunosouzas/stackledger`, so npm can link the provenance to this repository.
@@ -50,7 +50,7 @@ A release SHALL start only from a pushed tag `v<major>.<minor>.<patch>` of digit
 - **THEN** it exits 1 saying the tag must be `v<major>.<minor>.<patch>`
 
 ### Requirement: Checks without publishing rights
-A first job with only `contents: read` SHALL run the tag check, `npm ci`, the build, the full test suite and `npm audit` (any vulnerability, or an audit that cannot run, fails it), then pack the tarball and write its CycloneDX SBOM (`npm sbom --sbom-format cyclonedx --omit dev`), and hand both to the publishing job as an artifact.
+A first job with only `contents: read` SHALL run the tag check, `npm ci`, the build, the full test suite and `npm audit` (any vulnerability, or an audit that cannot run, fails it), then pack the tarball and write its CycloneDX SBOM from the manifest and production shrinkwrap extracted from that exact tarball (`npm sbom --package-lock-only --sbom-format cyclonedx`), and hand both to the publishing job as an artifact.
 
 #### Scenario: Checks job
 - **WHEN** the release workflow file is read
