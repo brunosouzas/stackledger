@@ -8,7 +8,9 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { folder } from '../helpers.js';
 import { fakeProgram, onMac, REAL_SANDBOX } from '../discovery-helpers.js';
-import { createRunner, failureReason } from '../../src/discovery/run.js';
+import { createRunner } from '../../src/discovery/run.js';
+import { readBrew } from '../../src/discovery/sources/brew.js';
+import { virtualHost } from '../virtual-host.js';
 import { diskMachine, discoverRun } from './discover-helpers.js';
 import { root } from './helpers.js';
 
@@ -46,9 +48,10 @@ describe.runIf(onMac)('sandbox', () => {
     const bin = folder();
     fakeProgram(bin, 'brew', 'exec /bin/sleep 30');
     const started = Date.now();
-    const result = await runner(bin, {}, 500)('brew', ['info']);
-    expect(failureReason(result)).toBe('time limit');
+    // The brew source itself, on a fictitious host whose programs run through the real sandbox.
+    const { brew, cask } = await readBrew({ ...virtualHost(), run: runner(bin, {}, 500) });
     expect(Date.now() - started).toBeLessThan(10_000);
+    for (const result of [brew, cask]) expect(result).toMatchObject({ status: 'failed', reason: 'time limit', items: [] });
   });
 
   test('Caller environment not passed', async () => {
