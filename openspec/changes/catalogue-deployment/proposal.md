@@ -9,10 +9,10 @@ The roadmap planned this item as `catalogue-git-source`, with building from a Gi
 ## What Changes
 
 - **Publishable package.** `package.json` drops `private`, gains the npm metadata (repository, homepage, bugs, keywords) and a `prepack` build, so `npm publish` always ships a fresh `dist/`.
-- **Release workflow** (`.github/workflows/release.yml`): on a pushed tag `v<version>` it checks the tag equals the package version, builds, tests, publishes to npm with provenance (OIDC trusted publishing; a one-time token only for the very first version), and attaches a CycloneDX SBOM to a GitHub release.
-- **Catalogue repository template** (`examples/catalogue-repository/`): a GitHub Actions workflow for a separate catalogue repository that, on every pull request and push, scans for secrets with gitleaks, runs `stackledger validate` (errors fail), builds both sites and keeps only the four publishable entries; on a push to `main` only, deploys them to Cloudflare Pages. Plus a README with the setup.
-- **Access recipes** (`docs/hosting.md`): Cloudflare Pages behind Cloudflare Access with one policy for `/full/*` and one for the rest, step by step, including the `*.pages.dev` address; and a generic recipe with Caddy in front of oauth2-proxy.
-- **A live demo**: the fictitious Northwind sites on Cloudflare Pages (`stackledger-demo`) behind Cloudflare Access on the owner's account, built with the same commands as the template, as proof of the recipe.
+- **Release workflow** (`.github/workflows/release.yml`): on a pushed tag `v<major>.<minor>.<patch>` equal to the package version, a job without publishing rights builds, tests, audits, packs and writes a CycloneDX SBOM; a second job publishes that same tarball to npm with provenance (OIDC trusted publishing; a one-time token only for the very first version) and attaches the SBOM to a GitHub release. A re-run finishes a partial release without publishing twice.
+- **Catalogue repository template** (`examples/catalogue-repository/`): a GitHub Actions workflow for a separate catalogue repository that, on every pull request, push to `main`, weekly schedule and manual start, scans for secrets with gitleaks, runs `stackledger validate` (errors fail), builds both sites dated today in UTC and keeps only the four publishable entries; runs on `main` that are not pull requests deploy them to Cloudflare Pages. Plus a README with the setup.
+- **Access recipes** (`docs/hosting.md`): Cloudflare Pages behind Cloudflare Access with one application for `/full/*` and one for the rest, each covering every address of the project (custom domain, `<project>.pages.dev`, `*.<project>.pages.dev`), with the anonymous and staff checks; and a generic recipe with Caddy in front of oauth2-proxy.
+- **A live demo**: the fictitious Northwind sites on Cloudflare Pages (`stackledger-demo`) behind Cloudflare Access on the owner's account, built from the merged code with the template's commands, as proof of the recipe. The owner creates the Access applications; the agent deploys only with his authorisation.
 - Roadmap: row 7 becomes `catalogue-deployment`; "Build from a Git URL" moves to Later.
 
 ## Capabilities
@@ -28,7 +28,7 @@ None. The access recipes and the demo are documentation and operations, checked 
 
 ## Impact
 
-- Files: `package.json`, `.github/workflows/release.yml`, `examples/catalogue-repository/` (workflow, README, `.gitignore`), `docs/hosting.md` (new), `docs/release.md` (new), `docs/site.md`, `docs/roadmap.md`, README, AGENTS.md, ADR 6 (one sentence naming the change).
+- Files: `package.json`, `.github/workflows/release.yml`, `scripts/check-release-tag.mjs`, `scripts/release-publish.sh`, `examples/catalogue-repository/` (workflow, README, `.gitignore`), `examples/hosting/Caddyfile`, `docs/hosting.md` (new), `docs/release.md` (new), `docs/site.md`, `docs/roadmap.md`, README, AGENTS.md, ADR 6 (one sentence naming the change).
 - No new runtime dependency and no change to any command.
 - Outside the repository, done by the owner or with his credentials: the npm account and trusted publisher, the Cloudflare Pages project and Access applications of the demo.
 
@@ -44,16 +44,16 @@ None. The access recipes and the demo are documentation and operations, checked 
 
 - **Errors and invalid input:** requirement. A tag that does not match the package version stops the release before anything is published; a catalogue with errors fails the template workflow before the build; a leaked secret fails it before anything else.
 - **Limits:** n/a. No new runtime behaviour.
-- **Repetition and idempotency:** requirement. Re-running the release for a published version fails at `npm publish` without changing the published one; re-running the template deploys the same content.
+- **Repetition and idempotency:** requirement. Re-running the release skips publishing when npm already has the same bytes, fails when it has other bytes, and completes the GitHub release either way; re-running the template on the same UTC day deploys the same files, and a later run moves renewal windows to its date.
 - **Concurrency:** requirement. The template uses one concurrency group per branch, so two deploys of `main` never overlap.
-- **Security:** requirement. Actions pinned by commit SHA; least permissions per workflow; no long-lived npm token after the first release; secrets only in the deploy step; PRs never deploy; only `full/`, `staff/`, `_headers` and `robots.txt` are published; every recipe protects `/full/` with its own policy and the `*.pages.dev` address too.
+- **Security:** requirement. Actions pinned by commit SHA; least permissions per job, and the publishing identity never present while dependencies install; the published tarball is the tested one; `npm audit` must be clean before publishing; no long-lived npm token after the first release; Cloudflare secrets only in the deploy step; PRs never deploy; only `full/`, `staff/`, `_headers` and `robots.txt` are published; both Access applications cover every address of the project.
 - **Logs and observability:** requirement. The release attaches its SBOM and npm shows provenance; the template's job log names the stackledger version it used.
 
 ## Open questions
 
 Decided by the owner on 2026-10-21: drop the Git URL from v1; publish 0.1.0 to npm with provenance and SBOM as part of closing v1, and the template uses `npx stackledger@0.1.0`; GitHub Actions only; a live demo on his Cloudflare account, kept behind Access.
 
-Open for gate 1 (recommendations in `design.md`, Open questions): who creates the external pieces (npm account and first token, Cloudflare Pages project and Access applications) and how; the demo's address and its two policies; gitleaks in the template (pinned binary vs action).
+Open for gate 1 (recommendations in `design.md`, Open questions): who does the external steps; the demo's addresses and identities; gitleaks in the template; the weekly scheduled run.
 
 ## Documentation
 
