@@ -1,6 +1,7 @@
 name: Test
 
-# Compile and test the CLI on supported Node release lines; browser test of the built sites on Node 22.
+# Compile and test the CLI on supported Node release lines; browser test of the built sites on Node 22;
+# discovery tests on macOS, where the real sandbox-exec and plutil exist.
 on:
   pull_request:
   push:
@@ -40,3 +41,19 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
+  macos:
+    # Discovery on a real Mac runner: the darwin-only tests (test/integration/discover-sandbox.test.ts:
+    # the sandbox denies writes and network, the time limit, the program environment, a run under the
+    # Node permission model) plus the other discovery tests. Fake programs only; nothing is installed.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx vitest run test/unit/annotations.test.ts test/unit/discovery- test/integration/discover
