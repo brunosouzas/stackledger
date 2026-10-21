@@ -314,13 +314,15 @@ test('Linked subfolder', async () => {
 
 test('Linked bundle contents', async () => {
   // The bundle is a real folder but its Contents is a link: plutil would read through it, so it is not read.
-  const apps = await readApps(virtualHost({ files: machine({
+  const host = virtualHost({ files: machine({
     '/Applications/Northwind Shadow.app/Contents': { link: '/Volumes/Northwind/Contents' },
     '/Volumes/Northwind/Contents/Info.plist': { CFBundleIdentifier: 'com.northwind.shadow' },
-  }) }));
+  }) });
+  const apps = await readApps(host);
   expect(apps).toMatchObject({ status: 'ok', ignored: 1 });
   expect(ids(apps)).not.toContain('com.northwind.shadow');
   expect(apps.items).toHaveLength(5);
+  expect(host.calls.some(call => call.args.some(arg => arg.startsWith('/Applications/Northwind Shadow.app') || arg.startsWith('/Volumes/Northwind')))).toBe(false);
 });
 
 test('Linked Info.plist', async () => {
