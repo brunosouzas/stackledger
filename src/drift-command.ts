@@ -19,12 +19,14 @@
  * neither inside the catalogue folder nor contain it (real paths compared; a usage error otherwise).
  * Everything is built and checked in memory first; then `dir` is created with an exclusive mkdir (no
  * `recursive`, so a folder created meanwhile is exit 2), each file is written with `wx` and mode 0644,
- * and only then stdout. A failed write removes the files written and `dir`, and exits 1 with one line.
+ * and only then stdout. A failed write removes the files this run created (a path counts only once its
+ * exclusive open succeeded, so a file another process put there is kept) and `dir` when that leaves it
+ * empty, and exits 1 with one line.
  *
  * `host` and `ops` exist for the tests (test/integration/drift-entry.mjs); src/cli.ts passes nothing,
  * so the shipped command reads the real machine and writes through node:fs.
  */
-import { constants, lstatSync, mkdirSync, realpathSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { closeSync, constants, lstatSync, mkdirSync, openSync, realpathSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { basename, dirname, join, resolve, sep } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -55,8 +57,10 @@ export interface ScaffoldOps {
   realpath(path: string): string;
   /** Create one folder, failing with EEXIST when it exists (never recursive). */
   mkdir(path: string): void;
-  /** Create a new file (`wx`, mode 0644) holding the text. */
-  writeFile(path: string, text: string): void;
+  /** Create a new file exclusively (`wx`, mode 0644), failing with EEXIST when it exists; returns its descriptor. */
+  create(path: string): number;
+  /** Write all of the text to a descriptor from `create`, then close it (also when the write fails). */
+  write(fd: number, text: string): void;
   unlink(path: string): void;
   rmdir(path: string): void;
 }
@@ -64,7 +68,8 @@ export const NODE_SCAFFOLD_OPS: ScaffoldOps = {
   lstat: path => { lstatSync(path); },
   realpath: path => realpathSync.native(path),
   mkdir: path => { mkdirSync(path, { mode: 0o700 }); },
-  writeFile: (path, text) => writeFileSync(path, text, { flag: 'wx', mode: 0o644 }),
+  create: path => openSync(path, 'wx', 0o644),
+  write: (fd, text) => { try { writeFileSync(fd, text); } finally { closeSync(fd); } },
   unlink: path => unlinkSync(path),
   rmdir: path => rmdirSync(path),
 };
@@ -172,16 +177,19 @@ function writeScaffold(target: string, files: ScaffoldFile[], ops: ScaffoldOps):
     if (code(error) === 'EEXIST') throw new Error('The scaffold folder already exists; name a new folder');
     throw new InternalError(`stackledger drift: cannot create the scaffold folder (${code(error)})`);
   }
-  const written: string[] = [];
+  // Only paths whose exclusive create succeeded: a file that was already there (EEXIST, another
+  // process writing into the new folder) is not this run's to remove.
+  const created: string[] = [];
   try {
     for (const file of files) {
       const path = join(target, file.file);
-      written.push(path);
-      ops.writeFile(path, file.text);
+      const fd = ops.create(path);
+      created.push(path);
+      ops.write(fd, file.text);
     }
   } catch (error) {
-    // The last path may not exist (the create failed) or be partly written: remove whichever exists.
-    for (const path of written) { try { ops.unlink(path); } catch { /* not created: nothing to remove */ } }
+    // Created files may be partly written; one already gone needs no removal.
+    for (const path of created) { try { ops.unlink(path); } catch { /* already gone: nothing to remove */ } }
     let removed = true;
     try { ops.rmdir(target); } catch { removed = false; }
     throw new InternalError(`stackledger drift: cannot write the scaffold files (${code(error)}); ${removed ? 'nothing was kept' : 'the scaffold folder could not be removed'}`);

@@ -328,6 +328,19 @@ test('Scaffold write fails', () => {
   expect(existsSync(dir)).toBe(false);
 });
 
+test('Scaffold rollback keeps files it did not create', () => {
+  // Another process creates the second file just before the command opens it: the exclusive open
+  // fails with EEXIST, and the rollback removes only the first file, which this run created.
+  const example = twoCasks(), dir = join(folder(), 'new-items');
+  const result = driftEntryRun({ faults: { createBeforeWrite: 2 } }, [example.path, '--snapshot', example.file, '--scaffold', dir]);
+  expect(result.status).toBe(1);
+  expect(result.stdout).toBe('');
+  expect(oneLine(result.stderr)).toBe(true);
+  expect(result.stderr).toContain('EEXIST');
+  expect(readdirSync(dir)).toEqual(['northwind-editor.yaml']);
+  expect(readFileSync(join(dir, 'northwind-editor.yaml'), 'utf8')).toBe('written by another process\n');
+});
+
 test('Scaffold folder created meanwhile', () => {
   const example = twoCasks(), dir = join(folder(), 'new-items');
   const result = driftEntryRun({ faults: { createBeforeMkdir: true } }, [example.path, '--snapshot', example.file, '--scaffold', dir]);
