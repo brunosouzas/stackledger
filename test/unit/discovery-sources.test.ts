@@ -4,6 +4,7 @@
  * a pass-through stand-in for sandbox-exec (the real sandbox is tested in discover-sandbox.test.ts).
  */
 import { test, expect } from 'vitest';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { folder } from '../helpers.js';
 import { fakeProgram, passThroughSandbox } from '../discovery-helpers.js';
@@ -32,6 +33,21 @@ test('Homebrew outside PATH', async () => {
   const run = createRunner({ sandbox: passThroughSandbox(), env: { PATH: path }, programDirs: [homebrew, join(folder(), 'usr', 'local', 'bin')] });
   expect(await run('brew', ['info'])).toEqual({ kind: 'exited', code: 0, stdout: 'from-homebrew-bin\n' });
   expect(await run('mas', ['list'])).toEqual({ kind: 'not found' });
+});
+
+test('Relative PATH entry', async () => {
+  // PATH `bin:<absolute>` while the current folder holds ./bin/brew: resolving `bin` against the
+  // current folder would run it (and it would leave a marker file), so the lookup must skip it.
+  const work = folder(), absolute = folder(), marker = join(work, 'ran');
+  fakeProgram(join(work, 'bin'), 'brew', `touch '${marker}'\necho from-relative-bin`);
+  const run = createRunner({ sandbox: passThroughSandbox(), env: { PATH: `bin:${absolute}` }, programDirs: [join(folder(), 'opt', 'homebrew', 'bin'), join(folder(), 'usr', 'local', 'bin')] });
+  const previous = process.cwd();
+  process.chdir(work);
+  try {
+    const { brew } = await readBrew({ ...virtualHost(), run });
+    expect(brew).toEqual({ source: 'brew', status: 'skipped', reason: 'not found', items: [], ignored: 0 });
+  } finally { process.chdir(previous); }
+  expect(existsSync(marker)).toBe(false);
 });
 
 test('Missing source', async () => {

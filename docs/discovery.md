@@ -72,7 +72,7 @@ Sources are read in this order. A source whose program or folders are absent is 
 | `npm` | `npm ls --global --depth=0 --json --offline`, with the `npm` found on `PATH` | Package name and version |
 | `pipx` | `venvs/*/pipx_metadata.json` in the pipx home (`$PIPX_HOME`, else `~/.local/pipx` when it exists, else `~/Library/Application Support/pipx`); `pipx` itself is never run, because it writes a log on every run | Package name and version |
 
-The machine name and version come from `scutil --get ComputerName`, `scutil --get LocalHostName` and `sw_vers -productVersion`. A program is looked up in `PATH`, then in `/opt/homebrew/bin` and `/usr/local/bin`.
+The machine name and version come from `scutil --get ComputerName`, `scutil --get LocalHostName` and `sw_vers -productVersion`. A program is looked up in the absolute folders of `PATH` in order, then in `/opt/homebrew/bin` and `/usr/local/bin`. Relative and empty `PATH` entries (such as `bin` or `::`) are skipped: they would make the folder you happen to run discovery from decide which `brew` or `npm` runs.
 
 Only three keys of a launchd file are read, so a job's arguments and environment variables (which may hold tokens) never reach the snapshot. Symbolic links are never followed: a linked app or plist is counted as ignored. An `.app` entry that cannot be examined and a subfolder of an Applications folder that cannot be listed are counted as ignored too, since either may hide an app. Folders are listed by Node itself; only `plutil` runs per file, eight at a time.
 

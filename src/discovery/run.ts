@@ -76,7 +76,9 @@ function executable(path: string): boolean {
 }
 
 /** The first executable regular file (or link to one) named `name` on PATH, then in `programDirs`.
- * Empty and relative PATH entries are skipped: they would depend on the current folder. */
+ * Empty and relative PATH entries are skipped: resolved against the current folder, they would let
+ * whatever folder the user happens to be in choose which `brew` or `npm` runs (mac-discovery spec,
+ * Programs found, scenario Relative PATH entry). */
 export function findProgram(name: string, path: string | undefined, programDirs: readonly string[]): string | undefined {
   const dirs = [...(path ?? '').split(':'), ...programDirs].filter(dir => dir !== '' && isAbsolute(dir));
   for (const dir of dirs) {

@@ -24,11 +24,15 @@ Each source SHALL record `items` (the number of items it contributed) and `ignor
 - **THEN** the reason of `brew` is exactly `exited with code 1`
 
 ### Requirement: Programs found
-A program SHALL be looked up in the directories of `PATH` in order, then in `/opt/homebrew/bin` and `/usr/local/bin`; the first executable regular file, or link to one, wins. A program that is not found makes its source `skipped` with reason `not found`.
+A program SHALL be looked up in the absolute directories of `PATH` in order (relative and empty entries are skipped, so the current folder never decides which program runs), then in `/opt/homebrew/bin` and `/usr/local/bin`; the first executable regular file, or link to one, wins. A program that is not found makes its source `skipped` with reason `not found`.
 
 #### Scenario: Homebrew outside PATH
 - **WHEN** `PATH` holds no `brew` and `/opt/homebrew/bin/brew` exists
 - **THEN** that program is run
+
+#### Scenario: Relative PATH entry
+- **WHEN** `PATH` is `bin:/usr/bin`, the current folder holds `bin/brew`, and neither `/usr/bin` nor the two Homebrew folders hold a `brew`
+- **THEN** `brew` is `skipped` with reason `not found` and the program in `./bin` never runs
 
 ### Requirement: Sandbox
 Every program discovery starts, `scutil` included, SHALL run through `/usr/bin/sandbox-exec` with a profile that denies all network access and every file write except to `/dev/null`. When `/usr/bin/sandbox-exec` does not exist, discovery SHALL NOT start: no program runs, no source is read and nothing is written.
