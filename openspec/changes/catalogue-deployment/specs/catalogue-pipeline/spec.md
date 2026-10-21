@@ -1,7 +1,7 @@
 # catalogue-pipeline
 
 ## Purpose
-Defines the template a separate catalogue repository copies to check its catalogue and publish the two sites with GitHub Actions: the layout, the checks, the build, what is published and when.
+Defines the template a separate catalogue repository copies to check its catalogue and publish its sites with GitHub Actions: the layout, the checks, the build, what is published and when.
 
 ## ADDED Requirements
 
@@ -46,15 +46,19 @@ The `site` job SHALL build with `--date` set to the run's date in UTC, so a re-r
 - **THEN** the build command passes `--date` with the UTC date of the run
 
 ### Requirement: What is published
-The `site` job SHALL build into a fresh folder outside the repository and hand on only `full/`, `staff/`, `_headers` and `robots.txt`. The `deploy` job SHALL run wrangler from an otherwise empty folder, so no `functions/` folder or wrangler configuration of the catalogue repository can be uploaded.
+The `site` job SHALL build into a fresh folder outside the repository and hand on only `full/`, `staff/` when the build wrote it (the corporate mode), `_headers`, `robots.txt` and `_redirects`. The `deploy` job SHALL run wrangler from an otherwise empty folder, so no `functions/` folder or wrangler configuration of the catalogue repository can be uploaded.
 
-#### Scenario: Only the four entries
+#### Scenario: Only the publishable entries
 - **WHEN** the `site` job's commands run on the Northwind example
-- **THEN** the publish folder holds exactly `full`, `staff`, `_headers` and `robots.txt`
+- **THEN** the publish folder holds exactly `full`, `staff`, `_headers`, `robots.txt` and `_redirects`, which sends `/` to `/staff/`
+
+#### Scenario: Personal mode publishes no staff site
+- **WHEN** the `site` and deploy commands run on the template with `spec.sites: [full]` in `catalog/stackledger.yaml`
+- **THEN** the publish and deploy folders hold exactly `full`, `_headers`, `robots.txt` and `_redirects`, which sends `/` to `/full/`
 
 #### Scenario: Repository extras are not deployed
 - **WHEN** the catalogue repository also holds `functions/` and `wrangler.toml` and the `site` and collect commands run
-- **THEN** the deploy folder holds only `site/` with the four entries, and the deploy step's working directory is that folder
+- **THEN** the deploy folder holds only `site/` with the publishable entries, and the deploy step's working directory is that folder
 
 ### Requirement: Deploy job
 A separate `deploy` job, on a fresh runner, SHALL run only after `site` succeeds, on `refs/heads/main`, and not for a pull request. With no checkout, it SHALL install wrangler with `--ignore-scripts` before any secret is present, then run that binary in the only step given `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.

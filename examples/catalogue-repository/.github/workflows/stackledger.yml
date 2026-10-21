@@ -1,11 +1,14 @@
 name: stackledger
 
-# Checks this catalogue and publishes its two stackledger sites to Cloudflare Pages.
+# Checks this catalogue and publishes its stackledger sites to Cloudflare Pages: full/ and staff/
+# (the corporate mode, the default), or full/ only with `sites: [full]` in catalog/stackledger.yaml
+# (the personal mode).
 # Setup (secrets, variable, Cloudflare Access before the first deploy, rollback): README.md.
 #
 # - site: on every run. Scans the repository and its history for secrets (gitleaks), validates the
-#   catalogue in catalog/ (errors fail, warnings do not), builds both sites dated today in UTC into
-#   a folder outside the repository, and hands on only full/, staff/, _headers and robots.txt.
+#   catalogue in catalog/ (errors fail, warnings do not), builds the sites dated today in UTC into
+#   a folder outside the repository, and hands on only full/, staff/ (corporate mode), _headers,
+#   robots.txt and _redirects.
 # - deploy: only for main, never for a pull request, on a fresh runner with no checkout. Wrangler is
 #   installed without its install scripts before any secret exists, and runs from a folder holding
 #   only the site, so nothing else of this repository can be uploaded.
@@ -64,14 +67,18 @@ jobs:
           npx --yes "$STACKLEDGER" validate catalog
       - name: Build date (UTC, computed once)
         run: echo "BUILD_DATE=$(date -u +%F)" >> "$GITHUB_ENV"
-      - name: Build both sites
+      - name: Build the sites
         run: npx --yes "$STACKLEDGER" build catalog --out "$RUNNER_TEMP/site" --date "$BUILD_DATE"
       - name: Keep only what is published
         run: |
           mkdir -p "$RUNNER_TEMP/handoff/site"
-          for entry in full staff _headers robots.txt; do
+          for entry in full _headers robots.txt _redirects; do
             cp -R "$RUNNER_TEMP/site/$entry" "$RUNNER_TEMP/handoff/site/"
           done
+          # staff/ exists only in the corporate mode.
+          if [ -d "$RUNNER_TEMP/site/staff" ]; then
+            cp -R "$RUNNER_TEMP/site/staff" "$RUNNER_TEMP/handoff/site/"
+          fi
           echo "$BUILD_DATE" > "$RUNNER_TEMP/handoff/build-date"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

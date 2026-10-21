@@ -129,7 +129,8 @@ function runDeploy(site: Run, date: string) {
 }
 
 const publishedEntries = (run: Run) => readdirSync(join(artifactFolder(run), 'site')).sort();
-const four = ['_headers', 'full', 'robots.txt', 'staff'];
+const corporate = ['_headers', '_redirects', 'full', 'robots.txt', 'staff'];
+const personal = ['_headers', '_redirects', 'full', 'robots.txt'];
 const statuses = (run: Run) => run.steps.map(step => step.status);
 
 function catalogue(repo: string, documents: string) {
@@ -148,7 +149,7 @@ test('Copied template passes as is: every site command exits 0 beside the workfl
     'stackledger validate catalog',
     `stackledger build catalog --out ${join(run.temp, 'site')} --date 2026-10-21`,
   ]);
-  expect(publishedEntries(run)).toEqual(four);
+  expect(publishedEntries(run)).toEqual(corporate);
   // The log names the stackledger version the job used.
   expect(run.steps.map(step => step.output).join('\n')).toContain(workflow.env.STACKLEDGER);
 }, 240_000);
@@ -166,21 +167,33 @@ test('Catalogue warning does not stop the job: every command exits 0 and the pub
   const run = runSite(repository(repo => catalogue(repo, component('  namespace: northwind\n'))));
   expect(run.steps.filter(step => step.status !== 0)).toEqual([]);
   expect(run.steps.map(step => step.output).join('\n')).toMatch(/warnings: 1\b/);
-  expect(publishedEntries(run)).toEqual(four);
+  expect(publishedEntries(run)).toEqual(corporate);
 }, 240_000);
 
-test('Only the four entries: the Northwind example publishes full, staff, _headers and robots.txt', () => {
+test('Only the publishable entries: the Northwind example publishes full, staff, _headers, robots.txt and _redirects', () => {
   const run = runSite(repository(repo => {
     rmSync(join(repo, 'catalog'), { recursive: true });
     cpSync(join(root, 'examples', 'northwind'), join(repo, 'catalog'), { recursive: true });
   }));
   expect(run.steps.filter(step => step.status !== 0)).toEqual([]);
-  expect(publishedEntries(run)).toEqual(four);
+  expect(publishedEntries(run)).toEqual(corporate);
+  expect(readFileSync(join(artifactFolder(run), 'site', '_redirects'), 'utf8')).toBe('/ /staff/ 302\n');
   // The build's own marker and staging folders stay behind in the build folder.
   expect(readdirSync(join(run.temp, 'site'))).toContain('.stackledger-build');
 }, 240_000);
 
-test('Repository extras are not deployed: the deploy folder holds only site/ with the four entries', () => {
+test('Personal mode publishes no staff site: full, _headers, robots.txt and _redirects to /full/', () => {
+  const run = runSite(repository(repo => writeFileSync(join(repo, 'catalog', 'stackledger.yaml'),
+    'apiVersion: stackledger/v1alpha1\nkind: Settings\nmetadata:\n  name: settings\nspec:\n  sites: [full]\n')));
+  expect(run.steps.filter(step => step.status !== 0)).toEqual([]);
+  expect(publishedEntries(run)).toEqual(personal);
+  expect(readFileSync(join(artifactFolder(run), 'site', '_redirects'), 'utf8')).toBe('/ /full/ 302\n');
+  const deployed = runDeploy(run, '2026-10-21');
+  expect(deployed.results.filter(step => step.status !== 0)).toEqual([]);
+  expect(readdirSync(join(deployed.deployFolder, 'site')).sort()).toEqual(personal);
+}, 240_000);
+
+test('Repository extras are not deployed: the deploy folder holds only site/ with the publishable entries', () => {
   const run = runSite(repository(repo => {
     mkdirSync(join(repo, 'functions'));
     writeFileSync(join(repo, 'functions', '_middleware.js'), 'export const onRequest = () => new Response("not ours");\n');
@@ -191,7 +204,7 @@ test('Repository extras are not deployed: the deploy folder holds only site/ wit
   const deployed = runDeploy(run, '2026-10-21');
   expect(deployed.results.filter(step => step.status !== 0)).toEqual([]);
   expect(readdirSync(deployed.deployFolder)).toEqual(['site']);
-  expect(readdirSync(join(deployed.deployFolder, 'site')).sort()).toEqual(four);
+  expect(readdirSync(join(deployed.deployFolder, 'site')).sort()).toEqual(corporate);
   // wrangler ran in that folder and saw only site/.
   expect(deployed.wrangler).toContain(`cwd ${realpathSync(deployed.deployFolder)}\n`);
   expect(deployed.wrangler).toContain('entries site \n');

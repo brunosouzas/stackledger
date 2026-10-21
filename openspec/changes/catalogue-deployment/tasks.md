@@ -13,7 +13,7 @@ Levels: U unit, I integration (built CLI, packed package, or workflow steps run 
 | package-release | Version absent; Re-run after the release step failed; Same bytes without provenance; Version already published with other bytes; Registry lookup fails; Release lookup fails | `test/unit/release-publish.test.ts` (runs `scripts/release-publish.sh` with fake `npm` and `gh`) | U |
 | catalogue-pipeline | Template files; Exact versions; Build date; Pull request does not deploy; Wrangler installed without secrets; Labelled deployment; Least privilege | `test/unit/catalogue-template.test.ts` | U |
 | catalogue-pipeline | Build date travels with the files | `test/integration/catalogue-template.test.ts` | I |
-| catalogue-pipeline | Copied template passes as is; Catalogue error stops the job; Catalogue warning does not stop the job; Only the four entries; Repository extras are not deployed | `test/integration/catalogue-template.test.ts` | I |
+| catalogue-pipeline | Copied template passes as is; Catalogue error stops the job; Catalogue warning does not stop the job; Only the publishable entries; Personal mode publishes no staff site; Repository extras are not deployed | `test/integration/catalogue-template.test.ts` | I |
 | catalogue-pipeline | Secret stops the job | `test/integration/catalogue-template.test.ts` | I (network) |
 | catalogue | Personal mode; Corporate mode in any order; Corporate mode by default; Staff site alone; Unknown site; Repeated site; Broken settings build both sites | `test/unit/settings.test.ts` | U |
 | build-command | Root redirect; Personal build; Stale staff site removed; A failed personal build leaves the corporate site | `test/integration/build.test.ts` | I |
