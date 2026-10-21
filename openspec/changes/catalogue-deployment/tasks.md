@@ -22,7 +22,7 @@ Levels: U unit, I integration (built CLI, packed package, or workflow steps run 
 
 - [x] 1.1 `package.json` metadata and `prepack`; `package-lock.json` becomes `npm-shrinkwrap.json` (D2); package tests. Check: `npm test`; `npm pack --dry-run` lists what the scenario says.
 - [x] 1.2 `scripts/check-release-tag.mjs`, `scripts/release-publish.sh` and `.github/workflows/release.yml` in two jobs, publish in environment `npm` (D1); release tests; pinned `actionlint` and Caddy in `test.yml`. Check: `npm test`, `actionlint`.
-- [ ] 1.3 `docs/release.md`: release steps, the `npm` environment and the tag ruleset, the first-version bootstrap with token scope, expiry, bypass and revocation, the trusted publisher with environment, verifying provenance (`npm audit signatures`) and the SBOM. Check: `test/unit/hosting-docs.test.ts` finds each bootstrap step.
+- [x] 1.3 `docs/release.md`: release steps, the `npm` environment and the tag ruleset, the first-version bootstrap with token scope, expiry, bypass and revocation, the trusted publisher with environment, verifying provenance (`npm audit signatures`) and the SBOM. Check: `test/unit/hosting-docs.test.ts` finds each bootstrap step.
 
 ## 2. Catalogue template
 
