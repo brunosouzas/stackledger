@@ -23,4 +23,4 @@ The site itself adds the protections that do not need a server: no third-party s
 - stackledger stores no passwords and has no login code to get wrong.
 - Sign-in, single sign-on and the access log come from the proxy and the identity provider.
 - Running the site without a proxy publishes the catalogue to anyone with the address. The access recipes say so, and the build prints a reminder.
-- The recipes arrive with the `catalogue-git-source` change; see the [roadmap](../roadmap.md).
+- The recipes are delivered by `catalogue-deployment`; see [hosting](../hosting.md) and the [tested Caddy example](../../examples/hosting/Caddyfile).

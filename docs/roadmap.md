@@ -12,7 +12,7 @@ The first version (v1) is split into OpenSpec changes, delivered in this order. 
 | 4 | `catalogue-site` | `stackledger build`: a static Astro site with the map (zoom, zone filter, line highlight), the software list, one page per item (licence, owner, journeys, a diagram of dependencies and dependants, removal impact) and one page per journey; the dependency and journey diagrams are SVG drawn by stackledger's own code in the map's style, not Mermaid; the `full` and `staff` views as separate sites, with the hidden fields set in `stackledger.yaml`; a strict Content Security Policy, no third-party requests, no analytics, `noindex` ([ADR 5](adr/0005-static-site-no-server.md), [ADR 7](adr/0007-two-views-built-as-separate-sites.md)) | Delivered ([#6](https://github.com/brunosouzas/stackledger/pull/6)) |
 | 5 | `licence-reports` | Renewals, recurring cost per month and per year for each currency (no conversion) by owner, payer and zone, one-off costs, planned purchases and incomplete licences; a Reports page and a `renewals.ics` calendar file to download in the `full` site only; and `stackledger report` (text, JSON, CSV, iCalendar) | Delivered ([#7](https://github.com/brunosouzas/stackledger/pull/7)) |
 | 6 | `mac-discovery` | `stackledger discover` (Homebrew formulae and casks, App Store through `mas`, `/Applications` and `~/Applications`, launchd, mise, global npm packages and pipx; every program in the macOS sandbox with network and writes denied; one snapshot file per machine in `~/.stackledger/<machine>/`) and `stackledger drift` (installed but not declared, declared but missing, not checked), matched only through `stackledger/<source>` annotations; it proposes annotations and `dependsOn` relations a person confirms, and `--scaffold` writes draft component files outside the catalogue | Delivered ([#8](https://github.com/brunosouzas/stackledger/pull/8)); spec in `openspec/specs/mac-discovery/`, `discover-command/` and `drift-command/` |
-| 7 | `catalogue-git-source` | Building from a Git URL as well as a local folder, a sample pipeline for a separate catalogue repository, and the access recipes: Cloudflare Pages with Cloudflare Access per path, and a generic proxy ([ADR 6](adr/0006-authentication-at-an-identity-aware-proxy.md)) | Planned |
+| 7 | `catalogue-deployment` | Publishable npm package, owner-approved release workflow with provenance and SBOM, a catalogue repository pipeline template, and protected hosting recipes ([ADR 6](adr/0006-authentication-at-an-identity-aware-proxy.md)) | Delivered, 0.1.0 not yet released ([#9](https://github.com/brunosouzas/stackledger/pull/9)) |
 
 ## Later
 
@@ -20,6 +20,7 @@ The first version (v1) is split into OpenSpec changes, delivered in this order. 
 
 - `map-theme-ink`: an illustrated theme matching the diagrams of brunosouzas.com (ink outline `#0A1033`, hard offset shadow, light tinted panel, Lato font stack), added as theme data; icons and line badges drawn with the site's designer style.
 
+- Build from a Git URL as well as a local folder.
 - Merge catalogues from several repositories (for example, one per team), like Backstage catalogue locations.
 - A remote MCP server over HTTP, behind the identity-aware proxy, and an MCP tool that proposes edits.
 - Edit from the website by opening a pull request on the catalogue repository.

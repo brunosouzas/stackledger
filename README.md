@@ -32,6 +32,8 @@ stackledger is a small, local-first tool for people and small companies who want
 
 Early development. Nothing is released to npm yet. The catalogue format, the `validate`, `map`, `build` and `report` commands, the `mcp` server and Mac discovery (`stackledger discover` and `stackledger drift`) work from source (see [Usage](#usage)). The order of the rest is in the [roadmap](docs/roadmap.md).
 
+For a separate catalogue repository, copy the [pipeline template](examples/catalogue-repository/). Set up [protected hosting](docs/hosting.md) before the first deploy. The [release guide](docs/release.md) covers npm publication, provenance and the SBOM.
+
 ## Features
 
 Planned for the first version:
@@ -86,7 +88,14 @@ stackledger does not call any AI model. Instead, a read-only [MCP](https://model
 
 ## Usage
 
-The package is not published to npm yet. To run it from a clone, with Node.js 22.12 or later:
+The package is not published to npm yet. Once 0.1.0 is released, use npm with Node.js 22.12 or later:
+
+```sh
+npx stackledger@0.1.0 --help
+npx stackledger@0.1.0 validate /path/to/catalogue
+```
+
+Until then, run it from source:
 
 ```sh
 npm ci

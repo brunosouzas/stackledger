@@ -34,7 +34,7 @@ Levels: U unit, I integration (built CLI, packed package, or workflow steps run 
 
 ## 4. Documentation and roadmap
 
-- [ ] 4.1 README (npm install, template, hosting), AGENTS.md (implemented list, release rule), ADR 6 sentence, roadmap row 7 renamed with the Git URL under Later. Check: `npm test` (docs tests), `openspec validate --all --strict`.
+- [x] 4.1 README (npm install, template, hosting), AGENTS.md (implemented list, release rule), ADR 6 sentence, roadmap row 7 renamed with the Git URL under Later. Check: `npm test` (docs tests), `openspec validate --all --strict`.
 
 ## 5. Demo (D5, before the merge; the owner configures Access, the agent creates the project and deploys with his authorisation)
 
