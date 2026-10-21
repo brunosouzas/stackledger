@@ -6,14 +6,44 @@ import { readFileSync } from 'node:fs';
 
 const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 
-test('docs/hosting.md protects every address under both applications and checks every anonymous path', () => {
+/** The text from the heading `heading` (any level) to the next heading of the same or a higher level. */
+function section(text: string, heading: string): string {
+  const start = text.search(new RegExp(`^(#+) ${heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\n`, 'm'));
+  if (start < 0) return '';
+  const level = text.slice(start).indexOf(' ');
+  const rest = text.slice(start + level + heading.length + 2);
+  const end = rest.search(new RegExp(`^#{1,${level}} `, 'm'));
+  return end < 0 ? rest : rest.slice(0, end);
+}
+const addresses = ['catalogue.example.org', '<project>.pages.dev', '*.<project>.pages.dev'];
+
+test('docs/hosting.md describes the personal mode first, with one application and its anonymous checks', () => {
   const hosting = read('docs/hosting.md');
+  const personal = section(hosting, 'Personal mode: one application');
+  const corporate = section(hosting, 'Corporate mode: two applications');
+  expect(personal).not.toBe('');
+  expect(hosting.indexOf('Personal mode: one application')).toBeLessThan(hosting.indexOf('Corporate mode: two applications'));
+  const application = section(personal, 'stackledger');
+  for (const address of addresses) expect(application).toContain(address);
+  const checks = section(personal, 'Check the personal site');
+  for (const path of ['/', '/full/', '/full/_astro/']) expect(checks).toContain(`\`${path}\``);
+  for (const term of ['302', 'cloudflareaccess.com']) expect(checks).toContain(term);
+  // One reader: no staff-only identity to test.
+  expect(personal).not.toContain('staff-only');
+  expect(corporate).toContain('staff-only');
+  expect(hosting).toContain('sites: [full]');
+});
+
+test('docs/hosting.md protects every address under both corporate applications and checks every anonymous path', () => {
+  const hosting = read('docs/hosting.md');
+  const corporate = section(hosting, 'Corporate mode: two applications');
   for (const application of ['stackledger full', 'stackledger staff']) {
-    const section = hosting.split(`### ${application}\n`)[1]?.split(/^###? /m)[0] ?? '';
-    for (const address of ['catalogue.example.org', '<project>.pages.dev', '*.<project>.pages.dev']) expect(section).toContain(address);
+    for (const address of addresses) expect(section(corporate, application)).toContain(address);
   }
-  for (const path of ['/', '/staff/', '/full/', '/full/renewals.ics', '/full/_astro/', '/staff/_astro/']) expect(hosting).toContain(`\`${path}\``);
-  for (const term of ['302', 'cloudflareaccess.com', 'staff-only', 'before', 'oauth2-proxy', '--set-xauthrequest', 'Rollback']) expect(hosting).toContain(term);
+  const checks = section(corporate, 'Check the corporate sites');
+  for (const path of ['/', '/staff/', '/full/', '/full/renewals.ics', '/full/_astro/', '/staff/_astro/']) expect(checks).toContain(`\`${path}\``);
+  for (const term of ['302', 'cloudflareaccess.com', 'staff-only']) expect(checks).toContain(term);
+  for (const term of ['before', 'oauth2-proxy', '--set-xauthrequest', 'Rollback', '_redirects']) expect(hosting).toContain(term);
 });
 
 test('docs/release.md has each first-version bootstrap step', () => {
