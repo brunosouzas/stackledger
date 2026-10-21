@@ -9,12 +9,10 @@ Levels: U unit, I integration (built CLI, packed package, or workflow steps run 
 | package-release | Metadata | `test/unit/package-metadata.test.ts` | U |
 | package-release | Tag and version differ; Tag of another shape | `test/unit/release-tag.test.ts` (runs `scripts/check-release-tag.mjs`) | U |
 | package-release | Checks job; Publishing job; Pinned | `test/unit/release-workflow.test.ts` | U |
-| package-release | Re-run after the release step failed; Version already published with other bytes | `test/unit/release-publish.test.ts` (runs `scripts/release-publish.sh` with fake `npm` and `gh`) | U |
-| catalogue-pipeline | Template files; Exact versions; Build date; Pull request does not deploy; Least privilege | `test/unit/catalogue-template.test.ts` | U |
+| package-release | Version absent; Re-run after the release step failed; Version already published with other bytes; Registry lookup fails; Release lookup fails | `test/unit/release-publish.test.ts` (runs `scripts/release-publish.sh` with fake `npm` and `gh`) | U |
+| catalogue-pipeline | Template files; Exact versions; Build date; Pull request does not deploy; Wrangler installed without secrets; Least privilege | `test/unit/catalogue-template.test.ts` | U |
 | catalogue-pipeline | Catalogue error stops the job; Catalogue warning does not stop the job; Only the four entries | `test/integration/catalogue-template.test.ts` | I |
 | catalogue-pipeline | Secret stops the job | `test/integration/catalogue-template.test.ts` | I (network) |
-
-The publish script's first case (version absent, so it publishes) is covered by the same test file with a fake `npm` that records the arguments: it must receive the tarball path, `--provenance`, `--access public` and `--ignore-scripts`.
 
 `actionlint` runs inside the workflow tests; CI downloads a pinned `actionlint` with a checksum, and a local run without the binary skips that check and says so. The recipe checks are in `test/unit/hosting-docs.test.ts` (D4).
 
@@ -26,7 +24,7 @@ The publish script's first case (version absent, so it publishes) is covered by 
 
 ## 2. Catalogue template
 
-- [ ] 2.1 `examples/catalogue-repository/` (D3): workflow, `.gitignore`, README; template tests. Check: `npm test`, `actionlint`.
+- [ ] 2.1 `examples/catalogue-repository/` (D3): workflow, `.gitignore`, README; template tests. Check: `npm test`, `actionlint`; in a scratch folder, wrangler installed with `--ignore-scripts` runs `pages deploy --help` (if it cannot, stop and ask).
 
 ## 3. Access recipes
 
@@ -36,10 +34,15 @@ The publish script's first case (version absent, so it publishes) is covered by 
 
 - [ ] 4.1 README (npm install, template, hosting), AGENTS.md (implemented list, release rule), ADR 6 sentence, roadmap row 7 renamed with the Git URL under Later. Check: `npm test` (docs tests), `openspec validate --all --strict`.
 
-## 5. Demo (D5; the owner creates the Access applications, the agent deploys with his authorisation)
+## 5. Demo (D5, before the merge; the owner configures Access, the agent creates the project and deploys with his authorisation)
 
-- [ ] 5.1 Access applications created by the owner from `docs/hosting.md`; Pages project `stackledger-demo` created and `examples/northwind` deployed with the template's commands (`node dist/cli.js` in place of `npx`). Check: anonymous `curl -sI` on `/`, `/staff/`, `/full/`, `/full/renewals.ics` and one asset of each site, on `stackledger-demo.pages.dev` and a preview address, all answer 302 to the Access login; the owner signs in with the staff-only identity and is refused on `/full/`, and with his main identity sees both sites. Then the README links the demo.
+- [ ] 5.1 Empty Pages project `stackledger-demo`; the owner enables and configures Access from `docs/hosting.md`; `examples/northwind` deployed with the template's commands (`node dist/cli.js` in place of `npx`). Check: anonymous `curl -sI` on `/`, `/staff/`, `/full/`, `/full/renewals.ics` and one asset of each site, on `stackledger-demo.pages.dev` and a preview address, all answer 302 to the Access login; the owner signs in with the staff-only identity and is refused on `/full/`, and with his main identity sees both sites. Then the README links the demo.
 
-## After the merge (not tasks of this change)
+## After the merge (owner-controlled; not tasks of this change)
 
-The release of 0.1.0 and the switch to trusted publishing are done by the owner following `docs/release.md`; the agent then checks the run, `npm view stackledger`, `npm audit signatures` in a scratch install, the SBOM on the GitHub release and `npx --yes stackledger@0.1.0 --help`. The roadmap marks row 7 delivered with the PR; the release is recorded in the brain note.
+The PR marks roadmap row 7 "Delivered, 0.1.0 not yet released". Then, in order:
+
+1. The owner releases 0.1.0 following `docs/release.md` (token, secret, tag).
+2. The agent checks the release run, `npm view stackledger`, `npm audit signatures` in a scratch install, the SBOM on the GitHub release and `npx --yes stackledger@0.1.0 --help`.
+3. The owner configures the trusted publisher, disallows tokens, revokes the token and deletes the secret.
+4. A small follow-up commit changes row 7 to "Delivered, 0.1.0 released" and the brain note records v1 closed.

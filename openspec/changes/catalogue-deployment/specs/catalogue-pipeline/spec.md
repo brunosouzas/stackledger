@@ -49,11 +49,15 @@ The workflow SHALL build into a fresh folder and copy only `full/`, `staff/`, `_
 - **THEN** the deploy folder holds exactly `full`, `staff`, `_headers` and `robots.txt`
 
 ### Requirement: When it deploys
-Only a run on `refs/heads/main` that is not a pull request (push, schedule or manual start) SHALL deploy, with `wrangler pages deploy` of the collected folder to the Pages project in a repository variable and `--branch main`, using `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in that step only.
+Only a run on `refs/heads/main` that is not a pull request (push, schedule or manual start) SHALL deploy. Wrangler SHALL be installed at its exact version with `--ignore-scripts` in a step without Cloudflare secrets; the deploy step SHALL run that installed binary, with no install, and is the only step given `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 
 #### Scenario: Pull request does not deploy
 - **WHEN** the template workflow is read
 - **THEN** the deploy step's condition requires `refs/heads/main` and an event other than `pull_request`, and no other step reads a Cloudflare secret
+
+#### Scenario: Wrangler installed without secrets
+- **WHEN** the template workflow is read
+- **THEN** a step without Cloudflare secrets installs wrangler with `--ignore-scripts`, and the deploy step runs the installed binary and contains no `npx`, `npm install` or `npm exec`
 
 ### Requirement: Template hardening
 The workflow SHALL check out without persisting credentials, grant only `contents: read`, use one concurrency group per ref that does not cancel a running deploy, and pass `actionlint`.

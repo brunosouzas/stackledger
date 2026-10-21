@@ -46,14 +46,18 @@ A first job with only `contents: read` SHALL run the tag check, `npm ci`, the bu
 - **THEN** the first job has permissions exactly `contents: read` and runs tag check, `npm ci`, build, tests, `npm audit`, pack and SBOM in that order
 
 ### Requirement: Publication of the checked tarball
-A second job SHALL run only after the first succeeds, with `contents: write` and `id-token: write`, and SHALL publish the tarball the first job packed with `npm publish <tarball> --provenance --access public --ignore-scripts`, without checking out or building again. It SHALL authenticate through OIDC trusted publishing; the secret `NPM_TOKEN` is read only for the first version.
+A second job SHALL run only after the first succeeds, with `contents: write` and `id-token: write`. It SHALL check out the tagged commit to get `scripts/release-publish.sh`, treat the downloaded artifact as data only, install and build nothing, and publish that tarball with `npm publish <tarball> --provenance --access public --ignore-scripts` through OIDC; `NPM_TOKEN` is read only for the first version.
 
 #### Scenario: Publishing job
 - **WHEN** the release workflow file is read
-- **THEN** the second job `needs` the first, has no checkout or build step, and publishes the downloaded tarball with `--provenance` and `--ignore-scripts`
+- **THEN** the second job `needs` the first, checks out without credentials, runs the script from the checkout, has no install or build step, and the script publishes with `--provenance` and `--ignore-scripts`
 
 ### Requirement: Completing a partial release
-Before publishing, the second job SHALL compare the tarball's integrity with the registry's for that version: when equal it SHALL skip publishing, when different it SHALL fail. Then it SHALL create the GitHub release for the tag with the SBOM, or replace the SBOM of an existing one, so a re-run completes a release whose publish succeeded and later step failed.
+Before publishing, the script SHALL ask npm for the version's integrity: a 404 means absent and it publishes; the same integrity skips publishing; another integrity, or any other npm error, fails with nothing changed. For the GitHub release, "not found" creates it with the SBOM, an existing one gets the SBOM replaced, and any other error fails.
+
+#### Scenario: Version absent
+- **WHEN** npm answers 404 for the version
+- **THEN** the script publishes the tarball with `--provenance`, `--access public` and `--ignore-scripts`
 
 #### Scenario: Re-run after the release step failed
 - **WHEN** the version is already on npm with the same integrity as the packed tarball
@@ -61,7 +65,15 @@ Before publishing, the second job SHALL compare the tarball's integrity with the
 
 #### Scenario: Version already published with other bytes
 - **WHEN** the version is on npm with a different integrity
-- **THEN** the publish step fails and the release is not touched
+- **THEN** the script exits 1 without publishing or touching the GitHub release
+
+#### Scenario: Registry lookup fails
+- **WHEN** npm fails for a reason other than 404, or answers with no integrity
+- **THEN** the script exits 1 without publishing or touching the GitHub release
+
+#### Scenario: Release lookup fails
+- **WHEN** `gh release view` fails for a reason other than "release not found"
+- **THEN** the script exits 1 without creating or changing a release
 
 ### Requirement: Release workflow hardening
 The release workflow SHALL pin every action by full commit SHA, check out without persisting credentials, use no npm cache, and pass `actionlint`.
