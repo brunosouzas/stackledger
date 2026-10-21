@@ -101,7 +101,8 @@ The only write is the snapshot, at `~/.stackledger/<machine>/snapshot.json`:
 
 - `~/.stackledger` and the machine folder are created with mode `0700` when missing; existing ones are never changed. The run refuses (exit 1, nothing written) a home folder that group or others can write, a snapshot folder that is a link, not a folder, not yours or open to group or others, and a `snapshot.json` that is not a regular file.
 - The file is written with mode `0600` to a new temporary file in the machine folder, then renamed over `snapshot.json`, so a reader sees either the previous complete file or the new one. Two runs at once each rename a complete file; the last one wins. Each run replaces the file: there is no history.
-- The folders are checked again after the temporary file is created and before the rename. This detects a folder swapped by your own processes; it is not a boundary against them. Other users cannot write anything on the path.
+- The folders are checked again after the temporary file is created and before the rename, and before the rename the temporary path must still lead to the file written (same device and inode). This detects a folder or file swapped by your own processes; it is not a boundary against them. Other users cannot write anything on the path.
+- After a failure the temporary file is removed only while its path still leads to the file written. When even its identity could not be read, it is left in the machine folder and the error line says so; delete it by hand once you have checked it.
 
 **Machine name.** `ComputerName` folded to one path segment: Unicode NFKD, accents removed, lower case, each run of characters other than `a`–`z` and `0`–`9` replaced by one `-`, `-` trimmed from both ends, cut to 63 characters. `username - MacBook Air` becomes `username-macbook-air`; `MacBook de João` becomes `macbook-de-joao`. When that is empty, `LocalHostName` is folded the same way; when that is empty too, the name is `mac`.
 

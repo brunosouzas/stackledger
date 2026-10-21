@@ -65,7 +65,7 @@ When the home folder can be written by group or others; or `~/.stackledger` or t
 - **THEN** the exit code is 1, stderr has one line saying the folder must be private to the user, and nothing is written
 
 ### Requirement: Folder swap
-After creating its temporary file and again before the rename, the command SHALL check that both folders are still the folders it checked (same device and inode, not a link). If not, it SHALL leave `snapshot.json` as it was, remove its temporary file when its path still leads to it (in a folder moved away it stays), print one error line and exit 1. This detects a swap by the user's own processes; it is not a boundary against them.
+After creating its temporary file and again before the rename, the command SHALL check that both folders are still the folders it checked (same device and inode, not a link), and before the rename that the temporary path still leads to the file written. If not, it SHALL leave `snapshot.json` as it was, remove its temporary file only when its path still leads to it, print one error line and exit 1. This detects a swap by the user's own processes only.
 
 #### Scenario: Folder replaced before the temporary file
 - **WHEN** the machine folder is replaced by a symbolic link after the folder checks and before the temporary file is created
@@ -75,8 +75,12 @@ After creating its temporary file and again before the rename, the command SHALL
 - **WHEN** the machine folder is replaced by a symbolic link after the snapshot is written to the temporary file and before the rename
 - **THEN** the exit code is 1, neither the moved folder nor the link's target gets a new `snapshot.json`, and the link's target holds no temporary file
 
+#### Scenario: Temporary file replaced before the rename
+- **WHEN** another file is put at the temporary file's path after the snapshot is written to it and before the rename
+- **THEN** the exit code is 1, `snapshot.json` is unchanged, and the other file is kept
+
 ### Requirement: Write failures
-A failure to create or write the file, a `machine` field that fails the snapshot secret guard, a finished snapshot that fails the checks `drift` reads it with (shape, consistency, secret guard), or a snapshot whose JSON is larger than 32 MiB, SHALL exit 1 with one error line, remove the temporary file and leave any previous snapshot unchanged.
+A failure to create or write the file, a `machine` field that fails the snapshot secret guard, a finished snapshot that fails the checks `drift` reads it with (shape, consistency, secret guard), or a snapshot whose JSON is larger than 32 MiB, SHALL exit 1 with one error line, remove the temporary file and leave any previous snapshot unchanged. When the temporary file's identity cannot be read, it SHALL be kept and the line SHALL say so.
 
 #### Scenario: Folder not writable
 - **WHEN** the machine folder exists and cannot be written
@@ -85,6 +89,10 @@ A failure to create or write the file, a `machine` field that fails the snapshot
 #### Scenario: Snapshot too large
 - **WHEN** the discovered items serialise to more than 32 MiB
 - **THEN** the exit code is 1, stderr says the snapshot is too large, and the previous `snapshot.json` is unchanged
+
+#### Scenario: Temporary file of unknown identity is kept
+- **WHEN** reading the identity of the new temporary file fails and its path then holds another file
+- **THEN** the exit code is 1, the error line says the temporary file was left, the other file is kept, and the previous `snapshot.json` is unchanged
 
 #### Scenario: Invalid snapshot is not written
 - **WHEN** the finished snapshot fails its own shape check (for example an empty user name)

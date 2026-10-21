@@ -11,8 +11,10 @@
  *
  * Threat model: this is a boundary against other users (they cannot write anything on the path). It
  * only detects a swap by the user's own processes: Node has no openat/renameat to close the window
- * between the last check and the rename. On a detected swap the temporary file is removed by its path
- * only while that path still leads to the file written; in a folder moved away it stays.
+ * between the last check and the rename. The temporary file is renamed, or removed after a failure, by
+ * its path only while that path still leads to the file written (a regular file with the device and
+ * inode fstat gave its descriptor); in a folder moved away, or replaced, it stays. When fstat fails
+ * the file's identity is unknown, so nothing is removed and the error line says the file was left.
  *
  * Every call goes through WriteOps, so tests inject a swap at a chosen call. The shipped code always
  * uses NODE_WRITE_OPS. Failures throw InternalError (exit 1, one line).
@@ -93,11 +95,21 @@ function unchanged(ops: WriteOps, folders: Checked[]): boolean {
   });
 }
 
-/** Remove the temporary file only while its path still leads to the file written. */
-function removeTemporary(ops: WriteOps, path: string, ino: number | undefined): void {
+/** The device and inode fstat gave the temporary file's descriptor. */
+interface Identity { dev: number; ino: number }
+
+/** Whether `path` still leads to the file written: a regular file (no link) with its device and inode. */
+function stillTemporary(ops: WriteOps, path: string, file: Identity): boolean {
   try {
-    if (ino === undefined || ops.lstat(path).ino === ino) ops.unlink(path);
-  } catch { /* Gone or moved away with its folder: there is nothing at this path to remove. */ }
+    const status = ops.lstat(path);
+    return status.isFile() && !status.isSymbolicLink() && status.dev === file.dev && status.ino === file.ino;
+  } catch { return false; }
+}
+
+/** Remove the temporary file only while its path still leads to the file written. */
+function removeTemporary(ops: WriteOps, path: string, file: Identity): void {
+  if (!stillTemporary(ops, path, file)) return; // Gone, moved away with its folder, or replaced: not this run's.
+  try { ops.unlink(path); } catch { /* Gone meanwhile: there is nothing at this path to remove. */ }
 }
 
 /** Write the snapshot; returns the path of snapshot.json. */
@@ -115,11 +127,12 @@ export function writeSnapshot(snapshot: Snapshot, place: { home: string; root: s
   } catch (error) { if (error instanceof InternalError) throw error; if (code(error) !== 'ENOENT') throw fail(`cannot read ${SNAPSHOT_FILE} (${code(error)})`); }
 
   const temporary = join(machine, `snapshot.${process.pid}.${randomBytes(6).toString('hex')}.tmp`);
-  let fd: number | undefined, ino: number | undefined;
+  let fd: number | undefined, file: Identity | undefined;
   try { fd = ops.open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, PRIVATE_FILE); }
   catch (error) { throw fail(`cannot create the snapshot file (${code(error)})`); }
   try {
-    ino = ops.fstat(fd).ino;
+    const status = ops.fstat(fd);
+    file = { dev: status.dev, ino: status.ino };
     const swapped = () => fail('a snapshot folder changed while writing; the previous snapshot was kept');
     if (!unchanged(ops, folders)) throw swapped();
     ops.write(fd, text);
@@ -127,11 +140,17 @@ export function writeSnapshot(snapshot: Snapshot, place: { home: string; root: s
     ops.close(fd);
     fd = undefined;
     if (!unchanged(ops, folders)) throw swapped();
+    // The rename moves whatever the path now holds: only the file written may become snapshot.json.
+    // A replacement is not this run's, so it is left where it is.
+    if (!stillTemporary(ops, temporary, file)) throw fail('the temporary snapshot file was replaced while writing; the previous snapshot was kept');
     ops.rename(temporary, target);
     return target;
   } catch (error) {
-    removeTemporary(ops, temporary, ino);
     if (fd !== undefined) { try { ops.close(fd); } catch { /* The write already failed; that failure is reported. */ } }
+    // Without the identity fstat gives, a file at the temporary path may be a replacement: nothing is
+    // removed, and the one error line says the file was left.
+    if (file === undefined) throw fail(`cannot write the snapshot (${code(error)}); the previous snapshot was kept, and the temporary file was left because its identity could not be read`);
+    removeTemporary(ops, temporary, file);
     if (error instanceof InternalError) throw error;
     throw fail(`cannot write the snapshot (${code(error)}); the previous snapshot was kept`);
   }

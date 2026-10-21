@@ -52,3 +52,40 @@ test('Snapshot too large', async () => {
   expect(readFileSync(join(machine, 'snapshot.json'), 'utf8')).toBe('previous');
   expect(existsSync(join(machine, 'snapshot.json'))).toBe(true);
 });
+
+/** The temporary file in the machine folder (there is at most one). */
+const temporaryIn = (machine: string) => readdirSync(machine).filter(name => name.endsWith('.tmp'));
+
+test('Temporary file of unknown identity is kept', async () => {
+  const { home, root, machine, snapshot } = await setup();
+  writeFileSync(join(machine, 'snapshot.json'), 'previous');
+  // fstat fails after the exclusive create, and meanwhile the temporary path holds another file: its
+  // identity was never read, so this run cannot tell its own file from a replacement and removes nothing.
+  const faulty: WriteOps = { ...NODE_WRITE_OPS, fstat: () => {
+    const [name] = temporaryIn(machine);
+    writeFileSync(join(machine, 'replacement'), 'not this run\'s');
+    renameSync(join(machine, 'replacement'), join(machine, name!));
+    throw Object.assign(new Error('EIO'), { code: 'EIO' });
+  } };
+  expect(() => writeSnapshot(snapshot, { home, root }, faulty)).toThrow(/^stackledger discover: cannot write the snapshot \(EIO\); the previous snapshot was kept, and the temporary file was left because its identity could not be read$/);
+  const [name] = temporaryIn(machine);
+  expect(readFileSync(join(machine, name!), 'utf8')).toBe('not this run\'s');
+  expect(readFileSync(join(machine, 'snapshot.json'), 'utf8')).toBe('previous');
+});
+
+test('Temporary file replaced before the rename', async () => {
+  const { home, root, machine, snapshot } = await setup();
+  writeFileSync(join(machine, 'snapshot.json'), 'previous');
+  // After the close the temporary path is made to hold another file: the rename would move that file
+  // over snapshot.json, so it is refused, and the other file is not this run's to remove.
+  const faulty: WriteOps = { ...NODE_WRITE_OPS, close: fd => {
+    NODE_WRITE_OPS.close(fd);
+    const [name] = temporaryIn(machine);
+    writeFileSync(join(machine, 'replacement'), 'not this run\'s');
+    renameSync(join(machine, 'replacement'), join(machine, name!));
+  } };
+  expect(() => writeSnapshot(snapshot, { home, root }, faulty)).toThrow(/^stackledger discover: the temporary snapshot file was replaced while writing; the previous snapshot was kept$/);
+  expect(readFileSync(join(machine, 'snapshot.json'), 'utf8')).toBe('previous');
+  const [name] = temporaryIn(machine);
+  expect(readFileSync(join(machine, name!), 'utf8')).toBe('not this run\'s');
+});
