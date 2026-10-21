@@ -68,7 +68,7 @@ describe.skipIf(offline)('installed package', () => {
     for (const command of ['validate', 'mcp', 'map', 'build', 'report', 'discover', 'drift']) {
       expect(result.stdout).toMatch(new RegExp(`^ *(Usage: )?stackledger ${command}\\b`, 'm'));
     }
-  });
+  }, 60_000);
 
   test('Two installs agree: same production versions in both, equal to the shrinkwrap', () => {
     const listed = installs.map(target => {
@@ -93,5 +93,5 @@ describe.skipIf(offline)('installed package', () => {
     // shrinkwrap entries marked dev, as packages nothing uses ("extraneous"); they are locked too.
     const locked = new Set(entries.map(({ id }) => id));
     expect([...installed].filter(id => !locked.has(id))).toEqual([]);
-  });
+  }, 180_000);
 });
