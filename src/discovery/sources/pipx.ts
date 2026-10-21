@@ -49,7 +49,8 @@ export async function readPipx(host: Host): Promise<SourceResult> {
   let ignored = 0;
   for (const name of names) {
     const kind = await entryKind(host, join(venvs, name));
-    if (kind === 'link') { ignored++; continue; }
+    // A linked venv is not followed, and a listed venv lstat cannot examine may hold a package: both counted.
+    if (kind === 'link' || kind === 'missing') { ignored++; continue; }
     if (kind !== 'dir') continue;
     const read = await readVenv(host, join(venvs, name));
     if (read === 'ignored') ignored++;

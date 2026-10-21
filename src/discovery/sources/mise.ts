@@ -4,7 +4,8 @@
  * The data folder is $MISE_DATA_DIR, else $XDG_DATA_HOME/mise, else ~/.local/share/mise. Each tool
  * folder is one item; its versions are the version folders inside, leaving out symbolic links such as
  * `latest` or `22`. A tool folder that cannot be listed or holds no version is counted as ignored. Links
- * are not followed: a linked data folder, `installs` folder or tool folder counts as one ignored entry.
+ * are not followed: a linked data folder, `installs` folder or tool folder counts as one ignored entry,
+ * and so does a listed tool folder that cannot be examined.
  */
 import { join } from 'node:path';
 import type { Host } from '../host.js';
@@ -38,7 +39,8 @@ export async function readMise(host: Host): Promise<SourceResult> {
     const path = join(installs, tool), kind = await entryKind(host, path);
     // A linked tool folder is not followed and counts as ignored; a version link such as `latest` is
     // an alias of a version folder beside it and is only left out (below).
-    if (kind === 'link') { ignored++; continue; }
+    // A listed tool folder lstat cannot examine may be a tool: counted too, as apps and launchd do.
+    if (kind === 'link' || kind === 'missing') { ignored++; continue; }
     if (kind !== 'dir') continue;
     const names = await listFolder(host, path);
     const versions: string[] = [];

@@ -383,3 +383,18 @@ test('Linked pipx venvs folder', async () => {
   }) }));
   expect(pipx).toMatchObject({ status: 'ok', items: [], ignored: 1 });
 });
+
+test('Unexaminable tool folder', async () => {
+  const mise = await readMise(virtualHost({ files: machine({
+    '/Users/username/.local/share/mise/installs/deno': { dir: true, unstatable: true },
+  }) }));
+  expect(mise).toMatchObject({ status: 'ok', ignored: 1 });
+  expect(ids(mise).sort()).toEqual(['node', 'python']);
+});
+
+test('Unexaminable venv', async () => {
+  const pipx = await readPipx(virtualHost({ files: machine({
+    '/Users/username/.local/pipx/venvs/northwind-hidden': { dir: true, unstatable: true },
+  }) }));
+  expect(pipx).toMatchObject({ status: 'ok', ignored: 1 });
+});
