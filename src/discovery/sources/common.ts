@@ -1,6 +1,8 @@
 /** Helpers shared by the discovery sources: folder listing, the plutil pool and value checks.
  *
- * Why here: `app` and `launchd` both list folders without following links and read plists through
+ * Why here: every source that reads files lstats a folder before listing it, so a link is never
+ * followed (listRoot for the folders it starts from, entryKind for the entries inside); `app` and
+ * `launchd` both list folders without following links and read plists through
  * sandboxed `plutil`, one run per key or file, at most 8 at a time (design D2); `mise` and `pipx`
  * list folders too. Results are sorted later (src/discovery/snapshot.ts), so the pool's completion
  * order never changes the snapshot.
@@ -12,6 +14,25 @@ export const PLUTIL_POOL = 8;
 /** The names in a folder; `absent` when it does not exist, `unreadable` when it exists but cannot be listed. */
 export async function listFolder(host: Host, path: string): Promise<string[] | 'absent' | 'unreadable'> {
   try { return await host.readdir(path); } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    return code === 'ENOENT' || code === 'ENOTDIR' ? 'absent' : 'unreadable';
+  }
+}
+
+/** A folder a source starts from (or a folder it chose by name, such as mise's `installs`): `link` when
+ * it is a symbolic link, which is never followed (readdir would list the link's target); otherwise as
+ * listFolder. The source counts a `link` as one ignored entry, so drift marks what it may hide incomplete. */
+export async function listRoot(host: Host, path: string): Promise<string[] | 'absent' | 'unreadable' | 'link'> {
+  const kind = await rootKind(host, path);
+  return kind === 'dir' ? listFolder(host, path) : kind;
+}
+
+/** A source's folder by lstat, never followed: `dir`, `link`, `absent` (missing or not a folder) or `unreadable`. */
+export async function rootKind(host: Host, path: string): Promise<'dir' | 'link' | 'absent' | 'unreadable'> {
+  try {
+    const status = await host.lstat(path);
+    return status.isSymbolicLink() ? 'link' : status.isDirectory() ? 'dir' : 'absent';
+  } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     return code === 'ENOENT' || code === 'ENOTDIR' ? 'absent' : 'unreadable';
   }

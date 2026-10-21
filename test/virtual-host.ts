@@ -5,10 +5,14 @@
  * running a real program. The tree comes from test/fixtures/discovery/machine.json; program outputs
  * from the other fixtures there. `plutil` is answered from the virtual files, which hold JSON plists
  * (real plutil reads those too). Every program call is recorded in `calls`.
+ *
+ * Links behave as on a real disk: a link anywhere before the last part of a path is followed by every
+ * call; the last part is followed by readdir, readFile, plutil and isFile, but not by lstat, nor by
+ * canRead (which opens with O_NOFOLLOW). So a test sees what a source would read through a link.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import type { EntryStatus, Host } from '../src/discovery/host.js';
 import type { RunResult } from '../src/discovery/run.js';
 
@@ -19,7 +23,12 @@ export const fixture = (name: string) => readFileSync(`${fixtures}${name}`, 'utf
  * that is `unreadable` cannot be listed; a folder or file that is `unstatable` cannot be examined (lstat fails). */
 export type Entry = string | object | { dir: true; unreadable?: boolean; unstatable?: boolean } | { link: string } | { file: string; unreadable?: boolean; hang?: boolean; unstatable?: boolean };
 export type Program = (args: string[], host: VirtualHost) => RunResult | Promise<RunResult>;
-export interface VirtualHost extends Host { calls: { program: string; args: string[] }[]; files: Map<string, Node> }
+export interface VirtualHost extends Host {
+  calls: { program: string; args: string[] }[];
+  files: Map<string, Node>;
+  /** The key in `files` a path leads to: links before the last part followed, the last one too when `followLast`. */
+  resolve(path: string, followLast: boolean): string;
+}
 type Node = { kind: 'dir'; unreadable: boolean; unstatable?: boolean } | { kind: 'link'; target: string } | { kind: 'file'; text: string; unreadable: boolean; hang: boolean; unstatable?: boolean };
 
 const exited = (stdout: string, code = 0): RunResult => ({ kind: 'exited', code, stdout });
@@ -27,7 +36,7 @@ const fsError = (code: string) => Object.assign(new Error(code), { code });
 
 /** plutil as discovery calls it: `-convert json -o - <file>` or `-extract <key> raw -expect string -o - <file>`. */
 const plutil: Program = (args, host) => {
-  const path = args.at(-1)!, node = host.files.get(path);
+  const node = host.files.get(host.resolve(args.at(-1)!, true));
   if (!node || node.kind !== 'file' || node.unreadable) return exited('', 1);
   if (node.hang) return { kind: 'time limit' };
   let value: unknown;
@@ -70,8 +79,24 @@ export function virtualHost(options: { files?: Record<string, Entry>; programs?:
     isFile: () => node.kind === 'file', isDirectory: () => node.kind === 'dir', isSymbolicLink: () => node.kind === 'link',
     size: node.kind === 'file' ? Buffer.byteLength(node.text) : 0,
   });
+  /** Follow links like the kernel does, giving up (ELOOP) after 40 of them. */
+  const follow = (path: string, followLast: boolean): string => {
+    let hops = 0;
+    const walk = (current: string, rest: string[]): string => {
+      const [part, ...after] = rest;
+      if (part === undefined) return current;
+      const next = current === '/' ? `/${part}` : `${current}/${part}`, node = files.get(next);
+      if (node?.kind === 'link' && (after.length || followLast)) {
+        if (++hops > 40) throw fsError('ELOOP');
+        const target = resolve(dirname(next), node.target);
+        return walk('/', [...target.split('/').filter(Boolean), ...after]);
+      }
+      return walk(next, after);
+    };
+    return walk('/', path.split('/').filter(Boolean));
+  };
   const host: VirtualHost = {
-    calls: [], files,
+    calls: [], files, resolve: follow,
     platform: options.platform ?? 'darwin',
     env: options.env ?? { PATH: '/usr/bin:/bin', HOME: '/Users/username', USER: 'username' },
     home: '/Users/username',
@@ -86,6 +111,7 @@ export function virtualHost(options: { files?: Record<string, Entry>; programs?:
       return fake ? fake(args, host) : { kind: 'not found' };
     },
     readdir: async path => {
+      path = follow(path, true);
       const node = files.get(path);
       if (!node) throw fsError('ENOENT');
       if (node.kind !== 'dir') throw fsError('ENOTDIR');
@@ -93,21 +119,20 @@ export function virtualHost(options: { files?: Record<string, Entry>; programs?:
       return [...files.keys()].filter(key => dirname(key) === path && key !== path).map(key => key.slice(path.length + 1));
     },
     lstat: async path => {
-      const node = files.get(path);
+      const node = files.get(follow(path, false));
       if (!node) throw fsError('ENOENT');
       if ((node.kind === 'dir' || node.kind === 'file') && node.unstatable) throw fsError('EACCES');
       return status(node);
     },
     readFile: async path => {
-      let node = files.get(path);
-      if (node?.kind === 'link') node = files.get(node.target);
+      const node = files.get(follow(path, true));
       if (!node) throw fsError('ENOENT');
       if (node.kind !== 'file') throw fsError('EISDIR');
       if (node.unreadable) throw fsError('EACCES');
       return node.text;
     },
-    canRead: async path => { const node = files.get(path); return node?.kind === 'file' && !node.unreadable; },
-    isFile: async path => path === '/usr/bin/sandbox-exec' ? (options.sandbox ?? true) : files.get(path)?.kind === 'file',
+    canRead: async path => { const node = files.get(follow(path, false)); return node?.kind === 'file' && !node.unreadable; },
+    isFile: async path => path === '/usr/bin/sandbox-exec' ? (options.sandbox ?? true) : files.get(follow(path, true))?.kind === 'file',
   };
   return host;
 }

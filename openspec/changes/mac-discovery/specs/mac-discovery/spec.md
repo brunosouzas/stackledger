@@ -105,11 +105,22 @@ Program output that is not the expected top-level JSON (an object with `formulae
 - **THEN** that line is counted as ignored and the source is `ok`
 
 ### Requirement: Applications found
-`app` SHALL look at the folders named `*.app` directly inside `/Applications` and `~/Applications`, and inside their subfolders one level down. It SHALL NOT follow symbolic links, which are counted as ignored, and SHALL NOT look inside an `.app`. An `.app` entry or other top-level entry that cannot be examined, and a subfolder that cannot be listed, are each counted as ignored. When neither folder exists the source is `skipped`.
+`app` SHALL look at the folders named `*.app` directly inside `/Applications` and `~/Applications`, and inside their subfolders one level down. It SHALL NOT look inside an `.app` beyond `Contents/Info.plist` and `Contents/_MASReceipt`. When neither folder exists the source is `skipped`.
 
 #### Scenario: App in a subfolder
 - **WHEN** `/Applications/Utilities/Northwind Monitor.app` exists
 - **THEN** it is recorded
+
+### Requirement: Applications not followed
+`app` SHALL NOT follow a symbolic link: a linked `/Applications` or `~/Applications` (which still exists, so the source is not `skipped`), a linked subfolder and a linked `.app` are each counted as one ignored entry. An `.app` entry or other top-level entry that cannot be examined, and a subfolder that cannot be listed, are each counted as ignored.
+
+#### Scenario: Linked Applications folder
+- **WHEN** `/Applications` is a symbolic link to a folder holding `Northwind Hidden.app`, and `~/Applications` holds `Northwind Draw.app`
+- **THEN** only `Northwind Draw.app` is recorded, `app` is `ok` and `ignored` counts the link once
+
+#### Scenario: Linked subfolder
+- **WHEN** `/Applications/Northwind Suite` is a symbolic link to a folder holding `Northwind Calc.app`
+- **THEN** `Northwind Calc.app` is not recorded, `app` is `ok` and `ignored` counts the link once
 
 #### Scenario: Linked app
 - **WHEN** `/Applications/Northwind Viewer.app` is a symbolic link
@@ -128,7 +139,7 @@ Program output that is not the expected top-level JSON (an object with `formulae
 - **THEN** `app` is `ok` and `ignored` counts it once
 
 ### Requirement: Application fields
-`app` SHALL read each bundle's `Contents/Info.plist` with `plutil`. The item has `id` = `CFBundleIdentifier`; `title` = `CFBundleDisplayName`, else `CFBundleName`, else the folder name without `.app`, else (all three empty) the `id`; `versions` = `CFBundleShortVersionString` when present; `path`; and `appStore` = whether `Contents/_MASReceipt` exists. A bundle without a readable identifier is counted as ignored.
+`app` SHALL read each bundle's `Contents/Info.plist` with `plutil`. The item has `id` = `CFBundleIdentifier`; `title` = `CFBundleDisplayName`, else `CFBundleName`, else the folder name without `.app`, else (all three empty) the `id`; `versions` = `CFBundleShortVersionString` when present; `path`; and `appStore` = whether `Contents/_MASReceipt` exists. A bundle without a readable identifier, or whose `Contents` or `Info.plist` is a link (never read), is counted as ignored.
 
 #### Scenario: App Store receipt
 - **WHEN** `Northwind Notes.app` has `Contents/_MASReceipt`
@@ -138,12 +149,20 @@ Program output that is not the expected top-level JSON (an object with `formulae
 - **WHEN** an `.app` has an `Info.plist` without `CFBundleIdentifier`
 - **THEN** it is not recorded and `ignored` counts it
 
+#### Scenario: Linked bundle contents
+- **WHEN** `/Applications/Northwind Shadow.app` is a folder whose `Contents` is a symbolic link to a folder holding an `Info.plist`
+- **THEN** that plist is not read, the bundle is not recorded and `ignored` counts it
+
+#### Scenario: Linked Info.plist
+- **WHEN** `/Applications/Northwind Mirror.app/Contents/Info.plist` is a symbolic link to a plist elsewhere
+- **THEN** `plutil` never reads it, the bundle is not recorded and `ignored` counts it
+
 #### Scenario: App with an empty name
 - **WHEN** a bundle named `.app` has `CFBundleIdentifier` `com.northwind.blank` and no display or bundle name
 - **THEN** its item's `title` is `com.northwind.blank`
 
 ### Requirement: launchd jobs
-`launchd` SHALL read the `.plist` files directly inside `~/Library/LaunchAgents` (scope `user-agent`), `/Library/LaunchAgents` (scope `agent`) and `/Library/LaunchDaemons` (scope `daemon`), not following links. The item has `id` = `Label`, `scope`, `path` of the file and `program` = `Program`, else the first entry of `ProgramArguments`, else null. A file that cannot be examined or read, or has no `Label`, is counted as ignored.
+`launchd` SHALL read the `.plist` files directly inside `~/Library/LaunchAgents` (scope `user-agent`), `/Library/LaunchAgents` (scope `agent`) and `/Library/LaunchDaemons` (scope `daemon`), not following links: a linked folder or file counts as one ignored entry. The item has `id` = `Label`, `scope`, `path` of the file and `program` = `Program`, else the first entry of `ProgramArguments`, else null. A file that cannot be examined or read, or has no `Label`, is counted as ignored.
 
 #### Scenario: Agent of the user
 - **WHEN** `~/Library/LaunchAgents/com.northwind.sync.plist` has `Label` `com.northwind.sync` and `ProgramArguments` `["/Applications/Northwind Sync.app/Contents/MacOS/sync", "--quiet"]`
@@ -157,6 +176,10 @@ Program output that is not the expected top-level JSON (an object with `formulae
 - **WHEN** a `.plist` listed in `/Library/LaunchDaemons` cannot be examined (lstat fails)
 - **THEN** it is counted as ignored and the source is `ok`
 
+#### Scenario: Linked launchd folder
+- **WHEN** `/Library/LaunchDaemons` is a symbolic link to a folder holding a job file
+- **THEN** that job is not recorded, `launchd` is `ok` and `ignored` counts the link once
+
 ### Requirement: launchd privacy
 Discovery SHALL read only the keys `Label`, `Program` and `ProgramArguments.0` of a launchd file, one `plutil -extract <key> raw` run per key, so no other argument, environment variable or key is read or reaches the snapshot.
 
@@ -165,11 +188,23 @@ Discovery SHALL read only the keys `Label`, `Program` and `ProgramArguments.0` o
 - **THEN** the snapshot contains neither `nw-example-value` nor any environment variable, and every `plutil` run on that file extracts one of the three keys
 
 ### Requirement: mise
-`mise` SHALL list the folders inside `installs` of the mise data folder (`$MISE_DATA_DIR`, else `$XDG_DATA_HOME/mise`, else `~/.local/share/mise`). Each tool folder is one item with `id` = the folder name and `versions` = the names of its version folders, leaving out symbolic links such as `latest`. It SHALL NOT run `mise`. Without that folder the source is `skipped`.
+`mise` SHALL list the folders inside `installs` of the mise data folder (`$MISE_DATA_DIR`, else `$XDG_DATA_HOME/mise`, else `~/.local/share/mise`). Each tool folder is one item with `id` = the folder name and `versions` = the names of its version folders, leaving out symbolic links such as `latest`. It SHALL NOT run `mise`. Without that folder the source is `skipped`. A linked data folder, `installs` folder or tool folder is not followed and counts as one ignored entry.
 
 #### Scenario: Tool with an alias link
 - **WHEN** `installs/node` holds the folders `22.12.0` and `24.1.0` and a link `22`
 - **THEN** the item `node` has `versions` `["22.12.0", "24.1.0"]`
+
+#### Scenario: Linked mise data folder
+- **WHEN** `$MISE_DATA_DIR` is a symbolic link to a folder whose `installs` holds a tool
+- **THEN** `mise` is `ok` with no item and `ignored` counts the link once
+
+#### Scenario: Linked mise installs folder
+- **WHEN** `installs` is a symbolic link to a folder holding a tool
+- **THEN** `mise` is `ok` with no item and `ignored` counts the link once
+
+#### Scenario: Linked tool folder
+- **WHEN** `installs/deno` is a symbolic link to a folder holding a version folder
+- **THEN** no item `deno` is recorded and `ignored` counts the link once
 
 ### Requirement: npm
 `npm` SHALL run `npm ls --global --depth=0 --json --offline` and record each top-level package as an item with `id` = its name and `versions`. A non-zero exit whose stdout is a JSON object with `dependencies` SHALL still be read; any other non-zero exit fails the source.
@@ -179,7 +214,7 @@ Discovery SHALL read only the keys `Label`, `Program` and `ProgramArguments.0` o
 - **THEN** the `npm` item `northwind-cli` is recorded and the source is `ok`
 
 ### Requirement: pipx
-`pipx` SHALL read `pipx_metadata.json` in each folder of `venvs` in the pipx home (`$PIPX_HOME`, else `~/.local/pipx` when it exists, else `~/Library/Application Support/pipx`). The item has `id` = `main_package.package` and `versions` = `main_package.package_version`. It SHALL NOT run `pipx`, which writes a log on every run. A metadata file that cannot be read, is not JSON, or lacks either field as a non-empty string is counted as ignored.
+`pipx` SHALL read `pipx_metadata.json` in each folder of `venvs` in the pipx home (`$PIPX_HOME`, else `~/.local/pipx` when it exists, else `~/Library/Application Support/pipx`). The item has `id` = `main_package.package` and `versions` = `main_package.package_version`. It SHALL NOT run `pipx`. A metadata file that cannot be read, is not JSON, or lacks either field as a non-empty string, and a linked pipx home, `venvs` folder or venv (never followed), each count as one ignored entry.
 
 #### Scenario: pipx package
 - **WHEN** `venvs/northwind-docs/pipx_metadata.json` names the package `northwind-docs` at version `1.6.0`
@@ -188,6 +223,14 @@ Discovery SHALL read only the keys `Label`, `Program` and `ProgramArguments.0` o
 #### Scenario: Broken pipx metadata
 - **WHEN** one venv's `pipx_metadata.json` has `main_package.package_version` as a number
 - **THEN** that venv is counted as ignored and the other venvs are recorded
+
+#### Scenario: Linked pipx home
+- **WHEN** `~/.local/pipx` is a symbolic link to a folder whose `venvs` holds a package
+- **THEN** `pipx` is `ok` with no item and `ignored` counts the link once
+
+#### Scenario: Linked pipx venvs folder
+- **WHEN** `venvs` in the pipx home is a symbolic link to a folder holding a package
+- **THEN** `pipx` is `ok` with no item and `ignored` counts the link once
 
 ### Requirement: Machine name
 The machine name SHALL be the output of `scutil --get ComputerName` folded to a path segment: Unicode NFKD, combining marks removed, lower case, each run of characters other than `a`–`z` and `0`–`9` replaced by one `-`, `-` trimmed from both ends, then cut to 63 characters and trimmed again. When the result is empty, `scutil --get LocalHostName` is folded the same way; when that is empty too, the name is `mac`.

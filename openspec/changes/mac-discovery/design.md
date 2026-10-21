@@ -39,7 +39,7 @@ Alternatives: run programs plainly and trust them (npm and pipx proved they writ
 
 ### D2. Files read by Node itself
 
-`app` and `launchd` list folders with `readdir`/`lstat` (never following links).
+`app` and `launchd` list folders with `readdir`/`lstat` (never following links). Every folder a source lists, the folders it starts from included (`/Applications`, the launchd folders, mise's data and `installs` folders, the pipx home and `venvs`), is `lstat`ed first, and every file passed to `plutil` or read by Node is `lstat`ed as a non-link first (an app's `Contents` and `Info.plist` included); a link is never followed and counts as one ignored entry, so drift marks what it may hide `incomplete`.
 
 - `app` passes each `Info.plist` to sandboxed `plutil -convert json -o - <file>`. When that conversion fails (a plist holding a date or data value cannot become JSON), it falls back to `plutil -extract <key> raw -o - <file>` for each of its four keys. An app's `Info.plist` holds no user secrets, so converting it whole is fine.
 - `launchd` never converts a file whole: it runs `plutil -extract Label raw`, `plutil -extract Program raw` and, when `Program` is absent, `plutil -extract ProgramArguments.0 raw`. Before that, Node opens the file for reading to tell an unreadable file (ignored) from a missing key (`plutil` exit 1 on a readable file: the key is absent).

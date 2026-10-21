@@ -4,13 +4,14 @@
  * Privacy: a job's arguments and environment may hold tokens, so a file is never converted whole.
  * Only `Label`, `Program` and, when Program is absent, `ProgramArguments.0` are read, one sandboxed
  * `plutil -extract <key> raw` run per key. Node first opens the file for reading (and closes it unread)
- * to tell an unreadable file from a missing key. Links are not followed and count as ignored, like an
- * unreadable file, a listed file lstat cannot examine, or one without a Label. `launchctl` is not used: it fails inside the sandbox.
+ * to tell an unreadable file from a missing key. Links are not followed and count as ignored (a linked
+ * job folder once, a linked job file once), like an unreadable file, a listed file lstat cannot
+ * examine, or one without a Label. `launchctl` is not used: it fails inside the sandbox.
  */
 import { join } from 'node:path';
 import type { Host } from '../host.js';
 import { failed, ok, skipped, type LaunchdItem, type LaunchdScope, type SourceResult } from '../types.js';
-import { entryKind, extractString, listFolder, pool, PLUTIL_POOL } from './common.js';
+import { entryKind, extractString, listRoot, pool, PLUTIL_POOL } from './common.js';
 
 /** One job file: its item, or a tagged reason (never a bare string, which a Label could equal). */
 type JobRead = { item: LaunchdItem } | { item: null; reason: 'ignored' | 'no plutil' };
@@ -34,10 +35,12 @@ export async function readLaunchd(host: Host): Promise<SourceResult> {
   const jobs: [string, LaunchdScope][] = [];
   let present = 0, ignored = 0;
   for (const [folder, scope] of folders) {
-    const names = await listFolder(host, folder);
+    const names = await listRoot(host, folder);
     if (names === 'absent') continue;
     if (names === 'unreadable') return failed('launchd', 'cannot be read');
     present++;
+    // A linked job folder exists but is not followed: one ignored entry, so drift marks a missing label incomplete.
+    if (names === 'link') { ignored++; continue; }
     for (const name of names.filter(entry => entry.endsWith('.plist'))) {
       const kind = await entryKind(host, join(folder, name));
       if (kind === 'file') jobs.push([join(folder, name), scope]);

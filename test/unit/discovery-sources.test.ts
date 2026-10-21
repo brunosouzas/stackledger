@@ -286,3 +286,100 @@ test('Two App Store lines for one app', async () => {
     expect(snapshot.items.filter(entry => entry.source === 'mas')).toEqual([{ source: 'mas', id: '1234567890', versions: ['4.2'], title: 'Northwind Notes' }]);
   }
 });
+
+/** The fictitious machine without the entries under `prefix`, plus `extra`: room for a link in their place. */
+const machineWithout = (prefix: string, extra: Record<string, Entry>) => ({
+  ...Object.fromEntries(Object.entries(machineFiles()).filter(([path]) => !path.startsWith(prefix))), ...extra });
+
+test('Linked Applications folder', async () => {
+  // /Applications itself is a link: it is not followed, so the app behind it is not recorded, and it
+  // counts as one ignored entry, so drift marks a missing app incomplete. ~/Applications is still read.
+  const apps = await readApps(virtualHost({ files: machineWithout('/Applications/', {
+    '/Applications': { link: '/Volumes/Northwind/Apps' },
+    '/Volumes/Northwind/Apps/Northwind Hidden.app/Contents/Info.plist': { CFBundleIdentifier: 'com.northwind.hidden' },
+  }) }));
+  expect(apps).toMatchObject({ status: 'ok', ignored: 1 });
+  expect(ids(apps)).toEqual(['com.northwind.draw']);
+});
+
+test('Linked subfolder', async () => {
+  const apps = await readApps(virtualHost({ files: machine({
+    '/Applications/Northwind Suite': { link: '/Volumes/Northwind/Suite' },
+    '/Volumes/Northwind/Suite/Northwind Calc.app/Contents/Info.plist': { CFBundleIdentifier: 'com.northwind.calc' },
+  }) }));
+  expect(apps).toMatchObject({ status: 'ok', ignored: 1 });
+  expect(apps.items).toHaveLength(5);
+  expect(ids(apps)).not.toContain('com.northwind.calc');
+});
+
+test('Linked bundle contents', async () => {
+  // The bundle is a real folder but its Contents is a link: plutil would read through it, so it is not read.
+  const apps = await readApps(virtualHost({ files: machine({
+    '/Applications/Northwind Shadow.app/Contents': { link: '/Volumes/Northwind/Contents' },
+    '/Volumes/Northwind/Contents/Info.plist': { CFBundleIdentifier: 'com.northwind.shadow' },
+  }) }));
+  expect(apps).toMatchObject({ status: 'ok', ignored: 1 });
+  expect(ids(apps)).not.toContain('com.northwind.shadow');
+  expect(apps.items).toHaveLength(5);
+});
+
+test('Linked Info.plist', async () => {
+  const host = virtualHost({ files: machine({
+    '/Applications/Northwind Mirror.app/Contents/Info.plist': { link: '/Volumes/Northwind/Info.plist' },
+    '/Volumes/Northwind/Info.plist': { CFBundleIdentifier: 'com.northwind.mirror' },
+  }) });
+  const apps = await readApps(host);
+  expect(apps).toMatchObject({ status: 'ok', ignored: 1 });
+  expect(ids(apps)).not.toContain('com.northwind.mirror');
+  expect(host.calls.some(call => call.args.at(-1)!.startsWith('/Applications/Northwind Mirror.app'))).toBe(false);
+});
+
+test('Linked launchd folder', async () => {
+  const launchd = await readLaunchd(virtualHost({ files: machineWithout('/Library/LaunchDaemons/', {
+    '/Library/LaunchDaemons': { link: '/Volumes/Northwind/Daemons' },
+    '/Volumes/Northwind/Daemons/com.northwind.hidden.plist': { Label: 'com.northwind.hidden' },
+  }) }));
+  expect(launchd).toMatchObject({ status: 'ok', ignored: 1 });
+  expect(ids(launchd).sort()).toEqual(['com.northwind.sync', 'com.northwind.updater']);
+});
+
+test('Linked mise data folder', async () => {
+  const mise = await readMise(virtualHost({ env: { PATH: '/usr/bin:/bin', HOME: '/Users/username', MISE_DATA_DIR: '/Users/username/mise' }, files: machine({
+    '/Users/username/mise': { link: '/Volumes/Northwind/mise' },
+    '/Volumes/Northwind/mise/installs/deno/2.0.0/bin/deno': 'fictitious',
+  }) }));
+  expect(mise).toMatchObject({ status: 'ok', items: [], ignored: 1 });
+});
+
+test('Linked mise installs folder', async () => {
+  const mise = await readMise(virtualHost({ files: machineWithout('/Users/username/.local/share/mise/installs/', {
+    '/Users/username/.local/share/mise/installs': { link: '/Volumes/Northwind/installs' },
+    '/Volumes/Northwind/installs/deno/2.0.0/bin/deno': 'fictitious',
+  }) }));
+  expect(mise).toMatchObject({ status: 'ok', items: [], ignored: 1 });
+});
+
+test('Linked tool folder', async () => {
+  const mise = await readMise(virtualHost({ files: machine({
+    '/Users/username/.local/share/mise/installs/deno': { link: '/Volumes/Northwind/deno' },
+    '/Volumes/Northwind/deno/2.0.0/bin/deno': 'fictitious',
+  }) }));
+  expect(mise).toMatchObject({ status: 'ok', ignored: 1 });
+  expect(ids(mise).sort()).toEqual(['node', 'python']);
+});
+
+test('Linked pipx home', async () => {
+  const pipx = await readPipx(virtualHost({ files: machineWithout('/Users/username/.local/pipx/', {
+    '/Users/username/.local/pipx': { link: '/Volumes/Northwind/pipx' },
+    '/Volumes/Northwind/pipx/venvs/northwind-docs/pipx_metadata.json': { main_package: { package: 'northwind-docs', package_version: '1.6.0' } },
+  }) }));
+  expect(pipx).toMatchObject({ status: 'ok', items: [], ignored: 1 });
+});
+
+test('Linked pipx venvs folder', async () => {
+  const pipx = await readPipx(virtualHost({ files: machineWithout('/Users/username/.local/pipx/', {
+    '/Users/username/.local/pipx/venvs': { link: '/Volumes/Northwind/venvs' },
+    '/Volumes/Northwind/venvs/northwind-docs/pipx_metadata.json': { main_package: { package: 'northwind-docs', package_version: '1.6.0' } },
+  }) }));
+  expect(pipx).toMatchObject({ status: 'ok', items: [], ignored: 1 });
+});
