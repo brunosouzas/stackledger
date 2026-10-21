@@ -18,7 +18,12 @@ const MAX_METADATA_BYTES = 1024 * 1024;
 export async function pipxHome(host: Host): Promise<string> {
   if (host.env.PIPX_HOME) return host.env.PIPX_HOME;
   const local = join(host.home, '.local', 'pipx');
-  return await entryKind(host, local) !== 'missing' ? local : join(host.home, 'Library', 'Application Support', 'pipx');
+  // Only absence moves to the other location: a ~/.local/pipx that cannot be examined is still the
+  // pipx home, and the source then fails with `cannot be read` instead of reading somewhere else.
+  try { await host.lstat(local); return local; }
+  catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'ENOENT' ? join(host.home, 'Library', 'Application Support', 'pipx') : local;
+  }
 }
 
 async function readVenv(host: Host, venv: string): Promise<PipxItem | 'ignored'> {

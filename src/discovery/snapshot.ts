@@ -34,15 +34,17 @@ const MACHINE_NAME = /^(?=.{1,63}$)[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const text = z.string().min(1);
 const list = z.array(text);
+/** Sources whose every item has at least one installed version (launchd has none; an app may have none). */
+const versions = z.array(text).min(1);
 const itemSchema = z.discriminatedUnion('source', [
-  z.strictObject({ source: z.literal('brew'), id: text, versions: list, onRequest: z.boolean(), dependsOn: list }),
-  z.strictObject({ source: z.literal('cask'), id: text, versions: list, apps: list }),
-  z.strictObject({ source: z.literal('mas'), id: text, versions: list, title: text }),
+  z.strictObject({ source: z.literal('brew'), id: text, versions, onRequest: z.boolean(), dependsOn: list }),
+  z.strictObject({ source: z.literal('cask'), id: text, versions, apps: list }),
+  z.strictObject({ source: z.literal('mas'), id: text, versions, title: text }),
   z.strictObject({ source: z.literal('app'), id: text, versions: list, title: text, path: text, appStore: z.boolean() }),
   z.strictObject({ source: z.literal('launchd'), id: text, versions: z.array(text).max(0), scope: z.enum(['user-agent', 'agent', 'daemon']), path: text, program: text.nullable() }),
-  z.strictObject({ source: z.literal('mise'), id: text, versions: list }),
-  z.strictObject({ source: z.literal('npm'), id: text, versions: list }),
-  z.strictObject({ source: z.literal('pipx'), id: text, versions: list }),
+  z.strictObject({ source: z.literal('mise'), id: text, versions }),
+  z.strictObject({ source: z.literal('npm'), id: text, versions }),
+  z.strictObject({ source: z.literal('pipx'), id: text, versions }),
 ]);
 const count = z.number().int().nonnegative();
 export const snapshotSchema: z.ZodType<Snapshot> = z.strictObject({

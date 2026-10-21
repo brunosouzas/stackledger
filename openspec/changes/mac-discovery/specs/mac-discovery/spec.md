@@ -233,7 +233,7 @@ Discovery SHALL read only the keys `Label`, `Program` and `ProgramArguments.0` o
 - **THEN** `pipx` is `ok` with no item and `ignored` counts the link once
 
 ### Requirement: mise and pipx entries that cannot be examined
-A mise tool folder or a pipx venv that is listed but cannot be examined SHALL count as one ignored entry, as in `app` and `launchd`, so `drift` marks a missing identifier of that source `incomplete`.
+A mise tool folder or a pipx venv that is listed but cannot be examined SHALL count as one ignored entry, as in `app` and `launchd`, so `drift` marks a missing identifier of that source `incomplete`. A `~/.local/pipx` that exists but cannot be examined is still the pipx home: `pipx` fails with `cannot be read` instead of reading the other location.
 
 #### Scenario: Unexaminable tool folder
 - **WHEN** `installs/deno` is listed but `lstat` fails with a permission error
@@ -242,6 +242,10 @@ A mise tool folder or a pipx venv that is listed but cannot be examined SHALL co
 #### Scenario: Unexaminable venv
 - **WHEN** `venvs/northwind-hidden` is listed but `lstat` fails with a permission error
 - **THEN** `pipx` is `ok` and `ignored` counts it
+
+#### Scenario: Unreadable pipx home
+- **WHEN** `PIPX_HOME` is not set and `lstat` of `~/.local/pipx` fails with a permission error
+- **THEN** `pipx` is `failed` with reason `cannot be read`
 
 ### Requirement: Machine name
 The machine name SHALL be the output of `scutil --get ComputerName` folded to a path segment: Unicode NFKD, combining marks removed, lower case, each run of characters other than `a`–`z` and `0`–`9` replaced by one `-`, `-` trimmed from both ends, then cut to 63 characters and trimmed again. When the result is empty, `scutil --get LocalHostName` is folded the same way; when that is empty too, the name is `mac`.
@@ -269,6 +273,10 @@ The snapshot SHALL be one JSON object with `format` = `stackledger-snapshot/v1`,
 - **WHEN** discovery runs with the fictitious Northwind sources
 - **THEN** the snapshot parses as the shape of design D3, with eight entries in `sources`
 
+
+#### Scenario: Item without versions
+- **WHEN** a `brew`, `cask`, `mas`, `mise`, `npm` or `pipx` item of an edited snapshot has `versions` `[]`
+- **THEN** the snapshot fails its shape check, while an `app` item with no version still passes
 ### Requirement: Snapshot consistency
 In a snapshot, every item's source SHALL have status `ok`; each source's `items` SHALL equal its number of items; `reason` SHALL be null exactly when the status is `ok`; `id` values SHALL be non-empty; and no two items SHALL share `source`, `id` and `path`.
 

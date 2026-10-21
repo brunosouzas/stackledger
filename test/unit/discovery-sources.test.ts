@@ -398,3 +398,10 @@ test('Unexaminable venv', async () => {
   }) }));
   expect(pipx).toMatchObject({ status: 'ok', ignored: 1 });
 });
+
+test('Unreadable pipx home', async () => {
+  const pipx = await readPipx(virtualHost({ files: machine({
+    '/Users/username/.local/pipx': { dir: true, unstatable: true },
+  }) }));
+  expect(pipx).toMatchObject({ status: 'failed', reason: 'cannot be read', items: [] });
+});

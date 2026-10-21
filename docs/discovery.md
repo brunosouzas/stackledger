@@ -133,7 +133,7 @@ The format is `stackledger-snapshot/v1` ([full example](../examples/northwind-ma
 ```
 
 - `sources` always has the eight sources, in source order; two are shown. `takenAt` is UTC to the second. `machine.macos` is `null` when it cannot be read.
-- Each source has exactly the fields shown for it; an unknown field makes the file invalid. `versions` is always empty for `launchd`, and empty for an app without `CFBundleShortVersionString`; `program` may be `null`.
+- Each source has exactly the fields shown for it; an unknown field makes the file invalid. `versions` is always empty for `launchd`, empty for an app without `CFBundleShortVersionString`, and never empty for the other sources; `program` may be `null`.
 - Consistency: every item's source is `ok`; each source's `items` equals its number of items; `reason` is `null` exactly when the status is `ok`; no two items share source, `id` and `path`.
 - Items without a path and with the same `id` in one source are merged (lists united). Items are sorted by source order, then `id`, then `path`, by Unicode code point; every list is sorted without repeats. Characters U+007F to U+009F are written as `\u` escapes. The same machine gives the same bytes apart from `takenAt`.
 

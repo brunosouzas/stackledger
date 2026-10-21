@@ -51,3 +51,17 @@ test('Same state twice', async () => {
   expect(second.replace('2026-10-22T08:00:00Z', '2026-10-21T07:30:00Z')).toBe(first);
   expect(first.endsWith('}\n')).toBe(true);
 });
+
+test('Item without versions', async () => {
+  const snapshot = JSON.parse(serialise(await discover(virtualHost(), at('2026-10-21T07:30:00Z'))));
+  for (const source of ['brew', 'cask', 'mas', 'mise', 'npm', 'pipx']) {
+    const copy = structuredClone(snapshot);
+    const item = copy.items.find((entry: { source: string }) => entry.source === source);
+    if (!item) continue;
+    item.versions = [];
+    expect(checkSnapshot(copy), source).toEqual({ problem: 'shape' });
+  }
+  const app = structuredClone(snapshot);
+  app.items.find((entry: { source: string }) => entry.source === 'app').versions = [];
+  expect(checkSnapshot(app)).toHaveProperty('snapshot');
+});
