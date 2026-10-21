@@ -6,15 +6,21 @@ Defines `stackledger build`, the command that turns a catalogue folder into the 
 ## Requirements
 
 ### Requirement: Command
-`stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` SHALL build the `full` site into `<dir>/full/` and, unless the catalogue's Settings choose the personal mode (`spec.sites: [full]`), the `staff` site into `<dir>/staff/`, write the root redirect `<dir>/_redirects`, and exit 0. `_redirects` SHALL hold exactly `/ /staff/ 302` followed by a newline, or `/ /full/ 302` in the personal mode. In the personal mode no file of a staff site is built or written. `--date` sets the map date and the report date of the `full` site (default: the machine's local date, captured once); a date whose 90-day report window ends after `9999-12-30` is a usage error. A missing `<dir>` is created. The command reads the catalogue folder only and SHALL NOT open network connections.
+`stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` SHALL build the `full` site into `<dir>/full/` and, unless in the personal mode, the `staff` site into `<dir>/staff/`, write the root redirect `<dir>/_redirects`, and exit 0. `--date` sets the map date and the report date of the `full` site (default: the machine's local date, captured once); a date whose 90-day report window ends after `9999-12-30` is a usage error. A missing `<dir>` is created.
 
 #### Scenario: Two sites
 - **WHEN** the command runs as `stackledger build ./catalogue --out ./public`
 - **THEN** `./public/full/index.html` and `./public/staff/index.html` exist and the exit code is 0
 
+### Requirement: Root redirect
+`_redirects` SHALL hold exactly `/ /staff/ 302` followed by a newline, or `/ /full/ 302` followed by a newline in the personal mode.
+
 #### Scenario: Root redirect
 - **WHEN** a catalogue without `spec.sites` is built
 - **THEN** `_redirects` in the output folder holds exactly `/ /staff/ 302` and a newline
+
+### Requirement: Personal mode
+When the catalogue's Settings choose the personal mode (`spec.sites: [full]`), the command SHALL build and write no file of a staff site.
 
 #### Scenario: Personal build
 - **WHEN** a catalogue whose Settings have `spec.sites: [full]` is built into an empty folder
@@ -81,7 +87,7 @@ The command SHALL record the output folder's real path and file identity after v
 - **THEN** the exit code is 1 and the other folder is untouched
 
 ### Requirement: Atomic replace
-The sites and the root files SHALL be fully prepared in a staging folder `.stackledger-tmp-*` inside the output folder before anything published changes, then published by renames whose last one is the commit point. A personal build SHALL mark its staging folder with an empty `full-only` file and move an earlier `staff` into `old/` without putting a new one in place. A failure before the commit SHALL restore every previous entry byte for byte and exit 1. After the commit, a failure to remove the staging folder is a warning, with exit 0.
+The sites and the root files SHALL be fully prepared in a staging folder `.stackledger-tmp-*` inside the output folder before anything published changes, then published by renames whose last one is the commit point. A failure before the commit SHALL restore every previous entry byte for byte and exit 1. After the commit, a failure to remove the staging folder is a warning, with exit 0.
 
 #### Scenario: Rebuild
 - **WHEN** the command runs twice with the same `--out`
@@ -90,6 +96,9 @@ The sites and the root files SHALL be fully prepared in a staging folder `.stack
 #### Scenario: Failure leaves the old site
 - **WHEN** a build fails, at any step before the commit, after an earlier successful build into the same `--out`
 - **THEN** the earlier sites and root files are unchanged, no `.stackledger-tmp-*` folder remains and the exit code is 1
+
+### Requirement: Personal publication
+A personal build SHALL mark its staging folder with an empty `full-only` file and move an earlier `staff` into `old/` without putting a new one in place.
 
 #### Scenario: Undo failed in a personal build
 - **WHEN** a personal build over a corporate one fails at a rename and its undo fails too, and the manual restore of `docs/site.md` is followed
@@ -103,7 +112,7 @@ The output folder SHALL NOT be served while a build runs. Only `full/`, `staff/`
 - **THEN** it says not to serve the output folder during a build and which entries to publish
 
 ### Requirement: Writes
-The command SHALL write only inside the output folder. Astro's working copy, generated files and every cache (Astro `cacheDir` and Vite `cacheDir`) SHALL be under the staging folder. It SHALL NOT write in the catalogue folder, the installed stackledger package, the system temporary directory or the user's home folder.
+The command reads the catalogue folder only and SHALL NOT open network connections. It SHALL write only inside the output folder. Astro's working copy, generated files and every cache (Astro `cacheDir` and Vite `cacheDir`) SHALL be under the staging folder. It SHALL NOT write in the catalogue folder, the installed stackledger package, the system temporary directory or the user's home folder.
 
 #### Scenario: Sandboxed build
 - **WHEN** the command runs under the Node.js permission model with read access to the catalogue folder and the package, write access only to `--out`, and `--allow-addons --allow-child-process --allow-worker`
