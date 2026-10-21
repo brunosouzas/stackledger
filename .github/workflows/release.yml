@@ -55,10 +55,11 @@ jobs:
           ' "$RUNNER_TEMP/pack.json" "$RUNNER_TEMP/release/integrity"
       - name: Software bill of materials from the packed production lock
         run: |
-          mkdir -p "$RUNNER_TEMP/sbom/package"
+          mkdir -p "$RUNNER_TEMP/sbom/stackledger"
           tar -xzf "$RUNNER_TEMP/release/stackledger-${GITHUB_REF_NAME#v}.tgz" \
-            -C "$RUNNER_TEMP/sbom" package/package.json package/npm-shrinkwrap.json
-          (cd "$RUNNER_TEMP/sbom/package" && \
+            --strip-components=1 -C "$RUNNER_TEMP/sbom/stackledger" \
+            package/package.json package/npm-shrinkwrap.json
+          (cd "$RUNNER_TEMP/sbom/stackledger" && \
             npm sbom --package-lock-only --sbom-format cyclonedx) \
             > "$RUNNER_TEMP/release/stackledger-${GITHUB_REF_NAME#v}.cdx.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -50,11 +50,18 @@ A release SHALL start only from a pushed tag `v<major>.<minor>.<patch>` of digit
 - **THEN** it exits 1 saying the tag must be `v<major>.<minor>.<patch>`
 
 ### Requirement: Checks without publishing rights
-A first job with only `contents: read` SHALL run the tag check, `npm ci`, the build, the full test suite and `npm audit` (any vulnerability, or an audit that cannot run, fails it), then pack the tarball and write its CycloneDX SBOM from the manifest and production shrinkwrap extracted from that exact tarball (`npm sbom --package-lock-only --sbom-format cyclonedx`), and hand both to the publishing job as an artifact.
+A first job with only `contents: read` SHALL run the tag check, `npm ci`, the build, the full test suite and `npm audit` (any vulnerability or an audit failure stops it), then pack the tarball and write its CycloneDX SBOM from the manifest and production shrinkwrap extracted from that exact tarball (`npm sbom --package-lock-only --sbom-format cyclonedx`). The job hands both to the publishing job as an artifact.
 
 #### Scenario: Checks job
 - **WHEN** the release workflow file is read
 - **THEN** the first job has permissions exactly `contents: read` and runs tag check, `npm ci`, build, tests, `npm audit`, pack and SBOM in that order
+
+### Requirement: SBOM product identity
+The manifest and shrinkwrap extracted from the tarball SHALL be placed in a directory named after the package before `npm sbom` runs, so the metadata component identifies `stackledger` rather than the tar entry `package`.
+
+#### Scenario: SBOM product identity
+- **WHEN** the SBOM is generated from the packed tarball
+- **THEN** its metadata component has the package name, version and npm purl from the packed manifest
 
 ### Requirement: Publication of the checked tarball
 A second job SHALL run only after the first succeeds, in the GitHub environment `npm` (owner approval), with `contents: write` and `id-token: write`. It SHALL check out the tagged commit to get `scripts/release-publish.sh`, treat the downloaded artifact as data only, install and build nothing, and publish that tarball with `npm publish <tarball> --provenance --access public --ignore-scripts` through OIDC; `NPM_TOKEN` is read only for the first version.
