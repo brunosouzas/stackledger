@@ -211,7 +211,7 @@ After kind-field checks pass, every key/value in checked documents is scanned, i
 - Text containing `-----BEGIN` and then `PRIVATE KEY-----` on the same line.
 - A run of 13–19 digits that passes Luhn, allowing single spaces/hyphens between digits but no adjacent digit, quoted or not. Invalid field types still fail their field check before the scan.
 
-An e-mail address in a value is a **warning**, not an error: a vendor support address may be legitimate. The address is not repeated in the message. Ignored documents are not scanned.
+An e-mail address in a value is a **warning**, not an error: a vendor support address may be legitimate. The domain must end in a label of two or more letters, so a versioned Homebrew name such as `python@3.12` is not taken for an address. The address is not repeated in the message. Ignored documents are not scanned.
 
 This guard is not a guarantee. Also run a secret scanner such as **gitleaks in the catalogue repository**. Never commit real credentials or payment-card data; reference a password-manager item instead.
 

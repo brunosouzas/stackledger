@@ -47,7 +47,8 @@ export function scanSecrets(source: Source): Problem[] {
     // IEEE-754 conversion loses digits of long unquoted integers; inspect the original scalar.
     const text = typeof value === 'number' && isScalar(node) && node.source !== undefined ? node.source : String(value);
     for (const rule of secretRules(text)) problems.push(problem(source, path, rule));
-    if (/[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/.test(text)) {
+    // The domain must end in a label of letters, so Homebrew names such as python@3.12 are not addresses.
+    if (/[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(?![A-Za-z0-9-])/.test(text)) {
       problems.push(problem(source, path, 'E-mail address found; check whether it should be public', 'warning'));
     }
   }

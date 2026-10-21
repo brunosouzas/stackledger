@@ -1,3 +1,16 @@
+## MODIFIED Requirements
+
+### Requirement: E-mail addresses
+In checked documents, a value that contains an e-mail address SHALL get a warning. The message SHALL NOT repeat the address. An address needs a domain whose last label is two or more letters, so a versioned Homebrew name such as `python@3.12` is not one.
+
+#### Scenario: E-mail address
+- **WHEN** a description contains `alex@example.com`
+- **THEN** it gets a warning and no error
+
+#### Scenario: Versioned formula is not an address
+- **WHEN** a component has `stackledger/brew: python@3.12, node@22, openssl@3`
+- **THEN** it has no problem
+
 ## ADDED Requirements
 
 ### Requirement: Discovery annotations
