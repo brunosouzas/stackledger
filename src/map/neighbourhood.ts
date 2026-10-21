@@ -7,7 +7,8 @@
  *
  * Layout: each column is as wide as its longest title (within bounds), the columns sit at the left
  * edge, the middle and the right edge of a 1200-unit drawing that the page scales to its width, and
- * the item, short columns and the "Nothing" placeholders are centred vertically.
+ * the item, short columns and the "Nothing" placeholders are centred vertically. Linked boxes are
+ * ink-style stickers (outline and hard shadow, src/map/ink.ts); the centre item uses the accent fill.
  *
  * Safety: every element goes through tag() and every catalogue text through escapeXml (src/map/xml.ts);
  * only boxes with a page carry data-ref, which the page script turns into a link. A text list on the
@@ -15,6 +16,7 @@
  */
 import { compareRefs } from '../identity.js';
 import { dependantsOf, type Graph, type Item } from '../graph.js';
+import { sticker, type Shape } from './ink.js';
 import { textWidth } from './labels.js';
 import type { Theme } from './themes.js';
 import { escapeXml, SVG_NAMESPACE, tag, type Attributes } from './xml.js';
@@ -34,6 +36,9 @@ const TEXT_INSET = 12;
 const MIN_BOX_WIDTH = 160;
 const MAX_BOX_WIDTH = 300;
 const BOLD_FACTOR = 1.1;
+const BOX_RADIUS = 10;
+/** The diagram is drawn at about twice the map's scale, so its outline and shadow are larger. */
+const INK_SCALE = 1.6;
 
 /** The diagram node of an item: components and licences have pages, other resources do not. */
 export function diagramNode(item: Item): DiagramNode {
@@ -74,15 +79,17 @@ function columnWidth(nodes: DiagramNode[]): number {
 const stackHeight = (count: number) => count * (BOX_HEIGHT + ROW_GAP) - ROW_GAP;
 
 function box(node: DiagramNode, x: number, y: number, width: number, theme: Theme, centre: boolean): string {
-  const fill = centre ? theme.header : theme.panel;
-  const ink = centre ? theme.headerText : theme.text;
-  const rectAttrs: Attributes = { x, y, width, height: BOX_HEIGHT, rx: 6, fill, stroke: centre ? theme.header : theme.outline, 'stroke-width': 1.5 };
-  // A resource without a page is drawn dashed and muted, so it does not look clickable.
-  if (!node.linked) Object.assign(rectAttrs, { stroke: theme.muted, 'stroke-dasharray': '5 4' });
+  // The centre item sits on the accent fill, so its text is in the ink on both themes.
+  const ink = centre ? theme.outline : theme.text;
+  const shape: Shape = (by, attrs) => tag('rect', { x: x + by[0], y: y + by[1], width, height: BOX_HEIGHT, rx: BOX_RADIUS, ...attrs });
+  // A resource without a page is drawn dashed and muted, without a shadow, so it does not look clickable.
+  const face = node.linked
+    ? sticker(theme, shape, centre ? theme.accent : theme.panel, INK_SCALE)
+    : shape([0, 0], { fill: 'none', stroke: theme.muted, 'stroke-width': 1.5, 'stroke-dasharray': '5 4' });
   const content = tag('title', {}, escapeXml(`${node.title} (${node.ref})`))
-    + tag('rect', rectAttrs)
+    + face
     + tag('text', { x: x + TEXT_INSET, y: y + 20, fill: node.linked ? ink : theme.muted, 'font-size': 13, 'font-weight': 700 }, escapeXml(fit(node.title, width)))
-    + tag('text', { x: x + TEXT_INSET, y: y + 37, fill: centre ? theme.headerText : theme.muted, 'font-size': 11 }, escapeXml(node.kind));
+    + tag('text', { x: x + TEXT_INSET, y: y + 37, fill: centre ? theme.outline : theme.muted, 'font-size': 11 }, escapeXml(node.kind));
   return tag('g', node.linked ? { 'data-ref': node.ref } : {}, content);
 }
 
@@ -106,7 +113,7 @@ function edges(input: Column, fromX: number, toX: number, centreY: number, theme
   return input.nodes.map((_, i) => {
     const y = input.top + i * (BOX_HEIGHT + ROW_GAP) + BOX_HEIGHT / 2;
     const d = `M${fromX},${y} C${middle},${y} ${middle},${centreY} ${toX},${centreY}`;
-    return tag('path', { d, fill: 'none', stroke: theme.muted, 'stroke-width': 2 });
+    return tag('path', { d, fill: 'none', stroke: theme.text, 'stroke-width': 2.5 });
   }).join('');
 }
 
