@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="808" viewBox="0 0 800 808" role="img" aria-labelledby="hiw-t hiw-d" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <title id="hiw-t">How stackledger publishes a catalogue</title>
+  <desc id="hiw-d">Flowchart. On your Mac, stackledger discover writes a snapshot that stays on the Mac, and drift --scaffold helps you edit catalog/*.yaml. A git push sends the catalogue to a private GitHub repository. A pull request runs gitleaks, validate and build but never deploys. A push to main runs gitleaks, validate and build with stackledger from the npm registry, then wrangler pages deploy publishes the whole static site to Cloudflare Pages, which never reads GitHub. A reader reaches Pages only through Cloudflare Access, signing in first. Personal mode: the full site only, one Access application for the owner, / leads to /full/. Corporate mode: full and staff sites, finance on /full/*, staff on the rest, / leads to /staff/.</desc>
+  <defs>
+    <clipPath id="hiw-f"><rect width="800" height="808" rx="14"/></clipPath>
+    <marker id="hiw-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="13" markerHeight="13" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0.5 L10,5 L0,9.5 L3,5 Z" fill="#0A1033"/></marker>
+  </defs>
+  <rect width="800" height="808" rx="14" fill="#EEF2FF"/>
+  <g clip-path="url(#hiw-f)" fill="none" stroke="#E0E7FB" stroke-width="2"><circle cx="400" cy="400" r="70"/><circle cx="400" cy="400" r="98"/><circle cx="400" cy="400" r="126"/><circle cx="400" cy="400" r="154"/><circle cx="400" cy="400" r="182"/><circle cx="400" cy="400" r="210"/><circle cx="400" cy="400" r="238"/><circle cx="400" cy="400" r="266"/><circle cx="400" cy="400" r="294"/><circle cx="400" cy="400" r="322"/><circle cx="400" cy="400" r="350"/><circle cx="400" cy="400" r="378"/><circle cx="400" cy="400" r="406"/><circle cx="400" cy="400" r="434"/><circle cx="400" cy="400" r="462"/><circle cx="400" cy="400" r="490"/><circle cx="400" cy="400" r="518"/><circle cx="400" cy="400" r="546"/><circle cx="400" cy="400" r="574"/><circle cx="400" cy="400" r="602"/><circle cx="400" cy="400" r="630"/><circle cx="400" cy="400" r="658"/><circle cx="400" cy="400" r="686"/><circle cx="400" cy="400" r="714"/><circle cx="400" cy="400" r="742"/><circle cx="400" cy="400" r="770"/><circle cx="400" cy="400" r="798"/><circle cx="400" cy="400" r="826"/><circle cx="400" cy="400" r="854"/><circle cx="400" cy="400" r="882"/></g>
+  <rect x="24" y="20" width="752" height="150" rx="18" fill="#FFFFFF" fill-opacity="0.55" stroke="#0A1033" stroke-width="3" stroke-dasharray="10 7"/>
+  <text x="42" y="46" font-size="16" font-weight="800" fill="#0A1033" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Your Mac</text>
+  <rect x="24" y="214" width="570" height="230" rx="18" fill="#FFFFFF" fill-opacity="0.55" stroke="#0A1033" stroke-width="3" stroke-dasharray="10 7"/>
+  <text x="42" y="240" font-size="16" font-weight="800" fill="#0A1033" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Private GitHub repository, GitHub Actions</text>
+  <rect x="216" y="492" width="560" height="168" rx="18" fill="#FFFFFF" fill-opacity="0.55" stroke="#0A1033" stroke-width="3" stroke-dasharray="10 7"/>
+  <text x="234" y="518" font-size="16" font-weight="800" fill="#0A1033" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Cloudflare</text>
+  <path d="M368,104 L428,104" fill="none" stroke="#0A1033" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 6" marker-end="url(#hiw-a)"/>
+  <path d="M590,154 C590,206 470,206 420,246" fill="none" stroke="#0A1033" stroke-width="3" stroke-linecap="round" marker-end="url(#hiw-a)"/>
+  <path d="M240,312 C200,330 178,340 172,356" fill="none" stroke="#0A1033" stroke-width="3" stroke-linecap="round" marker-end="url(#hiw-a)"/>
+  <path d="M380,312 C420,330 444,340 450,356" fill="none" stroke="#0A1033" stroke-width="3" stroke-linecap="round" marker-end="url(#hiw-a)"/>
+  <path d="M680,322 C680,380 620,396 588,396" fill="none" stroke="#0A1033" stroke-width="3" stroke-linecap="round" marker-end="url(#hiw-a)"/>
+  <path d="M450,436 C450,480 640,474 640,522" fill="none" stroke="#0A1033" stroke-width="3" stroke-linecap="round" marker-end="url(#hiw-a)"/>
+  <path d="M196,580 L246,580" fill="none" stroke="#0A1033" stroke-width="3" stroke-linecap="round" marker-end="url(#hiw-a)"/>
+  <path d="M474,580 L512,580" fill="none" stroke="#0A1033" stroke-width="3" stroke-linecap="round" marker-end="url(#hiw-a)"/>
+  <rect x="56" y="70" width="314" height="84" rx="14" fill="#0A1033"/>
+  <rect x="48" y="62" width="314" height="84" rx="14" fill="#8FB2FF" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
+  <text x="205.0" y="100.5" font-size="15" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">stackledger discover</text>
+  <text x="205.0" y="124.5" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">the snapshot stays here</text>
+  <rect x="444" y="70" width="314" height="84" rx="14" fill="#0A1033"/>
+  <rect x="436" y="62" width="314" height="84" rx="14" fill="#8FB2FF" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
+  <text x="593.0" y="100.5" font-size="19" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">You edit catalog/*.yaml</text>
+  <text x="593.0" y="124.5" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">drift --scaffold suggests entries</text>
+  <rect x="178" y="262" width="260" height="56" rx="14" fill="#0A1033"/>
+  <rect x="170" y="254" width="260" height="56" rx="14" fill="#FFFFFF" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
+  <text x="300.0" y="288.0" font-size="19" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Catalogue repository</text>
+  <rect x="56" y="368" width="252" height="76" rx="14" fill="#0A1033"/>
+  <rect x="48" y="360" width="252" height="76" rx="14" fill="#FF8A3D" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
+  <text x="174.0" y="385.0" font-size="19" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Pull request</text>
+  <text x="174.0" y="409.0" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">gitleaks, validate, build</text>
+  <text x="174.0" y="428.0" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">never deploys</text>
+  <rect x="328" y="368" width="262" height="76" rx="14" fill="#0A1033"/>
+  <rect x="320" y="360" width="262" height="76" rx="14" fill="#3DDC84" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
+  <text x="451.0" y="394.5" font-size="19" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Push to main</text>
+  <text x="451.0" y="418.5" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">gitleaks, validate, build</text>
+  <rect x="620" y="262" width="158" height="66" rx="14" fill="#0A1033"/>
+  <rect x="612" y="254" width="158" height="66" rx="14" fill="#CB3837" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
+  <text x="691.0" y="283.5" font-size="19" font-weight="800" fill="#FFFFFF" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">npm registry</text>
+  <text x="691.0" y="307.5" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">stackledger</text>
+  <rect x="38" y="550" width="160" height="76" rx="14" fill="#0A1033"/>
+  <rect x="30" y="542" width="160" height="76" rx="14" fill="#3B4256" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
+  <text x="110.0" y="576.5" font-size="19" font-weight="800" fill="#FFFFFF" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Reader</text>
+  <text x="110.0" y="600.5" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">a browser</text>
+  <rect x="260" y="546" width="216" height="84" rx="14" fill="#0A1033"/>
+  <rect x="252" y="538" width="216" height="84" rx="14" fill="#FFD25A" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
+  <text x="360.0" y="576.5" font-size="19" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Cloudflare Access</text>
+  <text x="360.0" y="600.5" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">sign-in first</text>
+  <rect x="526" y="538" width="236" height="100" rx="14" fill="#0A1033"/>
+  <rect x="518" y="530" width="236" height="100" rx="14" fill="#F38020" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
+  <text x="636.0" y="567.0" font-size="19" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Cloudflare Pages</text>
+  <text x="636.0" y="591.0" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">the whole static site</text>
+  <text x="636.0" y="610.0" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">never reads GitHub</text>
+  <text x="398" y="94" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">drift</text>
+  <text x="604" y="200" font-size="15" font-weight="700" fill="#0A1033" text-anchor="start" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">git push</text>
+  <text x="708" y="384" font-size="14" font-weight="700" fill="#0A1033" text-anchor="start" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">npx</text>
+  <text x="436" y="478" font-size="14" font-weight="700" fill="#0A1033" text-anchor="end" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">wrangler pages deploy</text>
+  <rect x="38" y="687" width="728" height="44" rx="22" fill="#0A1033"/>
+  <rect x="34" y="682" width="728" height="44" rx="22" fill="#3DDC84" stroke="#0A1033" stroke-width="3"/>
+  <text x="398" y="710" font-size="15" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Personal: full site only · one Access application, the owner · / → /full/</text>
+  <rect x="38" y="743" width="728" height="44" rx="22" fill="#0A1033"/>
+  <rect x="34" y="738" width="728" height="44" rx="22" fill="#8FB2FF" stroke="#0A1033" stroke-width="3"/>
+  <text x="398" y="766" font-size="15" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Corporate: full and staff · finance on /full/*, staff on the rest · / → /staff/</text>
+</svg>

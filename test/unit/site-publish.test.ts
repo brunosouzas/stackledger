@@ -13,7 +13,7 @@ import { NODE_FS, type FsOps } from '../../src/site/fs-ops.js';
 import { FolderChanged, folderIdentity, type FolderIdentity } from '../../src/site/paths.js';
 import { MARKER, MARKER_NAME } from '../../src/site/policy.js';
 import { publish, UndoFailed } from '../../src/site/publish.js';
-import { removeStaging, staleStaging } from '../../src/site/staging.js';
+import { FULL_ONLY, removeStaging, staleStaging } from '../../src/site/staging.js';
 import { wrapOps } from '../fs-wrapper.mjs';
 import { folder } from '../helpers.js';
 import { manualRestore } from '../manual-restore.js';
@@ -26,11 +26,17 @@ interface Wrapper { ops: FsOps; changesAfterSwap: string[]; swapped: () => boole
 const wrap = (plan: Plan) => wrapOps(NODE_FS, plan) as unknown as Wrapper;
 
 const STAGING = '.stackledger-tmp-test';
-const PREVIOUS = { 'staff/index.html': 'old staff\n', 'full/index.html': 'old full\n', '_headers': 'old headers\n', 'robots.txt': 'old robots\n', [MARKER_NAME]: MARKER };
+const PREVIOUS = {
+  'staff/index.html': 'old staff\n', 'full/index.html': 'old full\n', '_headers': 'old headers\n', 'robots.txt': 'old robots\n',
+  '_redirects': '/ /staff/ 302\n', [MARKER_NAME]: MARKER,
+};
 const PREPARED = {
   'site-staff/index.html': 'new staff\n', 'site-full/index.html': 'new full\n',
-  'root/_headers': 'new headers\n', 'root/robots.txt': 'new robots\n', [`root/${MARKER_NAME}`]: MARKER,
+  'root/_headers': 'new headers\n', 'root/robots.txt': 'new robots\n', 'root/_redirects': '/ /staff/ 302\n', [`root/${MARKER_NAME}`]: MARKER,
 };
+/** A personal build (spec.sites: [full]): no staff site, and the full-only note that says so. */
+const { 'site-staff/index.html': _staff, ...PERSONAL_BASE } = PREPARED;
+const PERSONAL = { ...PERSONAL_BASE, 'root/_redirects': '/ /full/ 302\n', [FULL_ONLY]: '' };
 
 function write(dir: string, files: Record<string, string>): string {
   mkdirSync(dir, { recursive: true });
@@ -43,10 +49,10 @@ function write(dir: string, files: Record<string, string>): string {
 
 /** An output folder (with an earlier build unless `previous` is false), its staging folder holding a
  * prepared build, and another folder that a swap puts in its place. */
-function fixture(previous = true) {
+function fixture(previous = true, prepared: Record<string, string> = PREPARED) {
   const base = realpathSync(folder());
   const out = write(join(base, 'out'), previous ? PREVIOUS : {});
-  const staging = write(join(out, STAGING), PREPARED);
+  const staging = write(join(out, STAGING), prepared);
   const other = write(join(base, 'other'), { [MARKER_NAME]: MARKER, 'staff/index.html': 'another site\n' });
   return { base, out, staging, other };
 }
@@ -66,15 +72,41 @@ function snapshot(dir: string, skip: (path: string) => boolean = () => false): R
 }
 const published = (out: string) => snapshot(out, path => path.startsWith('.stackledger-tmp-'));
 
-// A rebuild renames 10 times (old then new, for staff, full, _headers, robots.txt and the marker).
-const RENAMES = Array.from({ length: 10 }, (_, i) => i + 1);
+// A rebuild renames 12 times (old then new, for staff, full, _headers, robots.txt, _redirects and the marker).
+const RENAMES = Array.from({ length: 12 }, (_, i) => i + 1);
+// A personal build over a corporate one renames 11 times: the old staff into old/, then the rest as above.
+const PERSONAL_RENAMES = Array.from({ length: 11 }, (_, i) => i + 1);
 
 describe('Atomic replace', () => {
   test('A publication puts every new entry in place and the replaced ones under old/', () => {
     const { out, staging } = fixture();
     publish(out, staging, folderIdentity(out));
     expect(readFileSync(join(out, 'full', 'index.html'), 'utf8')).toBe('new full\n');
-    expect(readdirSync(join(staging, 'old')).sort()).toEqual([MARKER_NAME, '_headers', 'full', 'robots.txt', 'staff']);
+    expect(readdirSync(join(staging, 'old')).sort()).toEqual([MARKER_NAME, '_headers', '_redirects', 'full', 'robots.txt', 'staff']);
+  });
+
+  test('Stale staff site removed: a personal build moves the old staff/ into old/ and publishes no staff/', () => {
+    const { out, staging } = fixture(true, PERSONAL);
+    publish(out, staging, folderIdentity(out));
+    expect(readdirSync(out).filter(name => !name.startsWith('.stackledger-tmp-')).sort()).toEqual([MARKER_NAME, '_headers', '_redirects', 'full', 'robots.txt']);
+    expect(readFileSync(join(out, '_redirects'), 'utf8')).toBe('/ /full/ 302\n');
+    expect(readFileSync(join(staging, 'old', 'staff', 'index.html'), 'utf8')).toBe('old staff\n');
+  });
+
+  test('A missing staff site without the full-only note is a failure, undone', () => {
+    const { 'site-staff/index.html': _, ...missing } = PREPARED;
+    const { out, staging } = fixture(true, missing);
+    const before = published(out);
+    expect(() => publish(out, staging, folderIdentity(out))).toThrow();
+    expect(published(out)).toEqual(before);
+  });
+
+  test.each(PERSONAL_RENAMES)('A failed personal build leaves the corporate site (rename %i)', nth => {
+    const { out, staging } = fixture(true, PERSONAL);
+    const before = published(out);
+    const { ops } = wrap({ out, fail: [{ op: 'rename', nth }] });
+    expect(() => publish(out, staging, folderIdentity(out), ops)).toThrow(`injected rename failure (call ${nth})`);
+    expect(published(out)).toEqual(before);
   });
 
   test.each(RENAMES)('Failure leaves the old site (rename %i): every rename is undone', nth => {
@@ -114,6 +146,26 @@ describe('Interrupted publication', () => {
     expect((error as Error).message).toMatch(UNDO_FAILED);
     expect((error as Error).message).toContain(staging);
     expect(readdirSync(join(staging, 'old')).length).toBeGreaterThan(0);
+    manualRestore(out, staging);
+    expect(snapshot(out)).toEqual(before);
+  });
+
+  // Personal over corporate: rename 1 moves the old staff into old/; from rename 2 on, the undo fails too.
+  test.each(PERSONAL_RENAMES.slice(1))('Undo failed in a personal build (rename %i): the manual restore brings the corporate site back', nth => {
+    const { out, staging } = fixture(true, PERSONAL);
+    const before = published(out);
+    const { ops } = wrap({ out, fail: [{ op: 'rename', nth }, { op: 'rename', nth: nth + 1 }] });
+    expect(() => publish(out, staging, folderIdentity(out), ops)).toThrow(UndoFailed);
+    manualRestore(out, staging);
+    expect(snapshot(out)).toEqual(before);
+  });
+
+  test('Personal publication stopped after old/ was created, before any rename: the manual restore keeps the published staff/', () => {
+    const { out, staging } = fixture(true, PERSONAL);
+    const before = published(out);
+    // A process killed right after creating old/: old/ is empty, the staged entries are all there and
+    // staff/ was never moved. The restore must not delete it, although site-staff is not staged.
+    mkdirSync(join(staging, 'old'));
     manualRestore(out, staging);
     expect(snapshot(out)).toEqual(before);
   });

@@ -15,26 +15,47 @@ jobs:
       matrix:
         node: [22, 24, 26]
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
       - run: npm run build
+      # The workflow tests run actionlint and the proxy test runs Caddy: pinned releases, checked
+      # against the checksums each project publishes (Caddy publishes SHA-512 only).
+      - name: Install pinned actionlint and Caddy
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+          CADDY_VERSION: 2.11.7
+          CADDY_SHA512: a7a433a1b133efc3c8d10eb0b99d52a24b5ef5c322dc77f5282182b1c0402139ab83f3a99f0c52409df77d20123fb0b523edad8a66d8f5e49136197bf61ef0e7
+        run: |
+          mkdir -p "$RUNNER_TEMP/tools/bin"
+          cd "$RUNNER_TEMP/tools"
+          curl -fsSLo actionlint.tar.gz "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  actionlint.tar.gz" | sha256sum -c -
+          curl -fsSLo caddy.tar.gz "https://github.com/caddyserver/caddy/releases/download/v${CADDY_VERSION}/caddy_${CADDY_VERSION}_linux_amd64.tar.gz"
+          echo "${CADDY_SHA512}  caddy.tar.gz" | sha512sum -c -
+          tar -xzf actionlint.tar.gz -C bin actionlint
+          tar -xzf caddy.tar.gz -C bin caddy
+          echo "$RUNNER_TEMP/tools/bin" >> "$GITHUB_PATH"
       - run: npm test
+        env:
+          # A missing actionlint or caddy fails the suite here instead of skipping its checks.
+          STACKLEDGER_REQUIRE_TOOLS: "1"
       # Timing checks run alone, after the suite, so elapsed time is meaningful.
       - run: npm run test:perf
   browser:
     # Playwright (Chromium) on the built Northwind sites served under /full/ and /staff/; see test/browser/.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
@@ -47,10 +68,10 @@ jobs:
     # Node permission model) plus the other discovery tests. Fake programs only; nothing is installed.
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm

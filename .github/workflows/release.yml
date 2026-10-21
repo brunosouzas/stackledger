@@ -1,0 +1,103 @@
+name: Release
+
+# Publishes one version of stackledger to npm, with provenance, and attaches its CycloneDX SBOM to a
+# GitHub release. How to release, the first-version bootstrap and the checks: docs/release.md.
+#
+# Two jobs, so the publishing identity never exists while dependencies install or their scripts run:
+# - check: no publishing rights. Tag check (shape, version, on origin/main), npm ci, build, tests,
+#   audit, production staging pack and SBOM; hands the tarball, its integrity and the SBOM on as an artifact.
+# - publish: in the environment npm, which needs the owner's approval. It installs and builds
+#   nothing; it runs scripts/release-publish.sh from the tagged commit on the downloaded files.
+#   A re-run finishes a partial release without publishing twice.
+#
+# Actions are pinned by commit SHA, with the tag in a comment. No npm cache anywhere.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Full history, so the tag check can see whether the commit is on origin/main.
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Check the tag
+        run: node scripts/check-release-tag.mjs "$GITHUB_REF_NAME"
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: Audit (any vulnerability, or an audit that cannot run, fails)
+        run: npm audit --audit-level=low
+      - name: Pack production staging tree (build completed above)
+        run: |
+          mkdir -p "$RUNNER_TEMP/release"
+          node scripts/pack-production.mjs "$RUNNER_TEMP/release" > "$RUNNER_TEMP/pack.json"
+          node -e '
+            const [packed] = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+            require("node:fs").writeFileSync(process.argv[2], packed.integrity + "\n");
+            console.log(packed.filename, packed.integrity);
+          ' "$RUNNER_TEMP/pack.json" "$RUNNER_TEMP/release/integrity"
+      - name: Software bill of materials from the packed production lock
+        run: |
+          mkdir -p "$RUNNER_TEMP/sbom/stackledger"
+          tar -xzf "$RUNNER_TEMP/release/stackledger-${GITHUB_REF_NAME#v}.tgz" \
+            --strip-components=1 -C "$RUNNER_TEMP/sbom/stackledger" \
+            package/package.json package/npm-shrinkwrap.json
+          (cd "$RUNNER_TEMP/sbom/stackledger" && \
+            npm sbom --package-lock-only --sbom-format cyclonedx) \
+            > "$RUNNER_TEMP/release/stackledger-${GITHUB_REF_NAME#v}.cdx.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: ${{ runner.temp }}/release/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: check
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      # Only to run scripts/release-publish.sh from the reviewed, tagged commit.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      # Data only: nothing from the artifact is executed.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: ${{ runner.temp }}/release
+      - name: Publish and attach the SBOM
+        env:
+          # Empty after the first version: npm then publishes through OIDC (trusted publishing).
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          scripts/release-publish.sh "$RUNNER_TEMP/release/stackledger-$version.tgz" \
+            "$RUNNER_TEMP/release/integrity" "$RUNNER_TEMP/release/stackledger-$version.cdx.json"

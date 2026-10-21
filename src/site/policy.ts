@@ -20,6 +20,10 @@ export const HEADERS = [
 
 export const ROBOTS = 'User-agent: *\nDisallow: /\n';
 
+/** Cloudflare Pages / Netlify style root redirect: `/` leads to the staff site, or to the full site
+ * in the personal mode, where there is no staff site. */
+export const redirects = (sites: readonly string[]) => `/ /${sites.includes('staff') ? 'staff' : 'full'}/ 302\n`;
+
 /** Written at the root of the output folder; its presence lets a later build replace the folder. */
 export const MARKER_NAME = '.stackledger-build';
 export const MARKER = 'This folder is written by stackledger build. The next build replaces it.\n';

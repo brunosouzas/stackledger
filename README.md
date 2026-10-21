@@ -32,6 +32,8 @@ stackledger is a small, local-first tool for people and small companies who want
 
 Early development. Nothing is released to npm yet. The catalogue format, the `validate`, `map`, `build` and `report` commands, the `mcp` server and Mac discovery (`stackledger discover` and `stackledger drift`) work from source (see [Usage](#usage)). The order of the rest is in the [roadmap](docs/roadmap.md).
 
+For a separate catalogue repository, copy the [pipeline template](examples/catalogue-repository/). Set up [protected hosting](docs/hosting.md) before the first deploy. The fictitious Northwind catalogue runs as a demo of the corporate mode at <https://stackledger-demo.pages.dev/>; it is protected by Cloudflare Access and only the owner can sign in, so for you it shows the sign-in page, which is the point. The [release guide](docs/release.md) covers npm publication, provenance and the SBOM.
+
 ## Features
 
 Planned for the first version:
@@ -65,6 +67,8 @@ flowchart LR
 4. **The website is static.** No server, no database, nothing to patch. Why: [ADR 5](docs/adr/0005-static-site-no-server.md).
 5. **It is written in TypeScript**, so the same map engine runs at build time and in the browser. Why: [ADR 9](docs/adr/0009-typescript-end-to-end.md).
 
+[How it works, end to end](docs/how-it-works.md) draws the publication path: a push to `main` of the private catalogue repository, GitHub Actions, Cloudflare Pages behind Cloudflare Access, and the personal (one site, one reader) and corporate (two sites) modes.
+
 ## Security
 
 A software catalogue maps its owner's attack surface: which VPN, which secret store, which versions. stackledger is designed around that:
@@ -86,7 +90,14 @@ stackledger does not call any AI model. Instead, a read-only [MCP](https://model
 
 ## Usage
 
-The package is not published to npm yet. To run it from a clone, with Node.js 22.12 or later:
+The package is not published to npm yet. Once 0.1.0 is released, use npm with Node.js 22.12 or later:
+
+```sh
+npx stackledger@0.1.0 --help
+npx stackledger@0.1.0 validate /path/to/catalogue
+```
+
+Until then, run it from source:
 
 ```sh
 npm ci
@@ -106,7 +117,7 @@ node dist/cli.js drift examples/northwind --snapshot examples/northwind-machine/
 | `stackledger validate [folder]` | Checks a catalogue and reports each problem with file, line and field. Exit 0: no errors (warnings allowed); 1: catalogue errors; 2: usage or folder problem | Available from source |
 | `stackledger mcp <folder> [--view full\|staff]` | Serves the catalogue read-only to AI agents over MCP on stdio; see [docs/mcp.md](docs/mcp.md). Exit 2: usage or folder problem | Available from source |
 | `stackledger map <folder> [--view full\|staff] [--theme light\|dark] [--date YYYY-MM-DD]` | Draws a self-contained SVG on stdout; diagnostics and suggestions on stderr. Exit 0 even with catalogue errors; 2 for usage/folder problems. See [docs/map.md](docs/map.md) | Available from source |
-| `stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` | Builds the `full` and `staff` static sites into `<dir>/full/` and `<dir>/staff/`, with `_headers` and `robots.txt`, replacing an earlier build atomically; report on stderr. Exit 0 even with catalogue errors; 1: internal failure (the earlier build is left as it was); 2: usage or folder problem. See [docs/site.md](docs/site.md) | Available from source |
+| `stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` | Builds the `full` and `staff` static sites into `<dir>/full/` and `<dir>/staff/` (only `full` in the personal mode), with `_headers`, `robots.txt` and `_redirects`, replacing an earlier build atomically; report on stderr. Exit 0 even with catalogue errors; 1: internal failure (the earlier build is left as it was); 2: usage or folder problem. See [docs/site.md](docs/site.md) | Available from source |
 | `stackledger report <folder> [--date YYYY-MM-DD] [--days N] [--format text\|json\|csv\|ics]` | Prints the licence report of the `full` view on stdout: renewals in the next `--days` (default 90), recurring cost per currency by owner, payer and zone, one-off and planned costs, incomplete licences; or the renewal calendar. Exit 0 even with catalogue errors; 1: the report could not be computed or written; 2: usage or folder problem. See [docs/reports.md](docs/reports.md) | Available from source |
 | `stackledger discover` | Reads what this Mac has installed (Homebrew, App Store, applications, launchd, mise, npm, pipx), with every program in the macOS sandbox, and writes `~/.stackledger/<machine>/snapshot.json`; one summary line per source on stdout. Exit 0 also with skipped sources; 1: not macOS, no sandbox or the file could not be written safely; 2: usage problem. See [docs/discovery.md](docs/discovery.md) | Available from source |
 | `stackledger drift <folder> [--snapshot <file>] [--format text\|json] [--scaffold <dir>]` | Compares the snapshot with the catalogue through `stackledger/<source>` annotations: what is not declared (with the annotation to add), what is missing, what could not be checked, and `dependsOn` relations to confirm; `--scaffold` writes draft component files into a new folder outside the catalogue. Exit 0 even with catalogue errors; 1: internal or write failure; 2: usage, folder or snapshot problem. See [docs/discovery.md](docs/discovery.md) | Available from source |
@@ -115,7 +126,7 @@ node dist/cli.js drift examples/northwind --snapshot examples/northwind-machine/
 
 ## The website
 
-`stackledger build` makes two static sites from one catalogue: `full` for owners and finance, `staff` for everyone else, without costs, renewal dates, payers, seats, password-manager references or notes. Serve them behind an identity-aware proxy, publishing only `full/`, `staff/`, `_headers` and `robots.txt`; [docs/site.md](docs/site.md) explains the pages, the hosting and the security rules. Screenshots from the fictitious [Northwind catalogue](examples/northwind/), dated 2027-06-01:
+`stackledger build` makes two static sites from one catalogue: `full` for owners and finance, `staff` for everyone else, without costs, renewal dates, payers, seats, password-manager references or notes. Serve them behind an identity-aware proxy, publishing only `full/`, `staff/`, `_headers`, `robots.txt` and `_redirects`; with `spec.sites: [full]` (the personal mode) only `full` is built; [docs/site.md](docs/site.md) explains the pages, the hosting and the security rules. Screenshots from the fictitious [Northwind catalogue](examples/northwind/), dated 2027-06-01:
 
 | | |
 |---|---|
