@@ -1,0 +1,174 @@
+# drift-command
+
+## Purpose
+Defines `stackledger drift`, the command that compares a machine snapshot with the components of a catalogue through their discovery annotations, and prints what to declare, what is missing and which relations to confirm.
+
+## ADDED Requirements
+
+### Requirement: Command
+`stackledger drift <folder> [--snapshot <file>] [--format text|json]` SHALL compare a snapshot with the components of the catalogue's `full` view, print the result on stdout and exit 0, whether or not anything differs. The default snapshot is this machine's `~/.stackledger/<machine>/snapshot.json`; the default format is `text`. The command SHALL only read files and SHALL NOT edit the catalogue.
+
+#### Scenario: Explicit snapshot
+- **WHEN** the command runs as `stackledger drift examples/northwind --snapshot examples/northwind-machine/snapshot.json`
+- **THEN** stdout is the text result and the exit code is 0
+
+#### Scenario: Default snapshot
+- **WHEN** the command runs on a fictitious machine named `username - MacBook Air` without `--snapshot`
+- **THEN** it reads `~/.stackledger/username-macbook-air/snapshot.json`
+
+#### Scenario: Drift read-only
+- **WHEN** the command runs under the Node.js permission model with read access only
+- **THEN** it succeeds and no file in the catalogue folder changes
+
+### Requirement: Drift usage errors
+When `--help` is among the arguments, the command SHALL print usage on stdout and exit 0. Otherwise a missing folder, more than one folder, an unknown option, a `--format` other than `text` or `json`, or a folder that does not exist, is not a folder or cannot be read SHALL print the reason and usage on stderr, print nothing on stdout, and exit 2.
+
+#### Scenario: Unknown drift format
+- **WHEN** the command runs with `--format csv`
+- **THEN** the exit code is 2, stdout is empty and stderr names the allowed formats
+
+#### Scenario: No catalogue folder
+- **WHEN** the command runs as `stackledger drift`
+- **THEN** the exit code is 2, stdout is empty and stderr says a folder is required
+
+### Requirement: Snapshot input
+A snapshot that does not exist SHALL exit 2 with stdout empty and a reason telling to run `stackledger discover`. One that is not a regular file, is larger than 32 MiB, is not JSON, or does not follow the `stackledger-snapshot/v1` shape SHALL exit 2 with a reason naming the problem, never the file's content. Without `--snapshot`, a machine name that cannot be found (no macOS, no sandbox) SHALL exit 2 asking for `--snapshot`.
+
+#### Scenario: No snapshot yet
+- **WHEN** the default snapshot does not exist
+- **THEN** the exit code is 2, stdout is empty and stderr says to run `stackledger discover`
+
+#### Scenario: Snapshot in another format
+- **WHEN** the snapshot's `format` is `stackledger-snapshot/v9`
+- **THEN** the exit code is 2 and stderr says the snapshot format is not supported
+
+#### Scenario: Default snapshot on Linux
+- **WHEN** the command runs on Linux without `--snapshot`
+- **THEN** the exit code is 2 and stderr asks for `--snapshot`
+
+### Requirement: Catalogue with errors
+A catalogue with errors SHALL still be compared, using the components the `full` view serves. When the catalogue has errors or warnings, the command SHALL write the same counts line as `stackledger report` on stderr.
+
+#### Scenario: Catalogue error
+- **WHEN** one component file has an error and another component matches an installed item
+- **THEN** stderr has the counts line, the match is in the result and the exit code is 0
+
+### Requirement: Matching through annotations
+A component SHALL match an item when its annotation `stackledger/<source>` lists the item's `id` for the item's source. Identifiers are compared exactly, except `app`, which ignores ASCII case, and `pipx`, which compares names in lower case with each run of `-`, `_` and `.` read as one `-`. A component's name, title or any other field SHALL never be used to match.
+
+#### Scenario: Name is not enough
+- **WHEN** a component is named `git` without annotations and the formula `git` is installed
+- **THEN** `git` is listed as not declared
+
+#### Scenario: Bundle identifier in another case
+- **WHEN** a component has `stackledger/app: COM.Northwind.Editor` and the app `com.northwind.editor` is installed
+- **THEN** they match
+
+#### Scenario: Python package spelling
+- **WHEN** a component has `stackledger/pipx: Northwind_Docs` and the pipx item is `northwind-docs`
+- **THEN** they match
+
+### Requirement: Not declared
+Each item no component matches SHALL be listed as not declared, with the annotation it would need (`stackledger/<source>: <id>`). A `brew` item with `onRequest` false, an `app` whose `id` starts with `com.apple.` and has no App Store receipt, and a `launchd` item whose `id` starts with `com.apple.` SHALL instead be counted (as dependencies and as macOS items), not listed; they still match when annotated.
+
+#### Scenario: Undeclared cask
+- **WHEN** the cask `northwind-editor` is installed and no component lists it
+- **THEN** it is listed as not declared with `stackledger/cask: northwind-editor`
+
+#### Scenario: Formula installed as a dependency
+- **WHEN** `libnorth` is installed only as a dependency and no component lists it
+- **THEN** it is not listed and the dependency count is 1
+
+#### Scenario: Apple app
+- **WHEN** `com.apple.northwindsample` is installed in `/Applications` without an App Store receipt and no component lists it
+- **THEN** it is not listed and the macOS item count is 1
+
+### Requirement: Declared but missing
+Each identifier a component lists for a source whose status is `ok` that matches no item SHALL be listed as missing, with the component. An identifier for a `skipped` or `failed` source, or for a source the snapshot does not hold, SHALL be listed as not checked with that source's status, never as missing.
+
+#### Scenario: Missing app
+- **WHEN** a component has `stackledger/app: com.northwind.legacy` and the `app` source is `ok` without that item
+- **THEN** it is listed as missing for that component
+
+#### Scenario: Source skipped
+- **WHEN** a component has `stackledger/mas: 1234567890` and the `mas` source is `skipped`
+- **THEN** it is listed as not checked with status `skipped`, and not as missing
+
+### Requirement: Shared items
+An item matched by two or more components SHALL be listed as shared, with every matching component in reference order, and SHALL count once as matched.
+
+#### Scenario: Two components for one item
+- **WHEN** `component:editor` and `component:editor-beta` both list the cask `northwind-editor`
+- **THEN** the item is listed as shared by both, in that order
+
+### Requirement: Inferred needs
+An installed item SHALL need another installed item when: it is a `brew` item whose `dependsOn` holds that formula; or it is a `launchd` item whose `program` is inside that `app` item's `path` followed by `/`; or its `program` is inside `<prefix>/Cellar/<name>/` or `<prefix>/opt/<name>/` of that `brew` item, where `<prefix>` is `/opt/homebrew` or `/usr/local`.
+
+#### Scenario: Job inside an app
+- **WHEN** the job `com.northwind.sync` runs `/Applications/Northwind Sync.app/Contents/MacOS/sync`
+- **THEN** it needs the app whose path is `/Applications/Northwind Sync.app`
+
+#### Scenario: Job of a formula
+- **WHEN** a job runs `/opt/homebrew/opt/forge/bin/forge`
+- **THEN** it needs the formula `forge`
+
+#### Scenario: Prefix that only looks alike
+- **WHEN** a job runs `/Applications/Northwind Sync Helper.app/Contents/MacOS/helper` and only `/Applications/Northwind Sync.app` is installed
+- **THEN** the job needs nothing
+
+### Requirement: Proposed relations
+When component A matches an item that needs an item matched by component B, A and B differ, and A's `spec.dependsOn` does not reference B (ignoring case), the command SHALL propose `A dependsOn B` with the item pair that suggests it. Each pair of components is proposed once, with its reasons in order.
+
+#### Scenario: Formula dependency proposed
+- **WHEN** `component:forge` lists `forge`, `component:libnorth` lists `libnorth`, and `forge` depends on `libnorth`
+- **THEN** `component:forge dependsOn component:libnorth` is proposed
+
+#### Scenario: Relation already declared
+- **WHEN** `component:forge` already has `dependsOn: [Component:LibNorth]`
+- **THEN** nothing is proposed for that pair
+
+### Requirement: Annotations proposed for a cask
+When a component matches a cask whose `apps` holds the folder name of an installed `app` item that no component matches, the not-declared entry of that app SHALL name that component as the one that probably needs its `stackledger/app` annotation.
+
+#### Scenario: App installed by a cask
+- **WHEN** `component:editor` lists the cask `northwind-editor`, which installs `Northwind Editor.app`, and the app `com.northwind.editor` is not declared
+- **THEN** that app's entry suggests `component:editor`
+
+### Requirement: Drift text output
+The text output SHALL list, in this order: the snapshot's machine and `takenAt`; counts; not declared, grouped by source; missing; not checked; shared; proposed relations. Empty sections are left out, and with nothing to report the output says so. Every text from the catalogue or the snapshot SHALL have C0 and C1 control characters removed.
+
+#### Scenario: Nothing differs
+- **WHEN** every listed item matches and every identifier is installed
+- **THEN** the output has the machine, the counts and a line saying there is no drift
+
+#### Scenario: Control characters removed
+- **WHEN** an installed app's title holds a line break and a terminal escape
+- **THEN** the text output contains no control character
+
+### Requirement: Drift JSON output
+With `--format json`, stdout SHALL be one JSON object with `snapshot` (machine and `takenAt`), `counts`, `notDeclared`, `missing`, `notChecked`, `shared`, `matched` and `proposedRelations`, as documented in `docs/discovery.md`. Every list SHALL be in the same order as the text output.
+
+#### Scenario: JSON lists
+- **WHEN** the format is `json` and one cask is not declared
+- **THEN** `notDeclared` has one entry with `source` `cask`, its `id` and its `annotation`
+
+### Requirement: Deterministic drift
+The same snapshot and catalogue SHALL give byte-identical output. Lists SHALL be sorted by source order, then `id` by Unicode code points; components by reference.
+
+#### Scenario: Same input twice
+- **WHEN** the command runs twice with the same snapshot and catalogue
+- **THEN** both outputs are byte-identical
+
+### Requirement: Drift failures
+A failure while comparing or serialising SHALL exit 1 with stdout empty and one error line on stderr, without usage. A failure while writing stdout SHALL exit 1 with one error line on stderr.
+
+#### Scenario: Drift closed pipe
+- **WHEN** stdout is closed after the first bytes
+- **THEN** the exit code is 1 and stderr has one error line without usage
+
+### Requirement: Drift performance
+Comparing a snapshot of 2,000 items with a catalogue of 500 components SHALL take under 2 seconds.
+
+#### Scenario: Large drift
+- **WHEN** the command compares 2,000 items with 500 annotated components
+- **THEN** it finishes in under 2 seconds
