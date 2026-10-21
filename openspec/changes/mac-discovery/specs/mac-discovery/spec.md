@@ -46,11 +46,18 @@ Every program discovery starts, `scutil` included, SHALL run through `/usr/bin/s
 - **THEN** discovery refuses to start, no program runs and no file is written
 
 ### Requirement: Program limits
-Each program run SHALL be stopped after 60 seconds or once its stdout passes 64 MiB, and its source is then `failed` with reason `time limit` or `output limit`. Programs SHALL get only `PATH`, `HOME`, `USER` and `TMPDIR` from the caller's environment, plus settings that turn off Homebrew's automatic update, analytics and hints, npm's update check and colour output.
+Each program run SHALL be stopped after 60 seconds or once its stdout passes 64 MiB. When a program runs once for its source (`brew`, `mas`, `npm`), a non-zero exit, a limit or unreadable output makes the source `failed` with that reason. When it runs per file (`plutil`), a limit or failing to read a required key (`CFBundleIdentifier`, `Label`) only counts that file as ignored and the source goes on; an optional key that cannot be read is absent.
 
 #### Scenario: Program that hangs
 - **WHEN** a source program does not finish within the time limit
 - **THEN** it is stopped and its source is `failed` with reason `time limit`
+
+#### Scenario: Plist reader that hangs
+- **WHEN** `plutil` does not finish within the time limit for one application bundle
+- **THEN** that bundle is counted as ignored, the other bundles are recorded and `app` is `ok`
+
+### Requirement: Program environment
+Programs SHALL get only `PATH`, `HOME`, `USER` and `TMPDIR` from the caller's environment, plus settings that turn off Homebrew's automatic update, analytics and hints, npm's update check and colour output.
 
 #### Scenario: Caller environment not passed
 - **WHEN** the caller's environment holds `NORTHWIND_TOKEN`
@@ -109,7 +116,7 @@ Each program run SHALL be stopped after 60 seconds or once its stdout passes 64 
 - **THEN** it is not recorded and `ignored` counts it
 
 ### Requirement: launchd jobs
-`launchd` SHALL read the `.plist` files directly inside `~/Library/LaunchAgents` (scope `user-agent`), `/Library/LaunchAgents` (scope `agent`) and `/Library/LaunchDaemons` (scope `daemon`) with `plutil`. The item has `id` = `Label`, `scope`, `path` of the file and `program` = `Program`, else the first entry of `ProgramArguments`. A file that cannot be read or has no `Label` is counted as ignored.
+`launchd` SHALL read the `.plist` files directly inside `~/Library/LaunchAgents` (scope `user-agent`), `/Library/LaunchAgents` (scope `agent`) and `/Library/LaunchDaemons` (scope `daemon`), not following links. The item has `id` = `Label`, `scope`, `path` of the file and `program` = `Program`, else the first entry of `ProgramArguments`, else null. A file that cannot be read or has no `Label` is counted as ignored.
 
 #### Scenario: Agent of the user
 - **WHEN** `~/Library/LaunchAgents/com.northwind.sync.plist` has `Label` `com.northwind.sync` and `ProgramArguments` `["/Applications/Northwind Sync.app/Contents/MacOS/sync", "--quiet"]`
@@ -120,11 +127,11 @@ Each program run SHALL be stopped after 60 seconds or once its stdout passes 64 
 - **THEN** it is counted as ignored and the source is `ok`
 
 ### Requirement: launchd privacy
-Nothing from a launchd file other than `Label`, `Program` and the first entry of `ProgramArguments` SHALL reach the snapshot: no other argument, environment variable or key.
+Discovery SHALL read only the keys `Label`, `Program` and `ProgramArguments.0` of a launchd file, one `plutil -extract <key> raw` run per key, so no other argument, environment variable or key is read or reaches the snapshot.
 
 #### Scenario: Arguments are not recorded
 - **WHEN** a job's `ProgramArguments` is `["/usr/local/bin/northwind-agent", "--token", "nw-example-value"]` and it has `EnvironmentVariables`
-- **THEN** the snapshot contains neither `nw-example-value` nor any environment variable
+- **THEN** the snapshot contains neither `nw-example-value` nor any environment variable, and every `plutil` run on that file extracts one of the three keys
 
 ### Requirement: mise
 `mise` SHALL list the folders inside `installs` of the mise data folder (`$MISE_DATA_DIR`, else `$XDG_DATA_HOME/mise`, else `~/.local/share/mise`). Each tool folder is one item with `id` = the folder name and `versions` = the names of its version folders, leaving out symbolic links such as `latest`. It SHALL NOT run `mise`. Without that folder the source is `skipped`.
@@ -167,14 +174,28 @@ The machine name SHALL be the output of `scutil --get ComputerName` folded to a 
 - **THEN** the machine name is `mac`
 
 ### Requirement: Snapshot content
-The snapshot SHALL be one JSON object with `format` = `stackledger-snapshot/v1`, `takenAt` (UTC, to the second), `machine` (`name`, the macOS `user` and the `macos` version), `sources` (one entry per source in source order, with `source`, `status`, `reason`, `items` and `ignored`) and `items` (each with `source`, `id`, `versions` and the fields its source defines). The shape is documented in `docs/discovery.md`.
+The snapshot SHALL be one JSON object with `format` = `stackledger-snapshot/v1`, `takenAt` (UTC, to the second), `machine` (`name`, the macOS `user` and the `macos` version or null), `sources` (exactly the eight sources in source order, each with `source`, `status`, `reason`, `items` and `ignored`) and `items` (each with `source`, `id`, `versions` and its source's fields), in the shape of design D3, which `docs/discovery.md` documents.
 
 #### Scenario: Snapshot shape
 - **WHEN** discovery runs with the fictitious Northwind sources
-- **THEN** the snapshot parses as the documented shape, with eight entries in `sources`
+- **THEN** the snapshot parses as the shape of design D3, with eight entries in `sources`
+
+### Requirement: Snapshot consistency
+In a snapshot, every item's source SHALL have status `ok`; each source's `items` SHALL equal its number of items; `reason` SHALL be null exactly when the status is `ok`; `id` values SHALL be non-empty; and no two items SHALL share `source`, `id` and `path`.
+
+#### Scenario: Consistent counts
+- **WHEN** discovery records two casks and ignores one app bundle
+- **THEN** `cask` has `items` 2 and `app` has `ignored` 1
+
+### Requirement: Snapshot secret guard
+An item whose `title`, `path` or `program` holds private-key material or a payment-card number, as the catalogue's secret guard defines them, SHALL be left out of the snapshot and counted as ignored. The user name and paths are not personal data for this rule.
+
+#### Scenario: Card number in a title
+- **WHEN** an app's display name holds a 16-digit number that passes the Luhn check
+- **THEN** that app is not recorded and `ignored` counts it
 
 ### Requirement: Deterministic snapshot
-Items SHALL be sorted by source order, then `id`, then `path`, comparing Unicode code points; every list inside an item SHALL be sorted the same way, without repeats. The same machine state SHALL give a byte-identical snapshot apart from `takenAt`.
+Items SHALL be sorted by source order, then `id`, then `path`, comparing Unicode code points; every list inside an item SHALL be sorted the same way, without repeats. Characters U+007F to U+009F SHALL be written as `\u` escapes. The same machine state SHALL give a byte-identical snapshot apart from `takenAt`.
 
 #### Scenario: Same state twice
 - **WHEN** discovery runs twice on an unchanged fictitious machine

@@ -50,7 +50,7 @@ A catalogue is only useful while it matches what is really installed. Today the 
 - **Limits:** requirement. Each program run has a time limit and an output size limit; the snapshot file read by `drift` has a size limit; `drift` compares 2,000 items with 500 components in under 2 seconds.
 - **Repetition and idempotency:** requirement. The same machine state gives the same snapshot apart from `takenAt`; `drift` gives byte-identical output for the same snapshot and catalogue.
 - **Concurrency:** requirement. Two `discover` runs at once each write a complete file; the last rename wins, and no partial file is ever read.
-- **Security:** requirement. No sudo, no network, no telemetry, no AI; programs run in a sandbox that denies network and writes; the only write is the snapshot file; launchd arguments and environment are never read; text is stripped of control characters in terminal output; the snapshot folder and file are private to the user.
+- **Security:** requirement. No sudo, no network, no telemetry, no AI; programs run in a sandbox that denies network and writes; the only write is the snapshot file, in folders that must be the user's own and not writable by others; only three keys of a launchd file are read, never its arguments or environment; an item holding private-key material or a card number is left out of the snapshot, and `drift` refuses a snapshot that holds one; control characters are removed from terminal text and C1 characters escaped in JSON; the snapshot folder and file are private to the user.
 - **Logs and observability:** requirement. `discover` reports each source's status and item count; `drift` writes the catalogue counts line on stderr as `report` does.
 
 ## Open questions

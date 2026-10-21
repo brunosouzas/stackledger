@@ -39,26 +39,53 @@ Alternatives: run programs plainly and trust them (npm and pipx proved they writ
 
 ### D2. Files read by Node itself
 
-`app` and `launchd` list folders with `readdir`/`lstat` (never following links) and pass each plist path to sandboxed `plutil -convert json -o - <file>`. When that conversion fails (a plist holding a date or data value cannot become JSON), the source falls back to `plutil -extract <key> raw -o - <file>` for each key it needs. `mise` and `pipx` read their folders and `pipx_metadata.json` with Node only, without running their programs. Node only reads: the one writer is `src/discovery/write.ts`.
+`app` and `launchd` list folders with `readdir`/`lstat` (never following links).
+
+- `app` passes each `Info.plist` to sandboxed `plutil -convert json -o - <file>`. When that conversion fails (a plist holding a date or data value cannot become JSON), it falls back to `plutil -extract <key> raw -o - <file>` for each of its four keys. An app's `Info.plist` holds no user secrets, so converting it whole is fine.
+- `launchd` never converts a file whole: it runs `plutil -extract Label raw`, `plutil -extract Program raw` and, when `Program` is absent, `plutil -extract ProgramArguments.0 raw`. Before that, Node opens the file for reading to tell an unreadable file (ignored) from a missing key (`plutil` exit 1 on a readable file: the key is absent).
+- `mise` and `pipx` read their folders and `pipx_metadata.json` with Node only, without running their programs.
+
+Node only reads: the one writer is `src/discovery/write.ts`. Per-file `plutil` runs go through a pool of 8 at a time, and results are sorted afterwards, so concurrency never changes the snapshot.
 
 ### D3. Snapshot model
 
-`src/discovery/snapshot.ts` holds the zod schema of `stackledger-snapshot/v1` (used to parse in `drift`, and by tests on what `discover` writes) and the sort rules. Item fields by source:
+`src/discovery/snapshot.ts` holds the zod schema of `stackledger-snapshot/v1` (strict objects: an unknown field is a shape error), the consistency checks, the sort rules and the serialiser. `drift` parses with it; tests check what `discover` writes against it. The secret guard reuses the value rules of `src/secrets.ts` (private-key block, Luhn card number), moved into one exported function that both call.
 
-| Source | Fields besides `source`, `id`, `versions` |
-| --- | --- |
-| `brew` | `onRequest`, `dependsOn` |
-| `cask` | `apps` |
-| `mas` | `title` |
-| `app` | `title`, `path`, `appStore` |
-| `launchd` | `scope`, `path`, `program` (or none) |
-| `mise`, `npm`, `pipx` | none |
+```json
+{
+  "format": "stackledger-snapshot/v1",
+  "takenAt": "2026-10-21T07:30:00Z",
+  "machine": { "name": "username-macbook-air", "user": "username", "macos": "27.2" },
+  "sources": [
+    { "source": "brew", "status": "ok", "reason": null, "items": 2, "ignored": 0 },
+    { "source": "mas", "status": "skipped", "reason": "not found", "items": 0, "ignored": 0 }
+  ],
+  "items": [
+    { "source": "brew", "id": "forge", "versions": ["2.1.0"], "onRequest": true, "dependsOn": ["libnorth"] },
+    { "source": "cask", "id": "northwind-editor", "versions": ["5.0.1"], "apps": ["Northwind Editor.app"] },
+    { "source": "mas", "id": "1234567890", "versions": ["4.2"], "title": "Northwind Notes" },
+    { "source": "app", "id": "com.northwind.editor", "versions": ["5.0.1"], "title": "Northwind Editor", "path": "/Applications/Northwind Editor.app", "appStore": false },
+    { "source": "launchd", "id": "com.northwind.sync", "versions": [], "scope": "user-agent", "path": "/Users/username/Library/LaunchAgents/com.northwind.sync.plist", "program": "/Applications/Northwind Sync.app/Contents/MacOS/sync" },
+    { "source": "mise", "id": "node", "versions": ["22.12.0", "24.1.0"] },
+    { "source": "npm", "id": "northwind-cli", "versions": ["3.0.0"] },
+    { "source": "pipx", "id": "northwind-docs", "versions": ["1.6.0"] }
+  ]
+}
+```
 
-`takenAt` is `new Date().toISOString()` cut to seconds. `machine.user` is `os.userInfo().username`; `machine.macos` comes from sandboxed `sw_vers -productVersion` (an unreadable version is `null`, not a failure).
+(`sources` always has all eight entries, in source order; two are shown.) Types: `takenAt` matches `YYYY-MM-DDTHH:MM:SSZ`; `machine.name` matches the fold rule's output; `machine.user` is a non-empty string; `machine.macos` is a string or `null`; `status` is `ok`, `skipped` or `failed`; `reason` is one of the fixed texts or `null`; `items` and `ignored` are non-negative integers; every `id`, version, title, path, app name and dependency is a non-empty string; `versions` may be empty (always for `launchd`; for an app without `CFBundleShortVersionString`); `program` is a string or `null`; `scope` is `user-agent`, `agent` or `daemon`. Each source has exactly the fields shown for it.
+
+`takenAt` is `new Date().toISOString()` cut to seconds. `machine.user` is `os.userInfo().username`; `machine.macos` comes from sandboxed `sw_vers -productVersion` (an unreadable version is `null`, not a failure). The serialiser is `JSON.stringify(snapshot, null, 2)` with U+007F–U+009F replaced by `\u` escapes, plus a final line feed.
 
 ### D4. Writing the file
 
-`src/discovery/write.ts`: `lstat` `~/.stackledger` and the machine folder; create missing ones with `mkdir(…, { mode: 0o700 })` (one level at a time, so a link created between checks is caught by the next `lstat`); refuse links and non-folders; refuse an existing `snapshot.json` that is not a regular file. Write `snapshot.<pid>.<random>.tmp` with flags `wx` and mode `0600`, `fsync`, then `rename` over `snapshot.json`; remove the temporary file on any failure. Concurrent runs each rename a complete file: the last one wins.
+`src/discovery/write.ts`, through a small `FsOps` (as `src/site/fs-ops.ts` does, so tests can inject a swap between steps):
+
+1. `lstat` `~/.stackledger`, then the machine folder; create a missing one with `mkdir(…, { mode: 0o700 })`, one level at a time, and `lstat` it again. Refuse a link, a non-folder, a folder whose `uid` is not the current user's, or one with mode bits `0o022`. Remember each folder's `dev` and `ino`. Refuse an existing `snapshot.json` that is not a regular file.
+2. Open `snapshot.<pid>.<random>.tmp` in the machine folder with `wx`, `O_NOFOLLOW` and mode `0600`, then `lstat` both folders again. If either is now a link or has another `dev`/`ino`, remove the empty temporary file by the same path (which still leads to where it was created), close it and exit 1, before any snapshot byte is written.
+3. Write, `fsync`, close, repeat the folder check of step 2, `rename` over `snapshot.json`. Remove the temporary file on any failure.
+
+Concurrent runs each rename a complete file: the last one wins. A swap after the last check and before `rename` is not detected; only the owner (or root) can do it, because both folders are the user's and not writable by others, and such a person can already write anywhere in the home folder. Node has no `openat`/`renameat`, which would close that window.
 
 ### D5. Machine name
 
@@ -77,6 +104,29 @@ Each source module takes a small `Host` (`run`, `readdir`, `lstat`, `readFile`, 
 ### D8. Validate
 
 `validateLoaded` gains one stage after the secret scan for served components: unknown `stackledger/` annotation keys, empty identifiers and identifiers claimed twice, all warnings. The `stackledger/zone` key is a label, not an annotation, so it is unaffected.
+
+### D9. Drift output
+
+An item is named in drift output by `{ "source", "id", "path" }`, where `path` is the item's path or `null` for sources without one. JSON shape (stable within v1):
+
+```json
+{
+  "snapshot": { "machine": { "name": "username-macbook-air", "user": "username", "macos": "27.2" }, "takenAt": "2026-10-21T07:30:00Z" },
+  "counts": { "items": 40, "matched": 30, "notDeclared": 4, "dependencies": 5, "macos": 1, "missing": 2, "notChecked": 1, "shared": 1, "proposedRelations": 2, "componentsWithoutAnnotations": 3 },
+  "notDeclared": [{ "source": "cask", "id": "northwind-editor", "path": null, "versions": ["5.0.1"], "title": null, "annotation": "stackledger/cask: northwind-editor", "suggestedComponent": null }],
+  "missing": [{ "component": "component:legacy", "source": "app", "id": "com.northwind.legacy", "incomplete": false }],
+  "notChecked": [{ "component": "component:notes", "source": "mas", "id": "1234567890", "status": "skipped" }],
+  "shared": [{ "source": "cask", "id": "northwind-editor", "path": null, "components": ["component:editor", "component:editor-beta"] }],
+  "matched": [{ "source": "brew", "id": "forge", "path": null, "components": ["component:forge"] }],
+  "proposedRelations": [{ "from": "component:forge", "to": "component:libnorth", "reasons": [{ "from": { "source": "brew", "id": "forge", "path": null }, "to": { "source": "brew", "id": "libnorth", "path": null } }] }]
+}
+```
+
+- `counts.items` is every snapshot item; `matched` counts items matched by at least one component (shared ones once); `dependencies` and `macos` count the items left out of `notDeclared`; `componentsWithoutAnnotations` counts served components with no `stackledger/` discovery annotation.
+- `missing` and `notChecked` hold the identifier as the component wrote it (trimmed); `component` is `component:<name>` with the name as the catalogue writes it, as the graph's `ref` prints it elsewhere; sorting uses the lower-case key.
+- `title` is the item's `title` or `null`; `suggestedComponent` is a reference or `null`.
+- `shared` items are also in `matched`.
+- Text output shows the same lists with one line per entry, for example `cask  northwind-editor 5.0.1  -> stackledger/cask: northwind-editor`, `missing  component:legacy  app com.northwind.legacy (incomplete source)` and `propose  component:forge dependsOn component:libnorth  (brew forge needs brew libnorth)`.
 
 ## Risks / Trade-offs
 

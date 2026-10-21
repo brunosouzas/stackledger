@@ -6,15 +6,17 @@ Levels: U unit, I integration (CLI, entry script or built files), P performance 
 | --- | --- | --- | --- |
 | catalogue | Valid discovery annotations; Unknown discovery source; Empty identifier; Other annotations untouched; Identifier claimed twice; Same identifier for two sources | `test/unit/annotations.test.ts` | U |
 | mac-discovery | Name with spaces; Name with accents; Name with nothing usable; No usable name at all | `test/unit/discovery-machine.test.ts` | U |
-| mac-discovery | Missing source; Failing source; Reason without program output; Homebrew outside PATH; No sandbox; Formula with a dependency; Formula from a tap; Cask with an app; Unreadable Homebrew output; App Store list; Line in another shape; App in a subfolder; Linked app; App Store receipt; App without identifier; App in the home folder; Agent of the user; Unreadable daemon; Arguments are not recorded; Tool with an alias link; npm reports a problem but lists packages; pipx package | `test/unit/discovery-sources.test.ts` | U |
-| mac-discovery | Snapshot shape; Same state twice | `test/unit/discovery-snapshot.test.ts` | U |
+| mac-discovery | Missing source; Failing source; Reason without program output; Homebrew outside PATH; No sandbox; Formula with a dependency; Formula from a tap; Cask with an app; Unreadable Homebrew output; App Store list; Line in another shape; App in a subfolder; Linked app; App Store receipt; App without identifier; App in the home folder; Agent of the user; Unreadable daemon; Arguments are not recorded; Tool with an alias link; npm reports a problem but lists packages; pipx package; Plist reader that hangs; Card number in a title | `test/unit/discovery-sources.test.ts` | U |
+| mac-discovery | Snapshot shape; Consistent counts; Same state twice | `test/unit/discovery-snapshot.test.ts` | U |
 | mac-discovery | Write denied; Network denied; Program that hangs; Caller environment not passed; Writes only the snapshot | `test/integration/discover-sandbox.test.ts` | I (macOS) |
 | mac-discovery | Fictitious user in the repository | `test/integration/docs.test.ts` | I |
-| discover-command | Snapshot written; Skipped source still succeeds; Unexpected folder; Discover help; Not macOS; Sandbox missing; First run; Two runs at once; Linked snapshot folder; Folder not writable; Program output kept out | `test/integration/discover.test.ts` | I |
-| drift-command | Name is not enough; Bundle identifier in another case; Python package spelling; Undeclared cask; Formula installed as a dependency; Apple app; Missing app; Source skipped; Two components for one item; Job inside an app; Job of a formula; Prefix that only looks alike; Formula dependency proposed; Relation already declared; App installed by a cask | `test/unit/drift.test.ts` | U |
-| drift-command | Explicit snapshot; Default snapshot; Drift read-only; Unknown drift format; No catalogue folder; No snapshot yet; Snapshot in another format; Default snapshot on Linux; Catalogue error; Nothing differs; Control characters removed; JSON lists; Same input twice; Drift closed pipe | `test/integration/drift.test.ts` | I |
+| discover-command | Snapshot written; Skipped source still succeeds; Unexpected folder; Discover help; Not macOS; Sandbox missing; First run; Two runs at once; Linked snapshot folder; Folder writable by others; Folder not writable; Program output kept out | `test/integration/discover.test.ts` | I |
+| discover-command | Folder replaced during the run (a swap injected through `FsOps`) | `test/unit/discovery-write.test.ts` | U |
+| drift-command | Name is not enough; Bundle identifier in another case; Python package spelling; Undeclared cask; Formula installed as a dependency; Apple app; Missing app; Source skipped; Missing from an incomplete source; Two components for one item; Job inside an app; Job of a formula; Prefix that only looks alike; Formula dependency proposed; Relation already declared; App installed by a cask | `test/unit/drift.test.ts` | U |
+| drift-command | Explicit snapshot; Default snapshot; Drift read-only; Unknown drift format; No catalogue folder; No snapshot yet; Snapshot in another format; Inconsistent snapshot; Secret in a snapshot; Default snapshot on Linux; Catalogue error; Nothing differs; Control characters removed; JSON lists; C1 character in JSON; Same input twice; Drift closed pipe | `test/integration/drift.test.ts` | I |
 | drift-command | Large drift | `test/perf/drift.perf.test.ts` | P |
 | mcp-server | Global help lists both commands | `test/integration/cli.test.ts` | I |
+| mcp-server | No folder; Unknown view; Missing folder; Help (unchanged, tests already exist) | `test/integration/mcp.test.ts` | I |
 
 `Default snapshot`, `Not macOS` and `Default snapshot on Linux` run through the test entry script with a fake host, so they run on every platform; `Not macOS` and `Default snapshot on Linux` also run against the real CLI on the Linux CI jobs.
 
@@ -34,8 +36,8 @@ Levels: U unit, I integration (CLI, entry script or built files), P performance 
 
 ## 4. Snapshot and `discover`
 
-- [ ] 4.1 `src/discovery/snapshot.ts` (schema, sorting) and `src/discovery/index.ts` (`discover(host)`); `test/unit/discovery-snapshot.test.ts`.
-- [ ] 4.2 `src/discovery/write.ts` (D4) and `src/discover-command.ts`; `src/cli.ts` usage and dispatch; `test/integration/discover-entry.mjs` and `test/integration/discover.test.ts`; the global help test in `test/integration/cli.test.ts`.
+- [ ] 4.1 `src/discovery/snapshot.ts` (schema of D3, consistency checks, sorting, serialiser with C1 escapes, the secret guard through one value check exported from `src/secrets.ts`) and `src/discovery/index.ts` (`discover(host)`); `test/unit/discovery-snapshot.test.ts`. Check: `npm test`, with `test/unit/secrets.test.ts` unchanged and green.
+- [ ] 4.2 `src/discovery/write.ts` (D4, with `FsOps`) and `src/discover-command.ts`; `test/unit/discovery-write.test.ts`; `src/cli.ts` usage and dispatch; `test/integration/discover-entry.mjs` and `test/integration/discover.test.ts`; the global help test in `test/integration/cli.test.ts`.
 - [ ] 4.3 `.github/workflows/test.yml`: a `macos-latest` job (Node 22) that builds and runs the discovery tests. Check: CI green on the pull request.
 
 ## 5. `drift`

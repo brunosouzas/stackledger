@@ -50,11 +50,19 @@ The command SHALL create `~/.stackledger` and the machine folder when they are a
 - **THEN** `snapshot.json` is one complete, valid snapshot and no temporary file is left
 
 ### Requirement: Unsafe snapshot path
-When `~/.stackledger` or the machine folder is not a folder, or is a symbolic link, or `snapshot.json` exists and is not a regular file, the command SHALL write nothing, print one error line on stderr and exit 1. A failure to create or write the file SHALL also exit 1 with one line and leave any previous snapshot unchanged.
+When `~/.stackledger` or the machine folder is a symbolic link, is not a folder, is not owned by the current user or can be written by group or others, or `snapshot.json` exists and is not a regular file, the command SHALL write nothing, print one error line on stderr and exit 1. A failure to create or write the file SHALL also exit 1 with one line and leave any previous snapshot unchanged.
 
 #### Scenario: Linked snapshot folder
 - **WHEN** `~/.stackledger` is a symbolic link to another folder
 - **THEN** the exit code is 1, stderr has one line, and nothing is written in either folder
+
+#### Scenario: Folder writable by others
+- **WHEN** the machine folder exists with mode `0777`
+- **THEN** the exit code is 1, stderr has one line, and nothing is written
+
+#### Scenario: Folder replaced during the run
+- **WHEN** the machine folder is replaced by a symbolic link after the folder checks and before the temporary file is created
+- **THEN** the exit code is 1, the link's target holds no snapshot, and no temporary file is left in it
 
 #### Scenario: Folder not writable
 - **WHEN** the machine folder exists and cannot be written

@@ -32,7 +32,7 @@ When `--help` is among the arguments, the command SHALL print usage on stdout an
 - **THEN** the exit code is 2, stdout is empty and stderr says a folder is required
 
 ### Requirement: Snapshot input
-A snapshot that does not exist SHALL exit 2 with stdout empty and a reason telling to run `stackledger discover`. One that is not a regular file, is larger than 32 MiB, is not JSON, or does not follow the `stackledger-snapshot/v1` shape SHALL exit 2 with a reason naming the problem, never the file's content. Without `--snapshot`, a machine name that cannot be found (no macOS, no sandbox) SHALL exit 2 asking for `--snapshot`.
+A missing snapshot SHALL exit 2 with stdout empty and a reason telling to run `stackledger discover`. One that is not a regular file, is over 32 MiB, is not JSON, breaks the `stackledger-snapshot/v1` shape or its consistency rules, or fails the snapshot secret guard SHALL exit 2 with a fixed reason naming the problem, never a path or the file's content. Without `--snapshot`, a machine name that cannot be found (no macOS, no sandbox) SHALL exit 2 asking for `--snapshot`.
 
 #### Scenario: No snapshot yet
 - **WHEN** the default snapshot does not exist
@@ -41,6 +41,14 @@ A snapshot that does not exist SHALL exit 2 with stdout empty and a reason telli
 #### Scenario: Snapshot in another format
 - **WHEN** the snapshot's `format` is `stackledger-snapshot/v9`
 - **THEN** the exit code is 2 and stderr says the snapshot format is not supported
+
+#### Scenario: Inconsistent snapshot
+- **WHEN** the snapshot holds an item of a source whose status is `skipped`
+- **THEN** the exit code is 2, stdout is empty and stderr says the snapshot is not consistent
+
+#### Scenario: Secret in a snapshot
+- **WHEN** an edited snapshot holds a private key in an item's `title`
+- **THEN** the exit code is 2 and stderr names the rule but not the value
 
 #### Scenario: Default snapshot on Linux
 - **WHEN** the command runs on Linux without `--snapshot`
@@ -84,7 +92,7 @@ Each item no component matches SHALL be listed as not declared, with the annotat
 - **THEN** it is not listed and the macOS item count is 1
 
 ### Requirement: Declared but missing
-Each identifier a component lists for a source whose status is `ok` that matches no item SHALL be listed as missing, with the component. An identifier for a `skipped` or `failed` source, or for a source the snapshot does not hold, SHALL be listed as not checked with that source's status, never as missing.
+Each identifier a component lists for a source whose status is `ok` that matches no item SHALL be listed as missing, with the component, and marked `incomplete` when that source's `ignored` count is not zero (the identifier may be in an entry that could not be read). An identifier for a `skipped` or `failed` source SHALL be listed as not checked with that source's status, never as missing.
 
 #### Scenario: Missing app
 - **WHEN** a component has `stackledger/app: com.northwind.legacy` and the `app` source is `ok` without that item
@@ -93,6 +101,10 @@ Each identifier a component lists for a source whose status is `ok` that matches
 #### Scenario: Source skipped
 - **WHEN** a component has `stackledger/mas: 1234567890` and the `mas` source is `skipped`
 - **THEN** it is listed as not checked with status `skipped`, and not as missing
+
+#### Scenario: Missing from an incomplete source
+- **WHEN** a component has `stackledger/launchd: com.northwind.backup`, `launchd` is `ok` with `ignored` 1, and no item has that label
+- **THEN** it is listed as missing and marked `incomplete`
 
 ### Requirement: Shared items
 An item matched by two or more components SHALL be listed as shared, with every matching component in reference order, and SHALL count once as matched.
@@ -135,25 +147,29 @@ When a component matches a cask whose `apps` holds the folder name of an install
 - **THEN** that app's entry suggests `component:editor`
 
 ### Requirement: Drift text output
-The text output SHALL list, in this order: the snapshot's machine and `takenAt`; counts; not declared, grouped by source; missing; not checked; shared; proposed relations. Empty sections are left out, and with nothing to report the output says so. Every text from the catalogue or the snapshot SHALL have C0 and C1 control characters removed.
+The text output SHALL list, in this order: the snapshot's machine and `takenAt`; counts; not declared, grouped by source; missing; not checked; shared; proposed relations. Empty sections are left out, and with nothing to report the output says so. Every text taken from the catalogue or the snapshot SHALL have C0 and C1 control characters removed before it is written to stdout or stderr; the output's own line feeds stay.
 
 #### Scenario: Nothing differs
 - **WHEN** every listed item matches and every identifier is installed
 - **THEN** the output has the machine, the counts and a line saying there is no drift
 
 #### Scenario: Control characters removed
-- **WHEN** an installed app's title holds a line break and a terminal escape
-- **THEN** the text output contains no control character
+- **WHEN** an installed app's title holds a line break and a terminal escape, and a component title holds a C1 character
+- **THEN** no line of the text output contains a control character, and the app is on one line
 
 ### Requirement: Drift JSON output
-With `--format json`, stdout SHALL be one JSON object with `snapshot` (machine and `takenAt`), `counts`, `notDeclared`, `missing`, `notChecked`, `shared`, `matched` and `proposedRelations`, as documented in `docs/discovery.md`. Every list SHALL be in the same order as the text output.
+With `--format json`, stdout SHALL be one JSON object in the shape of design D9 (`snapshot`, `counts`, `notDeclared`, `missing`, `notChecked`, `shared`, `matched`, `proposedRelations`), which `docs/discovery.md` documents. Strings keep their values, but characters U+007F to U+009F SHALL be written as `\u` escapes, so no raw control character reaches a terminal.
 
 #### Scenario: JSON lists
 - **WHEN** the format is `json` and one cask is not declared
 - **THEN** `notDeclared` has one entry with `source` `cask`, its `id` and its `annotation`
 
+#### Scenario: C1 character in JSON
+- **WHEN** an app title holds U+009B and the format is `json`
+- **THEN** stdout holds `\u009b` in its place and parses back to the same title
+
 ### Requirement: Deterministic drift
-The same snapshot and catalogue SHALL give byte-identical output. Lists SHALL be sorted by source order, then `id` by Unicode code points; components by reference.
+The same snapshot and catalogue SHALL give byte-identical output. Items SHALL be sorted by source order, then `id`, then `path` (an item without path first); entries naming a component by that component's reference first; components within an entry by reference; relations by the two references. Text compares Unicode code points.
 
 #### Scenario: Same input twice
 - **WHEN** the command runs twice with the same snapshot and catalogue
