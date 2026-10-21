@@ -318,6 +318,18 @@ test('Scaffold passes validate', () => {
   expect(after.documents).toBe(before.documents + readdirSync(dir).length);
 });
 
+test('Card number built by removing controls', () => {
+  // Removing the tabs from the title would give a card number: that draft fails the check and is left out.
+  const path = catalogue(comp('forge', { 'stackledger/brew': 'forge' })), dir = join(folder(), 'new-items');
+  const file = snapshotFile(snapshotOf([brew('forge'), app('com.northwind.pay', '/Applications/Northwind Pay.app', { title: '4111\t1111\t1111\t1111' }), cask('northwind-editor')]));
+  const result = driftRun([path, '--snapshot', file, '--scaffold', dir]);
+  expect(result.status).toBe(0);
+  expect(result.stderr).toBe('stackledger drift: 1 scaffold file was left out because it has errors; run stackledger validate on the drafts for details\n');
+  expect(result.stdout).toContain('com.northwind.pay');
+  expect(readdirSync(dir)).toEqual(['northwind-editor.yaml']);
+  expect(readFileSync(join(dir, 'northwind-editor.yaml'), 'utf8')).not.toContain('4111');
+});
+
 test('Scaffold write fails', () => {
   const example = twoCasks(), dir = join(folder(), 'new-items');
   const result = driftEntryRun({ faults: { failWrite: 2 } }, [example.path, '--snapshot', example.file, '--scaffold', dir]);

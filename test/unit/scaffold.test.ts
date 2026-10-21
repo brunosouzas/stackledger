@@ -45,7 +45,8 @@ test('Title of control characters only', () => {
   expect(file!.text).not.toContain('/Applications');
 });
 
-test('Card number built by removing controls', () => {
+// The same title at command level (stderr and the folder) is a scenario test in test/integration/drift.test.ts.
+test('Card number title fails the scaffold check', () => {
   const files = scaffold([app('com.northwind.pay', '/Applications/Northwind Pay.app', { title: '4111\t1111\t1111\t1111' }), cask('northwind-editor')]);
   expect(files).toHaveLength(2);
   const checked = checkScaffold(files);
