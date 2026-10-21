@@ -1,0 +1,12 @@
+# One fictitious component, so a fresh copy of this template validates and builds as it is.
+# Replace it with your own catalogue: the format is in docs/catalogue-format.md of stackledger.
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: northwind-wiki
+  title: Northwind Wiki
+  description: The team wiki of the fictitious Northwind company.
+spec:
+  type: tool
+  lifecycle: active
+  owner: group:northwind

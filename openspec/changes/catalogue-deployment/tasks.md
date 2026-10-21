@@ -26,7 +26,7 @@ Levels: U unit, I integration (built CLI, packed package, or workflow steps run 
 
 ## 2. Catalogue template
 
-- [ ] 2.1 `examples/catalogue-repository/` (D3): workflow with jobs `site` and `deploy`, `.gitignore`, README (with rollback), `catalog/`; template tests. Check: `npm test`, `actionlint`; in a scratch folder, wrangler installed with `--ignore-scripts` runs `pages deploy --help` (if it cannot, stop and ask).
+- [x] 2.1 `examples/catalogue-repository/` (D3): workflow with jobs `site` and `deploy`, `.gitignore`, README (with rollback), `catalog/`; template tests. Check: `npm test`, `actionlint`; in a scratch folder, wrangler installed with `--ignore-scripts` runs `pages deploy --help` (if it cannot, stop and ask).
 
 ## 3. Access recipes
 
