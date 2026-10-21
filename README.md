@@ -32,7 +32,7 @@ stackledger is a small, local-first tool for people and small companies who want
 
 Early development. Nothing is released to npm yet. The catalogue format, the `validate`, `map`, `build` and `report` commands, the `mcp` server and Mac discovery (`stackledger discover` and `stackledger drift`) work from source (see [Usage](#usage)). The order of the rest is in the [roadmap](docs/roadmap.md).
 
-For a separate catalogue repository, copy the [pipeline template](examples/catalogue-repository/). Set up [protected hosting](docs/hosting.md) before the first deploy. The [release guide](docs/release.md) covers npm publication, provenance and the SBOM.
+For a separate catalogue repository, copy the [pipeline template](examples/catalogue-repository/). Set up [protected hosting](docs/hosting.md) before the first deploy. The fictitious Northwind catalogue runs as a demo of the corporate mode at <https://stackledger-demo.pages.dev/>; it is protected by Cloudflare Access and only the owner can sign in, so for you it shows the sign-in page, which is the point. The [release guide](docs/release.md) covers npm publication, provenance and the SBOM.
 
 ## Features
 
@@ -66,6 +66,8 @@ flowchart LR
 3. **The map engine is our own, and station positions are data.** Existing engines reshuffled the whole map after a small change. Why: [ADR 4](docs/adr/0004-own-map-engine-with-stored-positions.md).
 4. **The website is static.** No server, no database, nothing to patch. Why: [ADR 5](docs/adr/0005-static-site-no-server.md).
 5. **It is written in TypeScript**, so the same map engine runs at build time and in the browser. Why: [ADR 9](docs/adr/0009-typescript-end-to-end.md).
+
+[How it works, end to end](docs/how-it-works.md) draws the publication path: a push to `main` of the private catalogue repository, GitHub Actions, Cloudflare Pages behind Cloudflare Access, and the personal (one site, one reader) and corporate (two sites) modes.
 
 ## Security
 

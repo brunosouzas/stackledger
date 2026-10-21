@@ -13,6 +13,8 @@ The roadmap planned this item as `catalogue-git-source`, with building from a Gi
 - **Catalogue repository template** (`examples/catalogue-repository/`, catalogue in `catalog/`): a GitHub Actions workflow for a separate catalogue repository that, on every pull request, push to `main`, weekly schedule and manual start, scans for secrets with gitleaks, runs `stackledger validate` (errors fail), builds both sites dated today in UTC and keeps only the four publishable entries; for runs on `main` that are not pull requests, a separate job on a fresh runner deploys them to Cloudflare Pages from an empty folder, labelled by commit and date. Plus a README with the setup.
 - **Access recipes** (`docs/hosting.md`): Cloudflare Pages behind Cloudflare Access with one application for `/full/*` and one for the rest, each covering every address of the project (custom domain, `<project>.pages.dev`, `*.<project>.pages.dev`), with the anonymous and staff checks; and a generic recipe with Caddy in front of oauth2-proxy, whose example is tested against a stand-in auth service (anonymous, staff, finance, forged header, auth down).
 - **A live demo**: the fictitious Northwind sites on Cloudflare Pages (`stackledger-demo`) behind Cloudflare Access on the owner's account, built from this branch with the template's commands, as proof of the recipe, before the merge. The owner configures Access; the agent creates the project and deploys only with his authorisation.
+- **Personal and corporate modes** (owner decision, 2026-10-21): `spec.sites` in `Settings` chooses `[full]` (personal: one site, one Access application for the owner, `/` leads to `/full/`) or `[full, staff]` (corporate, the default: two sites, two Access applications, `/` leads to `/staff/`). `stackledger build` honours it, removes a stale `staff/` through its atomic publication, and writes a root `_redirects`. The template hands on `_redirects` and `staff/` only when built.
+- **How it works** (`docs/how-it-works.md`): a solution diagram for readers of the open-source project, as Mermaid and as an illustrated SVG, linked from the README.
 - Roadmap: row 7 becomes `catalogue-deployment`; "Build from a Git URL" moves to Later.
 
 ## Capabilities
@@ -25,12 +27,15 @@ The roadmap planned this item as `catalogue-git-source`, with building from a Gi
 
 ### Modified Capabilities
 
-None. The Cloudflare recipe and the demo are documentation and operations, checked by a docs test and by requests against the demo.
+- `catalogue`: `Settings` gains `spec.sites` (requirement Site modes).
+- `build-command`: the personal mode, the root `_redirects` and the publishable entries.
+
+The Cloudflare recipe and the demo are documentation and operations, checked by a docs test and by requests against the demo.
 
 ## Impact
 
 - Files: `package.json`, `package-lock.json` → `npm-shrinkwrap.json`, `.github/workflows/release.yml`, `scripts/check-release-tag.mjs`, `scripts/release-publish.sh`, `examples/catalogue-repository/` (workflow, README, `.gitignore`), `examples/hosting/Caddyfile`, `docs/hosting.md` (new), `docs/release.md` (new), `docs/site.md`, `docs/roadmap.md`, README, AGENTS.md, ADR 6 (one sentence naming the change).
-- No new runtime dependency and no change to any command.
+- No new runtime dependency. `stackledger build` changes for the modes (owner decision, 2026-10-21): `src/schema.ts`, `src/views.ts`, `src/site/{build,command,publish,policy,staging}.ts`, `docs/site.md`, `docs/catalogue-format.md`, `docs/how-it-works.md`, `docs/images/how-it-works.svg`, `scripts/how-it-works-diagram.py`.
 - Outside the repository, done by the owner or with his credentials: the npm account and trusted publisher, the Cloudflare Pages project and Access applications of the demo.
 
 ## Out of scope
@@ -39,7 +44,7 @@ None. The Cloudflare recipe and the demo are documentation and operations, check
 - Other CI platforms (Azure Pipelines, GitLab), other hosts beyond the two recipes.
 - Publishing PR previews of a catalogue site (they would need the same protection; the template deploys `main` only).
 - The owner's real catalogue repository (`stackledger-catalog`): created after v1 is closed.
-- Changing `stackledger build` itself.
+- Changing `stackledger build` beyond the personal mode and the root redirect.
 
 ## Implicit requirements
 
@@ -47,14 +52,14 @@ None. The Cloudflare recipe and the demo are documentation and operations, check
 - **Limits:** n/a. No new runtime behaviour.
 - **Repetition and idempotency:** requirement. Re-running the release skips publishing when npm already has the same bytes, fails when it has other bytes, and completes the GitHub release either way; re-running the template on the same UTC day deploys the same files, and a later run moves renewal windows to its date.
 - **Concurrency:** requirement. The template uses one concurrency group per branch, so two deploys of `main` never overlap.
-- **Security:** requirement. Actions pinned by commit SHA; least permissions per job; the publishing identity never present while dependencies install, and the publish job runs only code from the tagged commit; releases only from commits on `main`, approved by the owner in the `npm` environment; the deploy runs in its own fresh job, from an empty folder, with wrangler installed with `--ignore-scripts` before the Cloudflare token is present; the published tarball is the tested one; `npm audit` must be clean before publishing; no long-lived npm token after the first release; Cloudflare secrets only in the deploy step; PRs never deploy; only `full/`, `staff/`, `_headers` and `robots.txt` are published; both Access applications cover every address of the project.
+- **Security:** requirement. Actions pinned by commit SHA; least permissions per job; the publishing identity never present while dependencies install, and the publish job runs only code from the tagged commit; releases only from commits on `main`, approved by the owner in the `npm` environment; the deploy runs in its own fresh job, from an empty folder, with wrangler installed with `--ignore-scripts` before the Cloudflare token is present; the published tarball is the tested one; `npm audit` must be clean before publishing; no long-lived npm token after the first release; Cloudflare secrets only in the deploy step; PRs never deploy; only `full/`, `staff/` (corporate mode), `_headers`, `robots.txt` and `_redirects` are published; every Access application covers every address of the project.
 - **Logs and observability:** requirement. The release attaches its SBOM and npm shows provenance; the template's job log names the stackledger version it used.
 
 ## Open questions
 
 Decided by the owner on 2026-10-21: drop the Git URL from v1; publish 0.1.0 to npm with provenance and SBOM as part of closing v1, and the template uses `npx stackledger@0.1.0`; GitHub Actions only; a live demo on his Cloudflare account, kept behind Access.
 
-Gate 1 approved by the owner on 2026-10-21 with every recommendation in `design.md`, Open questions. None open.
+Gate 1 approved by the owner on 2026-10-21 with every recommendation in `design.md`, Open questions. Later the same day the owner added the personal and corporate modes, the root redirect, the how-it-works diagram and the demo wording (design D6), and authorised these spec changes without a new gate. None open.
 
 ## Documentation
 
