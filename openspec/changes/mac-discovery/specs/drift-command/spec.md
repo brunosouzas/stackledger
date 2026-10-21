@@ -114,7 +114,7 @@ An item matched by two or more components SHALL be listed as shared, with every 
 - **THEN** the item is listed as shared by both, in that order
 
 ### Requirement: Inferred needs
-An installed item SHALL need another installed item when: it is a `brew` item whose `dependsOn` holds that formula; or it is a `launchd` item whose `program` is inside that `app` item's `path` followed by `/`; or its `program` is inside `<prefix>/Cellar/<name>/` or `<prefix>/opt/<name>/` of that `brew` item, where `<prefix>` is `/opt/homebrew` or `/usr/local`.
+An item SHALL need another when: it is a `brew` item whose `dependsOn` holds that formula; or it is a `launchd` item whose `program` starts with that `app` item's `path` and `/`; or its `program` starts with `<prefix>/Cellar/<name>/` or `<prefix>/opt/<name>/`, `<prefix>` being `/opt/homebrew` or `/usr/local` and `<name>` the part of that `brew` item's `id` after its last `/`, and no other `brew` item has that `<name>`.
 
 #### Scenario: Job inside an app
 - **WHEN** the job `com.northwind.sync` runs `/Applications/Northwind Sync.app/Contents/MacOS/sync`
@@ -123,6 +123,14 @@ An installed item SHALL need another installed item when: it is a `brew` item wh
 #### Scenario: Job of a formula
 - **WHEN** a job runs `/opt/homebrew/opt/forge/bin/forge`
 - **THEN** it needs the formula `forge`
+
+#### Scenario: Job of a tap formula
+- **WHEN** a job runs `/opt/homebrew/opt/ledger/bin/ledger` and the only formula named `ledger` is `northwind/tools/ledger`
+- **THEN** it needs `northwind/tools/ledger`
+
+#### Scenario: Two formulae with one short name
+- **WHEN** a job runs `/opt/homebrew/opt/ledger/bin/ledger` and both `ledger` and `northwind/tools/ledger` are installed
+- **THEN** the job needs neither
 
 #### Scenario: Prefix that only looks alike
 - **WHEN** a job runs `/Applications/Northwind Sync Helper.app/Contents/MacOS/helper` and only `/Applications/Northwind Sync.app` is installed
@@ -151,11 +159,15 @@ When components match a cask whose `apps` holds the folder name of an installed 
 - **THEN** the app's entry suggests both components, in that order
 
 ### Requirement: Identifiers that cannot be annotated
-An item whose `id` holds a comma or a control character, or starts or ends with white space, cannot be written in an annotation. It SHALL be listed as not declared with no annotation and a note saying so, and it never matches a component.
+An item whose `id` holds a comma or a control character, or starts or ends with white space, cannot be written in an annotation and never matches a component. Unless the rules of "Not declared" count it as a dependency or a macOS item (they come first), it SHALL be listed as not declared with no annotation and a note saying so.
 
 #### Scenario: Label with a comma
 - **WHEN** a launchd item's `id` is `com.northwind.sync,helper`
 - **THEN** it is listed as not declared, with no annotation and the note that it cannot be annotated
+
+#### Scenario: Dependency that cannot be annotated
+- **WHEN** a formula `forge,helper` is installed only as a dependency
+- **THEN** it is counted as a dependency and not listed
 
 ### Requirement: Drift text output
 The text output SHALL list, in this order: the snapshot's machine and `takenAt`; counts; not declared, grouped by source; missing; not checked; shared; proposed relations. Empty sections are left out, and with nothing to report the output says so. Every text taken from the catalogue or the snapshot SHALL have C0 and C1 control characters removed before it is written to stdout or stderr; the output's own line feeds stay.

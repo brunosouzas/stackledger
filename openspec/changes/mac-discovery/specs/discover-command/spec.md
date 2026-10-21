@@ -76,7 +76,7 @@ After creating its temporary file and again before the rename, the command SHALL
 - **THEN** the exit code is 1, neither the moved folder nor the link's target gets a new `snapshot.json`, and the link's target holds no temporary file
 
 ### Requirement: Write failures
-A failure to create or write the file, or a snapshot whose JSON is larger than 32 MiB, SHALL exit 1 with one error line, remove the temporary file and leave any previous snapshot unchanged.
+A failure to create or write the file, a `machine` field that fails the snapshot secret guard, or a snapshot whose JSON is larger than 32 MiB, SHALL exit 1 with one error line, remove the temporary file and leave any previous snapshot unchanged.
 
 #### Scenario: Folder not writable
 - **WHEN** the machine folder exists and cannot be written

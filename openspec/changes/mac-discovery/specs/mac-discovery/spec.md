@@ -82,6 +82,13 @@ Programs SHALL get only `PATH`, `HOME`, `USER` and `TMPDIR` from the caller's en
 - **WHEN** `brew` exits with code 0 and prints text that is not JSON
 - **THEN** `brew` and `cask` are `failed` with reason `unreadable output`
 
+### Requirement: Malformed entries
+Program output that is not the expected top-level JSON (an object with `formulae` and `casks` lists for Homebrew, an object for npm) SHALL fail the source with `unreadable output`. Inside it, an entry whose name or installed version is missing, empty or not a string SHALL be counted as ignored, and the source stays `ok`. Optional fields of the wrong type are treated as absent.
+
+#### Scenario: Formula with a numeric version
+- **WHEN** one formula in otherwise valid `brew info` output has an installed version that is a number
+- **THEN** that formula is counted as ignored and the other formulae are recorded
+
 ### Requirement: App Store
 `mas` SHALL run `mas list` and read each non-empty line as an App Store identifier (digits), a name, and a version in parentheses at the end. The item has `id` = the identifier, `title` = the name and `versions`. A non-empty line in another shape SHALL be counted as ignored.
 
@@ -192,22 +199,30 @@ In a snapshot, every item's source SHALL have status `ok`; each source's `items`
 - **THEN** `cask` has `items` 2 and `app` has `ignored` 1
 
 ### Requirement: Snapshot secret guard
-An item any of whose strings (`id`, versions, `title`, `path`, `program`, app names, dependencies) holds private-key material or a payment-card number, as the catalogue's secret guard defines them, SHALL be left out of the snapshot and counted as ignored. E-mail addresses are not checked: like the user name and paths, they stay in a file private to the user.
+An item any of whose strings holds private-key material or a payment-card number, as the catalogue's secret guard defines them, SHALL be left out and counted as ignored. When a `machine` field holds one, discovery SHALL write nothing and fail. E-mail addresses are not checked: like the user name and paths, they stay in a file private to the user.
 
 #### Scenario: Card number in a title
 - **WHEN** an app's display name holds a 16-digit number that passes the Luhn check
 - **THEN** that app is not recorded and `ignored` counts it
+
+#### Scenario: Secret in the user name
+- **WHEN** the macOS user name holds a 16-digit number that passes the Luhn check
+- **THEN** discovery fails and writes nothing
 
 #### Scenario: Private key in a version
 - **WHEN** an npm package's version text holds `-----BEGIN RSA PRIVATE KEY-----`
 - **THEN** that package is not recorded and `ignored` counts it
 
 ### Requirement: Merged items
-Items of one source that have no `path` and the same `id` SHALL be merged into one item whose `versions` is the union of theirs; `onRequest` is true when any of them is. Items with a `path` are never merged.
+Items of one source that have no `path` and the same `id` SHALL be merged into one item: every list field (`versions`, `dependsOn`, `apps`) is the union of theirs, `onRequest` is true when any is, and `title` is the first of their titles by Unicode code points. Items with a `path` are never merged. The result does not depend on input order.
 
 #### Scenario: Same package in two pipx folders
 - **WHEN** `venvs/northwind-docs` and `venvs/northwind-docs-next` both name the package `northwind-docs`, at `1.6.0` and `2.0.0`
 - **THEN** there is one `pipx` item `northwind-docs` with `versions` `["1.6.0", "2.0.0"]`
+
+#### Scenario: Two App Store lines for one app
+- **WHEN** `mas list` prints `1234567890` once as `Northwind Notes` and once as `Northwind Notes Pro`, in either order
+- **THEN** there is one item with `title` `Northwind Notes`
 
 ### Requirement: Deterministic snapshot
 Items SHALL be sorted by source order, then `id`, then `path`, comparing Unicode code points; every list inside an item SHALL be sorted the same way, without repeats. Characters U+007F to U+009F SHALL be written as `\u` escapes. The same machine state SHALL give a byte-identical snapshot apart from `takenAt`.

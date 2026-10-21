@@ -13,6 +13,8 @@ Method: one Apple silicon Mac on macOS 27, Homebrew 7, npm 11, pipx 1.18. Each c
 
 Raw output stayed in a scratch folder outside the repository and was deleted. Nothing below names a real item.
 
+The plain runs were not read-only, and that is one of the findings: each plain `npm` run wrote a debug log under `~/.npm/_logs`, and one plain run with `--logs-max=0` deleted the older npm debug logs there. Homebrew may also have touched its own cache or logs; that was not measured. Later spikes and every test that runs a real program use the sandbox profile above, never a plain run.
+
 ## Results
 
 | Source | Command or files | Time | In the sandbox | Notes |

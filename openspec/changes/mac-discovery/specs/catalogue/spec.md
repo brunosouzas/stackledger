@@ -19,6 +19,13 @@ A component annotation whose key starts with `stackledger/` SHALL be one of `sta
 - **WHEN** a component has the annotation `backstage.io/source-location: url:https://example.com/editor`
 - **THEN** it has no problem
 
+### Requirement: Annotation keys in problems
+A field path that holds an annotation key SHALL write characters U+0000 to U+001F and U+007F to U+009F as `\u` escapes, in text and JSON output, so a hostile key cannot inject lines or terminal escapes.
+
+#### Scenario: Hostile annotation key
+- **WHEN** a component has an annotation whose key is `stackledger/brew` followed by U+009B and `2J`
+- **THEN** its warning's field path holds `\u009b` in text output and in JSON output, and neither output holds the raw character
+
 ### Requirement: One component per identifier
 An identifier that an earlier component (in document order) already lists for the same source SHALL get a warning on the later component's annotation naming the earlier component. Identifiers are compared as `stackledger drift` compares them. Annotations on documents other than components are not read for discovery.
 
