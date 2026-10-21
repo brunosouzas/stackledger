@@ -38,7 +38,7 @@ export interface Packed { filename: string; integrity: string; files: { path: st
 
 /** npm pack with its lifecycle scripts (prepack builds dist/), the tarball written to `destination`. */
 export function pack(checkout: string, destination: string, cache: string): Packed {
-  const result = npm(['pack', '--json', '--pack-destination', destination, '--cache', cache], checkout);
+  const result = spawnSync('node', [join(checkout, 'scripts/pack-production.mjs'), destination], { cwd: checkout, encoding: 'utf8', timeout: 240_000, env: { ...npmEnv, npm_config_cache: cache } });
   if (result.status !== 0) throw new Error(`npm pack failed: ${result.stderr}`);
   // Lifecycle scripts print to stdout before the JSON; the JSON array is the last thing written.
   const json = result.stdout.slice(result.stdout.indexOf('[\n'));

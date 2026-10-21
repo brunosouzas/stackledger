@@ -31,7 +31,7 @@ test('Checks job: contents: read only; tag check, npm ci, build, tests, audit, p
   expect(checks.permissions).toEqual({ contents: 'read' });
   const order = [
     /node scripts\/check-release-tag\.mjs "\$GITHUB_REF_NAME"/, /^npm ci\b/m, /^npm run build\b/m, /^npm test\b/m,
-    /^npm audit --audit-level=low\b/m, /^npm pack --json\b/m, /^npm sbom --sbom-format cyclonedx --omit dev\b/m,
+    /^npm audit --audit-level=low\b/m, /^node scripts\/pack-production\.mjs\b/m, /^npm sbom --sbom-format cyclonedx --omit dev\b/m,
   ].map(pattern => runIndex(checks, pattern));
   expect(order.every(index => index >= 0), String(order)).toBe(true);
   expect([...order].sort((a, b) => a - b)).toEqual(order);

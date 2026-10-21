@@ -21,11 +21,11 @@ The npm package SHALL contain `dist/`, `site/`, `skills/`, `examples/`, `README.
 - **THEN** the exit code is 0 and stdout lists the seven commands
 
 ### Requirement: Locked dependencies
-The repository SHALL keep its lock file as `npm-shrinkwrap.json`, so the package installs for its users exactly the production dependency versions this repository tested and audited.
+The repository SHALL keep its development lock file as `npm-shrinkwrap.json` for `npm ci`. Release packing SHALL copy built package files into a temporary staging directory and derive a production-only shrinkwrap from the locked production graph, without changing the repository lock. The shipped shrinkwrap SHALL agree with the staged `package.json` and omit development-only and unreachable optional packages; the release SHALL upload the exact tarball produced by this staging pack.
 
 #### Scenario: Two installs agree
 - **WHEN** the packed tarball is installed into two empty folders
-- **THEN** `npm ls --all --json` gives the same production dependency versions in both, equal to the shrinkwrap's
+- **THEN** `npm ls --all --json` gives the same production dependency versions in both, equal to the repository shrinkwrap's production entries, with no extraneous or development-only packages; the tarball's shrinkwrap has no development-only entries
 
 ### Requirement: Package metadata
 `package.json` SHALL NOT be private and SHALL name the package `stackledger`, its `bin`, the Apache-2.0 licence, `engines.node` `>=22.12`, and the `repository`, `homepage` and `bugs` of `github.com/brunosouzas/stackledger`, so npm can link the provenance to this repository.

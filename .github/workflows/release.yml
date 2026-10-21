@@ -5,7 +5,7 @@ name: Release
 #
 # Two jobs, so the publishing identity never exists while dependencies install or their scripts run:
 # - check: no publishing rights. Tag check (shape, version, on origin/main), npm ci, build, tests,
-#   audit, pack and SBOM; hands the tarball, its integrity and the SBOM on as an artifact.
+#   audit, production staging pack and SBOM; hands the tarball, its integrity and the SBOM on as an artifact.
 # - publish: in the environment npm, which needs the owner's approval. It installs and builds
 #   nothing; it runs scripts/release-publish.sh from the tagged commit on the downloaded files.
 #   A re-run finishes a partial release without publishing twice.
@@ -44,10 +44,10 @@ jobs:
       - run: npm test
       - name: Audit (any vulnerability, or an audit that cannot run, fails)
         run: npm audit --audit-level=low
-      - name: Pack (prepack rebuilds dist/ from these sources)
+      - name: Pack production staging tree (build completed above)
         run: |
           mkdir -p "$RUNNER_TEMP/release"
-          npm pack --json --silent --pack-destination "$RUNNER_TEMP/release" > "$RUNNER_TEMP/pack.json"
+          node scripts/pack-production.mjs "$RUNNER_TEMP/release" > "$RUNNER_TEMP/pack.json"
           node -e '
             const [packed] = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
             require("node:fs").writeFileSync(process.argv[2], packed.integrity + "\n");

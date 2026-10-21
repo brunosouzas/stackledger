@@ -48,6 +48,15 @@ describe('package contents from a clean checkout', () => {
     expect(paths.filter(path => sources.test(path))).toEqual([]);
   }, 180_000);
 
+  test('Shipped shrinkwrap contains only production entries', () => {
+    const packed = pack(checkout, output, cache);
+    const extracted = spawnSync('tar', ['-xOzf', join(output, packed.filename), 'package/npm-shrinkwrap.json'], { encoding: 'utf8' });
+    expect(extracted.status, extracted.stderr).toBe(0);
+    const lock = JSON.parse(extracted.stdout) as { packages: Record<string, { dev?: boolean; devOptional?: boolean; devDependencies?: unknown }> };
+    expect(Object.entries(lock.packages).filter(([, entry]) => entry.dev || entry.devOptional)).toEqual([]);
+    expect(lock.packages['']?.devDependencies).toBeUndefined();
+  }, 180_000);
+
   test('Pack without a build: the tarball holds dist/cli.js', () => {
     rmSync(join(checkout, 'dist'), { recursive: true, force: true });
     const packed = pack(checkout, output, cache);

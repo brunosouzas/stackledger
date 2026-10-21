@@ -89,9 +89,13 @@ describe.skipIf(offline)('installed package', () => {
     const required = entries.filter(({ entry }) => !entry.dev && !entry.optional && !entry.devOptional);
     expect(required.length).toBeGreaterThan(0);
     expect(required.filter(({ id }) => !installed.has(id)).map(({ id }) => id)).toEqual([]);
-    // Nothing installed has a version the shrinkwrap does not lock. npm also installs a dependency's
-    // shrinkwrap entries marked dev, as packages nothing uses ("extraneous"); they are locked too.
-    const locked = new Set(entries.map(({ id }) => id));
+    // Registry installs must have no extraneous or development-only packages.
+    const locked = new Set(entries.filter(({ entry }) => !entry.dev && !entry.devOptional).map(({ id }) => id));
     expect([...installed].filter(id => !locked.has(id))).toEqual([]);
+    for (const target of installs) {
+      const result = npm(['ls', '--prefix', target, '--all', '--json', '--cache', cache], target);
+      expect(result.status, result.stdout).toBe(0);
+      expect(result.stdout).not.toContain('"extraneous": true');
+    }
   }, 180_000);
 });
