@@ -218,18 +218,37 @@ With `--scaffold <dir>`, the command SHALL also write catalogue files for the it
 - **THEN** the exit code is 2, stdout is empty and nothing is written
 
 ### Requirement: Scaffold content
-Each file SHALL hold one `Component` (`backstage.io/v1alpha1`) with `metadata.name`, `metadata.title` (the item's title, else its `id`, control characters removed), the discovery annotations, `spec.type` (`service` for `launchd`, else `tool`), `spec.lifecycle: active`, `spec.owner: unknown`, and `spec.dependsOn` when the rule below gives any. A leading comment SHALL say the file is a draft to review. No path, version or user name SHALL appear.
+Each file SHALL hold one `Component` with `metadata.name`, `metadata.title` (the item's title without control characters, else its `id`), the discovery annotations, `spec.type` (`service` for `launchd`, else `tool`), `lifecycle: active`, `owner: unknown` and any `dependsOn` from the rule below, after a comment saying it is a draft. No `path`, `program`, version or `machine` field is copied; identifiers and titles are.
 
 #### Scenario: Scaffold of a cask
 - **WHEN** the cask `northwind-editor` is not declared
 - **THEN** its file holds a component with the annotation `stackledger/cask: northwind-editor`, `owner: unknown` and no version or path
 
+#### Scenario: Title of control characters only
+- **WHEN** an undeclared app's title is only control characters
+- **THEN** its file's title is the app's `id`
+
+### Requirement: Scaffold files pass validation
+Before anything is written, each file SHALL be checked as a one-file catalogue with the rules of `stackledger validate`, secret guard and 1 MiB limit included. A file with any error SHALL be left out, and stderr SHALL say how many were left out, without their content.
+
+#### Scenario: Card number built by removing controls
+- **WHEN** an undeclared app's title is `4111`, tab, `1111`, tab, `1111`, tab, `1111`
+- **THEN** no file is written for it and stderr says one file was left out
+
 ### Requirement: Scaffold grouping and relations
-An undeclared `app` whose folder name is in the `apps` of an undeclared cask SHALL go into that cask's file, with both annotations. An item that has suggested components, cannot be annotated, or is only counted SHALL get no file. `spec.dependsOn` SHALL list each component, in the catalogue or in the scaffold, that matches an item the file's items need, in reference order.
+Undeclared items with the same source and identifier (as matching compares them) SHALL share one file. An undeclared app whose folder name is in the `apps` of undeclared casks SHALL go into the file of the first such cask in the not-declared order. Items with suggested components, without annotation, or only counted get no file. `spec.dependsOn` lists, in reference order, each catalogue or scaffold component that matches an item the file's items need.
 
 #### Scenario: Cask and its app in one file
 - **WHEN** the cask `northwind-editor` and its app `com.northwind.editor` are both not declared
 - **THEN** one file holds both `stackledger/cask` and `stackledger/app` annotations, and no other file names that app
+
+#### Scenario: One app in two places
+- **WHEN** `com.northwind.draw` is installed in `/Applications` and in `~/Applications` and is not declared
+- **THEN** one file holds `stackledger/app: com.northwind.draw`
+
+#### Scenario: Two casks install one app
+- **WHEN** the undeclared casks `northwind-draw` and `northwind-draw-beta` both install `Northwind Draw.app`, also undeclared
+- **THEN** the app's annotation is only in the file of `northwind-draw`
 
 #### Scenario: Scaffold relation
 - **WHEN** the formula `forge` is not declared, needs `libnorth`, and `component:libnorth` lists `libnorth`
@@ -247,7 +266,15 @@ An undeclared `app` whose folder name is in the `apps` of an undeclared cask SHA
 - **THEN** `stackledger validate` reports no more errors or warnings than before
 
 ### Requirement: Scaffold write
-The command SHALL write the files into a new temporary folder beside `dir` and rename it to `dir` only when every file is written, so `dir` either does not exist or is complete. A write failure SHALL exit 1 with one error line, remove the temporary folder and write nothing on stdout. Text in the files SHALL be YAML-escaped so any title stays one scalar.
+The command SHALL create `dir` itself with an exclusive create that fails when it already exists (exit 2), write only inside it, and write the files before stdout. A write failure SHALL exit 1 with one error line, remove the files it wrote and `dir`, and write nothing on stdout. Text in the files SHALL be YAML-escaped so any title stays one scalar.
+
+#### Scenario: Scaffold write fails
+- **WHEN** writing the second file fails
+- **THEN** the exit code is 1, stdout is empty, and `dir` does not exist
+
+#### Scenario: Scaffold folder created meanwhile
+- **WHEN** `dir` is created by another process after the checks and before the command creates it
+- **THEN** the exit code is 2, stdout is empty, and nothing is written in `dir`
 
 #### Scenario: Title that looks like YAML
 - **WHEN** an app title is `Northwind: Editor # beta` and holds a line break

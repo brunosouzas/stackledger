@@ -152,7 +152,7 @@ spec:
   owner: unknown
 ```
 
-Serialised with the `yaml` package already in use (`stringify`, default quoting), annotation keys in source order. The comment names only the snapshot's `takenAt`, never the machine name, which usually holds the user's name. The folder is written as `.<dir-name>.scaffold-<random>` beside `dir` (mode `0700`), files `0644`, then renamed to `dir`; when `dir` appeared meanwhile, the rename fails and the temporary folder is removed. The checks "inside the catalogue" and "contains the catalogue" compare resolved real paths of the catalogue and of `dir`'s parent.
+Serialised with the `yaml` package already in use (`stringify`, default quoting), annotation keys in source order. The comment names only the snapshot's `takenAt`, never the machine name, which usually holds the user's name. Every file is built in memory and checked with `parseSource` and `validateLoaded` as a one-file catalogue (secret scan and the 1 MiB limit included); files with errors are dropped and counted on stderr. Then `mkdir(dir, { mode: 0o700 })` (no `recursive`: it fails with `EEXIST` when `dir` appeared meanwhile, which is exit 2), each file written with `wx` and mode `0644`, then stdout. On a write failure the files written and `dir` are removed. Nothing is ever written beside `dir`. The checks "inside the catalogue" and "contains the catalogue" compare resolved real paths of the catalogue and of `dir`'s parent.
 
 ## Risks / Trade-offs
 
