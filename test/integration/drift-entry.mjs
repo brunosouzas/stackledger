@@ -15,6 +15,9 @@
  * - `replaceFolderAfterWrite: n`, after the n-th file is written, moves the scaffold folder to
  *   `<dir>-moved` and puts a symbolic link to a new empty folder `<dir>-elsewhere` in its place;
  * - `parentUid: n` makes the lstat of the scaffold folder's parent report owner n;
+ * - `ancestorUid: n` makes the lstat of the folder above that parent report owner n;
+ * - `parentToLinkBeforeMkdir: "<folder>"`, just before the command creates the scaffold folder, moves
+ *   its parent to `<parent>-moved` and puts a symbolic link to `<folder>` in its place;
  * - `replaceFileAfterWrite: n`, after the n-th file is written, puts a new file of another process in
  *   its place (written beside it, then renamed over it, so it is a different inode);
  * - `failCreate: n` makes the n-th exclusive create fail with EIO before creating anything;
@@ -35,16 +38,22 @@ const config = JSON.parse(readFileSync(file, 'utf8'));
 const faults = config.faults ?? {};
 const scaffold = args.includes('--scaffold') ? resolve(args[args.indexOf('--scaffold') + 1]) : undefined;
 const parent = scaffold === undefined ? undefined : realpathSync(dirname(scaffold));
+const ownerAs = (status, uid) => Object.assign(Object.create(Object.getPrototypeOf(status)), status, { uid });
 let creates = 0, writes = 0, lastPath;
 const ops = {
   ...NODE_SCAFFOLD_OPS,
   lstat: path => {
     const status = NODE_SCAFFOLD_OPS.lstat(path);
-    if (status !== undefined && faults.parentUid !== undefined && path === parent) return Object.assign(Object.create(Object.getPrototypeOf(status)), status, { uid: faults.parentUid });
+    if (faults.parentUid !== undefined && path === parent) return ownerAs(status, faults.parentUid);
+    if (faults.ancestorUid !== undefined && path === dirname(parent)) return ownerAs(status, faults.ancestorUid);
     return status;
   },
   mkdir: path => {
     if (faults.createBeforeMkdir) mkdirSync(path);
+    if (faults.parentToLinkBeforeMkdir !== undefined) {
+      renameSync(parent, `${parent}-moved`);
+      symlinkSync(faults.parentToLinkBeforeMkdir, parent);
+    }
     NODE_SCAFFOLD_OPS.mkdir(path);
   },
   create: path => {

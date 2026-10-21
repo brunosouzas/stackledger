@@ -203,7 +203,7 @@ The same snapshot and catalogue SHALL give byte-identical output. Items SHALL be
 - **THEN** the shared entry lists `component:Zed` before `component:alpha`
 
 ### Requirement: Scaffold folder
-With `--scaffold <dir>`, the command SHALL also write catalogue files for the items it lists as not declared into `dir`. `dir` SHALL NOT exist yet, be inside the catalogue folder or contain it; its parent SHALL be owned by the user or root and not writable by group or others unless it has the sticky bit. Otherwise it is a usage error (exit 2, nothing written). It SHALL write nothing else and never in the catalogue folder. stdout is the same as without the option.
+With `--scaffold <dir>`, the command SHALL also write catalogue files for the items it lists as not declared into `dir`, nothing else and never in the catalogue folder; stdout is the same as without the option. `dir` SHALL NOT exist yet, be inside the catalogue folder or contain it; each folder on its parent's real path, from `/` down, SHALL be owned by the user or root and not writable by group or others unless it has the sticky bit. Otherwise it is a usage error (exit 2, nothing written).
 
 #### Scenario: Scaffold written
 - **WHEN** the command runs with `--scaffold ./new-items` and two casks are not declared
@@ -219,6 +219,10 @@ With `--scaffold <dir>`, the command SHALL also write catalogue files for the it
 
 #### Scenario: Scaffold parent writable by others
 - **WHEN** `--scaffold` names a new folder whose parent has mode 0777 without the sticky bit
+- **THEN** the exit code is 2, stdout is empty and nothing is written
+
+#### Scenario: Scaffold ancestor writable by others
+- **WHEN** `--scaffold` names a new folder in a private parent, and a folder above that parent has mode 0777 without the sticky bit
 - **THEN** the exit code is 2, stdout is empty and nothing is written
 
 ### Requirement: Scaffold content
@@ -283,6 +287,13 @@ The command SHALL create `dir` itself with mode 0700 and an exclusive create tha
 #### Scenario: Title that looks like YAML
 - **WHEN** an app title is `Northwind: Editor # beta` and holds a line break
 - **THEN** its file parses back to one component whose title is that text on one line
+
+### Requirement: Scaffold folder where checked
+After creating `dir`, the command SHALL check that the real path of `dir` is the real path of the parent it checked joined with the folder's name, and that it is neither inside the catalogue folder nor contains it. Otherwise it SHALL remove the folder it created, only while that folder is empty and has the same device and inode, write no file, and exit 1 with one error line.
+
+#### Scenario: Scaffold parent replaced before the folder is created
+- **WHEN** after the checks and before `dir` is created, its parent is replaced by a link to the catalogue folder
+- **THEN** the exit code is 1, stdout is empty, and nothing is left in the catalogue folder
 
 ### Requirement: Scaffold rollback
 A write failure SHALL exit 1 with one error line and write nothing on stdout. It SHALL remove each file whose exclusive create succeeded while it is still that file (same device and inode), then `dir` while it is still the folder created and empty; anything else SHALL be kept.

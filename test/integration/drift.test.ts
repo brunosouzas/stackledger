@@ -6,7 +6,7 @@
 import { test, expect } from 'vitest';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmodSync, cpSync, existsSync, lstatSync, readdirSync, readFileSync, statSync, symlinkSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, statSync, symlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { cli, root, run } from './helpers.js';
 import { catalogue, defaultSnapshot, driftEntryRun, driftRun, snapshotFile } from './drift-helpers.js';
@@ -416,4 +416,52 @@ test('Scaffold parent writable by others', () => {
   expect(other.stdout).toBe('');
   expect(other.stderr).toContain('not owned by the current user');
   expect(readdirSync(owned)).toEqual([]);
+});
+
+test('Scaffold ancestor writable by others', () => {
+  // The parent is private, but another user who can write a folder above it could swap the parent for
+  // a link (into the catalogue, say) before the mkdir: every folder from / down is checked.
+  const example = twoCasks();
+  for (const permissions of [0o777, 0o770, 0o707]) {
+    const ancestor = folder(), parent = join(ancestor, 'private');
+    mkdirSync(parent, { mode: 0o700 });
+    chmodSync(ancestor, permissions);
+    const result = driftRun([example.path, '--snapshot', example.file, '--scaffold', join(parent, 'new-items')]);
+    chmodSync(ancestor, 0o700);
+    expect(result.status, permissions.toString(8)).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toContain('can be written by other users');
+    expect(readdirSync(parent)).toEqual([]);
+  }
+  // A sticky ancestor, as /tmp, is accepted.
+  const sticky = folder(), inside = join(sticky, 'private');
+  mkdirSync(inside, { mode: 0o700 });
+  chmodSync(sticky, 0o1777);
+  const accepted = driftRun([example.path, '--snapshot', example.file, '--scaffold', join(inside, 'new-items')]);
+  chmodSync(sticky, 0o700);
+  expect(accepted.status).toBe(0);
+  // An ancestor owned by another user (reported through the ScaffoldOps seam) is refused too.
+  const owned = join(folder(), 'private');
+  mkdirSync(owned, { mode: 0o700 });
+  const other = driftEntryRun({ faults: { ancestorUid: 4242 } }, [example.path, '--snapshot', example.file, '--scaffold', join(owned, 'new-items')]);
+  expect(other.status).toBe(2);
+  expect(other.stdout).toBe('');
+  expect(other.stderr).toContain('not owned by the current user');
+  expect(readdirSync(owned)).toEqual([]);
+});
+
+test('Scaffold parent replaced before the folder is created', () => {
+  // Between the checks and the mkdir the parent becomes a link to the catalogue: the folder made lands
+  // in the catalogue, so the command removes it and stops with exit 1, writing no draft there.
+  const example = twoCasks(), parent = join(folder(), 'drafts');
+  mkdirSync(parent, { mode: 0o700 });
+  const before = readdirSync(example.path);
+  const result = driftEntryRun({ faults: { parentToLinkBeforeMkdir: example.path } }, [example.path, '--snapshot', example.file, '--scaffold', join(parent, 'new-items')]);
+  expect(result.status).toBe(1);
+  expect(result.stdout).toBe('');
+  expect(oneLine(result.stderr)).toBe(true);
+  expect(result.stderr).not.toContain('Usage:');
+  expect(readdirSync(example.path)).toEqual(before);
+  expect(hashes(example.path)).toEqual(example.before);
+  expect(readdirSync(`${parent}-moved`)).toEqual([]);
 });

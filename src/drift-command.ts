@@ -17,11 +17,14 @@
  * Without `--scaffold` it only reads the catalogue folder and the snapshot. With `--scaffold <dir>` it
  * also writes the draft files of src/scaffold.ts, and only there: `dir` must not exist yet and must be
  * neither inside the catalogue folder nor contain it (real paths compared; a usage error otherwise).
- * Its parent must not be writable by group or others unless it has the sticky bit (as /tmp has), and
- * must be owned by the user or root: otherwise another user could swap `dir` for a link (usage error).
- * Everything is built and checked in memory first; then `dir` is created with an exclusive mkdir (no
- * `recursive`, so a folder created meanwhile is exit 2) and mode 0700, and its device and inode are
- * remembered, as src/discovery/write.ts does for the snapshot folders. Before each file is created
+ * Every folder on the real path of its parent, from / down to the parent, must not be writable by group
+ * or others unless it has the sticky bit (as /tmp has), and must be owned by the user or root: otherwise
+ * another user could swap `dir`, or the parent, for a link (usage error). Everything is built and
+ * checked in memory first; then `dir` is created with an exclusive mkdir (no `recursive`, so a folder
+ * created meanwhile is exit 2) and mode 0700, and its device and inode are remembered, as
+ * src/discovery/write.ts does for the snapshot folders. The real path of the folder made must be the
+ * one checked and outside the catalogue, else it is removed (still that folder and empty) and the
+ * command exits 1: the parent was replaced after the checks. Before each file is created
  * (`wx`, mode 0644) and before stdout, `dir` must still be that folder and no link, else exit 1. A
  * failed write exits 1 with one line and removes what this run created: each file whose exclusive
  * create succeeded and that lstat still finds as a regular file with the device and inode its
@@ -156,8 +159,27 @@ async function readSnapshot(path: string): Promise<Snapshot> {
   throw new SnapshotProblem(SNAPSHOT_PROBLEMS[checked.problem]);
 }
 
-/** The real path `--scaffold` will create; usage errors when it exists, is inside the catalogue or contains it. */
-function scaffoldTarget(dir: string, catalogueFolder: string, ops: ScaffoldOps): string {
+/** Where `--scaffold` writes: the real path it will create and the catalogue's real path. */
+interface ScaffoldPlace { target: string; catalogueReal: string }
+
+/** The folders from `/` down to `folder` (a real path), the root first. */
+function foldersDownTo(folder: string): string[] {
+  const chain: string[] = [];
+  for (let current = folder; ; current = dirname(current)) {
+    chain.unshift(current);
+    if (dirname(current) === current) return chain;
+  }
+}
+
+/** Whether `target` is the catalogue, inside it, or contains it (real paths). */
+function overlapsCatalogue(target: string, catalogueReal: string): 'inside' | 'contains' | undefined {
+  if (target === catalogueReal || target.startsWith(catalogueReal + sep)) return 'inside';
+  return catalogueReal.startsWith(target + sep) ? 'contains' : undefined;
+}
+
+/** The real path `--scaffold` will create; usage errors when it exists, is inside the catalogue or contains
+ * it, or when another user could change a folder on the way to it. */
+function scaffoldTarget(dir: string, catalogueFolder: string, ops: ScaffoldOps): ScaffoldPlace {
   const absolute = resolve(dir);
   let exists = true;
   try { ops.lstat(absolute); } catch (error) {
@@ -167,16 +189,22 @@ function scaffoldTarget(dir: string, catalogueFolder: string, ops: ScaffoldOps):
   if (exists) throw new Error('The scaffold folder already exists; name a new folder');
   let parent: string;
   try { parent = ops.realpath(dirname(absolute)); } catch { throw new Error('The folder that should hold the scaffold folder was not found'); }
-  // Another user who can write the parent could replace the new folder with a link; the sticky bit
-  // (as on /tmp) stops them renaming or removing a folder they do not own.
-  let holder: Stats;
-  try { holder = ops.lstat(parent); } catch { throw new Error('The folder that should hold the scaffold folder cannot be checked'); }
-  if ((holder.mode & WRITABLE_BY_OTHERS) && !(holder.mode & STICKY)) throw new Error('The folder that should hold the scaffold folder can be written by other users; name a folder in a private place');
-  if (holder.uid !== process.getuid!() && holder.uid !== ROOT) throw new Error('The folder that should hold the scaffold folder is not owned by the current user or root; name a folder in a private place');
+  // Another user who can write the parent could replace the new folder with a link, and one who can
+  // write any folder above it could replace the parent itself before the mkdir; so every folder on the
+  // parent's real path, from / down, must be the user's or root's and closed to others. The sticky
+  // bit (as on /tmp) stops other users renaming or removing a folder they do not own.
+  for (const folder of foldersDownTo(parent)) {
+    const which = folder === parent ? 'The folder that should hold the scaffold folder' : 'A folder above the one that should hold the scaffold folder';
+    let status: Stats;
+    try { status = ops.lstat(folder); } catch { throw new Error(`${which} cannot be checked`); }
+    if ((status.mode & WRITABLE_BY_OTHERS) && !(status.mode & STICKY)) throw new Error(`${which} can be written by other users; name a folder in a private place`);
+    if (status.uid !== process.getuid!() && status.uid !== ROOT) throw new Error(`${which} is not owned by the current user or root; name a folder in a private place`);
+  }
   const target = join(parent, basename(absolute)), catalogueReal = ops.realpath(catalogueFolder);
-  if (target === catalogueReal || target.startsWith(catalogueReal + sep)) throw new Error('The scaffold folder must be outside the catalogue folder');
-  if (catalogueReal.startsWith(target + sep)) throw new Error('The scaffold folder must not contain the catalogue folder');
-  return target;
+  const overlap = overlapsCatalogue(target, catalogueReal);
+  if (overlap === 'inside') throw new Error('The scaffold folder must be outside the catalogue folder');
+  if (overlap === 'contains') throw new Error('The scaffold folder must not contain the catalogue folder');
+  return { target, catalogueReal };
 }
 
 /** Every `metadata.name` of a catalogue document whose kind is Component, errors or not. */
@@ -194,7 +222,7 @@ class FolderReplaced extends InternalError {
 }
 
 /** Create `target` and write every file in it; on a failure remove what was written, then throw. */
-function writeScaffold(target: string, files: ScaffoldFile[], ops: ScaffoldOps): void {
+function writeScaffold({ target, catalogueReal }: ScaffoldPlace, files: ScaffoldFile[], ops: ScaffoldOps): void {
   try { ops.mkdir(target); } catch (error) {
     if (code(error) === 'EEXIST') throw new Error('The scaffold folder already exists; name a new folder');
     throw new InternalError(`stackledger drift: cannot create the scaffold folder (${code(error)})`);
@@ -208,6 +236,18 @@ function writeScaffold(target: string, files: ScaffoldFile[], ops: ScaffoldOps):
   } catch (error) {
     if (error instanceof FolderReplaced) throw error;
     throw new InternalError(`stackledger drift: cannot check the scaffold folder (${code(error)})`);
+  }
+  // A parent swapped for a link between the checks and the mkdir puts the new folder somewhere else,
+  // possibly in the catalogue: its real path must be the one checked. Otherwise the folder this run
+  // made is removed by its real path, only while it is still that folder (rmdir keeps a non-empty one).
+  let real: string | undefined;
+  try { real = ops.realpath(target); } catch { real = undefined; }
+  if (real !== target || overlapsCatalogue(real, catalogueReal) !== undefined) {
+    let removed = false;
+    if (real !== undefined) {
+      try { if (sameFolder(ops.lstat(real), folder)) { ops.rmdir(real); removed = true; } } catch { removed = false; }
+    }
+    throw new InternalError(`stackledger drift: the folder that holds the scaffold folder was replaced before it was created; ${removed ? 'the folder made was removed and nothing was written' : 'nothing was written, but the folder made could not be removed'}`);
   }
   const stillOurs = () => { try { return sameFolder(ops.lstat(target), folder); } catch { return false; } };
   // Only files whose exclusive create succeeded, with the device and inode their descriptor had: a
