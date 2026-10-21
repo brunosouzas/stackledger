@@ -29,7 +29,7 @@
  * failed write exits 1 with one line and removes what this run created: each file whose exclusive
  * create succeeded and that lstat still finds as a regular file with the device and inode its
  * descriptor had (so a file another process put there, before or after, is kept), then `dir` when it is
- * still the folder made and empty. Like write.ts this only detects a swap by the user's own
+ * still the folder made (checked again right before the rmdir) and empty. Like write.ts this only detects a swap by the user's own
  * processes: Node has no openat to close the window between the check and the create.
  *
  * `host` and `ops` exist for the tests (test/integration/drift-entry.mjs); src/cli.ts passes nothing,
@@ -272,9 +272,11 @@ function writeScaffold({ target, catalogueReal }: ScaffoldPlace, files: Scaffold
         if (status.isFile() && status.dev === file.dev && status.ino === file.ino) ops.unlink(file.path);
       } catch { /* already gone: nothing to remove */ }
     }
-    // rmdir removes only an empty folder: one still holding another process's file is kept.
-    let removed = true;
-    try { ops.rmdir(target); } catch { removed = false; }
+    // `dir` is checked again right before the rmdir: the removals above take time, and a folder put at
+    // its path meanwhile is not this run's. rmdir removes only an empty folder: one still holding
+    // another process's file is kept.
+    let removed = stillOurs();
+    if (removed) { try { ops.rmdir(target); } catch { removed = false; } }
     throw new InternalError(`stackledger drift: cannot write the scaffold files (${code(error)}); ${removed ? 'nothing was kept' : 'the scaffold folder could not be removed'}`);
   }
 }

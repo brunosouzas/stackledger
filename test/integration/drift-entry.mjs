@@ -21,6 +21,8 @@
  * - `replaceFileAfterWrite: n`, after the n-th file is written, puts a new file of another process in
  *   its place (written beside it, then renamed over it, so it is a different inode);
  * - `failCreate: n` makes the n-th exclusive create fail with EIO before creating anything;
+ * - `replaceFolderAfterUnlink: n`, after the rollback's n-th file removal, moves the scaffold folder to
+ *   `<dir>-moved` and creates a new empty folder of another process at `<dir>`;
  * each as another process or user could.
  *
  * Run (after npm run build):
@@ -39,7 +41,7 @@ const faults = config.faults ?? {};
 const scaffold = args.includes('--scaffold') ? resolve(args[args.indexOf('--scaffold') + 1]) : undefined;
 const parent = scaffold === undefined ? undefined : realpathSync(dirname(scaffold));
 const ownerAs = (status, uid) => Object.assign(Object.create(Object.getPrototypeOf(status)), status, { uid });
-let creates = 0, writes = 0, lastPath;
+let creates = 0, writes = 0, unlinks = 0, lastPath;
 const ops = {
   ...NODE_SCAFFOLD_OPS,
   lstat: path => {
@@ -62,6 +64,14 @@ const ops = {
     if (creates === faults.failCreate) throw Object.assign(new Error('injected create failure'), { code: 'EIO' });
     lastPath = path;
     return NODE_SCAFFOLD_OPS.create(path);
+  },
+  unlink: path => {
+    NODE_SCAFFOLD_OPS.unlink(path);
+    unlinks++;
+    if (unlinks === faults.replaceFolderAfterUnlink) {
+      renameSync(scaffold, `${scaffold}-moved`);
+      mkdirSync(scaffold);
+    }
   },
   write: (fd, text) => {
     writes++;

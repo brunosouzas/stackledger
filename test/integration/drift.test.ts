@@ -366,6 +366,19 @@ test('Scaffold rollback keeps a replaced file', () => {
   expect(readFileSync(join(dir, 'northwind-draw.yaml'), 'utf8')).toBe('written by another process\n');
 });
 
+test('Scaffold rollback keeps a replaced folder', () => {
+  // Writing the second file fails; after the rollback removes the files, another process moves the
+  // scaffold folder away and creates an empty folder at its path. That folder is not this run's: it is kept.
+  const example = twoCasks(), dir = join(folder(), 'new-items');
+  const result = driftEntryRun({ faults: { failWrite: 2, replaceFolderAfterUnlink: 2 } }, [example.path, '--snapshot', example.file, '--scaffold', dir]);
+  expect(result.status).toBe(1);
+  expect(result.stdout).toBe('');
+  expect(oneLine(result.stderr)).toBe(true);
+  expect(result.stderr).toContain('the scaffold folder could not be removed');
+  expect(readdirSync(dir)).toEqual([]);
+  expect(readdirSync(`${dir}-moved`)).toEqual([]);
+});
+
 test('Scaffold folder created meanwhile', () => {
   const example = twoCasks(), dir = join(folder(), 'new-items');
   const result = driftEntryRun({ faults: { createBeforeMkdir: true } }, [example.path, '--snapshot', example.file, '--scaffold', dir]);

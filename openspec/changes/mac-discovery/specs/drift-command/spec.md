@@ -306,6 +306,10 @@ A write failure SHALL exit 1 with one error line and write nothing on stdout. It
 - **WHEN** another process replaces the first file after it is written, and creating the second file fails
 - **THEN** the exit code is 1, stdout is empty, and the replacement file is still in `dir`
 
+#### Scenario: Scaffold rollback keeps a replaced folder
+- **WHEN** writing the second file fails and, after the rollback removes the files, another process moves `dir` away and creates an empty folder at its path
+- **THEN** the exit code is 1, stdout is empty, the error line says the scaffold folder could not be removed, and the new folder still exists
+
 ### Requirement: Drift failures
 A failure while comparing or serialising SHALL exit 1 with stdout empty and one error line on stderr, without usage. A failure while writing stdout SHALL exit 1 with one error line on stderr.
 
