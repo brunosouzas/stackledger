@@ -270,11 +270,7 @@ Undeclared items with the same source and identifier (as matching compares them)
 - **THEN** `stackledger validate` reports no more errors or warnings than before
 
 ### Requirement: Scaffold write
-The command SHALL create `dir` itself with mode 0700 and an exclusive create that fails when it already exists (exit 2), write only inside it, and write the files before stdout. Before each file and before stdout, `dir` SHALL still be that folder (same device and inode, no link), else exit 1. A write failure SHALL exit 1 with one error line, remove the files it wrote and `dir`, and write nothing on stdout. Text in the files SHALL be YAML-escaped so any title stays one scalar.
-
-#### Scenario: Scaffold write fails
-- **WHEN** writing the second file fails
-- **THEN** the exit code is 1, stdout is empty, and `dir` does not exist
+The command SHALL create `dir` itself with mode 0700 and an exclusive create that fails when it already exists (exit 2), write only inside it, and write the files before stdout. Before each file and before stdout, `dir` SHALL still be that folder (same device and inode, no link), else exit 1 with one error line. Text in the files SHALL be YAML-escaped so any title stays one scalar.
 
 #### Scenario: Scaffold folder created meanwhile
 - **WHEN** `dir` is created by another process after the checks and before the command creates it
@@ -287,6 +283,17 @@ The command SHALL create `dir` itself with mode 0700 and an exclusive create tha
 #### Scenario: Title that looks like YAML
 - **WHEN** an app title is `Northwind: Editor # beta` and holds a line break
 - **THEN** its file parses back to one component whose title is that text on one line
+
+### Requirement: Scaffold rollback
+A write failure SHALL exit 1 with one error line and write nothing on stdout. It SHALL remove each file whose exclusive create succeeded while it is still that file (same device and inode), then `dir` while it is still the folder created and empty; anything else SHALL be kept.
+
+#### Scenario: Scaffold write fails
+- **WHEN** writing the second file fails
+- **THEN** the exit code is 1, stdout is empty, and `dir` does not exist
+
+#### Scenario: Scaffold rollback keeps a replaced file
+- **WHEN** another process replaces the first file after it is written, and creating the second file fails
+- **THEN** the exit code is 1, stdout is empty, and the replacement file is still in `dir`
 
 ### Requirement: Drift failures
 A failure while comparing or serialising SHALL exit 1 with stdout empty and one error line on stderr, without usage. A failure while writing stdout SHALL exit 1 with one error line on stderr.

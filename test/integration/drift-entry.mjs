@@ -15,6 +15,9 @@
  * - `replaceFolderAfterWrite: n`, after the n-th file is written, moves the scaffold folder to
  *   `<dir>-moved` and puts a symbolic link to a new empty folder `<dir>-elsewhere` in its place;
  * - `parentUid: n` makes the lstat of the scaffold folder's parent report owner n;
+ * - `replaceFileAfterWrite: n`, after the n-th file is written, puts a new file of another process in
+ *   its place (written beside it, then renamed over it, so it is a different inode);
+ * - `failCreate: n` makes the n-th exclusive create fail with EIO before creating anything;
  * each as another process or user could.
  *
  * Run (after npm run build):
@@ -32,7 +35,7 @@ const config = JSON.parse(readFileSync(file, 'utf8'));
 const faults = config.faults ?? {};
 const scaffold = args.includes('--scaffold') ? resolve(args[args.indexOf('--scaffold') + 1]) : undefined;
 const parent = scaffold === undefined ? undefined : realpathSync(dirname(scaffold));
-let creates = 0, writes = 0;
+let creates = 0, writes = 0, lastPath;
 const ops = {
   ...NODE_SCAFFOLD_OPS,
   lstat: path => {
@@ -47,6 +50,8 @@ const ops = {
   create: path => {
     creates++;
     if (creates === faults.createBeforeWrite) writeFileSync(path, 'written by another process\n');
+    if (creates === faults.failCreate) throw Object.assign(new Error('injected create failure'), { code: 'EIO' });
+    lastPath = path;
     return NODE_SCAFFOLD_OPS.create(path);
   },
   write: (fd, text) => {
@@ -56,6 +61,10 @@ const ops = {
       throw Object.assign(new Error('injected write failure'), { code: 'EIO' });
     }
     NODE_SCAFFOLD_OPS.write(fd, text);
+    if (writes === faults.replaceFileAfterWrite) {
+      writeFileSync(`${lastPath}.other`, 'written by another process\n');
+      renameSync(`${lastPath}.other`, lastPath);
+    }
     if (writes === faults.replaceFolderAfterWrite) {
       renameSync(scaffold, `${scaffold}-moved`);
       mkdirSync(`${scaffold}-elsewhere`);
