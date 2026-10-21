@@ -10,6 +10,7 @@
  *   `\u` escapes (JSON.stringify already escapes U+0000–U+001F), so no raw control character reaches a
  *   terminal and the values parse back unchanged.
  */
+import { escapeJsonControls } from './control.js';
 import type { Drift, ItemRef, NotDeclared } from './drift.js';
 
 const CONTROL = /[\u0000-\u001f\u007f-\u009f]/g;
@@ -48,6 +49,5 @@ export function formatDriftText(drift: Drift): string {
 }
 
 export function formatDriftJson(drift: Drift): string {
-  const json = JSON.stringify(drift, null, 2).replace(/[\u007f-\u009f]/g, character => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`);
-  return `${json}\n`;
+  return `${escapeJsonControls(JSON.stringify(drift, null, 2))}\n`;
 }

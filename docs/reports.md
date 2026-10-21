@@ -68,7 +68,7 @@ Plain tables for a terminal, one section per list: renewals, overdue, unknown re
 
 ### JSON
 
-One object, stable within version 1:
+One object, stable within version 1. Characters U+007F to U+009F in strings are written as `\u` escapes, so no raw control character reaches a terminal; the values parse back unchanged:
 
 ```json
 {

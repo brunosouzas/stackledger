@@ -147,6 +147,15 @@ test('JSON totals', () => {
   expect(Object.keys(report)).toEqual(['date', 'days', 'to', 'renewals', 'overdue', 'unknownDates', 'recurring', 'groups', 'oneOff', 'planned', 'incomplete']);
 });
 
+test('C1 character in report JSON', () => {
+  const title = 'Northwind \u009b2J Editor';
+  const result = run(['report', catalogueOf(set(lic('licence-editor', { renewsOn: '2027-06-30' }), 'metadata.title', title)), '--date', DATE, '--format', 'json']);
+  expect(result.status).toBe(0);
+  expect(result.stdout).toContain('Northwind \\u009b2J Editor');
+  expect(result.stdout).not.toMatch(/[\u007f-\u009f]/);
+  expect(JSON.parse(result.stdout).renewals[0].title).toBe(title);
+});
+
 test('CSV rows', () => {
   const path = catalogueOf(
     lic('licence-monthly', { cost: 10 }), lic('licence-once', { cycle: 'one-off', cost: 300 }), lic('licence-unknown', { cost: 'unknown' }),

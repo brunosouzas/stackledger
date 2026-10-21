@@ -34,3 +34,23 @@ test('Hostile annotation key', () => {
  expect(JSON.parse(json.stdout).problems[0].field).toBe('metadata.annotations["stackledger/brew\\u009b2J"]');
  for (const output of [text.stdout, json.stdout]) expect(output).not.toContain('\u009b');
 });
+test('Hostile file name in validate output', () => {
+ // A catalogue file whose name holds ESC and a raw U+009B (CSI), with one error so its path is printed.
+ const name = 'nw\u001b[2J\u009b2J.yaml', root = folder({ [name]: component().replace('  owner: user:alex\n', '') });
+ const text = run(['validate', root]), json = run(['validate', root, '--json']);
+ expect(text.status).toBe(1); expect(json.status).toBe(1);
+ expect(text.stdout).toMatch(/^nw\[2J2J\.yaml:\d+:\d+ error /);
+ for (const line of text.stdout.split('\n')) expect(line).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/);
+ expect(json.stdout).toContain('nw\\u001b[2J\\u009b2J.yaml');
+ expect(json.stdout).not.toMatch(/[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/);
+ expect(JSON.parse(json.stdout).problems[0].path).toBe(name);
+});
+test('Hostile option in a usage error', () => {
+ for (const args of [['drift', '--nw\u001b[2J\u009b2J'], ['validate', '--nw\u001b]0;x\u0007\u009b2J'], ['nw\u009b2J\u001b[2J']]) {
+  const result = run(args);
+  expect(result.status, JSON.stringify(args)).toBe(2); expect(result.stdout).toBe('');
+  expect(result.stderr).toContain('Usage:');
+  expect(result.stderr).not.toMatch(/[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/);
+ }
+ expect(run(['drift', '--nw\u009b2J']).stderr).toContain("'--nw2J'");
+});

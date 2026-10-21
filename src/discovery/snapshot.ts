@@ -13,6 +13,7 @@
  * - serialise writes JSON with two-space indentation, U+007F–U+009F as \u escapes, and a final line feed.
  */
 import { z } from 'zod';
+import { escapeJsonControls } from '../control.js';
 import { InternalError } from '../errors.js';
 import { compareText } from '../identity.js';
 import { secretRules } from '../secrets.js';
@@ -151,5 +152,5 @@ export function checkSnapshot(value: unknown): SnapshotCheck {
 
 /** The file's text: deterministic for the same snapshot. */
 export function serialise(snapshot: Snapshot): string {
-  return `${JSON.stringify(snapshot, null, 2).replace(/[\u007f-\u009f]/g, character => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`)}\n`;
+  return `${escapeJsonControls(JSON.stringify(snapshot, null, 2))}\n`;
 }

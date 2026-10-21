@@ -5,11 +5,13 @@
  *   replaced by spaces, so a title cannot move the cursor or inject terminal escapes.
  * - formatJson(report): the shape documented in docs/reports.md. Amounts are numbers rounded to two
  *   decimals, null where no amount exists. An amount that no JSON number holds exactly throws
- *   AmountTooLarge, naming the licence (or the total) it belongs to.
+ *   AmountTooLarge, naming the licence (or the total) it belongs to. U+007F–U+009F are written as `\u`
+ *   escapes (src/control.ts), so no raw control character reaches a terminal.
  * - formatCsv(report): one quoted row per active, to-confirm or to-buy licence, in reference order.
  *   A field that a spreadsheet would read as a formula gets a leading `'`. This protects the file
  *   as written; a spreadsheet that saves it again may undo it.
  */
+import { escapeJsonControls } from './control.js';
 import { formatAmount, jsonNumber, type Amount } from './money.js';
 import type { Group, LicenceLink, OneOffRow, Report, RenewalEntry, TotalRow } from './reports.js';
 
@@ -167,7 +169,7 @@ export function formatJson(report: Report): string {
     },
     incomplete: report.incomplete.map(item => ({ ref: item.ref, title: item.title, status: item.status, unknown: item.unknown })),
   };
-  return JSON.stringify(value, null, 2) + '\n';
+  return escapeJsonControls(JSON.stringify(value, null, 2)) + '\n';
 }
 
 // CSV
