@@ -48,6 +48,15 @@ test('Explicit snapshot', () => {
   expect(result.stderr).toBe('stackledger drift: 0 errors, 1 warning; run stackledger validate for details\n');
   expect(result.stdout).toBe(formatDriftText(buildDrift(example.snapshot, example.components)));
   for (const section of ['Not declared', 'Missing', 'Not checked', 'Shared', 'Proposed relations']) expect(result.stdout).toContain(`\n${section}\n`);
+  // The documented example: the Northwind catalogue and its fictitious machine show every section but
+  // Shared, which always comes with a validate warning; the example stays without errors or warnings.
+  const documented = run(['drift', 'examples/northwind', '--snapshot', 'examples/northwind-machine/snapshot.json']);
+  expect(documented.status).toBe(0);
+  expect(documented.stderr).toBe('');
+  for (const section of ['Not declared', 'Missing', 'Not checked', 'Proposed relations']) expect(documented.stdout).toContain(`\n${section}\n`);
+  expect(documented.stdout).toContain('(probably belongs to component:slack)');
+  expect(documented.stdout).toContain('cannot be annotated');
+  expect(documented.stdout).toContain('(incomplete source)');
 });
 
 test('Default snapshot', () => {

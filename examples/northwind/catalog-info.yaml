@@ -1,4 +1,6 @@
 # Fictitious Northwind Studio inventory. No real subscriptions or people.
+# The stackledger/<source> annotations tell stackledger drift how each component is installed on a Mac;
+# examples/northwind-machine/snapshot.json is a fictitious snapshot to compare them with.
 # The Group gives the owner group:northwind its display name on the site.
 apiVersion: backstage.io/v1alpha1
 kind: Group
@@ -35,6 +37,9 @@ kind: Component
 metadata:
   name: vscode
   title: VS Code
+  annotations:
+    stackledger/cask: visual-studio-code
+    stackledger/app: com.microsoft.VSCode
 spec:
   type: tool
   lifecycle: active
@@ -45,6 +50,8 @@ kind: Component
 metadata:
   name: github
   title: GitHub
+  annotations:
+    stackledger/brew: gh
 spec:
   type: tool
   lifecycle: active
@@ -70,6 +77,8 @@ kind: Component
 metadata:
   name: vercel
   title: Vercel
+  annotations:
+    stackledger/npm: vercel
 spec:
   type: tool
   lifecycle: active
@@ -83,6 +92,9 @@ kind: Component
 metadata:
   name: figma
   title: Figma
+  annotations:
+    stackledger/cask: figma
+    stackledger/app: com.figma.Desktop
 spec:
   type: tool
   lifecycle: active
@@ -95,6 +107,9 @@ kind: Component
 metadata:
   name: loom
   title: Loom
+  annotations:
+    stackledger/cask: loom
+    stackledger/launchd: com.northwind.loom-uploader
 spec:
   type: tool
   lifecycle: deprecated
@@ -105,6 +120,8 @@ kind: Component
 metadata:
   name: slack
   title: Slack
+  annotations:
+    stackledger/cask: slack
 spec:
   type: tool
   lifecycle: active
@@ -129,6 +146,9 @@ kind: Component
 metadata:
   name: notion
   title: Notion
+  annotations:
+    stackledger/cask: notion
+    stackledger/app: notion.id
 spec:
   type: tool
   lifecycle: active
@@ -167,6 +187,10 @@ kind: Component
 metadata:
   name: onepass
   title: 1Password
+  annotations:
+    stackledger/cask: 1password
+    stackledger/app: com.1password.1password
+    stackledger/launchd: com.northwind.secrets-sync
 spec:
   type: tool
   lifecycle: active
@@ -179,6 +203,8 @@ kind: Component
 metadata:
   name: doppler
   title: Doppler
+  annotations:
+    stackledger/brew: dopplerhq/cli/doppler
 spec:
   type: tool
   lifecycle: active
@@ -191,6 +217,8 @@ kind: Component
 metadata:
   name: stripe
   title: Stripe
+  annotations:
+    stackledger/brew: stripe/stripe-cli/stripe
   labels:
     stackledger/zone: finance
 spec:
@@ -217,6 +245,8 @@ kind: Component
 metadata:
   name: expensify
   title: Expensify
+  annotations:
+    stackledger/mas: "1234567890"
   labels:
     stackledger/zone: finance
 spec:

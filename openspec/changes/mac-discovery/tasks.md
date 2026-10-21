@@ -51,6 +51,6 @@ Levels: U unit, I integration (CLI, entry script or built files), P performance 
 
 ## 6. Example, documentation and a real run
 
-- [ ] 6.1 `examples/northwind-machine/snapshot.json` (fictitious, user `username`) and discovery annotations on the Northwind components, so `stackledger drift examples/northwind --snapshot examples/northwind-machine/snapshot.json` shows every section. Check: `Explicit snapshot`.
+- [x] 6.1 `examples/northwind-machine/snapshot.json` (fictitious, user `username`) and discovery annotations on the Northwind components, so `stackledger drift examples/northwind --snapshot examples/northwind-machine/snapshot.json` shows every section. Check: `Explicit snapshot`.
 - [ ] 6.2 `docs/discovery.md` (the flow from `discover` to a reviewed pull request on the catalogue, sources, exact commands and files read, sandbox, snapshot and drift JSON shapes, machine-name rule, `--scaffold`, a weekly launchd example, exit codes), `docs/catalogue-format.md` (annotations), README Usage rows, AGENTS.md, `skills/stackledger/SKILL.md`. Check: `npm test` (docs tests), `npm audit` reports 0.
 - [ ] 6.3 One manual run on the owner's Mac, outside the repository: a scratch copy under `~/.hermes/cache/scratch/` runs `discover` through the entry script with the real sources and the snapshot folder inside the scratch copy, then `drift` against a scratch copy of the owner's catalogue; findings go to the pull request in words, not data; the scratch copy is deleted. Check: the scratch folder no longer exists.
