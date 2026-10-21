@@ -11,7 +11,7 @@
 import { join } from 'node:path';
 import type { Host } from '../host.js';
 import { failed, ok, skipped, type AppItem, type SourceResult } from '../types.js';
-import { entryKind, extractString, isRecord, listFolder, nonEmptyString, pool, PLUTIL_POOL, type Extracted } from './common.js';
+import { entryKind, extractString, isRecord, listFolder, nonEmptyString, pool, PLUTIL_POOL } from './common.js';
 
 const KEYS = ['CFBundleIdentifier', 'CFBundleDisplayName', 'CFBundleName', 'CFBundleShortVersionString'] as const;
 type Fields = Partial<Record<typeof KEYS[number], string>>;
@@ -36,41 +36,47 @@ async function bundlesIn(host: Host, root: string, depth: number): Promise<Found
   return found;
 }
 
-/** The four keys of an Info.plist, or `stopped` / `no plutil`. */
-async function readFields(host: Host, plist: string): Promise<Fields | 'stopped' | 'no plutil'> {
+/** The four keys of an Info.plist, or why they could not be read (tagged: a field may read like a reason). */
+type FieldsRead = { ok: true; fields: Fields } | { ok: false; reason: 'stopped' | 'no plutil' };
+async function readFields(host: Host, plist: string): Promise<FieldsRead> {
   const converted = await host.run('plutil', ['-convert', 'json', '-o', '-', plist]);
-  if (converted.kind === 'not found') return 'no plutil';
-  if (converted.kind !== 'exited') return 'stopped';
+  if (converted.kind === 'not found') return { ok: false, reason: 'no plutil' };
+  if (converted.kind !== 'exited') return { ok: false, reason: 'stopped' };
   if (converted.code === 0) {
     let value: unknown;
     try { value = JSON.parse(converted.stdout); } catch { value = undefined; }
     if (isRecord(value)) {
       const fields: Fields = {};
       for (const key of KEYS) if (nonEmptyString(value[key])) fields[key] = value[key];
-      return fields;
+      return { ok: true, fields };
     }
   }
   const fields: Fields = {};
   for (const key of KEYS) {
-    const extracted: Extracted = await extractString(host, plist, key);
-    if (extracted === 'no plutil' || (extracted === 'stopped' && key === 'CFBundleIdentifier')) return extracted;
-    if (extracted !== 'absent' && extracted !== 'stopped') fields[key] = extracted;
+    const extracted = await extractString(host, plist, key);
+    if (extracted.ok) fields[key] = extracted.value;
+    else if (extracted.reason === 'no plutil') return { ok: false, reason: 'no plutil' };
+    else if (extracted.reason === 'stopped' && key === 'CFBundleIdentifier') return { ok: false, reason: 'stopped' };
   }
-  return fields;
+  return { ok: true, fields };
 }
 
-async function readBundle(host: Host, path: string): Promise<AppItem | 'ignored' | 'no plutil'> {
-  const fields = await readFields(host, join(path, 'Contents', 'Info.plist'));
-  if (fields === 'no plutil') return fields;
-  if (fields === 'stopped' || !fields.CFBundleIdentifier) return 'ignored';
+/** One bundle: its item, or a tagged reason (never a bare string, which an identifier could equal). */
+type BundleRead = { item: AppItem } | { item: null; reason: 'ignored' | 'no plutil' };
+
+async function readBundle(host: Host, path: string): Promise<BundleRead> {
+  const read = await readFields(host, join(path, 'Contents', 'Info.plist'));
+  if (!read.ok) return { item: null, reason: read.reason === 'no plutil' ? 'no plutil' : 'ignored' };
+  const fields = read.fields;
+  if (!fields.CFBundleIdentifier) return { item: null, reason: 'ignored' };
   const folderName = path.split('/').at(-1)!.slice(0, -'.app'.length);
   const receipt = await entryKind(host, join(path, 'Contents', '_MASReceipt'));
-  return {
+  return { item: {
     source: 'app', id: fields.CFBundleIdentifier,
     versions: fields.CFBundleShortVersionString ? [fields.CFBundleShortVersionString] : [],
     title: fields.CFBundleDisplayName ?? fields.CFBundleName ?? folderName,
     path, appStore: receipt !== 'missing',
-  };
+  } };
 }
 
 export async function readApps(host: Host): Promise<SourceResult> {
@@ -87,7 +93,7 @@ export async function readApps(host: Host): Promise<SourceResult> {
   if (!present) return skipped('app');
   const paths = found.flatMap(entry => entry.kind === 'app' ? [entry.path] : []);
   const read = await pool(paths, PLUTIL_POOL, path => readBundle(host, path));
-  if (read.includes('no plutil')) return skipped('app');
-  const items = read.filter((entry): entry is AppItem => typeof entry !== 'string');
+  if (read.some(entry => entry.item === null && entry.reason === 'no plutil')) return skipped('app');
+  const items = read.flatMap(entry => entry.item === null ? [] : [entry.item]);
   return ok('app', items, found.length - items.length);
 }

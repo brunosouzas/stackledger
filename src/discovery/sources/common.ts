@@ -34,16 +34,22 @@ export async function pool<T, R>(values: readonly T[], limit: number, task: (val
   return results;
 }
 
-/** One string key of a plist: its value, `absent` (missing, not a string, unreadable file) or `stopped`
- * (a time or output limit), or `no plutil`. Raw output ends with one line feed, which is not part of the value. */
-export type Extracted = string | 'absent' | 'stopped' | 'no plutil';
+/** Why a plist key gave no value: `absent` (missing, not a string, empty, unreadable file), `stopped`
+ * (a time or output limit) or `no plutil`. */
+export type NoValue = 'absent' | 'stopped' | 'no plutil';
+/** One string key of a plist, tagged: a value is plist data and may read like any reason (a job may be
+ * labelled `absent`), so a value and a reason never share one string type. */
+export type Extracted = { ok: true; value: string } | { ok: false; reason: NoValue };
+const noValue = (reason: NoValue): Extracted => ({ ok: false, reason });
+
+/** Raw output ends with one line feed, which is not part of the value. */
 export async function extractString(host: Host, file: string, key: string): Promise<Extracted> {
   const result = await host.run('plutil', ['-extract', key, 'raw', '-expect', 'string', '-o', '-', file]);
-  if (result.kind === 'not found') return 'no plutil';
-  if (result.kind !== 'exited') return 'stopped';
-  if (result.code !== 0) return 'absent';
+  if (result.kind === 'not found') return noValue('no plutil');
+  if (result.kind !== 'exited') return noValue('stopped');
+  if (result.code !== 0) return noValue('absent');
   const value = result.stdout.endsWith('\n') ? result.stdout.slice(0, -1) : result.stdout;
-  return value === '' ? 'absent' : value;
+  return value === '' ? noValue('absent') : { ok: true, value };
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {

@@ -17,7 +17,7 @@ import { readLaunchd } from '../../src/discovery/sources/launchd.js';
 import { readMise } from '../../src/discovery/sources/mise.js';
 import { readNpm } from '../../src/discovery/sources/npm.js';
 import { readPipx } from '../../src/discovery/sources/pipx.js';
-import { fixture, machineFiles, virtualHost, type Entry } from '../virtual-host.js';
+import { defaultPrograms, fixture, machineFiles, virtualHost, type Entry } from '../virtual-host.js';
 import type { Item, SourceResult } from '../../src/discovery/types.js';
 
 const exited = (stdout: string, code = 0) => ({ kind: 'exited' as const, code, stdout });
@@ -148,6 +148,28 @@ test('Arguments are not recorded', async () => {
   const runs = host.calls.filter(call => call.args.at(-1) === path);
   expect(runs.length).toBeGreaterThan(0);
   for (const run of runs) expect(run).toEqual({ program: 'plutil', args: ['-extract', expect.stringMatching(/^(Label|Program|ProgramArguments\.0)$/), 'raw', '-expect', 'string', '-o', '-', path] });
+});
+
+// Plist values are data: a value that reads like a reader status is recorded like any other.
+test('Jobs labelled like reader statuses', async () => {
+  const jobs = { absent: { Label: 'absent', Program: 'stopped' }, stopped: { Label: 'stopped', ProgramArguments: ['absent'] }, plutil: { Label: 'no plutil', Program: 'no plutil' } };
+  const launchd = await readLaunchd(virtualHost({ files: machine(Object.fromEntries(Object.entries(jobs).map(([name, job]) => [`/Library/LaunchAgents/com.northwind.${name}.plist`, job]))) }));
+  expect(launchd).toMatchObject({ status: 'ok', ignored: 0 });
+  expect(item(launchd, 'absent')).toMatchObject({ program: 'stopped' });
+  expect(item(launchd, 'stopped')).toMatchObject({ program: 'absent' });
+  expect(item(launchd, 'no plutil')).toMatchObject({ program: 'no plutil' });
+});
+
+test('App fields that read like reader statuses', async () => {
+  // A failing `plutil -convert` sends every bundle through one `-extract` run per key.
+  const plutil = defaultPrograms().plutil!;
+  const host = virtualHost({
+    files: machine({ '/Applications/Northwind Odd.app/Contents/Info.plist': { CFBundleIdentifier: 'no plutil', CFBundleDisplayName: 'stopped', CFBundleShortVersionString: 'absent' } }),
+    programs: { plutil: (args, self) => args[0] === '-convert' ? exited('', 1) : plutil(args, self) },
+  });
+  const apps = await readApps(host);
+  expect(apps).toMatchObject({ status: 'ok', ignored: 0 });
+  expect(item(apps, 'no plutil')).toMatchObject({ title: 'stopped', versions: ['absent'] });
 });
 
 test('Tool with an alias link', async () => {

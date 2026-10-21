@@ -12,15 +12,17 @@ import type { Host } from '../host.js';
 import { failed, ok, skipped, type LaunchdItem, type LaunchdScope, type SourceResult } from '../types.js';
 import { entryKind, extractString, listFolder, pool, PLUTIL_POOL } from './common.js';
 
-async function readJob(host: Host, path: string, scope: LaunchdScope): Promise<LaunchdItem | 'ignored' | 'no plutil'> {
-  if (!(await host.canRead(path))) return 'ignored';
+/** One job file: its item, or a tagged reason (never a bare string, which a Label could equal). */
+type JobRead = { item: LaunchdItem } | { item: null; reason: 'ignored' | 'no plutil' };
+
+async function readJob(host: Host, path: string, scope: LaunchdScope): Promise<JobRead> {
+  if (!(await host.canRead(path))) return { item: null, reason: 'ignored' };
   const label = await extractString(host, path, 'Label');
-  if (label === 'no plutil') return label;
-  if (label === 'absent' || label === 'stopped') return 'ignored';
+  if (!label.ok) return { item: null, reason: label.reason === 'no plutil' ? 'no plutil' : 'ignored' };
   let program = await extractString(host, path, 'Program');
-  if (program === 'absent' || program === 'stopped') program = await extractString(host, path, 'ProgramArguments.0');
-  if (program === 'no plutil') return program;
-  return { source: 'launchd', id: label, versions: [], scope, path, program: program === 'absent' || program === 'stopped' ? null : program };
+  if (!program.ok && program.reason !== 'no plutil') program = await extractString(host, path, 'ProgramArguments.0');
+  if (!program.ok && program.reason === 'no plutil') return { item: null, reason: 'no plutil' };
+  return { item: { source: 'launchd', id: label.value, versions: [], scope, path, program: program.ok ? program.value : null } };
 }
 
 export async function readLaunchd(host: Host): Promise<SourceResult> {
@@ -44,7 +46,7 @@ export async function readLaunchd(host: Host): Promise<SourceResult> {
   }
   if (!present) return skipped('launchd');
   const read = await pool(jobs, PLUTIL_POOL, ([path, scope]) => readJob(host, path, scope));
-  if (read.includes('no plutil')) return skipped('launchd');
-  const items = read.filter((entry): entry is LaunchdItem => typeof entry !== 'string');
+  if (read.some(entry => entry.item === null && entry.reason === 'no plutil')) return skipped('launchd');
+  const items = read.flatMap(entry => entry.item === null ? [] : [entry.item]);
   return ok('launchd', items, ignored + read.length - items.length);
 }
