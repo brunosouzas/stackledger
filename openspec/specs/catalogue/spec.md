@@ -382,11 +382,15 @@ In checked documents, a value whose text holds `-----BEGIN`, then `PRIVATE KEY--
 - **THEN** there is no problem
 
 ### Requirement: E-mail addresses
-In checked documents, a value that contains an e-mail address SHALL get a warning. The message SHALL NOT repeat the address.
+In checked documents, a value that contains an e-mail address SHALL get a warning. The message SHALL NOT repeat the address. An address needs a domain whose last label is two or more letters, so a versioned Homebrew name such as `python@3.12` is not one.
 
 #### Scenario: E-mail address
 - **WHEN** a description contains `alex@example.com`
 - **THEN** it gets a warning and no error
+
+#### Scenario: Versioned formula is not an address
+- **WHEN** a component has `stackledger/brew: python@3.12, node@22, openssl@3`
+- **THEN** it has no problem
 
 ### Requirement: Settings
 A `Settings` document SHALL have `metadata.name` and MAY have `metadata.namespace` and `metadata.title`. It SHALL have `spec`, a mapping that MAY be empty. `spec.views.staff.hide`, when present, SHALL be a list of licence field names without repeats, each one of `vendor`, `status`, `cycle`, `cost`, `currency`, `renewsOn`, `seats`, `paidBy`, `vaultItem` and `note`. It MAY have `spec.site`, described in "Site settings". It is kept by convention in `stackledger.yaml`; any file name works.
@@ -432,3 +436,40 @@ A catalogue SHALL have at most one `Settings` document; only the earliest in doc
 #### Scenario: Logo not supported
 - **WHEN** `spec.site` has `logo`
 - **THEN** it gets an error on `spec.site.logo`
+
+### Requirement: Discovery annotations
+A component annotation whose key starts with `stackledger/` SHALL be one of `stackledger/brew`, `stackledger/cask`, `stackledger/mas`, `stackledger/app`, `stackledger/launchd`, `stackledger/mise`, `stackledger/npm` and `stackledger/pipx`; any other such key gets a warning on the key. Its value is a list of identifiers separated by commas, with spaces around each identifier ignored. An empty identifier gets a warning on the annotation.
+
+#### Scenario: Valid discovery annotations
+- **WHEN** a component has `stackledger/brew: git, gh` and `stackledger/app: com.northwind.editor`
+- **THEN** it has no problem
+
+#### Scenario: Unknown discovery source
+- **WHEN** a component has the annotation `stackledger/brews: git`
+- **THEN** it gets a warning on `metadata.annotations["stackledger/brews"]` naming the allowed keys
+
+#### Scenario: Empty identifier
+- **WHEN** a component has `stackledger/brew: git,,gh`
+- **THEN** it gets a warning on `metadata.annotations["stackledger/brew"]` and both `git` and `gh` are still read
+
+#### Scenario: Other annotations untouched
+- **WHEN** a component has the annotation `backstage.io/source-location: url:https://example.com/editor`
+- **THEN** it has no problem
+
+### Requirement: Annotation keys in problems
+A field path that holds an annotation key SHALL write characters U+0000 to U+001F and U+007F to U+009F as `\u` escapes, in text and JSON output, so a hostile key cannot inject lines or terminal escapes.
+
+#### Scenario: Hostile annotation key
+- **WHEN** a component has an annotation whose key is `stackledger/brew` followed by U+009B and `2J`
+- **THEN** its warning's field path holds `\u009b` in text output and in JSON output, and neither output holds the raw character
+
+### Requirement: One component per identifier
+An identifier that an earlier component (in document order) already lists for the same source SHALL get a warning on the later component's annotation naming the earlier component. Identifiers are compared as `stackledger drift` compares them. Annotations on documents other than components are not read for discovery.
+
+#### Scenario: Identifier claimed twice
+- **WHEN** components `editor` and `editor-beta` both have `stackledger/cask: northwind-editor`
+- **THEN** `editor-beta` gets a warning naming `component:editor`
+
+#### Scenario: Same identifier for two sources
+- **WHEN** one component has `stackledger/brew: forge` and another has `stackledger/npm: forge`
+- **THEN** neither gets a warning

@@ -30,7 +30,7 @@ stackledger is a small, local-first tool for people and small companies who want
 
 ## Status
 
-Early development. Nothing is released to npm yet. The catalogue format, the `validate`, `map` and `build` commands and the `mcp` server work from source (see [Usage](#usage)); licence reports (`stackledger report` and the Reports page) are in review, and so is Mac discovery (`stackledger discover` and `stackledger drift`). The order of the rest is in the [roadmap](docs/roadmap.md).
+Early development. Nothing is released to npm yet. The catalogue format, the `validate`, `map`, `build` and `report` commands, the `mcp` server and Mac discovery (`stackledger discover` and `stackledger drift`) work from source (see [Usage](#usage)). The order of the rest is in the [roadmap](docs/roadmap.md).
 
 ## Features
 
