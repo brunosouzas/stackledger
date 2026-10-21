@@ -39,6 +39,7 @@ import { ENTRIES, publish, UndoFailed } from './publish.js';
 import { OLD_NAME, removeStaging, STAGING_PREFIX, staleStaging } from './staging.js';
 
 const PROXY_REMINDER = 'Serve both folders only behind an identity-aware proxy: full/ for the people allowed to see costs, staff/ for everyone else.';
+const PERSONAL_PROXY_REMINDER = 'Serve full/ only behind an identity-aware proxy, for the people allowed to see costs.';
 
 /** The real path of `path`, or of its nearest existing ancestor joined with the missing rest. */
 function realTarget(path: string, ops: FsOps): string {
@@ -148,9 +149,9 @@ function report(prepared: PreparedBuild, out: string, warnings: string[]): strin
     ...problemCounts('build', prepared.catalogue),
     ...prepared.notes,
     ...warnings,
-    `Built the staff site in ${join(out, 'staff')} (${plural(prepared.staff.pages, 'page')})`,
+    ...(prepared.staff ? [`Built the staff site in ${join(out, 'staff')} (${plural(prepared.staff.pages, 'page')})`] : []),
     `Built the full site in ${join(out, 'full')} (${plural(prepared.full.pages, 'page')})`,
-    PROXY_REMINDER,
+    prepared.staff ? PROXY_REMINDER : PERSONAL_PROXY_REMINDER,
   ];
   return lines.join('\n') + '\n';
 }

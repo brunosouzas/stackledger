@@ -1,9 +1,10 @@
 /** Atomic publication of a prepared build into the output folder (build-command, Atomic replace and
  * Interrupted publication; design D8). Called by src/site/command.ts.
  *
- * For each entry `staff`, `full`, `_headers`, `robots.txt` and `.stackledger-build`, in that order,
- * the existing entry (if any) is renamed into `<staging>/old/`, then the new one is renamed into
- * place. `old/` is created just before the first rename, so a staging folder without it never held
+ * For each entry `staff`, `full`, `_headers`, `robots.txt`, `_redirects` and `.stackledger-build`, in
+ * that order, the existing entry (if any) is renamed into `<staging>/old/`, then the new one is renamed
+ * into place. A personal build (FULL_ONLY in the staging folder) has no new `staff`: an earlier one
+ * only moves into `old/`, so it is removed after the commit. `old/` is created just before the first rename, so a staging folder without it never held
  * a published entry (staging.ts). The renames done are recorded in memory only. The rename of the
  * marker is the commit point: a failure before it undoes the renames in reverse, so the output
  * folder is byte for byte what it was. Renames stay on one filesystem because the staging folder is
@@ -22,7 +23,7 @@ import { InternalError } from '../errors.js';
 import { NODE_FS, type FsOps } from './fs-ops.js';
 import { assertSameFolder, FolderChanged, lstatOrUndefined, type FolderIdentity } from './paths.js';
 import { MARKER_NAME } from './policy.js';
-import { OLD_NAME, RESTORE_GUIDE } from './staging.js';
+import { FULL_ONLY, OLD_NAME, RESTORE_GUIDE } from './staging.js';
 
 /** Published entries, in publication order, with their place in the staging folder. The marker is last. */
 export const ENTRIES: readonly { name: string; staged: string }[] = [
@@ -30,6 +31,7 @@ export const ENTRIES: readonly { name: string; staged: string }[] = [
   { name: 'full', staged: 'site-full' },
   { name: '_headers', staged: join('root', '_headers') },
   { name: 'robots.txt', staged: join('root', 'robots.txt') },
+  { name: '_redirects', staged: join('root', '_redirects') },
   { name: MARKER_NAME, staged: join('root', MARKER_NAME) },
 ];
 
@@ -50,13 +52,14 @@ export function publish(out: string, staging: string, identity: FolderIdentity, 
   try {
     assertSameFolder(identity, ops);
     ops.mkdir(join(staging, OLD_NAME));
+    const fullOnly = lstatOrUndefined(join(staging, FULL_ONLY), ops) !== undefined;
     for (const entry of ENTRIES) {
       const target = join(out, entry.name);
       const existing = lstatOrUndefined(target, ops);
       // Never rename through a link (command.ts refuses them before the build; this is the last check).
       if (existing?.isSymbolicLink()) throw new Error(`${target} is a symbolic link`);
       if (existing) move(target, join(staging, OLD_NAME, entry.name));
-      move(join(staging, entry.staged), target);
+      if (!(fullOnly && entry.name === 'staff')) move(join(staging, entry.staged), target);
     }
   } catch (error) {
     if (error instanceof FolderChanged) throw error;

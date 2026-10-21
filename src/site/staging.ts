@@ -23,6 +23,11 @@ export const STAGING_PREFIX = '.stackledger-tmp-';
 /** Folder of the staging folder that holds the entries a publication replaces. */
 export const OLD_NAME = 'old';
 
+/** Empty file in the staging folder of a personal build (spec.sites: [full]): it has no staff site,
+ * so its publication only moves an earlier `staff` into `old/`, and the manual restore keeps a
+ * `staff` it finds in the output folder. */
+export const FULL_ONLY = 'full-only';
+
 /** Where a reader learns to restore an output folder by hand. */
 export const RESTORE_GUIDE = 'docs/site.md, section "Restoring after a failed publication"';
 

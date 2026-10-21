@@ -152,4 +152,4 @@ Each problem is `<path>:<line>:<column> <error|warning> <field> <message>`. Exit
 
 To check the costs, print the licence report: `node dist/cli.js report /path/to/catalogue` (renewals in the next 90 days, cost per month and year per currency, and the licences whose cost, currency or cycle is `unknown`; see [docs/reports.md](../../docs/reports.md)).
 
-To see the result as the website, build both sites into a folder outside the catalogue: `node dist/cli.js build /path/to/catalogue --out /path/to/out`. It needs no network; publish only `full/`, `staff/`, `_headers` and `robots.txt` from it ([docs/site.md](../../docs/site.md)).
+To see the result as the website, build both sites into a folder outside the catalogue: `node dist/cli.js build /path/to/catalogue --out /path/to/out`. It needs no network; publish only `full/`, `staff/` (absent with `spec.sites: [full]`), `_headers`, `robots.txt` and `_redirects` from it ([docs/site.md](../../docs/site.md)).

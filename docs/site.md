@@ -1,6 +1,6 @@
 # The catalogue site
 
-`stackledger build` turns a catalogue folder into two static websites: `full/` for the people allowed to see costs and contracts (owners and finance), and `staff/` for everyone else. Each is a complete site built only from its view ([ADR 7](adr/0007-two-views-built-as-separate-sites.md)), meant to be served behind an identity-aware proxy ([ADR 6](adr/0006-authentication-at-an-identity-aware-proxy.md)).
+`stackledger build` turns a catalogue folder into two static websites: `full/` for the people allowed to see costs and contracts (owners and finance), and `staff/` for everyone else. In the personal mode (`spec.sites: [full]` in the [Settings document](catalogue-format.md#settings-and-views)), when you are the only reader, it builds only `full/`. Each is a complete site built only from its view ([ADR 7](adr/0007-two-views-built-as-separate-sites.md)), meant to be served behind an identity-aware proxy ([ADR 6](adr/0006-authentication-at-an-identity-aware-proxy.md)).
 
 ## Build
 
@@ -12,17 +12,17 @@ npm run build
 node dist/cli.js build examples/northwind --out ./public --date 2027-06-01
 ```
 
-`stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` writes `<dir>/full/`, `<dir>/staff/`, `<dir>/_headers`, `<dir>/robots.txt` and the marker `<dir>/.stackledger-build`. `--date` sets the map date and the report date of the `full` site (renewals within 30 days are ringed on the map; the Reports page and `renewals.ics` cover the 90 days from it); the default is the machine's local date. The `staff` site never depends on the date.
+`stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` writes `<dir>/full/`, `<dir>/staff/`, `<dir>/_headers`, `<dir>/robots.txt`, `<dir>/_redirects` and the marker `<dir>/.stackledger-build`. In the personal mode there is no `staff/`, and one left by an earlier build is removed with the rest of that build. `_redirects` sends `/` to `/staff/`, or to `/full/` in the personal mode, as `/ /staff/ 302` (the Cloudflare Pages and Netlify format). `--date` sets the map date and the report date of the `full` site (renewals within 30 days are ringed on the map; the Reports page and `renewals.ics` cover the 90 days from it); the default is the machine's local date. The `staff` site never depends on the date.
 
 | Exit | When |
 | --- | --- |
-| 0 | Both sites are published. A catalogue with errors still builds from what the views serve. |
+| 0 | The sites are published. A catalogue with errors still builds from what the views serve. |
 | 1 | An internal failure. Nothing published changed: the previous build, if any, is still there byte for byte. The exceptions are a failed undo and a staging folder an earlier failed undo left behind: stderr names the staging folder, and [Restoring after a failed publication](#restoring-after-a-failed-publication) says what to do. |
 | 2 | A usage or folder problem: `--help` aside, a missing folder or `--out`, an unknown option, an impossible date, more than one folder, a catalogue folder that is missing, not a folder or unreadable, an `--out` that is a file, or a `.stackledger-tmp-*` entry in it that is a symbolic link or a file. Nothing is created or changed. |
 
-The output folder is refused (exit 2) when, after resolving symbolic links, it is the catalogue folder, inside it, contains it, or is a non-empty folder without the marker of an earlier build. The marker counts only as a regular file (not a link or a folder) holding exactly the text stackledger writes. The folder is also refused when `full`, `staff`, `_headers`, `robots.txt` or the marker is a symbolic link: the build never renames or removes through a link. A missing output folder is created. Building again into the same folder replaces the previous build completely.
+The output folder is refused (exit 2) when, after resolving symbolic links, it is the catalogue folder, inside it, contains it, or is a non-empty folder without the marker of an earlier build. The marker counts only as a regular file (not a link or a folder) holding exactly the text stackledger writes. The folder is also refused when `full`, `staff`, `_headers`, `robots.txt`, `_redirects` or the marker is a symbolic link: the build never renames or removes through a link. A missing output folder is created. Building again into the same folder replaces the previous build completely.
 
-stderr holds the report, in this order: the catalogue's error and warning counts with a hint to run `stackledger validate` (only when there is at least one), the map's suggested positions, unrouted hops and unused layout as [`stackledger map`](map.md) writes them for the `full` view, one line per site with its folder and page count, and a reminder that both folders must be served behind an identity-aware proxy.
+stderr holds the report, in this order: the catalogue's error and warning counts with a hint to run `stackledger validate` (only when there is at least one), the map's suggested positions, unrouted hops and unused layout as [`stackledger map`](map.md) writes them for the `full` view, one line per site built with its folder and page count, and a reminder that the folders must be served behind an identity-aware proxy.
 
 **What it writes.** Only inside `--out`. Astro runs from a copy of the site project in a staging folder `--out/.stackledger-tmp-*`, with every cache there too; nothing is written to the catalogue, the installed package, the system temporary folder or your home folder, and there are no network calls and no telemetry. You can check it with the Node.js permission model (Node 22.13 or later):
 
@@ -35,7 +35,7 @@ node --permission --allow-fs-read=/path/to/catalogue --allow-fs-read=/path/to/st
 
 Create `/path/to/out` first and give real paths (without symbolic links): the build reads back what it writes in the staging folder, and the permission model checks paths as written.
 
-**Atomic replace.** Both sites are fully built in the staging folder before anything published changes. Then each entry (`staff`, `full`, `_headers`, `robots.txt`, `.stackledger-build`) is swapped by renames: the previous entry moves into the staging folder's `old/`, created just before the first rename, and the new one moves into place. The rename of the marker is the commit point. A failure before it undoes every rename, so the previous build stays as it was. After the commit the replaced entries and the staging folder are removed; a failure there is only a warning.
+**Atomic replace.** Both sites are fully built in the staging folder before anything published changes. Then each entry (`staff`, `full`, `_headers`, `robots.txt`, `_redirects`, `.stackledger-build`) is swapped by renames: the previous entry moves into the staging folder's `old/`, created just before the first rename, and the new one moves into place. A personal build has no new `staff`: it writes an empty `full-only` file in the staging folder, and an earlier `staff` only moves into `old/`. The rename of the marker is the commit point. A failure before it undoes every rename, so the previous build stays as it was. After the commit the replaced entries and the staging folder are removed; a failure there is only a warning.
 
 **Interrupted publication.** A staging folder without `old/` never touched a published entry (a build that crashed or failed before publishing): the next build removes it. A staging folder with `old/` may hold the only copy of the previous build, after a failed undo (for example a folder made read-only during the build) or a process killed during publication. stackledger never moves those entries back by itself: while such a folder exists, every build exits 1, names it and changes nothing, until you restore by hand as described below. Automatic recovery was tried and dropped, because trusting what a staging folder says about itself could move or delete the published site.
 
@@ -54,6 +54,9 @@ When a build says a staging folder `<out>/.stackledger-tmp-…` was kept, or ref
    | `full` | `<staging>/site-full` |
    | `_headers` | `<staging>/root/_headers` |
    | `robots.txt` | `<staging>/root/robots.txt` |
+   | `_redirects` | `<staging>/root/_redirects` |
+
+   When `<staging>/full-only` exists, the failed build was a personal one and never had a staff site: skip the `staff` row, and keep any `staff` in `<out>`.
 
 3. Move every entry of `<staging>/old/` (`ls -A` shows `.stackledger-build` too) back into `<out>`, keeping its name, for example `mv "<staging>/old/full" "<out>/full"`.
 4. Delete the staging folder: `rm -rf "<staging>"` (it removes symbolic links inside without following them).
@@ -100,21 +103,21 @@ The look follows brunosouzas.com (based on the Astroplate theme, MIT), with the 
 The output folder holds more than the two sites while a build runs: the build prepares everything in a staging folder `.stackledger-tmp-*` inside it, and that staging folder holds `full` view files outside the protected `/full/` path.
 
 - Never serve the output folder while a build runs, and never serve the output folder itself.
-- Publish only these four entries of the output folder: `full/`, `staff/`, `_headers` and `robots.txt`, and only after the command exits with code 0. For example, copy them into a clean folder and deploy that, or let a CI job build into a fresh folder and upload only those entries.
+- Publish only these entries of the output folder: `full/`, `staff/` (not in the personal mode), `_headers`, `robots.txt` and `_redirects`, and only after the command exits with code 0. For example, copy them into a clean folder and deploy that, or let a CI job build into a fresh folder and upload only those entries.
 
 ### One host, two audiences
 
-Serve both sites from one host, with a stricter rule on `/full/`:
+In the corporate mode, serve both sites from one host, with a stricter rule on `/full/`:
 
 | Path | Who | Site |
 | --- | --- | --- |
 | `/full/*` | Owners and finance | the `full` view: costs, renewals, payers, seats, password-manager references, notes |
 | `/staff/*` (and the rest of the host) | Everyone in the company | the `staff` view |
 
-Without the proxy, anyone with the address can read the catalogue. The host has no page at `/`: point people to `/staff/`, or add a redirect at the host.
+In the personal mode there is only `/full/*`, for you. Without the proxy, anyone with the address can read the catalogue. The host has no page at `/`: Cloudflare Pages and Netlify follow `_redirects` to `/staff/` (or `/full/`); on another host, add the same redirect there.
 
 **Trailing slash.** Every page is a folder with an `index.html`, and its links are relative, so a page must be served at its address with a trailing slash. The host must redirect a folder address without it (`/staff/software/slack`) to the address with it (`/staff/software/slack/`), and serve `index.html` for a folder. Cloudflare Pages, Netlify and most static hosts do both by default; for nginx, `try_files $uri $uri/ =404;` does.
 
 **Calendar file.** Serve `renewals.ics` with the type `text/calendar` (check how your host types `.ics` files). It is for download and import only: calendar services fetch a subscribed feed from their own servers, without the reader's sign-in, so the proxy in front of `/full/` refuses them and a subscription to it cannot work. Do not publish the file outside the proxy to make it subscribable; it holds costs.
 
-**Hosting recipes.** [docs/hosting.md](hosting.md) covers Cloudflare Pages with Access on every project address, and a generic Caddy proxy in front of oauth2-proxy. Set up access control before the first deployment. The [catalogue repository template](../examples/catalogue-repository/) builds and deploys only the four publishable entries.
+**Hosting recipes.** [docs/hosting.md](hosting.md) covers Cloudflare Pages with Access on every project address, and a generic Caddy proxy in front of oauth2-proxy. Set up access control before the first deployment. The [catalogue repository template](../examples/catalogue-repository/) builds and deploys only the publishable entries.

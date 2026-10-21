@@ -15,6 +15,9 @@ Levels: U unit, I integration (built CLI, packed package, or workflow steps run 
 | catalogue-pipeline | Build date travels with the files | `test/integration/catalogue-template.test.ts` | I |
 | catalogue-pipeline | Copied template passes as is; Catalogue error stops the job; Catalogue warning does not stop the job; Only the four entries; Repository extras are not deployed | `test/integration/catalogue-template.test.ts` | I |
 | catalogue-pipeline | Secret stops the job | `test/integration/catalogue-template.test.ts` | I (network) |
+| catalogue | Personal mode; Corporate mode in any order; Corporate mode by default; Staff site alone; Unknown site; Repeated site; Broken settings build both sites | `test/unit/settings.test.ts` | U |
+| build-command | Root redirect; Personal build; Stale staff site removed; A failed personal build leaves the corporate site | `test/integration/build.test.ts` | I |
+| build-command | Stale staff site removed; A failed personal build leaves the corporate site; Undo failed in a personal build | `test/unit/site-publish.test.ts` (with `test/manual-restore.ts`) | U |
 | hosting-recipes | Anonymous request; Staff identity; Finance identity; Signed in without an allowed group; Forged group header; Auth service down | `test/integration/hosting-caddy.test.ts` | I (needs `caddy`) |
 
 `actionlint` and `caddy` run inside their tests; CI downloads pinned `actionlint` and Caddy with checksums, and a local run without a binary skips that check and says so. The text checks of `docs/hosting.md` and `docs/release.md` are in `test/unit/hosting-docs.test.ts` (D4).

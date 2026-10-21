@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { component, layout, licence, line, set } from '../unit/helpers.js';
+import { component, layout, licence, line, set, settings } from '../unit/helpers.js';
 import { yaml } from './mcp-helpers.js';
 import { cli, root } from './helpers.js';
 import { MARKER, MARKER_NAME } from '../../src/site/policy.js';
@@ -136,7 +136,7 @@ describe('Command', () => {
     expect(result.stdout).toBe('');
     expect(existsSync(join(out, 'full', 'index.html'))).toBe(true);
     expect(existsSync(join(out, 'staff', 'index.html'))).toBe(true);
-    expect(readdirSync(out).sort()).toEqual(['.stackledger-build', '_headers', 'full', 'robots.txt', 'staff']);
+    expect(readdirSync(out).sort()).toEqual(['.stackledger-build', '_headers', '_redirects', 'full', 'robots.txt', 'staff']);
     // The report date of the full site is the build date too (licence-reports, Site report date).
     expect(readFileSync(join(out, 'full', 'reports', 'index.html'), 'utf8')).toContain(`renewals on ${DATE},`);
     expect(existsSync(join(out, 'staff', 'reports'))).toBe(false);
@@ -150,6 +150,57 @@ describe('Command', () => {
     expect(report).toContain(`Built the staff site in ${join(out, 'staff')} (${pagesIn(join(out, 'staff'))} pages)`);
     expect(report).toContain(`Built the full site in ${join(out, 'full')} (${pagesIn(join(out, 'full'))} pages)`);
   });
+});
+
+describe('Site modes', () => {
+  const personal = () => writeFolder(fresh('personal'), { ...smallCatalogue(), 'stackledger.yaml': yaml(settings('settings', { sites: ['full'] })) });
+
+  test('Root redirect', () => {
+    expect(readFileSync(join(twoSites.out, '_redirects'), 'utf8')).toBe('/ /staff/ 302\n');
+  });
+
+  test.concurrent('Personal build', async () => {
+    const out = fresh('personal-out');
+    const result = await build(['build', personal(), '--out', out, '--date', DATE]);
+    expect(result.status, result.stderr).toBe(0);
+    expect(readdirSync(out).sort()).toEqual(['.stackledger-build', '_headers', '_redirects', 'full', 'robots.txt']);
+    expect(readFileSync(join(out, '_redirects'), 'utf8')).toBe('/ /full/ 302\n');
+    expect(existsSync(join(out, 'full', 'reports', 'index.html'))).toBe(true);
+    const report = lines(result.stderr);
+    expect(report.some(text => /staff/.test(text))).toBe(false);
+    expect(report).toContain(`Built the full site in ${join(out, 'full')} (${pagesIn(join(out, 'full'))} pages)`);
+    expect(report.at(-1)).toMatch(PROXY);
+  }, 120_000);
+
+  test.concurrent('Stale staff site removed', async () => {
+    const out = fresh('to-personal');
+    expect((await build(['build', catalogue, '--out', out, '--date', DATE])).status).toBe(0);
+    expect(existsSync(join(out, 'staff', 'index.html'))).toBe(true);
+    const folder = personal();
+    const result = await build(['build', folder, '--out', out, '--date', DATE]);
+    expect(result.status, result.stderr).toBe(0);
+    expect(existsSync(join(out, 'staff'))).toBe(false);
+    expect(staging(out)).toEqual([]);
+    const clean = fresh('personal-clean');
+    expect((await build(['build', folder, '--out', clean, '--date', DATE])).status).toBe(0);
+    expect(snapshot(out)).toEqual(snapshot(clean));
+    // Back to the corporate mode: the staff site comes back.
+    expect((await build(['build', catalogue, '--out', out, '--date', DATE])).status).toBe(0);
+    expect(existsSync(join(out, 'staff', 'index.html'))).toBe(true);
+  }, 180_000);
+
+  test.concurrent('A failed personal build leaves the corporate site', async () => {
+    const out = fresh('to-personal-fails');
+    expect((await build(['build', catalogue, '--out', out, '--date', DATE])).status).toBe(0);
+    const before = snapshot(out);
+    // Personal over corporate renames 11 times: the old staff into old/, then old and new for full,
+    // _headers, robots.txt, _redirects and the marker (the commit). Rename 10 is the last before it.
+    for (const nth of [1, 10]) {
+      const result = await build(['build', personal(), '--out', out, '--date', DATE], { plan: { out, fail: [{ op: 'rename', nth }] } });
+      expect(result.status, result.stderr).toBe(1);
+      expect(snapshot(out)).toEqual(before);
+    }
+  }, 180_000);
 });
 
 describe('Usage errors', () => {
@@ -373,12 +424,12 @@ describe('Atomic replace', () => {
     const otherCatalogue = () => writeFolder(fresh('other'), smallCatalogue([component('extra')]));
 
     // A rebuild over an earlier build creates the staging folder (mkdir 1) and its old/ (mkdir 2),
-    // then renames 10 times: old then new, for staff, full, _headers, robots.txt and the marker.
-    // The tenth rename (the marker) is the commit point.
+    // then renames 12 times: old then new, for staff, full, _headers, robots.txt, _redirects and the
+    // marker. The twelfth rename (the marker) is the commit point.
     const steps: [string, Omit<Plan, 'out'>][] = [
       ['prepare', { readOnlyStaging: true }],
       ['old/', { fail: [{ op: 'mkdir', nth: 2 }] }],
-      ...Array.from({ length: 10 }, (_, i): [string, Omit<Plan, 'out'>] => [`rename ${i + 1}`, { fail: [{ op: 'rename', nth: i + 1 }] }]),
+      ...Array.from({ length: 12 }, (_, i): [string, Omit<Plan, 'out'>] => [`rename ${i + 1}`, { fail: [{ op: 'rename', nth: i + 1 }] }]),
     ];
     test.concurrent.each(steps)('Failure leaves the old site (%s)', async (_, plan) => {
       const out = copySeed('fail');
@@ -464,12 +515,12 @@ describe('Atomic replace', () => {
     // The build cannot hold the output folder open; it re-checks the folder's real path and identity
     // immediately before each change, and stops when the folder was swapped for a link or for another
     // real folder. Check 1 records the identity; check 2 comes before the staging folder is created,
-    // check 3 after the sites are prepared (before old/); rename 10 is the commit, before the cleanup.
+    // check 3 after the sites are prepared (before old/); rename 12 is the commit, before the cleanup.
     const swaps: [string, 'link' | 'folder', { atCheck?: number; after?: Fault }][] = [];
     for (const kind of ['link', 'folder'] as const) {
       swaps.push([`${kind}, before the staging folder`, kind, { atCheck: 2 }]);
       swaps.push([`${kind}, before publication`, kind, { atCheck: 3 }]);
-      swaps.push([`${kind}, before the cleanup`, kind, { after: { op: 'rename', nth: 10 } }]);
+      swaps.push([`${kind}, before the cleanup`, kind, { after: { op: 'rename', nth: 12 } }]);
     }
     test.concurrent.each(swaps)('Folder swapped during a build (%s)', async (label, kind, point) => {
       const out = copySeed('swapped');
@@ -490,9 +541,9 @@ describe('Atomic replace', () => {
       }
     }, 120_000);
 
-    test.concurrent('There is no eleventh step: the marker rename is the last one', async () => {
-      const out = copySeed('eleven');
-      const result = await build(['build', catalogue, '--out', out, '--date', DATE], { plan: { out, fail: [{ op: 'rename', nth: 11 }] } });
+    test.concurrent('There is no thirteenth step: the marker rename is the last one', async () => {
+      const out = copySeed('thirteen');
+      const result = await build(['build', catalogue, '--out', out, '--date', DATE], { plan: { out, fail: [{ op: 'rename', nth: 13 }] } });
       expect(result.status, result.stderr).toBe(0);
       expect(snapshot(out)).toEqual(snapshot(seed));
     }, 120_000);
@@ -540,7 +591,7 @@ test.concurrent('The shipped CLI ignores the old STACKLEDGER_TEST_FAIL variable'
 test('Documented', () => {
   const text = readFileSync(join(root, 'docs', 'site.md'), 'utf8').replace(/\s+/g, ' ');
   expect(text).toMatch(/Never serve the output folder while a build runs/);
-  expect(text).toMatch(/Publish only these four entries of the output folder: `full\/`, `staff\/`, `_headers` and `robots\.txt`/);
+  expect(text).toMatch(/Publish only these entries of the output folder: `full\/`, `staff\/` \(not in the personal mode\), `_headers`, `robots\.txt` and `_redirects`/);
   // The manual restore that an Undo failed message points to.
   expect(text).toContain('### Restoring after a failed publication');
 });

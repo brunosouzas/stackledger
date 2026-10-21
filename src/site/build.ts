@@ -3,12 +3,14 @@
  *
  * What: prepareBuild(folder or loaded folder, staging, date) validates the catalogue, builds the staff site and then
  * the full site, each from its own SiteData, working copy and caches, and writes the root files:
- *   <staging>/site-staff/   <staging>/site-full/   <staging>/root/{_headers, robots.txt, .stackledger-build}
+ *   <staging>/site-staff/   <staging>/site-full/   <staging>/root/{_headers, robots.txt, _redirects, .stackledger-build}
+ * In the personal mode (Settings spec.sites: [full]) there is no site-staff; the empty file
+ * <staging>/full-only says so to the publication and to the manual restore.
  * Each site also holds `_headers` and `robots.txt`; the full site also holds `renewals.ics`.
  * Nothing is written outside `staging`.
  *
  * The command (src/site/command.ts) checks the options and the output folder, creates `staging` as
- * `<out>/.stackledger-tmp-*`, publishes the five entries (src/site/publish.ts) and writes the report;
+ * `<out>/.stackledger-tmp-*`, publishes the entries (src/site/publish.ts) and writes the report;
  * PreparedBuild carries the catalogue counts, the page counts and the full map's diagnostic lines.
  *
  * How Astro runs (proven by docs/spikes/2026-10-20-astro-build/): from a writable copy of the shipped
@@ -25,12 +27,13 @@ import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadFolder, type Loaded } from '../source.js';
 import { validateLoaded, type Catalogue } from '../validate.js';
-import type { ViewName } from '../views.js';
+import { resolveSites, type ViewName } from '../views.js';
 import { siteColorNames } from '../schema.js';
 import { mapNotes } from '../map/command.js';
 import { buildSiteData, CALENDAR_FILE, type SiteData } from './data.js';
 import { ownerNames } from './owners.js';
-import { HEADERS, MARKER, MARKER_NAME, POLICY, ROBOTS } from './policy.js';
+import { HEADERS, MARKER, MARKER_NAME, POLICY, redirects, ROBOTS } from './policy.js';
+import { FULL_ONLY } from './staging.js';
 import { listFiles, relativise, scan } from './relative.js';
 
 const require = createRequire(import.meta.url);
@@ -52,8 +55,9 @@ const HEX_COLOUR = /^#[0-9a-fA-F]{6}$/;
 const ASTRO_PREFERENCES = { devToolbar: { enabled: false } };
 
 export interface BuiltSite { dir: string; pages: number }
-/** `notes` are the map's diagnostic lines for the full view, as `stackledger map` writes them. */
-export interface PreparedBuild { catalogue: Catalogue; staff: BuiltSite; full: BuiltSite; root: string; notes: string[] }
+/** `notes` are the map's diagnostic lines for the full view, as `stackledger map` writes them;
+ * `staff` is absent in the personal mode. */
+export interface PreparedBuild { catalogue: Catalogue; staff?: BuiltSite; full: BuiltSite; root: string; notes: string[] }
 
 export function packageVersion(): string {
   return (JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')) as { version: string }).version;
@@ -173,13 +177,16 @@ export async function prepareBuild(folder: string | Loaded, stagingPath: string,
   const catalogue = validateLoaded(loaded);
   // The staff site is built first, before the full data exists anywhere (site-security, One view per site).
   const owners = ownerNames(loaded.sources);
-  const staff = await buildView(staging, 'staff', buildSiteData(catalogue, 'staff', version, undefined, owners).data);
+  const sites = resolveSites(catalogue);
+  const staff = sites.includes('staff') ? await buildView(staging, 'staff', buildSiteData(catalogue, 'staff', version, undefined, owners).data) : undefined;
+  if (!staff) writeFileSync(join(staging, FULL_ONLY), '');
   const fullData = buildSiteData(catalogue, 'full', version, date, owners);
   const full = await buildView(staging, 'full', fullData.data, fullData.calendar);
   const root = join(staging, 'root');
   mkdirSync(root);
   writeFileSync(join(root, '_headers'), HEADERS);
   writeFileSync(join(root, 'robots.txt'), ROBOTS);
+  writeFileSync(join(root, '_redirects'), redirects(sites));
   writeFileSync(join(root, MARKER_NAME), MARKER);
-  return { catalogue, staff, full, root, notes: mapNotes(loaded, catalogue, fullData.geometry) };
+  return { ...(staff ? { staff } : {}), catalogue, full, root, notes: mapNotes(loaded, catalogue, fullData.geometry) };
 }
