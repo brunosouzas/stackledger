@@ -54,7 +54,7 @@ None. The Cloudflare recipe and the demo are documentation and operations, check
 
 Decided by the owner on 2026-10-21: drop the Git URL from v1; publish 0.1.0 to npm with provenance and SBOM as part of closing v1, and the template uses `npx stackledger@0.1.0`; GitHub Actions only; a live demo on his Cloudflare account, kept behind Access.
 
-Open for gate 1 (recommendations in `design.md`, Open questions): who does the external steps; the demo's addresses and identities; gitleaks in the template; the weekly scheduled run.
+Gate 1 approved by the owner on 2026-10-21 with every recommendation in `design.md`, Open questions. None open.
 
 ## Documentation
 

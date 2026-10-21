@@ -91,9 +91,9 @@ Order, following D4 so the demo is never public: (1) with the owner's authorisat
 
 ## Open questions
 
-The specs are written with the recommended answers below. A different answer at gate 1 changes the specs before any implementation starts.
+None open. Gate 1 (owner, 2026-10-21) approved every recommendation:
 
-1. **Who does the external steps.** Recommend: npm account and first token by the owner (D1 steps). For the demo, the owner creates the two Access applications by following `docs/hosting.md` (that also tests the recipe as a reader would), and authorises the agent to create the Pages project and deploy with `wrangler login` again (adds the Pages scope).
-2. **Demo addresses and identities.** Recommend `stackledger-demo.pages.dev` only (no custom domain), finance = the owner's e-mail, staff = the owner's e-mail plus a second e-mail of his for the refusal test, login by one-time PIN.
-3. **gitleaks in the template.** Recommend the pinned binary with checksum (D3) over `gitleaks-action`.
-4. **Weekly scheduled run.** Recommend keeping it (renewal windows stay current); without it, the site only changes on a commit.
+1. **External steps.** The owner does npm (account with two-factor, environment `npm`, token, tag ruleset) from `docs/release.md`, and configures Access from `docs/hosting.md`. He renews `wrangler login` so the agent can create the empty demo project and deploy it.
+2. **Demo.** `stackledger-demo.pages.dev` only, login by one-time PIN; finance = the owner's address; staff = the owner's address plus a second identity for the refusal test. The owner has no second mailbox, so the second identity is a plus address of his own mailbox (`<name>+staff@<domain>`): Access treats it as a different identity and the PIN still reaches him. No address is written in the repository.
+3. **gitleaks:** pinned binary with checksum.
+4. **Weekly scheduled run:** kept.
