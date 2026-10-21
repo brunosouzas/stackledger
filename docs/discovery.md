@@ -74,7 +74,7 @@ Sources are read in this order. A source whose program or folders are absent is 
 
 The machine name and version come from `scutil --get ComputerName`, `scutil --get LocalHostName` and `sw_vers -productVersion`. A program is looked up in the absolute folders of `PATH` in order, then in `/opt/homebrew/bin` and `/usr/local/bin`. Relative and empty `PATH` entries (such as `bin` or `::`) are skipped: they would make the folder you happen to run discovery from decide which `brew` or `npm` runs.
 
-Only three keys of a launchd file are read, so a job's arguments and environment variables (which may hold tokens) never reach the snapshot. Symbolic links are never followed: a linked app or plist is counted as ignored. An `.app` entry that cannot be examined and a subfolder of an Applications folder that cannot be listed are counted as ignored too, since either may hide an app. Folders are listed by Node itself; only `plutil` runs per file, eight at a time.
+Only three keys of a launchd file are read, so a job's arguments and environment variables (which may hold tokens) never reach the snapshot. Symbolic links are never followed: a linked app or plist is counted as ignored. An `.app` entry that cannot be examined and a subfolder of an Applications folder that cannot be listed are counted as ignored too, since either may hide an app. A listed `.plist` that cannot be examined is counted as ignored for the same reason: it may be a job. Folders are listed by Node itself; only `plutil` runs per file, eight at a time.
 
 A skipped or failed source records one fixed reason: `not found`, `exited with code <n>`, `time limit`, `output limit`, `unreadable output` or `cannot be read`. No program output reaches the snapshot, the summary or the terminal.
 

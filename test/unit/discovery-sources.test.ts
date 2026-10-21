@@ -174,6 +174,14 @@ test('Unreadable daemon', async () => {
   expect(ids(launchd).sort()).toEqual(['com.northwind.backup', 'com.northwind.sync', 'com.northwind.updater']);
 });
 
+test('Unexaminable launchd file', async () => {
+  // The file is listed but lstat fails (EACCES): its label is unknown, so it counts as ignored and
+  // drift marks a missing job `incomplete` instead of certain.
+  const launchd = await readLaunchd(virtualHost({ files: machine({ '/Library/LaunchDaemons/com.northwind.root.plist': { file: '{"Label":"com.northwind.root"}', unstatable: true } }) }));
+  expect(launchd).toMatchObject({ status: 'ok', ignored: 1 });
+  expect(ids(launchd).sort()).toEqual(['com.northwind.backup', 'com.northwind.sync', 'com.northwind.updater']);
+});
+
 test('Arguments are not recorded', async () => {
   const path = '/Library/LaunchAgents/com.northwind.agent.plist';
   const host = virtualHost({ files: machine({ [path]: { Label: 'com.northwind.agent', ProgramArguments: ['/usr/local/bin/northwind-agent', '--token', 'nw-example-value'], EnvironmentVariables: { NORTHWIND_TOKEN: 'nw-example-other' } } }) });

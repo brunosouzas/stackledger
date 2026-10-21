@@ -5,7 +5,7 @@
  * Only `Label`, `Program` and, when Program is absent, `ProgramArguments.0` are read, one sandboxed
  * `plutil -extract <key> raw` run per key. Node first opens the file for reading (and closes it unread)
  * to tell an unreadable file from a missing key. Links are not followed and count as ignored, like an
- * unreadable file or one without a Label. `launchctl` is not used: it fails inside the sandbox.
+ * unreadable file, a listed file lstat cannot examine, or one without a Label. `launchctl` is not used: it fails inside the sandbox.
  */
 import { join } from 'node:path';
 import type { Host } from '../host.js';
@@ -41,7 +41,9 @@ export async function readLaunchd(host: Host): Promise<SourceResult> {
     for (const name of names.filter(entry => entry.endsWith('.plist'))) {
       const kind = await entryKind(host, join(folder, name));
       if (kind === 'file') jobs.push([join(folder, name), scope]);
-      else if (kind === 'link') ignored++;
+      // A link is not followed; a listed file lstat cannot examine may be a job. Both are counted, so
+      // drift marks a missing label `incomplete` instead of certain.
+      else if (kind === 'link' || kind === 'missing') ignored++;
     }
   }
   if (!present) return skipped('launchd');

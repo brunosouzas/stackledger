@@ -139,7 +139,7 @@ Program output that is not the expected top-level JSON (an object with `formulae
 - **THEN** its item's `title` is `com.northwind.blank`
 
 ### Requirement: launchd jobs
-`launchd` SHALL read the `.plist` files directly inside `~/Library/LaunchAgents` (scope `user-agent`), `/Library/LaunchAgents` (scope `agent`) and `/Library/LaunchDaemons` (scope `daemon`), not following links. The item has `id` = `Label`, `scope`, `path` of the file and `program` = `Program`, else the first entry of `ProgramArguments`, else null. A file that cannot be read or has no `Label` is counted as ignored.
+`launchd` SHALL read the `.plist` files directly inside `~/Library/LaunchAgents` (scope `user-agent`), `/Library/LaunchAgents` (scope `agent`) and `/Library/LaunchDaemons` (scope `daemon`), not following links. The item has `id` = `Label`, `scope`, `path` of the file and `program` = `Program`, else the first entry of `ProgramArguments`, else null. A file that cannot be examined or read, or has no `Label`, is counted as ignored.
 
 #### Scenario: Agent of the user
 - **WHEN** `~/Library/LaunchAgents/com.northwind.sync.plist` has `Label` `com.northwind.sync` and `ProgramArguments` `["/Applications/Northwind Sync.app/Contents/MacOS/sync", "--quiet"]`
@@ -147,6 +147,10 @@ Program output that is not the expected top-level JSON (an object with `formulae
 
 #### Scenario: Unreadable daemon
 - **WHEN** a file in `/Library/LaunchDaemons` cannot be read by the user
+- **THEN** it is counted as ignored and the source is `ok`
+
+#### Scenario: Unexaminable launchd file
+- **WHEN** a `.plist` listed in `/Library/LaunchDaemons` cannot be examined (lstat fails)
 - **THEN** it is counted as ignored and the source is `ok`
 
 ### Requirement: launchd privacy
