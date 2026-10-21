@@ -3,10 +3,11 @@
  */
 import { test, expect } from 'vitest';
 import { renderSvg, renderSymbol, escapeXml } from '../../src/map/svg.js';
-import { themes } from '../../src/map/themes.js';
+import { themes, inkOf } from '../../src/map/themes.js';
+import { labelCandidates, overlapArea, placeLabels, textWidth } from '../../src/map/labels.js';
 import { tag } from '../../src/map/xml.js';
 import { buildMapModel } from '../../src/map/model.js';
-import { layoutMap } from '../../src/map/layout.js';
+import { layoutMap, inkBox } from '../../src/map/layout.js';
 import { component, journey, positions, set, viewOf } from './map-helpers.js';
 import { licence, settings, checkFiles } from './helpers.js';
 import { applyView, resolveHidden } from '../../src/views.js';
@@ -36,12 +37,94 @@ test('Unknown attribute',()=>{safe(renderSvg(hostileGeometry(),themes.light));})
 test('Paint values',()=>{for(const theme of Object.values(themes))safe(renderSvg(geometry(),theme));const g=geometry();g.lines[0]!.color='url(javascript:alert(1))';expect(()=>renderSvg(g,themes.light)).toThrow(/colour/);});
 test('Hostile titles',()=>{const svg=renderSvg(hostileGeometry(),themes.light),doc=safe(svg);const clean=hostile.replace(/[\u0001\uFFFE]/g,'�');expect(doc.documentElement.textContent).toContain(clean);expect(doc.getElementsByTagName('script')).toHaveLength(0);for(const e of Array.from(doc.getElementsByTagName('*')))for(const a of Array.from(e.attributes))expect(a.value).not.toContain('javascript:');expect(escapeXml('&<>"\'\ud800')).toBe('&amp;&lt;&gt;&quot;&apos;�');});
 test('Long title keeps full station title',()=>{const full='Northwind Customer Relationship Manager';const g=geometry([set(component('a'),'metadata.title',full),...docs().slice(1)]);const doc=parseSvg(renderSvg(g,themes.light));const station=Array.from(doc.getElementsByTagName('g')).find(e=>e.getAttribute('data-ref')==='component:a')!;expect(station.getElementsByTagName('title')[0]!.textContent).toBe(full);expect(g.labels.find(l=>l.ref==='component:a')!.rows[1]).toMatch(/…$/);});
-test('Dark theme',()=>{const g=geometry(),svg=renderSvg(g,themes.dark);expect(svg).toContain(`fill="${themes.dark.background}"`);expect(svg).toContain('stroke="#FF0000"');expect(svg).not.toBe(renderSvg(g,themes.light));});
-test('Themes are data, with casing and offset shadows off by default',()=>{
- for(const t of Object.values(themes)){expect(t.casing.enabled).toBe(false);expect(t.shadow.enabled).toBe(false);expect(t.font).toContain('sans-serif');}
+test('Dark theme',()=>{const g=geometry(),svg=renderSvg(g,themes.dark);expect(themes.dark.background).toBe('#14215A');expect(svg).toContain(`fill="${themes.dark.background}"`);expect(svg).toContain('stroke="#FF0000"');expect(svg).not.toBe(renderSvg(g,themes.light));});
+test('Themes are data, with casing and offset shadows on in both themes',()=>{
+ for(const t of Object.values(themes)){expect(t.casing).toMatchObject({enabled:true,color:INK});expect(t.casing.extraWidth).toBeGreaterThan(0);expect(t.shadow.enabled).toBe(true);expect(t.shadow.dx).toBeGreaterThan(0);expect(t.shadow.dy).toBeGreaterThan(0);expect(t.outline).toBe(INK);expect(t.font).toBe('Lato, Helvetica Neue, Helvetica, Arial, sans-serif');}
+ expect(themes.light.shadow.color).toBe(INK);expect(themes.dark.shadow.color).toBe('#4C5CB8');
+ // Turning the hooks off removes casing and shadows: the renderer reads data, not theme names.
+ const flat=structuredClone(themes.light);flat.casing.enabled=false;flat.shadow.enabled=false;flat.shadow.color='#123456';const plain=renderSvg(geometry(),flat);
+ expect(plain).not.toContain('fill="#123456"');expect(plain).not.toContain(`stroke-width="${flat.lineWidth+flat.casing.extraWidth}"`);
  const t=structuredClone(themes.light);t.background='#ABCDEF';t.lineWidth=9;t.casing={enabled:true,color:'#0A1033',extraWidth:4};t.shadow={enabled:true,color:'#123456',dx:5,dy:6};
  const svg=renderSvg(geometry(),t);safe(svg);expect(svg).toContain('stroke="#0A1033" stroke-width="13"');expect(svg).toContain('fill="#123456"');expect(svg).not.toContain('transform=');expect(svg).toContain('fill="#ABCDEF"');
 });
+const INK='#0A1033';
+// Two lines through `slack` make it an interchange; `a` and `b` stay ticks.
+const interchangeDocs=()=>[component('a'),component('b'),component('slack'),journey('ship',['a','slack']),journey('design',['slack','b']),positions({a:[0,0],slack:[4,0],b:[8,0]})];
+const groupOf=(doc:Document,ref:string)=>Array.from(doc.getElementsByTagName('g')).find(e=>e.getAttribute('data-ref')===ref)!;
+const shapes=(group:Element)=>Array.from(group.childNodes).filter((n:any)=>n.nodeType===1&&n.tagName!=='title') as Element[];
+const num=(e:Element,name:string)=>Number(e.getAttribute(name));
+
+test('Pipe line',()=>{
+ for(const theme of Object.values(themes)){
+  const doc=safe(renderSvg(geometry(),theme)),paths=shapes(groupOf(doc,'line:ship'));
+  expect(paths.map(p=>p.getAttribute('stroke'))).toEqual([INK,'#FF0000']);
+  expect(paths[0]!.getAttribute('d')).toBe(paths[1]!.getAttribute('d'));
+  expect(num(paths[0]!,'stroke-width')).toBeGreaterThan(num(paths[1]!,'stroke-width'));
+  expect(paths[0]!.getAttribute('stroke-linecap')).toBe('round');
+ }
+});
+
+test('Shadow under an interchange',()=>{
+ const g=geometry(interchangeDocs()),svg=renderSvg(g,themes.light),doc=safe(svg);
+ const marker=g.stations.find(s=>s.name==='slack')!.marker;expect(marker.kind).toBe('interchange');
+ const rects=shapes(groupOf(doc,'component:slack')).filter(e=>e.tagName==='rect');
+ // The face is drawn last: white with the ink outline; the shadow copy comes right before it.
+ const outlined=rects.length-1;
+ expect(rects[outlined]!.getAttribute('fill')).toBe('#FFFFFF');expect(rects[outlined]!.getAttribute('stroke')).toBe(INK);
+ const shadow=rects[outlined-1]!;
+ expect(shadow.getAttribute('fill')).toBe(INK);
+ expect([num(shadow,'x'),num(shadow,'y')]).toEqual([marker.box.x+themes.light.shadow.dx,marker.box.y+themes.light.shadow.dy]);
+ expect([num(rects[outlined]!,'x'),num(rects[outlined]!,'y')]).toEqual([marker.box.x,marker.box.y]);
+ expect(num(rects[outlined]!,'stroke-width')).toBe(themes.light.outlineWidth);
+ // Ticks start with their shadow, badges hold a shadow copy before their outlined face.
+ const tick=shapes(groupOf(doc,'component:a'));expect(tick[0]!.getAttribute('stroke')).toBe(INK);expect(tick.some(e=>e.getAttribute('stroke')==='#FF0000')).toBe(true);
+ const badges=Array.from(doc.getElementsByTagName('g')).filter(e=>e.getAttribute('data-line')&&!e.getAttribute('data-ref')&&shapes(e).length===3&&shapes(e)[2]!.tagName==='text');
+ expect(badges.length).toBeGreaterThanOrEqual(4);
+ for(const badge of badges){const [shade,face]=shapes(badge);expect(shade!.getAttribute('fill')).toBe(INK);expect(face!.getAttribute('stroke')).toBe(INK);expect(num(shade!,'x')-num(face!,'x')).toBe(themes.light.shadow.dx);}
+ expect(svg).not.toMatch(/transform|filter/);
+});
+
+test('Dark shadow and rim',()=>{
+ const svg=renderSvg(geometry(interchangeDocs()),themes.dark),doc=safe(svg);
+ expect(svg).toContain('fill="#4C5CB8"');expect(svg).toContain('stroke="#EEF1FF"');expect(svg).not.toMatch(/transform|filter/);
+ // Ink stays the outline and casing; apart from the title band no shape is filled with it.
+ for(const e of Array.from(doc.getElementsByTagName('*')))if(e.tagName!=='rect'||num(e,'height')!==64)expect(e.getAttribute('fill'),e.tagName).not.toBe(INK);
+ const rects=shapes(groupOf(doc,'component:slack')).filter(e=>e.tagName==='rect');
+ expect(rects.map(e=>e.getAttribute('fill'))).toEqual(['#4C5CB8','#EEF1FF','#FFFFFF']);
+});
+
+test('Light theme',()=>{
+ const doc=safe(renderSvg(geometry(interchangeDocs()),themes.light));
+ expect(shapes(doc.documentElement.getElementsByTagName('g')[0]!)[0]!.getAttribute('fill')).toBe('#EEF2FF');
+ const font=doc.documentElement.getAttribute('font-family')!;expect(font.startsWith('Lato')).toBe(true);expect(font.endsWith('sans-serif')).toBe(true);
+ const labels=Array.from(doc.getElementsByTagName('text')).filter(e=>e.getAttribute('data-line'));
+ expect(labels.length).toBeGreaterThanOrEqual(3);
+ for(const label of labels)expect(num(label,'font-weight')).toBeGreaterThanOrEqual(700);
+});
+
+test('Larger ink pushes a label out',()=>{
+ // A marker just above-right of the label's first candidate: clear of its plain box, inside its ink.
+ const station={ref:'component:a',title:'abc',lines:['line:x'],point:[0,0] as [number,number],marker:{box:{x:-5,y:-5,w:10,h:10}}};
+ const right=labelCandidates([0,0],textWidth('abc'),17,15)[0]!;
+ const neighbour={x:right.x-2,y:right.y-11,w:10,h:10};
+ expect(placeLabels([station],[neighbour])[0]!.box).toEqual(right);
+ const ink=inkOf(themes.light),grown=inkBox(neighbour,ink);
+ expect(grown).toEqual({x:neighbour.x-ink.outline/2,y:neighbour.y-ink.outline/2,w:10+ink.outline+ink.shadow[0],h:10+ink.outline+ink.shadow[1]});
+ const placed=placeLabels([station],[grown])[0]!.box;
+ expect(placed).not.toEqual(right);expect(overlapArea(placed,grown)).toBe(0);
+ // layoutMap grows marker obstacles by the ink it is given.
+ const inked=layoutMap(buildMapModel(viewOf(interchangeDocs()),'2027-06-01'),7,ink);
+ for(const label of inked.labels)for(const s of inked.stations)expect(overlapArea(label.box,inkBox(s.marker.box,ink)),label.ref+' '+s.ref).toBe(0);
+});
+
+test('No embedded font',()=>{
+ for(const theme of Object.values(themes)){const svg=renderSvg(geometry(interchangeDocs()),theme);expect(svg).toContain(`font-family="${theme.font}"`);expect(svg).not.toMatch(/@font-face|url\(|base64|woff/i);}
+});
+
+test('Same input, same SVG in both themes',()=>{
+ for(const theme of Object.values(themes))expect(renderSvg(geometry(interchangeDocs()),theme)).toBe(renderSvg(geometry(interchangeDocs()),theme));
+});
+
 test('Numbers have at most two decimals and finite geometry is required',()=>{const g=geometry();const svg=renderSvg(g,themes.light);expect(svg).not.toMatch(/\d+\.\d{3}/);g.viewBox.w=Infinity;expect(()=>renderSvg(g,themes.light)).toThrow(/finite/);});
 test('Files renamed',()=>{const a=checkFiles({'a.yaml':docs()}),b=checkFiles({'z.yaml':[...docs()].reverse()});const svg=(c:typeof a)=>renderSvg(layoutMap(buildMapModel(applyView(c.served,'full',resolveHidden(c)),'2027-06-01')),themes.light);expect(svg(a)).toBe(svg(b));});
 test('Staff ignores hidden fields and the date',()=>{

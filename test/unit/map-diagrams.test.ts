@@ -14,7 +14,9 @@ const depends = (name: string, refs: string[]) => set(component(name), 'spec.dep
 const resource = (name: string, type: string) => ({ apiVersion: 'backstage.io/v1alpha1', kind: 'Resource', metadata: { name }, spec: { type, owner: 'user:alex' } });
 const graphOf = (documents: unknown[]) => buildGraph(viewOf(documents, 'full'));
 const groups = (svg: string) => Array.from(safe(svg).getElementsByTagName('g'));
-const boxX = (group: Element) => Number(group.getElementsByTagName('rect')[0]!.getAttribute('x'));
+// The box face is the last outlined rect; its shadow copy comes first and sits right and below.
+const face = (group: Element) => Array.from(group.getElementsByTagName('rect')).filter(rect => rect.getAttribute('stroke') !== null).at(-1)!;
+const boxX = (group: Element) => Number(face(group).getAttribute('x'));
 
 test('Dependencies and dependants', () => {
   const graph = graphOf([depends('forge', ['component:vault']), component('vault'), depends('editor', ['component:forge'])]);
@@ -97,7 +99,7 @@ test('Diagrams are deterministic and reject unsafe colours', () => {
 /** Box rectangles of a rendered neighbourhood by reference (the first rect of each data-ref group). */
 function boxes(svg: string): Map<string, { x: number; y: number; width: number }> {
   return new Map(groups(svg).filter(group => group.getAttribute('data-ref')).map(group => {
-    const rect = group.getElementsByTagName('rect')[0]!;
+    const rect = face(group);
     return [group.getAttribute('data-ref')!, { x: Number(rect.getAttribute('x')), y: Number(rect.getAttribute('y')), width: Number(rect.getAttribute('width')) }];
   }));
 }
@@ -152,4 +154,71 @@ test('A strip stop is clickable between its marker and its label', () => {
   const bottom = top + Number(hit.getAttribute('height'));
   expect(top).toBeLessThan(Number(circle.getAttribute('cy')) - Number(circle.getAttribute('r')));
   expect(bottom).toBeGreaterThan(Number(label.getAttribute('y')));
+});
+
+const INK = '#0A1033';
+const shapesOf = (group: Element) => Array.from(group.childNodes).filter((node: any) => node.nodeType === 1 && node.tagName !== 'title') as Element[];
+const interchangeView = () => viewOf([component('linear'), component('slack'), component('figma'),
+  journey('ship', ['linear', 'slack'], '1'), journey('design', ['figma', 'slack'], '2')], 'staff');
+
+test('Neighbourhood boxes', () => {
+  const graph = graphOf([depends('forge', ['component:vault']), component('vault'), depends('editor', ['component:forge'])]);
+  const svg = renderNeighbourhood(neighbourhood(graph, graph.items.get('component:forge')!), themes.light);
+  expect(svg).not.toMatch(/transform|filter/);
+  const linked = groups(svg).filter(item => item.getAttribute('data-ref'));
+  expect(linked).toHaveLength(3);
+  for (const group of linked) {
+    const rects = shapesOf(group).filter(item => item.tagName === 'rect');
+    const [shadow, face] = [rects[0]!, rects.at(-1)!];
+    expect(rects).toHaveLength(2);
+    expect(face.getAttribute('stroke')).toBe(INK);
+    expect(shadow.getAttribute('fill')).toBe(INK);
+    expect(Number(shadow.getAttribute('x'))).toBeGreaterThan(Number(face.getAttribute('x')));
+    expect(Number(shadow.getAttribute('y'))).toBeGreaterThan(Number(face.getAttribute('y')));
+  }
+  expect(safe(svg).documentElement.getAttribute('font-family')!.startsWith('Lato')).toBe(true);
+});
+
+test('Strip line and stops', () => {
+  const model = buildMapModel(interchangeView(), '');
+  const input = { ...strip(model, model.lines.find(line => line.name === 'ship')!), color: '#FF0000' };
+  const svg = renderStrip(input, themes.dark);
+  expect(svg).not.toMatch(/transform|filter/);
+  const all = groups(svg);
+  const pipe = shapesOf(all.find(group => group.getAttribute('data-line') === input.ref && !group.getAttribute('data-ref'))!).filter(item => item.tagName === 'line');
+  expect(pipe.map(item => item.getAttribute('stroke'))).toEqual([INK, '#FF0000']);
+  expect(Number(pipe[0]!.getAttribute('stroke-width'))).toBeGreaterThan(Number(pipe[1]!.getAttribute('stroke-width')));
+  for (const ref of ['component:linear', 'component:slack']) {
+    const circles = shapesOf(all.find(group => group.getAttribute('data-ref') === ref)!).filter(item => item.tagName === 'circle');
+    expect(circles[0]!.getAttribute('fill')).toBe('#4C5CB8');
+    expect(circles.at(-1)!.getAttribute('stroke')).toBe(ref === 'component:slack' ? INK : '#FF0000');
+  }
+});
+
+test('Resource without a shadow', () => {
+  const graph = graphOf([depends('forge', ['resource:orders-db']), resource('orders-db', 'database')]);
+  for (const theme of Object.values(themes)) {
+    const doc = safe(renderNeighbourhood(neighbourhood(graph, graph.items.get('component:forge')!), theme));
+    const group = Array.from(doc.getElementsByTagName('g')).find(item => item.textContent!.includes('orders-db') && !item.getAttribute('data-ref'))!;
+    const rects = shapesOf(group).filter(item => item.tagName === 'rect');
+    expect(rects).toHaveLength(1);
+    expect(rects[0]!.getAttribute('stroke-dasharray')).toBe('5 4');
+    expect(rects[0]!.getAttribute('fill')).not.toBe(theme.shadow.color);
+  }
+});
+
+test('Strip labels clear the stop markers, shadows and badges', () => {
+  const model = buildMapModel(interchangeView(), '');
+  for (const theme of Object.values(themes)) {
+    const all = groups(renderStrip(strip(model, model.lines[0]!), theme));
+    const stop = all.find(group => group.getAttribute('data-ref') === 'component:slack')!;
+    const lowest = Math.max(...shapesOf(stop).filter(item => item.tagName === 'circle')
+      .map(item => Number(item.getAttribute('cy')) + Number(item.getAttribute('r')) + Number(item.getAttribute('stroke-width') ?? 0) / 2));
+    const label = stop.getElementsByTagName('text')[0]!;
+    // The label's cap height is about 10 units above its baseline; descenders reach about 4 below.
+    expect(Number(label.getAttribute('y')) - 10).toBeGreaterThan(lowest);
+    const badge = all.find(group => group.getAttribute('data-ref') === 'line:design')!;
+    const top = Math.min(...shapesOf(badge).filter(item => item.tagName === 'rect').map(item => Number(item.getAttribute('y'))));
+    expect(top).toBeGreaterThan(Number(label.getAttribute('y')) + 4);
+  }
 });
