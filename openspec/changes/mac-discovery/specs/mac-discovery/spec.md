@@ -148,11 +148,15 @@ Discovery SHALL read only the keys `Label`, `Program` and `ProgramArguments.0` o
 - **THEN** the `npm` item `northwind-cli` is recorded and the source is `ok`
 
 ### Requirement: pipx
-`pipx` SHALL read `pipx_metadata.json` in each folder of `venvs` in the pipx home (`$PIPX_HOME`, else `~/.local/pipx` when it exists, else `~/Library/Application Support/pipx`). The item has `id` = `main_package.package` and `versions` = `main_package.package_version`. It SHALL NOT run `pipx`, which writes a log on every run. A metadata file that cannot be read is counted as ignored.
+`pipx` SHALL read `pipx_metadata.json` in each folder of `venvs` in the pipx home (`$PIPX_HOME`, else `~/.local/pipx` when it exists, else `~/Library/Application Support/pipx`). The item has `id` = `main_package.package` and `versions` = `main_package.package_version`. It SHALL NOT run `pipx`, which writes a log on every run. A metadata file that cannot be read, is not JSON, or lacks either field as a non-empty string is counted as ignored.
 
 #### Scenario: pipx package
 - **WHEN** `venvs/northwind-docs/pipx_metadata.json` names the package `northwind-docs` at version `1.6.0`
 - **THEN** the `pipx` item `northwind-docs` has `versions` `["1.6.0"]`
+
+#### Scenario: Broken pipx metadata
+- **WHEN** one venv's `pipx_metadata.json` has `main_package.package_version` as a number
+- **THEN** that venv is counted as ignored and the other venvs are recorded
 
 ### Requirement: Machine name
 The machine name SHALL be the output of `scutil --get ComputerName` folded to a path segment: Unicode NFKD, combining marks removed, lower case, each run of characters other than `a`–`z` and `0`–`9` replaced by one `-`, `-` trimmed from both ends, then cut to 63 characters and trimmed again. When the result is empty, `scutil --get LocalHostName` is folded the same way; when that is empty too, the name is `mac`.
@@ -188,11 +192,22 @@ In a snapshot, every item's source SHALL have status `ok`; each source's `items`
 - **THEN** `cask` has `items` 2 and `app` has `ignored` 1
 
 ### Requirement: Snapshot secret guard
-An item whose `title`, `path` or `program` holds private-key material or a payment-card number, as the catalogue's secret guard defines them, SHALL be left out of the snapshot and counted as ignored. The user name and paths are not personal data for this rule.
+An item any of whose strings (`id`, versions, `title`, `path`, `program`, app names, dependencies) holds private-key material or a payment-card number, as the catalogue's secret guard defines them, SHALL be left out of the snapshot and counted as ignored. E-mail addresses are not checked: like the user name and paths, they stay in a file private to the user.
 
 #### Scenario: Card number in a title
 - **WHEN** an app's display name holds a 16-digit number that passes the Luhn check
 - **THEN** that app is not recorded and `ignored` counts it
+
+#### Scenario: Private key in a version
+- **WHEN** an npm package's version text holds `-----BEGIN RSA PRIVATE KEY-----`
+- **THEN** that package is not recorded and `ignored` counts it
+
+### Requirement: Merged items
+Items of one source that have no `path` and the same `id` SHALL be merged into one item whose `versions` is the union of theirs; `onRequest` is true when any of them is. Items with a `path` are never merged.
+
+#### Scenario: Same package in two pipx folders
+- **WHEN** `venvs/northwind-docs` and `venvs/northwind-docs-next` both name the package `northwind-docs`, at `1.6.0` and `2.0.0`
+- **THEN** there is one `pipx` item `northwind-docs` with `versions` `["1.6.0", "2.0.0"]`
 
 ### Requirement: Deterministic snapshot
 Items SHALL be sorted by source order, then `id`, then `path`, comparing Unicode code points; every list inside an item SHALL be sorted the same way, without repeats. Characters U+007F to U+009F SHALL be written as `\u` escapes. The same machine state SHALL give a byte-identical snapshot apart from `takenAt`.

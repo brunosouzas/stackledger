@@ -81,11 +81,12 @@ Node only reads: the one writer is `src/discovery/write.ts`. Per-file `plutil` r
 
 `src/discovery/write.ts`, through a small `FsOps` (as `src/site/fs-ops.ts` does, so tests can inject a swap between steps):
 
-1. `lstat` `~/.stackledger`, then the machine folder; create a missing one with `mkdir(…, { mode: 0o700 })`, one level at a time, and `lstat` it again. Refuse a link, a non-folder, a folder whose `uid` is not the current user's, or one with mode bits `0o022`. Remember each folder's `dev` and `ino`. Refuse an existing `snapshot.json` that is not a regular file.
-2. Open `snapshot.<pid>.<random>.tmp` in the machine folder with `wx`, `O_NOFOLLOW` and mode `0600`, then `lstat` both folders again. If either is now a link or has another `dev`/`ino`, remove the empty temporary file by the same path (which still leads to where it was created), close it and exit 1, before any snapshot byte is written.
-3. Write, `fsync`, close, repeat the folder check of step 2, `rename` over `snapshot.json`. Remove the temporary file on any failure.
+0. Serialise the snapshot first; over 32 MiB is a write failure before any file system call.
+1. `stat` the home folder: refuse it when its mode has `0o022`. `lstat` `~/.stackledger`, then the machine folder; create a missing one with `mkdir(…, { mode: 0o700 })`, one level at a time, and `lstat` it again. Refuse a link, a non-folder, a folder whose `uid` is not the current user's, or one with any of the mode bits `0o077`. Remember each folder's `dev` and `ino`. Refuse an existing `snapshot.json` that is not a regular file.
+2. Open `snapshot.<pid>.<random>.tmp` in the machine folder with `wx`, `O_NOFOLLOW` and mode `0600`, then repeat the folder check (each folder still a non-link folder with the same `dev`/`ino`). On a mismatch, remove the temporary file by its path (the link the swap put there still leads to where it was created), close it and exit 1, before any snapshot byte is written.
+3. Write, `fsync`, close, repeat the folder check, `rename` over `snapshot.json`. On a mismatch, remove the temporary file by its path when `lstat` of that path shows the same `ino` as the file written (in a folder moved away the file stays, and nothing else is removed), and exit 1. Remove the temporary file on any other failure too.
 
-Concurrent runs each rename a complete file: the last one wins. A swap after the last check and before `rename` is not detected; only the owner (or root) can do it, because both folders are the user's and not writable by others, and such a person can already write anywhere in the home folder. Node has no `openat`/`renameat`, which would close that window.
+Threat model: the write boundary holds against other users, because the home folder is not writable by them and both snapshot folders are the user's own with no permission for anyone else, so no other user can create, rename or replace anything on the path. Against the user's own processes the checks only detect a swap: a swap between the last check and `rename` still writes where the swap points, and such a process already has every right the user has. Node has no `openat`/`renameat`, which would close that window. Concurrent runs each rename a complete file: the last one wins.
 
 ### D5. Machine name
 
@@ -113,7 +114,7 @@ An item is named in drift output by `{ "source", "id", "path" }`, where `path` i
 {
   "snapshot": { "machine": { "name": "username-macbook-air", "user": "username", "macos": "27.2" }, "takenAt": "2026-10-21T07:30:00Z" },
   "counts": { "items": 40, "matched": 30, "notDeclared": 4, "dependencies": 5, "macos": 1, "missing": 2, "notChecked": 1, "shared": 1, "proposedRelations": 2, "componentsWithoutAnnotations": 3 },
-  "notDeclared": [{ "source": "cask", "id": "northwind-editor", "path": null, "versions": ["5.0.1"], "title": null, "annotation": "stackledger/cask: northwind-editor", "suggestedComponent": null }],
+  "notDeclared": [{ "source": "cask", "id": "northwind-editor", "path": null, "versions": ["5.0.1"], "title": null, "annotation": "stackledger/cask: northwind-editor", "note": null, "suggestedComponents": [] }],
   "missing": [{ "component": "component:legacy", "source": "app", "id": "com.northwind.legacy", "incomplete": false }],
   "notChecked": [{ "component": "component:notes", "source": "mas", "id": "1234567890", "status": "skipped" }],
   "shared": [{ "source": "cask", "id": "northwind-editor", "path": null, "components": ["component:editor", "component:editor-beta"] }],
@@ -123,8 +124,8 @@ An item is named in drift output by `{ "source", "id", "path" }`, where `path` i
 ```
 
 - `counts.items` is every snapshot item; `matched` counts items matched by at least one component (shared ones once); `dependencies` and `macos` count the items left out of `notDeclared`; `componentsWithoutAnnotations` counts served components with no `stackledger/` discovery annotation.
-- `missing` and `notChecked` hold the identifier as the component wrote it (trimmed); `component` is `component:<name>` with the name as the catalogue writes it, as the graph's `ref` prints it elsewhere; sorting uses the lower-case key.
-- `title` is the item's `title` or `null`; `suggestedComponent` is a reference or `null`.
+- `missing` and `notChecked` hold the identifier as the component wrote it (trimmed); `component` is `component:<name>` with the name as the catalogue writes it, as the graph's `ref` prints it elsewhere, and references sort with `compareRefs` from `src/identity.ts`.
+- `title` is the item's `title` or `null`; `annotation` is `null` and `note` is `cannot be annotated` for an identifier no annotation can hold, otherwise `note` is `null`; `suggestedComponents` lists references (possibly none).
 - `shared` items are also in `matched`.
 - Text output shows the same lists with one line per entry, for example `cask  northwind-editor 5.0.1  -> stackledger/cask: northwind-editor`, `missing  component:legacy  app com.northwind.legacy (incomplete source)` and `propose  component:forge dependsOn component:libnorth  (brew forge needs brew libnorth)`.
 

@@ -140,11 +140,22 @@ When component A matches an item that needs an item matched by component B, A an
 - **THEN** nothing is proposed for that pair
 
 ### Requirement: Annotations proposed for a cask
-When a component matches a cask whose `apps` holds the folder name of an installed `app` item that no component matches, the not-declared entry of that app SHALL name that component as the one that probably needs its `stackledger/app` annotation.
+When components match a cask whose `apps` holds the folder name of an installed `app` item that no component matches, the not-declared entry of that app SHALL list every such component, without repeats and in reference order, as the ones that probably need its `stackledger/app` annotation.
 
 #### Scenario: App installed by a cask
 - **WHEN** `component:editor` lists the cask `northwind-editor`, which installs `Northwind Editor.app`, and the app `com.northwind.editor` is not declared
 - **THEN** that app's entry suggests `component:editor`
+
+#### Scenario: App installed by a shared cask
+- **WHEN** `component:editor` and `component:editor-beta` both list that cask
+- **THEN** the app's entry suggests both components, in that order
+
+### Requirement: Identifiers that cannot be annotated
+An item whose `id` holds a comma or a control character, or starts or ends with white space, cannot be written in an annotation. It SHALL be listed as not declared with no annotation and a note saying so, and it never matches a component.
+
+#### Scenario: Label with a comma
+- **WHEN** a launchd item's `id` is `com.northwind.sync,helper`
+- **THEN** it is listed as not declared, with no annotation and the note that it cannot be annotated
 
 ### Requirement: Drift text output
 The text output SHALL list, in this order: the snapshot's machine and `takenAt`; counts; not declared, grouped by source; missing; not checked; shared; proposed relations. Empty sections are left out, and with nothing to report the output says so. Every text taken from the catalogue or the snapshot SHALL have C0 and C1 control characters removed before it is written to stdout or stderr; the output's own line feeds stay.
@@ -169,11 +180,15 @@ With `--format json`, stdout SHALL be one JSON object in the shape of design D9 
 - **THEN** stdout holds `\u009b` in its place and parses back to the same title
 
 ### Requirement: Deterministic drift
-The same snapshot and catalogue SHALL give byte-identical output. Items SHALL be sorted by source order, then `id`, then `path` (an item without path first); entries naming a component by that component's reference first; components within an entry by reference; relations by the two references. Text compares Unicode code points.
+The same snapshot and catalogue SHALL give byte-identical output. Items SHALL be sorted by source order, then `id`, then `path` (an item without path first); entries naming a component by that component's reference first; components within an entry by reference; relations by the two references. References compare by name in Unicode code points, as the tool's other results do; other text by code points.
 
 #### Scenario: Same input twice
 - **WHEN** the command runs twice with the same snapshot and catalogue
 - **THEN** both outputs are byte-identical
+
+#### Scenario: Names in mixed case
+- **WHEN** components `Zed` and `alpha` both list one cask
+- **THEN** the shared entry lists `component:Zed` before `component:alpha`
 
 ### Requirement: Drift failures
 A failure while comparing or serialising SHALL exit 1 with stdout empty and one error line on stderr, without usage. A failure while writing stdout SHALL exit 1 with one error line on stderr.

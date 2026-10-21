@@ -39,7 +39,7 @@ On an operating system other than macOS, or when `/usr/bin/sandbox-exec` does no
 - **THEN** the exit code is 1, stderr has one line naming the sandbox, and nothing is written
 
 ### Requirement: Snapshot folders
-The command SHALL create `~/.stackledger` and the machine folder when they are absent, with mode `0700`, and SHALL use existing ones as they are. It SHALL write the snapshot with mode `0600` to a new file in the machine folder and then rename it over `snapshot.json`, so a reader sees either the previous complete file or the new one.
+The command SHALL create `~/.stackledger` and the machine folder when they are absent, with mode `0700`, and SHALL never change the mode of existing ones. It SHALL write the snapshot with mode `0600` to a new file in the machine folder and then rename it over `snapshot.json`, so a reader sees either the previous complete file or the new one.
 
 #### Scenario: First run
 - **WHEN** `~/.stackledger` does not exist
@@ -50,7 +50,7 @@ The command SHALL create `~/.stackledger` and the machine folder when they are a
 - **THEN** `snapshot.json` is one complete, valid snapshot and no temporary file is left
 
 ### Requirement: Unsafe snapshot path
-When `~/.stackledger` or the machine folder is a symbolic link, is not a folder, is not owned by the current user or can be written by group or others, or `snapshot.json` exists and is not a regular file, the command SHALL write nothing, print one error line on stderr and exit 1. A failure to create or write the file SHALL also exit 1 with one line and leave any previous snapshot unchanged.
+When the home folder can be written by group or others; or `~/.stackledger` or the machine folder is a symbolic link, is not a folder, is not owned by the current user, or grants any permission to group or others; or `snapshot.json` exists and is not a regular file, the command SHALL write nothing, print one error line on stderr and exit 1. These rules keep other users out of the snapshot folders.
 
 #### Scenario: Linked snapshot folder
 - **WHEN** `~/.stackledger` is a symbolic link to another folder
@@ -60,13 +60,31 @@ When `~/.stackledger` or the machine folder is a symbolic link, is not a folder,
 - **WHEN** the machine folder exists with mode `0777`
 - **THEN** the exit code is 1, stderr has one line, and nothing is written
 
-#### Scenario: Folder replaced during the run
+#### Scenario: Folder readable by others
+- **WHEN** `~/.stackledger` exists with mode `0755`
+- **THEN** the exit code is 1, stderr has one line saying the folder must be private to the user, and nothing is written
+
+### Requirement: Folder swap
+After creating its temporary file and again before the rename, the command SHALL check that both folders are still the folders it checked (same device and inode, not a link). If not, it SHALL leave `snapshot.json` as it was, remove its temporary file when its path still leads to it (in a folder moved away it stays), print one error line and exit 1. This detects a swap by the user's own processes; it is not a boundary against them.
+
+#### Scenario: Folder replaced before the temporary file
 - **WHEN** the machine folder is replaced by a symbolic link after the folder checks and before the temporary file is created
 - **THEN** the exit code is 1, the link's target holds no snapshot, and no temporary file is left in it
+
+#### Scenario: Folder replaced before the rename
+- **WHEN** the machine folder is replaced by a symbolic link after the snapshot is written to the temporary file and before the rename
+- **THEN** the exit code is 1, neither the moved folder nor the link's target gets a new `snapshot.json`, and the link's target holds no temporary file
+
+### Requirement: Write failures
+A failure to create or write the file, or a snapshot whose JSON is larger than 32 MiB, SHALL exit 1 with one error line, remove the temporary file and leave any previous snapshot unchanged.
 
 #### Scenario: Folder not writable
 - **WHEN** the machine folder exists and cannot be written
 - **THEN** the exit code is 1, stderr has one line, and the previous `snapshot.json` is unchanged
+
+#### Scenario: Snapshot too large
+- **WHEN** the discovered items serialise to more than 32 MiB
+- **THEN** the exit code is 1, stderr says the snapshot is too large, and the previous `snapshot.json` is unchanged
 
 ### Requirement: Summary text
 The summary SHALL contain no C0 or C1 control character: any such character in the snapshot path is removed. Program output never reaches stdout or stderr.
