@@ -9,6 +9,7 @@ import { folder } from '../helpers.js';
 import { fakeProgram, passThroughSandbox } from '../discovery-helpers.js';
 import { createRunner } from '../../src/discovery/run.js';
 import { readSources } from '../../src/discovery/sources/index.js';
+import { discover } from '../../src/discovery/index.js';
 import { readBrew } from '../../src/discovery/sources/brew.js';
 import { readMas } from '../../src/discovery/sources/mas.js';
 import { readApps } from '../../src/discovery/sources/apps.js';
@@ -176,4 +177,38 @@ test('Plist reader that hangs', async () => {
   expect(apps).toMatchObject({ status: 'ok', ignored: 1 });
   expect(apps.items).toHaveLength(5);
   expect(ids(apps)).not.toContain('com.northwind.slow');
+});
+
+test('No sandbox', async () => {
+  const host = virtualHost({ sandbox: false });
+  await expect(discover(host)).rejects.toThrow(/sandbox/);
+  expect(host.calls).toEqual([]);
+});
+
+test('Card number in a title', async () => {
+  const host = virtualHost({ files: machine({ '/Applications/Northwind Pay.app/Contents/Info.plist': { CFBundleIdentifier: 'com.northwind.pay', CFBundleDisplayName: 'Northwind Pay 4111 1111 1111 1111' } }) });
+  const snapshot = await discover(host);
+  expect(snapshot.items.map(entry => entry.id)).not.toContain('com.northwind.pay');
+  expect(snapshot.sources.find(entry => entry.source === 'app')).toMatchObject({ status: 'ok', items: 5, ignored: 1 });
+});
+
+test('Private key in a version', async () => {
+  const listing = { dependencies: { 'northwind-cli': { version: '3.0.0' }, 'northwind-keys': { version: '1.0.0 -----BEGIN RSA PRIVATE KEY-----' } } };
+  const snapshot = await discover(virtualHost({ programs: { npm: () => exited(JSON.stringify(listing)) } }));
+  expect(snapshot.items.filter(entry => entry.source === 'npm').map(entry => entry.id)).toEqual(['northwind-cli']);
+  expect(snapshot.sources.find(entry => entry.source === 'npm')).toMatchObject({ items: 1, ignored: 1 });
+});
+
+test('Same package in two pipx folders', async () => {
+  const snapshot = await discover(virtualHost({ files: machine({ '/Users/username/.local/pipx/venvs/northwind-docs-next/pipx_metadata.json': { main_package: { package: 'northwind-docs', package_version: '2.0.0' } } }) }));
+  expect(snapshot.items.filter(entry => entry.source === 'pipx')).toEqual([{ source: 'pipx', id: 'northwind-docs', versions: ['1.6.0', '2.0.0'] }]);
+  expect(snapshot.sources.find(entry => entry.source === 'pipx')).toMatchObject({ items: 1 });
+});
+
+test('Two App Store lines for one app', async () => {
+  for (const lines of [['Northwind Notes', 'Northwind Notes Pro'], ['Northwind Notes Pro', 'Northwind Notes']]) {
+    const list = lines.map(title => `1234567890  ${title}  (4.2)\n`).join('');
+    const snapshot = await discover(virtualHost({ programs: { mas: () => exited(list) } }));
+    expect(snapshot.items.filter(entry => entry.source === 'mas')).toEqual([{ source: 'mas', id: '1234567890', versions: ['4.2'], title: 'Northwind Notes' }]);
+  }
 });
