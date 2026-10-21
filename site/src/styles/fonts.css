@@ -1,6 +1,7 @@
-/* Heebo (text) and Signika (headings), the fonts of brunosouzas.com, from the @fontsource packages
-   (SIL Open Font License 1.1). The build copies the files into src/fonts/; Vite emits them next to
-   the stylesheet in _astro/ and the build makes these url()s relative. No font is fetched from the network. */
+/* Heebo (text) and Signika (headings), the fonts of brunosouzas.com, and Lato (the map and the
+   diagrams, as in the site's illustrations), from the @fontsource packages (SIL Open Font License 1.1).
+   The build copies the files into src/fonts/; Vite emits them next to the stylesheet in _astro/ and
+   the build makes these url()s relative. No font is fetched from the network. */
 
 @font-face {
   font-family: "Heebo";
@@ -32,4 +33,28 @@
   font-weight: 700;
   font-display: swap;
   src: url("../fonts/signika-latin-700-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Lato";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/lato-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Lato";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/lato-latin-700-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Lato";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("../fonts/lato-latin-900-normal.woff2") format("woff2");
 }

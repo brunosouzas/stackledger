@@ -43,6 +43,7 @@
   },
   "dependencies": {
     "@fontsource/heebo": "5.3.0",
+    "@fontsource/lato": "5.3.0",
     "@fontsource/signika": "5.3.0",
     "@modelcontextprotocol/sdk": "1.32.1",
     "astro": "7.3.8",
