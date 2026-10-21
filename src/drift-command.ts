@@ -32,6 +32,7 @@ import { InternalError, internal } from './errors.js';
 import { createHost, type Host } from './discovery/host.js';
 import { machineName } from './discovery/machine.js';
 import { checkSnapshot, type Snapshot } from './discovery/snapshot.js';
+import { MAX_SNAPSHOT_BYTES } from './discovery/write.js';
 import { buildDrift } from './drift.js';
 import { formatDriftJson, formatDriftText } from './drift-formats.js';
 import { problemCounts } from './map/command.js';
@@ -44,7 +45,6 @@ import { applyView, resolveHidden } from './views.js';
 export const DRIFT_USAGE = 'Usage: stackledger drift <folder> [--snapshot <file>] [--format text|json] [--scaffold <dir>]\n';
 export const DRIFT_FORMATS = ['text', 'json'] as const;
 type DriftFormat = typeof DRIFT_FORMATS[number];
-export const MAX_SNAPSHOT_BYTES = 32 * 1024 * 1024;
 
 interface DriftArgs { folder: string; snapshot: string | undefined; format: DriftFormat; scaffold: string | undefined }
 
