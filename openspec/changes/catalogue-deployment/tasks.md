@@ -9,11 +9,12 @@ Levels: U unit, I integration (built CLI, packed package, or workflow steps run 
 | package-release | Metadata | `test/unit/package-metadata.test.ts` | U |
 | package-release | Tag and version differ; Tag on an unmerged commit; Tag of another shape | `test/unit/release-tag.test.ts` (runs `scripts/check-release-tag.mjs`) | U |
 | package-release | Checks job; Publishing job; Pinned | `test/unit/release-workflow.test.ts` | U |
-| package-release | Version absent; Re-run after the release step failed; Version already published with other bytes; Registry lookup fails; Release lookup fails | `test/unit/release-publish.test.ts` (runs `scripts/release-publish.sh` with fake `npm` and `gh`) | U |
+| package-release | Version absent; Re-run after the release step failed; Same bytes without provenance; Version already published with other bytes; Registry lookup fails; Release lookup fails | `test/unit/release-publish.test.ts` (runs `scripts/release-publish.sh` with fake `npm` and `gh`) | U |
 | catalogue-pipeline | Template files; Exact versions; Build date; Pull request does not deploy; Wrangler installed without secrets; Labelled deployment; Least privilege | `test/unit/catalogue-template.test.ts` | U |
+| catalogue-pipeline | Build date travels with the files | `test/integration/catalogue-template.test.ts` | I |
 | catalogue-pipeline | Copied template passes as is; Catalogue error stops the job; Catalogue warning does not stop the job; Only the four entries; Repository extras are not deployed | `test/integration/catalogue-template.test.ts` | I |
 | catalogue-pipeline | Secret stops the job | `test/integration/catalogue-template.test.ts` | I (network) |
-| hosting-recipes | Anonymous request; Staff identity; Finance identity; Forged group header; Auth service down | `test/integration/hosting-caddy.test.ts` | I (needs `caddy`) |
+| hosting-recipes | Anonymous request; Staff identity; Finance identity; Signed in without an allowed group; Forged group header; Auth service down | `test/integration/hosting-caddy.test.ts` | I (needs `caddy`) |
 
 `actionlint` and `caddy` run inside their tests; CI downloads pinned `actionlint` and Caddy with checksums, and a local run without a binary skips that check and says so. The text checks of `docs/hosting.md` and `docs/release.md` are in `test/unit/hosting-docs.test.ts` (D4).
 
