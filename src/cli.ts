@@ -9,7 +9,7 @@ import { validateFolder, type Result } from './validate.js';
 import { loadFolder } from './source.js';
 import { viewNames, type ViewName } from './views.js';
 import { reportFailure } from './errors.js';
-const usage = 'Usage: stackledger validate [folder] [--json]\n       stackledger mcp <folder> [--view full|staff]\n       stackledger map <folder> [--view full|staff] [--theme light|dark] [--date YYYY-MM-DD]\n       stackledger build <folder> --out <dir> [--date YYYY-MM-DD]\n       stackledger report <folder> [--date YYYY-MM-DD] [--days N] [--format text|json|csv|ics]\n       stackledger discover\n       stackledger drift <folder> [--snapshot <file>] [--format text|json]\n       stackledger --help\n';
+const usage = 'Usage: stackledger validate [folder] [--json]\n       stackledger mcp <folder> [--view full|staff]\n       stackledger map <folder> [--view full|staff] [--theme light|dark] [--date YYYY-MM-DD]\n       stackledger build <folder> --out <dir> [--date YYYY-MM-DD]\n       stackledger report <folder> [--date YYYY-MM-DD] [--days N] [--format text|json|csv|ics]\n       stackledger discover\n       stackledger drift <folder> [--snapshot <file>] [--format text|json] [--scaffold <dir>]\n       stackledger --help\n';
 function text(result: Result): string {
   const lines = result.problems.map(p => `${p.path}:${p.line}:${p.column} ${p.severity} ${p.field ?? '-'} ${p.message}`);
   const s = result.summary;

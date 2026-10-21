@@ -6,9 +6,9 @@
 import { test, expect } from 'vitest';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { cpSync, existsSync, readdirSync, readFileSync, statSync, symlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { cli, root } from './helpers.js';
+import { cli, root, run } from './helpers.js';
 import { catalogue, defaultSnapshot, driftEntryRun, driftRun, snapshotFile } from './drift-helpers.js';
 import { diskMachine } from './discover-helpers.js';
 import { folder } from '../helpers.js';
@@ -235,4 +235,95 @@ test('Drift closed pipe', async () => {
   expect(oneLine(stderr)).toBe(true);
   expect(stderr).toContain('cannot write');
   expect(stderr).not.toContain('Usage:');
+});
+
+// Scaffold (drift-command spec, Scaffold folder, Scaffold write). Faults go through drift-entry.mjs.
+
+/** A catalogue and a snapshot in which the casks `northwind-draw` and `northwind-editor` are not declared. */
+function twoCasks() {
+  const path = catalogue(comp('forge', { 'stackledger/brew': 'forge' }));
+  return { path, before: hashes(path), file: snapshotFile(snapshotOf([brew('forge'), cask('northwind-draw'), cask('northwind-editor')])) };
+}
+const mode = (path: string) => statSync(path).mode & 0o777;
+
+test('Scaffold written', () => {
+  const example = twoCasks(), dir = join(folder(), 'new-items');
+  const plain = driftRun([example.path, '--snapshot', example.file]);
+  const result = driftRun([example.path, '--snapshot', example.file, '--scaffold', dir]);
+  expect(result.status).toBe(0);
+  expect(result.stderr).toBe('');
+  expect(result.stdout).toBe(plain.stdout);
+  expect(readdirSync(dir).sort()).toEqual(['northwind-draw.yaml', 'northwind-editor.yaml']);
+  expect(readFileSync(join(dir, 'northwind-editor.yaml'), 'utf8')).toContain('    stackledger/cask: northwind-editor\n');
+  expect(mode(dir)).toBe(0o700);
+  expect(mode(join(dir, 'northwind-draw.yaml'))).toBe(0o644);
+  expect(hashes(example.path)).toEqual(example.before);
+  // The same JSON with and without the option.
+  const json = (extra: string[]) => driftRun([example.path, '--snapshot', example.file, '--format', 'json', ...extra]).stdout;
+  expect(json(['--scaffold', join(folder(), 'more')])).toBe(json([]));
+});
+
+test('Scaffold folder exists', () => {
+  const example = twoCasks(), dir = folder();
+  const result = driftRun([example.path, '--snapshot', example.file, '--scaffold', dir]);
+  expect(result.status).toBe(2);
+  expect(result.stdout).toBe('');
+  expect(result.stderr).toContain('already exists');
+  expect(readdirSync(dir)).toEqual([]);
+});
+
+test('Scaffold inside the catalogue', () => {
+  const example = twoCasks();
+  for (const dir of [join(example.path, 'new-items'), join(example.path, 'nested', 'new-items')]) {
+    const result = driftRun([example.path, '--snapshot', example.file, '--scaffold', dir]);
+    expect(result.status, dir).toBe(2);
+    expect(result.stdout).toBe('');
+  }
+  // Through a link to the catalogue: real paths are compared.
+  const link = join(folder(), 'link');
+  symlinkSync(example.path, link);
+  const linked = driftRun([example.path, '--snapshot', example.file, '--scaffold', join(link, 'new-items')]);
+  expect(linked.status).toBe(2);
+  expect(linked.stderr).toContain('outside the catalogue folder');
+  expect(hashes(example.path)).toEqual(example.before);
+});
+
+test('Scaffold passes validate', () => {
+  const copy = folder();
+  cpSync(join(root, 'examples/northwind'), copy, { recursive: true });
+  const before = JSON.parse(run(['validate', copy, '--json']).stdout).summary;
+  const snapshot = snapshotOf([
+    brew('forge', { dependsOn: ['libnorth'] }), brew('libnorth'), cask('northwind-editor', ['Northwind Editor.app']),
+    app('com.northwind.editor', '/Applications/Northwind Editor.app', { title: 'Northwind: Editor # beta' }),
+    app('com.northwind.draw', '/Applications/Northwind Draw.app'), app('com.northwind.draw', '/Users/username/Applications/Northwind Draw.app'),
+    launchd('com.northwind.sync', '/Applications/Northwind Draw.app/Contents/MacOS/sync'), simple('npm', 'northwind-cli'), simple('pipx', 'northwind-docs'),
+    simple('mise', 'node'), mas('1234567890', 'Slack'),
+  ]);
+  const dir = join(folder(), 'new-items');
+  expect(driftRun([copy, '--snapshot', snapshotFile(snapshot), '--scaffold', dir]).status).toBe(0);
+  expect(readdirSync(dir).length).toBeGreaterThan(5);
+  cpSync(dir, join(copy, 'new-items'), { recursive: true });
+  const after = JSON.parse(run(['validate', copy, '--json']).stdout).summary;
+  expect(after.errors).toBeLessThanOrEqual(before.errors);
+  expect(after.warnings).toBeLessThanOrEqual(before.warnings);
+  expect(after.documents).toBe(before.documents + readdirSync(dir).length);
+});
+
+test('Scaffold write fails', () => {
+  const example = twoCasks(), dir = join(folder(), 'new-items');
+  const result = driftEntryRun({ faults: { failWrite: 2 } }, [example.path, '--snapshot', example.file, '--scaffold', dir]);
+  expect(result.status).toBe(1);
+  expect(result.stdout).toBe('');
+  expect(oneLine(result.stderr)).toBe(true);
+  expect(result.stderr).not.toContain('Usage:');
+  expect(existsSync(dir)).toBe(false);
+});
+
+test('Scaffold folder created meanwhile', () => {
+  const example = twoCasks(), dir = join(folder(), 'new-items');
+  const result = driftEntryRun({ faults: { createBeforeMkdir: true } }, [example.path, '--snapshot', example.file, '--scaffold', dir]);
+  expect(result.status).toBe(2);
+  expect(result.stdout).toBe('');
+  expect(result.stderr).toContain('already exists');
+  expect(readdirSync(dir)).toEqual([]);
 });
