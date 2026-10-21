@@ -48,7 +48,9 @@ On each address (custom domain, production Pages address, and a real preview or 
 
 - `/`
 - `/full/`
-- one actual asset below `/full/_astro/` (pick the filename from the built HTML)
+- `/full/renewals.ics`
+- one actual asset below `/full/_astro/` (pick the filename from the built HTML, not a made-up filename)
+- `/staff/`: a personal build publishes no staff site, but an older deployment or preview built in the corporate mode may still hold one
 
 Every request must answer **302**, with `Location` pointing to `<team>.cloudflareaccess.com`. A 200, a direct asset response or a public error page is a failed check: do not share the address. Then sign in: `/` leads to `/full/` and the site opens.
 
@@ -133,7 +135,7 @@ oauth2-proxy \
 
 Configure the provider to return `staff` and `finance` group claims. Do not use e-mail domains as a replacement for authorisation: Caddy still checks the groups. Use your provider's documented scopes (not all providers call the groups scope `groups`). oauth2-proxy must listen only on loopback or a private network reachable by Caddy, never publicly. Protect its client and cookie secrets in the host's secret store. The site's origin must not be reachable directly around Caddy.
 
-Copy the Caddyfile, replace `catalogue.example.org`, `127.0.0.1:4180` and `/srv/stackledger/publish`, and run Caddy with it. Caddy manages HTTPS for the configured domain. Deploy only those four entries into that root, never build in it. The example repeats the security headers from `_headers` because Caddy does not interpret that file; it also serves `.ics` as `text/calendar` and redirects `/` to `/staff/` after authentication, its own version of `_redirects`. In the personal mode, there is no `staff/`: change that redirect to `/full/`.
+Copy the Caddyfile, replace `catalogue.example.org`, `127.0.0.1:4180` and `/srv/stackledger/publish`, and run Caddy with it. Caddy manages HTTPS for the configured domain. Deploy only those four entries into that root, never build in it. The example repeats the security headers from `_headers` because Caddy does not interpret that file; it also serves `.ics` as `text/calendar` and redirects `/` to `/staff/` after authentication, its own version of `_redirects`. In the personal mode, there is no `staff/`: change that redirect to `/full/`, and replace the rule that lets `staff` or `finance` read every other path with one that allows only your own group (for example `finance` with you as its only member), so no other signed-in identity can read anything.
 
 Run the same anonymous, staff and finance checks as above, plus: send a client `X-Auth-Request-Groups: finance` header as staff (still refused on full), and stop oauth2-proxy (every site request must fail with no content). The integration test does these with the real example Caddyfile and a small local stand-in for oauth2-proxy; it does not replace checking your identity provider's claims and network boundary.
 

@@ -30,7 +30,7 @@ Choose one before the first deploy.
   You need one Cloudflare Access application that lets in only you. The address `/` takes you to `/full/`.
 - **Corporate** (the default, when `sites` is not set): a company where only some people may see costs. stackledger builds two sites: `full` for finance and `staff`, without costs and contract details, for everyone else. You need two Access applications: finance on `/full/*`, staff on the rest. The address `/` takes people to `/staff/`.
 
-You can switch later by changing `sites`; the next deploy publishes the new set of sites. Change Cloudflare Access first, so no site is ever open to the wrong people.
+Both modes and the `_redirects` file need stackledger 0.1.0 or later, the version the workflow pins. You can switch later by changing `sites`; the next deploy publishes the new set of sites. Change Cloudflare Access first, so no site is ever open to the wrong people.
 
 ## What the workflow does
 

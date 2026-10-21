@@ -26,7 +26,9 @@ test('docs/hosting.md describes the personal mode first, with one application an
   const application = section(personal, 'stackledger');
   for (const address of addresses) expect(application).toContain(address);
   const checks = section(personal, 'Check the personal site');
-  for (const path of ['/', '/full/', '/full/_astro/']) expect(checks).toContain(`\`${path}\``);
+  // /staff/ too: an older deployment or preview may still hold a staff site.
+  for (const path of ['/', '/full/', '/full/renewals.ics', '/full/_astro/', '/staff/']) expect(checks).toContain(`\`${path}\``);
+  expect(checks).toMatch(/actual asset/);
   for (const term of ['302', 'cloudflareaccess.com']) expect(checks).toContain(term);
   // One reader: no staff-only identity to test.
   expect(personal).not.toContain('staff-only');

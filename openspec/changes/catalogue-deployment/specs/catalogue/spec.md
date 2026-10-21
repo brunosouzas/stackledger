@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Site modes
-A `Settings` document MAY have `spec.sites`, the list of sites `stackledger build` writes: `[full]` is the personal mode and `[full, staff]`, in any order, the corporate mode. Without `spec.sites` the corporate mode applies. A value other than `full` or `staff`, a repeated value, a list without `full` (`[staff]` alone or an empty list) or a value that is not a list SHALL be an error with the file, line and field. While the Settings in use has an error, the corporate mode applies.
+A `Settings` document MAY have `spec.sites`, the list of sites `stackledger build` writes: `[full]` is the personal mode and `[full, staff]`, in any order, the corporate mode. Without `spec.sites` the corporate mode applies. A value other than `full` or `staff`, a repeated value, a list without `full` (`[staff]` alone or an empty list) or a value that is not a list SHALL be an error with the file, line and field. While the Settings in use has an error, the corporate mode applies on purpose (fail safe): the staff view then hides every licence field, and both sites stay behind the same access control, so a typo never leaves the sites with fewer protections than intended.
 
 #### Scenario: Personal mode
 - **WHEN** a `Settings` document has `spec.sites: [full]`

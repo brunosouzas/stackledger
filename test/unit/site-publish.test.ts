@@ -160,11 +160,11 @@ describe('Interrupted publication', () => {
     expect(snapshot(out)).toEqual(before);
   });
 
-  test('Undo failed before a personal build touched staff/: the manual restore keeps it', () => {
+  test('Personal publication stopped after old/ was created, before any rename: the manual restore keeps the published staff/', () => {
     const { out, staging } = fixture(true, PERSONAL);
     const before = published(out);
-    // The first rename (staff into old/) fails, and the undo has nothing to put back: no UndoFailed.
-    // A kill at that point leaves old/ empty; the restore must still keep the published staff/.
+    // A process killed right after creating old/: old/ is empty, the staged entries are all there and
+    // staff/ was never moved. The restore must not delete it, although site-staff is not staged.
     mkdirSync(join(staging, 'old'));
     manualRestore(out, staging);
     expect(snapshot(out)).toEqual(before);
