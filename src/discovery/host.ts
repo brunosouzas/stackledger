@@ -10,11 +10,14 @@
  * own status, `readdir` lists names, `canRead` opens a file for reading and closes it unread, and
  * `readFile` reads a small text file (pipx metadata). Programs only run through `run` (src/discovery/run.ts).
  */
-import { constants, type Stats } from 'node:fs';
+import { constants } from 'node:fs';
 import { lstat, open, readdir, readFile, stat } from 'node:fs/promises';
 import { homedir, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { createRunner, PROGRAM_DIRS, SANDBOX, type Run } from './run.js';
+
+/** The part of an entry's status discovery reads (node:fs Stats has it). */
+export interface EntryStatus { isFile(): boolean; isDirectory(): boolean; isSymbolicLink(): boolean; size: number }
 
 export interface Host {
   platform: NodeJS.Platform;
@@ -33,7 +36,7 @@ export interface Host {
   snapshotRoot: string;
   run: Run;
   readdir(path: string): Promise<string[]>;
-  lstat(path: string): Promise<Stats>;
+  lstat(path: string): Promise<EntryStatus>;
   readFile(path: string): Promise<string>;
   /** Whether the file can be opened for reading (it is opened and closed, nothing is read). */
   canRead(path: string): Promise<boolean>;

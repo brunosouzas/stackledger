@@ -1,0 +1,60 @@
+{
+  "formulae": [
+    {
+      "name": "forge",
+      "full_name": "forge",
+      "tap": "homebrew/core",
+      "versions": { "stable": "2.1.0" },
+      "installed": [
+        {
+          "version": "2.1.0",
+          "installed_as_dependency": false,
+          "installed_on_request": true,
+          "runtime_dependencies": [
+            { "full_name": "libnorth", "version": "1.4.0", "declared_directly": true },
+            { "full_name": "libsouth", "version": "0.9.0", "declared_directly": false }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "libnorth",
+      "full_name": "libnorth",
+      "tap": "homebrew/core",
+      "versions": { "stable": "1.4.0" },
+      "installed": [
+        { "version": "1.4.0", "installed_as_dependency": true, "installed_on_request": false, "runtime_dependencies": [] }
+      ]
+    },
+    {
+      "name": "ledger",
+      "full_name": "northwind/tools/ledger",
+      "tap": "northwind/tools",
+      "versions": { "stable": "0.3.0" },
+      "installed": [
+        { "version": "0.3.0", "installed_as_dependency": false, "installed_on_request": true, "runtime_dependencies": [] }
+      ]
+    }
+  ],
+  "casks": [
+    {
+      "token": "northwind-editor",
+      "full_token": "northwind-editor",
+      "version": "5.0.1",
+      "installed": "5.0.1",
+      "artifacts": [
+        { "app": ["Northwind Editor.app"] },
+        { "zap": [{ "trash": ["~/Library/Preferences/com.northwind.editor.plist"] }] }
+      ]
+    },
+    {
+      "token": "northwind-sync",
+      "full_token": "northwind/tools/northwind-sync",
+      "version": "2.0.0",
+      "installed": "2.0.0",
+      "artifacts": [
+        { "app": ["Northwind Sync.app"] }
+      ]
+    }
+  ]
+}

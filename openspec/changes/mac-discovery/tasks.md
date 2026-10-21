@@ -35,7 +35,7 @@ Levels: U unit, I integration (CLI, entry script or built files), P performance 
 
 ## 3. Sources
 
-- [ ] 3.1 `src/discovery/sources/brew.ts` (formulae and casks from one run), `mas.ts`, `apps.ts`, `launchd.ts`, `mise.ts`, `npm.ts`, `pipx.ts`, with Northwind fixtures in `test/fixtures/discovery/`; `test/unit/discovery-sources.test.ts`. Check: `npm test`.
+- [x] 3.1 `src/discovery/sources/brew.ts` (formulae and casks from one run), `mas.ts`, `apps.ts`, `launchd.ts`, `mise.ts`, `npm.ts`, `pipx.ts`, with Northwind fixtures in `test/fixtures/discovery/`; `test/unit/discovery-sources.test.ts`. Check: `npm test`.
 
 ## 4. Snapshot and `discover`
 
