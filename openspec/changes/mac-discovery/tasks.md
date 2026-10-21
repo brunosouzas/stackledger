@@ -30,7 +30,7 @@ Levels: U unit, I integration (CLI, entry script or built files), P performance 
 
 ## 2. Runner and machine name
 
-- [ ] 2.1 `src/discovery/run.ts`: program lookup, the sandbox profile, time and output limits, fixed environment, fixed reasons; `src/discovery/host.ts` (the `Host` of D7). Check: `test/integration/discover-sandbox.test.ts` on macOS; the runner parts of `test/unit/discovery-sources.test.ts`.
+- [x] 2.1 `src/discovery/run.ts`: program lookup, the sandbox profile, time and output limits, fixed environment, fixed reasons; `src/discovery/host.ts` (the `Host` of D7). Check: `test/integration/discover-sandbox.test.ts` on macOS; the runner parts of `test/unit/discovery-sources.test.ts`.
 - [ ] 2.2 `src/discovery/machine.ts` (fold and fall-backs); `test/unit/discovery-machine.test.ts`.
 
 ## 3. Sources
