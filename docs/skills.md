@@ -83,15 +83,15 @@ Errors are what a pipeline should stop on; warnings are what a person should kno
 | A rule ID twice in one `rules.md` | A rule ID also used by an earlier skill |
 | A private key or a payment-card number in any file read, code blocks included | An agent's `skills` that is not a list of strings, or names a skill not in the set |
 | A given folder in which no skill folder or agent file is found | A file in `agents/` with no frontmatter |
-| A sub-folder or linked skill folder that cannot be read | A symbolic link that does not lead to a skill folder, or is broken |
+| A sub-folder or linked skill folder that cannot be read | A symbolic link to a folder without `SKILL.md`, a broken or looping link, or a link to neither a file nor a folder (a link to a file is read where that file is expected and otherwise ignored) |
 
-Each file is checked on its own first, and an error stops its later checks: size, secrets in the raw text, frontmatter, secrets in the decoded values (YAML escapes can hide a number), `name` and `description`, then the other fields. Only files without an error join the set. Relations, preloads and rule IDs are then checked against that fixed set; their problems never remove anything, so one missing skill gives one message, not a cascade. A secret is reported with a fixed message that never repeats the value.
+Each file is checked on its own first, and an error stops its later checks: size, secrets in the raw text, frontmatter, secrets in the decoded values (YAML escapes can hide a number), `name` and `description`, then the other fields. Only files without an error join the set. Relations, preloads and rule IDs are then checked against that fixed set; their problems never remove anything, so one missing skill gives one message, not a cascade. A secret is reported with a fixed message that never repeats the value. File and folder names are not scanned: they appear in paths, as in `stackledger validate`, so do not name a folder after a secret.
 
 A skill whose `rules.md` is too large, unreadable or holds a secret still joins the set, with no rules.
 
 ## Output and exit codes
 
-Each problem is one line, `<path>:<line>:<column> <error|warning> <field> <message>` (`-` when there is no field), sorted by path, position, field, severity and message; the last line gives the counts of what joined the set:
+Each problem is one line, `<path>:<line>:<column> <error|warning> <field> <message>` (`-` when there is no field), sorted by path, position, field, severity and message; the last line gives the counts of what joined the set. With the `release` playbook above written as `stackledger-skills: writer editr` in `skills/release/SKILL.md`:
 
 ```text
 skills/release/SKILL.md:6:23 error metadata.stackledger-skills Skill editr is not in the set

@@ -5,7 +5,7 @@ Levels: U unit (`src/skills/` functions on folders built in a temporary director
 | Spec | Scenarios | File | Level |
 | --- | --- | --- | --- |
 | skill-source | Two folders form one set; Read-only; Hidden link to a skill; Linked SKILL.md; Linked given folder; Grouped skills; Resources are not skills; Depth limit; Hidden and dependency folders; Given folder is a hidden tool folder; A single skill | `test/unit/skills-walk.test.ts` | U |
-| skill-source | Tool folder made of links; Link to a plain folder; Broken link; Linked copy of a repository skill; Unlistable sub-folder; Listing order does not matter | `test/unit/skills-walk.test.ts` | U |
+| skill-source | Tool folder made of links; Link to a plain folder; Broken link; Link to a file elsewhere; Link loop; Linked copy of a repository skill; Unlistable sub-folder; Listing order does not matter | `test/unit/skills-walk.test.ts` | U |
 | skill-source | No frontmatter; Invalid YAML; Frontmatter never closed; CRLF and byte-order mark; Missing description; Name not a string; Upper-case name; Name differs from the folder; Ligatures in a description; Description at the limit; Tool-specific fields; Number as a metadata key; Nested metadata | `test/unit/skills-frontmatter.test.ts` | U |
 | skill-source | Secret and no frontmatter; Escaped card number; Several field problems; Name and description both missing; Target excluded by an error; Cascading relations | `test/unit/skills-problems.test.ts` | U |
 | skill-source | Playbook; Typo in a key; Unknown key with a list value; Unknown kind; List instead of a string; Missing skill; Missing agent; Names on several lines; Repeated name; Missing name repeated | `test/unit/skills-relations.test.ts` | U |

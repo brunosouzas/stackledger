@@ -65,7 +65,9 @@ export interface WalkOptions { cwd?: string; list?: ListFolder }
 
 /** Remove trailing separators from a folder argument: `repo/` and `repo//` both display as `repo`. */
 function trimSeparators(argument: string): string {
-  return argument.replace(process.platform === 'win32' ? /[\\/]+$/ : /\/+$/, '');
+  const trimmed = argument.replace(process.platform === 'win32' ? /[\\/]+$/ : /\/+$/, '');
+  // The root folder is only separators: keep one, or every path would print as relative.
+  return trimmed || argument.slice(0, 1);
 }
 function below(prefix: string, relative: string): string {
   if (!prefix) return relative;
@@ -140,8 +142,11 @@ export async function walkSkillFolders(folders: string[], options: WalkOptions =
       const entryKey = identity(entry);
       if (entry.isSymbolicLink()) {
         let target;
-        try { target = await stat(childAbsolute, { bigint: true }); } catch {
-          problemOnce(`link:${entryKey}`, fileProblem(display, 'Symbolic link is broken; not followed', 'warning')); continue;
+        try { target = await stat(childAbsolute, { bigint: true }); } catch (error) {
+          // A loop of links (ELOOP) is not a missing target (ENOENT): say which one it is.
+          const message = (error as NodeJS.ErrnoException).code === 'ELOOP'
+            ? 'Symbolic link cannot be resolved (it loops); not followed' : 'Symbolic link is broken; not followed';
+          problemOnce(`link:${entryKey}`, fileProblem(display, message, 'warning')); continue;
         }
         if (target.isFile()) {
           // A file link is read where a file is expected (an agent file); elsewhere it is ignored like any file.
@@ -149,7 +154,7 @@ export async function walkSkillFolders(folders: string[], options: WalkOptions =
           continue;
         }
         if (!target.isDirectory()) {
-          problemOnce(`link:${entryKey}`, fileProblem(display, 'Symbolic link does not lead to a skill folder; not followed', 'warning')); continue;
+          problemOnce(`link:${entryKey}`, fileProblem(display, 'Symbolic link leads to neither a file nor a folder; not followed', 'warning')); continue;
         }
         const linkedNames = await listOrProblem(childAbsolute, display, entryKey, 'Linked folder cannot be read');
         if (!linkedNames) continue;

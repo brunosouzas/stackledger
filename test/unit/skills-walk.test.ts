@@ -125,6 +125,21 @@ test('Broken link', async () => {
   expect(set.problems).toHaveLength(1);
 });
 
+test('Link to a file elsewhere', async () => {
+  const root = skillSet({ 'skills/writer/SKILL.md': skill('writer'), 'outside/LICENSE': 'Northwind licence\n', 'skills/LICENSE': link('outside/LICENSE') });
+  const set = await readSkillSet(['skills'], { cwd: root });
+  expect(names(set)).toEqual(['writer']);
+  expect(set.problems).toEqual([]);
+});
+
+test('Link loop', async () => {
+  const root = skillSet({ 'skills/writer/SKILL.md': skill('writer'), 'skills/a': link('skills/b'), 'skills/b': link('skills/a') });
+  const set = await readSkillSet([], { cwd: root });
+  expect(names(set)).toEqual(['writer']);
+  expect(set.problems.map(p => [p.path, p.severity])).toEqual([['skills/a', 'warning'], ['skills/b', 'warning']]);
+  for (const problem of set.problems) expect(problem.message).toContain('loops');
+});
+
 test('Linked copy of a repository skill', async () => {
   const root = skillSet({ 'repo/skills/writer/SKILL.md': skill('writer', { description: 'x'.repeat(1025) }), 'tool/skills/writer': link('repo/skills/writer') });
   const set = await readSkillSet(['repo', 'tool'], { cwd: root });

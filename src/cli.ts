@@ -55,7 +55,7 @@ async function main(args: string[]): Promise<void> {
     else if (command === 'discover') { const { discoverCommand } = await import('./discover-command.js'); await discoverCommand(args); }
     else if (command === 'drift') { const { driftCommand } = await import('./drift-command.js'); await driftCommand(args); }
     else if (command === 'skills') { const { skillsCommand } = await import('./skills/command.js'); await skillsCommand(args); }
-    else throw new Error('Unknown command; expected validate, mcp, map, build, report, discover or drift');
+    else throw new Error('Unknown command; expected validate, mcp, map, build, report, discover, drift or skills');
   } catch (error) {
     const { stderr, exitCode } = reportFailure(error, usage);
     process.stderr.write(stderr);

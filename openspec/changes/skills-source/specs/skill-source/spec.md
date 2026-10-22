@@ -66,7 +66,7 @@ A folder holding a file named exactly `SKILL.md` SHALL be a skill folder. Each g
 - **THEN** that folder gives one skill and no agent
 
 ### Requirement: Symbolic links to folders
-A symbolic link to a folder holding a `SKILL.md` SHALL be read as a skill folder found at the link's path, without walking into it. Any other link the walk meets, except a file link where a file is expected, SHALL get one warning on the link's path and SHALL NOT be followed. So the walk never loops, and only linked skill folders are read from outside the given folders.
+A symbolic link to a folder holding a `SKILL.md` SHALL be read as a skill folder found at the link's path, without walking into it. A link to a file SHALL be read only where that file is expected and otherwise ignored, like any file. Every other link (to a folder without `SKILL.md`, broken, looping, or to neither a file nor a folder) SHALL get one warning on its path and SHALL NOT be followed. So the walk never loops.
 
 #### Scenario: Tool folder made of links
 - **WHEN** `.claude/skills/writer` is a link to a folder holding `SKILL.md`
@@ -79,6 +79,14 @@ A symbolic link to a folder holding a `SKILL.md` SHALL be read as a skill folder
 #### Scenario: Broken link
 - **WHEN** `skills/old` is a link to a path that does not exist
 - **THEN** there is one warning on `skills/old` and the rest of the set is read
+
+#### Scenario: Link to a file elsewhere
+- **WHEN** `skills/LICENSE` is a link to a regular file outside the given folder
+- **THEN** it is not read and there is no problem
+
+#### Scenario: Link loop
+- **WHEN** `skills/a` links to `skills/b` and `skills/b` links to `skills/a`
+- **THEN** each gets one warning saying the link loops, and the command finishes
 
 ### Requirement: One read per item
 A skill folder or agent file reached more than once (through a link and directly, or from two given folders) SHALL be read once, at the first path in walk order, with no problem. Walk order SHALL be the folders in argument order, each walked as in "Finding skill folders". Copies (separate files with the same content) are different items.

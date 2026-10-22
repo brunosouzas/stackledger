@@ -16,7 +16,8 @@
  * What can go wrong: a given folder that is missing, not a folder or cannot be listed throws
  * SkillsFolderError (src/skills/walk.ts); every other failure is a problem on its path.
  */
-import { readFile, stat } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { open, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileProblem, MAX_FILE_BYTES, type Problem } from '../source.js';
 import { secretRules } from '../secrets.js';
@@ -48,13 +49,29 @@ export interface SkillSet { skills: Skill[]; agents: Agent[]; problems: Problem[
 interface SkillCandidate { found: FoundSkill; frontmatter: Frontmatter; kind: SkillKind }
 interface AgentCandidate { found: FoundAgent; frontmatter: Frontmatter; preloads: string[] }
 
-/** A file's text, or the error that stops its checks (too large or unreadable). */
+/** A file's text, or the error that stops its checks (too large or unreadable). The file is opened once,
+ * non-blocking, and checked through its handle, so a file swapped for a FIFO or grown after the walk's
+ * check can neither hang the run nor be read past the limit. */
 async function readText(absolute: string, path: string): Promise<{ text: string } | { problem: Problem }> {
+  let handle;
   try {
-    if ((await stat(absolute)).size > MAX_FILE_BYTES) return { problem: fileProblem(path, 'File is larger than 1 MiB; not read') };
-    return { text: await readFile(absolute, 'utf8') };
+    handle = await open(absolute, constants.O_RDONLY | constants.O_NONBLOCK);
+    const info = await handle.stat();
+    if (!info.isFile()) return { problem: fileProblem(path, 'File cannot be read') };
+    if (info.size > MAX_FILE_BYTES) return { problem: fileProblem(path, 'File is larger than 1 MiB; not read') };
+    const buffer = Buffer.alloc(MAX_FILE_BYTES + 1);
+    let length = 0;
+    for (;;) {
+      const { bytesRead } = await handle.read(buffer, length, buffer.length - length, length);
+      if (!bytesRead) break;
+      length += bytesRead;
+      if (length > MAX_FILE_BYTES) return { problem: fileProblem(path, 'File is larger than 1 MiB; not read') };
+    }
+    return { text: buffer.subarray(0, length).toString('utf8') };
   } catch {
     return { problem: fileProblem(path, 'File cannot be read') };
+  } finally {
+    await handle?.close();
   }
 }
 /** One error at `1:1` per secret rule the texts break, with the rule's fixed message. */
