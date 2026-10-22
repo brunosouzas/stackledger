@@ -4,7 +4,7 @@
 
 ## Run it
 
-The package is not published to npm yet. From a clone, with Node.js 22 or later:
+With Node.js 22.12 or later, `npx --yes stackledger@0.2.0 mcp /path/to/catalogue` starts the server from npm. From a clone:
 
 ```sh
 npm ci
