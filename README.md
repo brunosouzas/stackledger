@@ -84,11 +84,11 @@ stackledger does not call any AI model. Instead, a read-only [MCP](https://model
 
 ## Usage
 
-Use npm with Node.js 22.12 or later. Version 0.2.0 adds the agent skills commands (`skills validate`, `.stackledgerignore`, `skills map`); 0.1.0 has the catalogue commands only. The Skills section of `stackledger build` (`--skills`, `spec.skills.folders`, `stackledger-skills.yaml`) is on `main` and not yet released.
+Use npm with Node.js 22.12 or later. Version 0.3.0 adds the Skills section of `stackledger build` (`--skills`, `spec.skills.folders`, `stackledger-skills.yaml`); 0.2.0 added the agent skills commands (`skills validate`, `.stackledgerignore`, `skills map`); 0.1.0 has the catalogue commands only.
 
 ```sh
-npx stackledger@0.2.0 --help
-npx stackledger@0.2.0 validate /path/to/catalogue
+npx stackledger@0.3.0 --help
+npx stackledger@0.3.0 validate /path/to/catalogue
 ```
 
 To run it from source (for development, or a change not yet on npm):
@@ -166,7 +166,7 @@ npx stackledger build ./catalogue --out ./public              # reads ./ai-kit, 
 npx stackledger build ./catalogue --out ./public --skills ~/.claude/skills   # this folder instead
 ```
 
-In a pipeline, check out the skills repository next to the catalogue (so `../ai-kit` exists), or pass `--skills` with the path the checkout used. Pin one stackledger version everywhere: 0.2.0 reads `spec.skills` as an error. If the `Settings` has an error and sets `spec.skills`, the build stops with exit 1 and changes nothing published, rather than publish a site without its Skills section; fix it, or pass `--skills`.
+In a pipeline, check out the skills repository next to the catalogue (so `../ai-kit` exists), or pass `--skills` with the path the checkout used. Pin one stackledger version everywhere, 0.3.0 or later: 0.2.0 reads `spec.skills` as an error. If the `Settings` has an error and sets `spec.skills`, the build stops with exit 1 and changes nothing published, rather than publish a site without its Skills section; fix it, or pass `--skills`.
 
 The skills map is drawn from `stackledger-skills.yaml` at the top of a skills folder: `Line` and `MapLayout` documents, as in the catalogue, with stops such as `skill:writer`, `playbook:release` and `agent:reviewer`. Playbooks can be zones; a skill in two playbooks sits in both zones, so place the shared skills between the playbooks and the zones overlap there cleanly. The format, the CI recipe and what each page shows: [docs/skills.md](docs/skills.md#skills-on-the-site).
 
