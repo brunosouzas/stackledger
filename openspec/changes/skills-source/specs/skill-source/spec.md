@@ -15,9 +15,13 @@ A skill set SHALL be the skills, playbooks, agents and rules read from one or mo
 - **WHEN** a set is read
 - **THEN** the hash and modification time of every file in the given folders are the same before and after
 
-#### Scenario: Offline and write-protected
-- **WHEN** the command runs under Node's permission model with file reads allowed and no write, network or child-process permission
+#### Scenario: Write-protected run
+- **WHEN** the command runs under Node's permission model with file reads allowed and no write or child-process permission
 - **THEN** its output and exit code equal those of an unrestricted run
+
+#### Scenario: Network not used
+- **WHEN** the source files of the skill reading and the command are inspected
+- **THEN** none imports `node:http`, `node:https`, `node:net`, `node:tls`, `node:dns` or `node:dgram`, or calls `fetch`
 
 ### Requirement: Files and links
 A file SHALL be an entry that is a regular file or a symbolic link to a regular file; a file link SHALL be read at the link's path. A given folder that is a symbolic link SHALL be followed. Folder links met by the walk follow "Symbolic links to folders". Two entries SHALL be the same item when their targets have the same device and inode numbers.
@@ -31,7 +35,7 @@ A file SHALL be an entry that is a regular file or a symbolic link to a regular 
 - **THEN** the skills are read and paths start with the argument as given
 
 ### Requirement: Finding skill folders
-A folder holding a file named exactly `SKILL.md` SHALL be a skill folder. Each given folder SHALL be walked depth first, entries in code-point order of their names, at most five levels below it. The walk SHALL NOT enter a skill folder, `node_modules`, or a folder below the given one whose name starts with `.`, and skipping SHALL give no problem. When the given folder is itself a skill folder, it SHALL give that one skill.
+A folder holding a file named exactly `SKILL.md` SHALL be a skill folder. Each given folder SHALL be walked depth first, entries in code-point order of their names, at most five levels below it. An entry below the given folder named `node_modules` or starting with `.` SHALL be skipped before any other check, link or not, with no problem. The walk SHALL NOT enter a skill folder. When the given folder is itself a skill folder, it SHALL give that one skill.
 
 #### Scenario: Grouped skills
 - **WHEN** a given folder holds `skills/developer/java/SKILL.md` and `skills/developer/developer/SKILL.md`
@@ -47,6 +51,10 @@ A folder holding a file named exactly `SKILL.md` SHALL be a skill folder. Each g
 
 #### Scenario: Hidden and dependency folders
 - **WHEN** a given folder holds `.git/x/SKILL.md` and `node_modules/x/SKILL.md`
+- **THEN** neither is read and there is no problem
+
+#### Scenario: Hidden link to a skill
+- **WHEN** `.cache` and `node_modules` are links to skill folders
 - **THEN** neither is read and there is no problem
 
 #### Scenario: Given folder is a hidden tool folder
@@ -87,11 +95,15 @@ A folder below a given folder that cannot be listed, or a linked skill folder th
 - **THEN** there is one error on `skills/private` and the other skills are read
 
 ### Requirement: Order of checks in one file
-Each `SKILL.md` and agent file SHALL be checked in this order, and an error at a step SHALL stop the later steps for that file: (1) size and readability; (2) secret rules; (3) frontmatter shape; (4) `name` and `description`, both reported; (5) every other field check, all reported. An item SHALL join the set only when its file has no error.
+Each `SKILL.md` and agent file SHALL get its own checks in this order, an error at a step stopping the later ones: (1) size and readability; (2) secret rules on the raw text; (3) frontmatter shape; (4) secret rules on every decoded frontmatter key and string; (5) `name` and `description`, both reported; (6) the other field checks of this file, all reported. Only a file with no error from these SHALL be a candidate for the set.
 
 #### Scenario: Secret and no frontmatter
 - **WHEN** a `SKILL.md` has no frontmatter and holds private-key material
 - **THEN** there is exactly one error, the secret one, and the skill is not in the set
+
+#### Scenario: Escaped card number
+- **WHEN** a playbook has `stackledger-skills: "411111111111111\u0031"`, whose raw text holds no card number
+- **THEN** there is exactly one error, the secret one, and no output line holds the decoded number
 
 #### Scenario: Several field problems
 - **WHEN** a skill has `stackledger-kind: process` and a 1025-code-point description
@@ -102,11 +114,15 @@ Each `SKILL.md` and agent file SHALL be checked in this order, and an error at a
 - **THEN** there are two errors, for `name` and `description`
 
 ### Requirement: Checks across items
-Checks that compare items (unique names, relation targets, agent preloads, rule IDs across skills) SHALL use only items that joined the set, in walk order. A file with an error SHALL give no problem other than its own, so a value of a rejected file is never repeated in another item's message.
+After the own checks, a later candidate whose name an earlier candidate already uses SHALL be rejected (see "Unique names"); the remaining candidates SHALL be the set, fixed from then on. Relation targets, agent preloads and rule IDs across skills SHALL then be checked against that set; their problems SHALL NOT remove an item from it. A rejected file's values never reach another item's message.
 
 #### Scenario: Target excluded by an error
 - **WHEN** a playbook names `editor` and `editor`'s `SKILL.md` has no frontmatter
 - **THEN** there is an error on the playbook naming `editor`, besides the error on `editor`'s file
+
+#### Scenario: Cascading relations
+- **WHEN** playbook `a` lists skill `b`, and `b` lists `missing`, which is not in the set
+- **THEN** there is one error, on `b`, and the summary counts both `a` and `b`
 
 ### Requirement: Frontmatter
 A `SKILL.md` SHALL start with a line `---`, after an optional UTF-8 byte-order mark, and the frontmatter SHALL end at the next line `---`; the text between SHALL be one YAML mapping without duplicate keys. Line endings MAY be LF or CRLF. Otherwise the file SHALL get exactly one error at `1:1`.
@@ -139,7 +155,7 @@ A `SKILL.md` SHALL start with a line `---`, after an optional UTF-8 byte-order m
 - **THEN** there is an error with field `name`
 
 ### Requirement: Agent Skills specification checks
-Each SHALL be a warning with its field: a `name` that, after NFKC normalisation, is over 64 code points, has an upper-case letter, holds anything but Unicode letters, digits and hyphens, starts or ends with `-`, or holds `--`; a `name` unlike the folder or link name where the skill was found; a `description` over 1024 code points; `compatibility` not a 1–500 code-point string; `license` or `allowed-tools` not a string.
+Each SHALL be a warning with its field: a `name` that, after NFKC normalisation, is over 64 code points, has an upper-case letter, holds anything but Unicode letters, digits and hyphens, starts or ends with `-`, or holds `--`; a `name` unlike the folder or link name where the skill was found; a `description` over 1024 code points or `compatibility` not a 1–500 code-point string, both counted without normalisation; `license` or `allowed-tools` not a string.
 
 #### Scenario: Upper-case name
 - **WHEN** a skill has `name: Writer` in folder `Writer`
@@ -149,16 +165,24 @@ Each SHALL be a warning with its field: a `name` that, after NFKC normalisation,
 - **WHEN** a skill in folder `writing` has `name: writer`
 - **THEN** there is a warning with field `name` naming the folder
 
+#### Scenario: Ligatures in a description
+- **WHEN** a description is 342 times the character `ﬃ` (1,026 code points after NFKC)
+- **THEN** there is no problem
+
 #### Scenario: Description at the limit
 - **WHEN** a description has 1024 code points, one of them an emoji
 - **THEN** there is no problem, and with 1025 code points there is one warning with field `description`
 
 ### Requirement: Fields outside the specification
-Top-level fields other than `name`, `description`, `license`, `compatibility`, `metadata` and `allowed-tools` SHALL give one warning per skill, at `1:1` with no field, naming them in code-point order. A `metadata` that is not a mapping, or a `metadata` value that is not a string under a key not starting with `stackledger-` in any letter case, SHALL be a warning with its field.
+Top-level fields other than `name`, `description`, `license`, `compatibility`, `metadata` and `allowed-tools` SHALL give one warning per skill, at `1:1` with no field, naming them in code-point order. A `metadata` that is not a mapping, a `metadata` key that is not a string (warned at the key, its field written from the key's text), or a value that is not a string under a key not starting with `stackledger-` in any letter case, SHALL be a warning with its field.
 
 #### Scenario: Tool-specific fields
 - **WHEN** a skill has top-level `version`, `author` and `aliases`
 - **THEN** there is exactly one warning, naming `aliases`, `author` and `version`
+
+#### Scenario: Number as a metadata key
+- **WHEN** a skill has `metadata` with the key `42` (a YAML integer) and the value `note`
+- **THEN** there is a warning at the key with field `metadata.42`
 
 #### Scenario: Nested metadata
 - **WHEN** a skill has `metadata.hermes` set to a mapping
@@ -307,7 +331,7 @@ Every `SKILL.md`, `rules.md` and agent file read SHALL be checked with the catal
 - **THEN** there is no problem
 
 ### Requirement: Files that cannot be read
-A `SKILL.md`, `rules.md` or agent file over 1 MiB, or one that cannot be read, SHALL be an error at `1:1` on that file; the rest of the set SHALL still be read. A skill whose `rules.md` has an error SHALL join the set with no rules.
+A `SKILL.md`, `rules.md` or agent file over 1 MiB, or one that cannot be read, SHALL be an error at `1:1` on that file; the rest of the set SHALL still be read. A skill whose `rules.md` is too large, cannot be read or breaks a secret rule SHALL join the set with no rules; other rules problems drop only the rule concerned.
 
 #### Scenario: Oversized rules file
 - **WHEN** a `rules.md` has 1 MiB and one byte

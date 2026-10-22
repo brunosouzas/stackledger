@@ -32,7 +32,7 @@ Agents are not Agent Skills: they keep their tool's format. Claude Code's subage
 | A given folder in which no skill folder or agent file is found | A file in `agents/` with no frontmatter |
 | A sub-folder that cannot be listed | |
 
-Inside one file the checks run in a fixed order (size, secrets, frontmatter shape, name and description, other fields), and an error stops the later steps; an item joins the set only without errors, and the checks that compare items use only items in the set. That keeps one root cause to one message, and keeps every value of a file with a secret out of other items' messages.
+Validation runs in phases. (1) Each file gets its own checks in a fixed order (size, secrets on the raw text, frontmatter shape, secrets on the decoded frontmatter, name and description, other fields), and an error stops the later steps; only a file without such an error is a candidate. (2) Among candidates, a later duplicate name is rejected. (3) The set is then fixed, and relation targets, agent preloads and rule IDs across skills are checked against it; those problems are errors or warnings on the file but never remove an item, so there is no cascade and the counts are stable. Decoded strings are scanned because YAML escapes (`\u0031`) hide a card number from a raw-text scan. That keeps one root cause to one message, and keeps every value of a file with a secret out of other items' messages.
 
 Errors are things a pipeline should stop on; warnings are things a person should know but that tools tolerate. The specification's own constraints are warnings because a set the person does not own (bundled skills) would otherwise never pass.
 
@@ -47,6 +47,8 @@ Copies are not links: two separate files with one name are a duplicate. A skill 
 The folder name used for the "name differs from the folder" warning is the name of the link or folder where the skill was found, because that is the name the tool sees.
 
 ### 4. Reuse
+
+Network: Node 22's permission model does not restrict network access, so the offline promise is proved by a test that inspects the skill code for network modules and `fetch`, and writes are proved with the permission model.
 
 Reused as they are: the `Problem` shape, `fieldName` and `MAX_FILE_BYTES` (`src/source.ts`), `sortProblems` (`src/validate.ts`), `secretRules` (`src/secrets.ts`), `withoutControls` and `escapeJsonControls` (`src/control.ts`), and the `yaml` package's positions. New code: frontmatter splitting and positions (the catalogue's `problem()` puts a missing field at the start of the mapping, while this change wants `1:1`, and its parser reports one problem per parser error, while this change wants one per file), and the text formatter, because the catalogue one in `src/cli.ts` prints the catalogue's counts. The skill code lives in `src/skills/` and is not imported by the catalogue commands.
 
