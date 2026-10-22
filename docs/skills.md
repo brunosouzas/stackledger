@@ -2,6 +2,8 @@
 
 `stackledger skills validate` checks a set of agent skills, playbooks, agents and rules kept in folders: what one agent would see. It reports problems in the same line format as `stackledger validate`, so a person can run it on their own folders and a team can run it in CI on every pull request. It only reads files: it writes nothing, makes no network call and fixes nothing.
 
+`stackledger skills map` draws the same set's declared relations as Markdown pages with Mermaid diagrams in your repository: see [Map in the repository](#map-in-the-repository).
+
 ```sh
 stackledger skills validate [folder...] [--json]
 ```
@@ -172,3 +174,72 @@ A pull request can also change `.stackledgerignore` to hide a real skill. To ref
 ```
 
 Compare the list, not only the count: a fork could swap an approved exclusion for a real skill and keep the number. A folder pattern such as `fixtures/` lists only the folder, so a skill moved into it stays hidden with the same list: prefer one entry per pattern (`fixtures/*`), so each hidden skill shows up in the list, or also check `.summary.skills`.
+
+## Map in the repository
+
+`stackledger skills map` writes the set's declared relations as Markdown pages with [Mermaid](https://mermaid.js.org/) diagrams into a folder of your repository, so people read the map where they already read the skills: offline, in an editor or on the Git host, and a reviewer sees in a pull request's diff that a change adds or drops a relation.
+
+```sh
+stackledger skills map [folder...] --out <folder> [--check]
+```
+
+It reads the same set as `skills validate` with the same folders (none: the current folder), `.stackledgerignore` included. Run it at the top of the repository with an output folder inside it:
+
+```sh
+stackledger skills map . --out docs/skills-map
+```
+
+### Layout
+
+| Path | Holds |
+|---|---|
+| `README.md` | The index: the counts (skills, playbooks, agents, rules, ignored entries, errors, warnings), one diagram of every relation, a table each for playbooks, agents and skills with what each brings in and what brings it in, and "No declared incoming relations": the skills and playbooks nothing brings in (a person may still load them by hand, so they are not called unused) |
+| `skills/<name>.md`, `playbooks/<name>.md`, `agents/<name>.md` | One page per item: its kind and description, a diagram of what brings it in (left) and what it brings in (right), the same relations as linked lists, "Reached through" (what brings it in only through two or more relations), its rule IDs and its source files |
+| `.stackledger-skills-map` | The marker, holding `stackledger skills map`: the folder is the command's |
+| `.gitattributes` | `* text eol=lf`, so every checkout keeps the bytes the command writes |
+
+A skill and an agent may share a name, hence the separate folders. A name that is not a valid Agent Skills name (capitals, paths, more than 64 characters) or that is a Windows device name (`con`, `nul`, `com1`…) gets a file name made of `_` and its hexadecimal UTF-8 bytes (`Writer` is `skills/_577269746572.md`), so every file name is lowercase ASCII and checks out on every system.
+
+In the diagrams playbooks are rounded boxes, agents hexagons and skills plain boxes; the item of a page has a thick border. Node IDs come from the file names (`s_writer`, `p_release`, `a_reviewer`), so adding a skill changes only the lines about it. A diagram holds at most 400 relations and 40,000 characters, below the limits of Mermaid 11; over that, the page says how many relations there are and the lists and tables still hold every one.
+
+The output is byte for byte the same for the same files on every machine: no date or version, a fixed order (lists by name, diagrams by kind and name), `/` in links, LF line endings. Descriptions are made one line and cut at 1,024 characters; names and descriptions are escaped, so a skill file cannot inject HTML, a link or a diagram line into the pages. A source file is linked only when it and the map folder are inside the current folder; a file elsewhere (a tool folder in your home folder) shows its path below its given folder and "outside the current folder", so no page ever names a folder above the repository.
+
+### What is drawn
+
+Only declared relations: `loads` for each name in a skill's `stackledger-skills`, `uses` for each name in its `stackledger-agents`, and `preloads` for each name in an agent's `skills`. A name not in the set is not drawn (`skills validate` reports it), a repeated name is drawn once, a skill listing itself is a loop. Nothing is guessed from the text: a skill named in backticks in another skill's body is not a relation. A declaration says that a file asks for another; it does not prove that a tool loads it. Agent fields other than `skills` (tools, model) are not drawn.
+
+### The folder it owns
+
+stackledger owns, in the output folder, the marker, `.gitattributes`, `README.md` and the whole `skills/`, `playbooks/` and `agents/` folders. Each run rewrites what changed and **removes every other entry inside those three folders**, files and sub-folders included, so a removed skill's page disappears: keep your own notes next to them, at the top of the output folder, where every other entry is left untouched.
+
+Before writing anything, the command refuses (exit 2) an output folder that:
+
+- is, or holds, a given folder, or a skill folder or agent file the set was read from, also through a link and also a rejected one (cleaning the map would delete it);
+- is inside a skill folder of the set, or is or is inside the top-level `agents/` of a given folder (its `README.md` would be read as an agent);
+- has, below the current folder, a folder starting with `.` or named `openspec` on its path (tool folders such as `.claude/commands` load Markdown as instructions);
+- exists, is not empty and has no valid marker, or whose marker, `.gitattributes`, `README.md` or kind folders are symbolic links.
+
+Files are written to a new temporary file in their own folder and renamed into place, so a link or hard link at a page path is replaced, never written through. Stale entries are removed without following links. Right before the first change the command checks that the output folder and the kind folders are still the ones it checked, and stops with exit 1 if one was moved or replaced. There is no atomic swap of the whole folder: after an interrupted run, run the command again (or restore the folder with Git). Two runs on one folder at the same time are not supported.
+
+A set with errors is still mapped, without the items that have them, with exit 0; the index and stderr give the counts, with the hint to run `skills validate`. A given folder in which nothing is found (a wrong path, or an ignore file hiding everything) is exit 1 and changes nothing, so a mistake cannot empty the map.
+
+| Exit | Meaning |
+|---|---|
+| 0 | The map is written (or was already up to date); with `--check`, it is up to date |
+| 1 | With `--check`, the map is out of date; a given folder had nothing found in it; the output folder changed during the run; a file could not be written or removed (stderr names it) |
+| 2 | Usage error (`--out` missing, unknown option), a given folder that does not exist or cannot be listed, or a refused output folder; nothing is written |
+
+stdout stays empty; stderr gives the pages created, updated and removed.
+
+### `--check` in CI
+
+`--check` writes nothing. It prints one line per file that would be created, updated or removed (`update skills/writer.md`) and exits 1 when there is any, so a pipeline can fail a pull request that changed skills without running the map. It reads CRLF as LF, for checkouts made before `.gitattributes` existed. Run it next to `skills validate`, which is what fails on errors:
+
+```yaml
+      - run: npx --yes stackledger@0.1.0 skills validate
+      - run: npx --yes stackledger@0.1.0 skills map . --out docs/skills-map --check
+```
+
+### Where the diagrams render
+
+GitHub, GitLab and Visual Studio Code render `mermaid` code blocks in Markdown. Bitbucket Cloud and Azure Repos files do not (and Azure DevOps wikis do not support `flowchart`): there the diagrams show as text, and the lists and tables still hold every relation.

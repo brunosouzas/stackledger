@@ -31,7 +31,7 @@ stackledger is a small, local-first tool for people and small companies who want
 
 ## Status
 
-Early development. Nothing is released to npm yet. The catalogue format, the `validate`, `map`, `build` and `report` commands, the `mcp` server, Mac discovery (`stackledger discover` and `stackledger drift`) and the agent skills check (`stackledger skills validate`) work from source (see [Usage](#usage)). The order of the rest is in the [roadmap](docs/roadmap.md).
+Early development. Nothing is released to npm yet. The catalogue format, the `validate`, `map`, `build` and `report` commands, the `mcp` server, Mac discovery (`stackledger discover` and `stackledger drift`) and the agent skills check and map (`stackledger skills validate` and `stackledger skills map`) work from source (see [Usage](#usage)). The order of the rest is in the [roadmap](docs/roadmap.md).
 
 For a separate catalogue repository, copy the [pipeline template](examples/catalogue-repository/). Set up [protected hosting](docs/hosting.md) before the first deploy. The fictitious Northwind catalogue runs as a demo of the corporate mode at <https://stackledger-demo.pages.dev/>; it is protected by Cloudflare Access and only the owner can sign in, so for you it shows the sign-in page, which is the point. The [release guide](docs/release.md) covers npm publication, provenance and the SBOM.
 
@@ -103,6 +103,7 @@ node dist/cli.js report examples/northwind --date 2027-06-01 --format csv > lice
 node dist/cli.js discover
 node dist/cli.js drift examples/northwind --snapshot examples/northwind-machine/snapshot.json
 node dist/cli.js skills validate /path/to/skills
+node dist/cli.js skills map /path/to/skills --out /path/to/skills/docs/skills-map
 ```
 
 | Command | Does | Status |
@@ -115,8 +116,9 @@ node dist/cli.js skills validate /path/to/skills
 | `stackledger discover` | Reads what this Mac has installed (Homebrew, App Store, applications, launchd, mise, npm, pipx), with every program in the macOS sandbox, and writes `~/.stackledger/<machine>/snapshot.json`; one summary line per source on stdout. Exit 0 also with skipped sources; 1: not macOS, no sandbox or the file could not be written safely; 2: usage problem. See [docs/discovery.md](docs/discovery.md) | Available from source |
 | `stackledger drift <folder> [--snapshot <file>] [--format text\|json] [--scaffold <dir>]` | Compares the snapshot with the catalogue through `stackledger/<source>` annotations: what is not declared (with the annotation to add), what is missing, what could not be checked, and `dependsOn` relations to confirm; `--scaffold` writes draft component files into a new folder outside the catalogue. Exit 0 even with catalogue errors; 1: internal or write failure; 2: usage, folder or snapshot problem. See [docs/discovery.md](docs/discovery.md) | Available from source |
 | `stackledger skills validate [folder...] [--json]` | Checks agent skills, playbooks, agents and rules read from the given folders (default: the current folder) as one set, and reports each problem with file, line and field. Exit 0: no errors (warnings allowed); 1: errors; 2: usage or folder problem. See [docs/skills.md](docs/skills.md) | Available from source |
+| `stackledger skills map [folder...] --out <folder> [--check]` | Writes Markdown pages with Mermaid diagrams of the set's declared relations into `<folder>`: an index and one page per skill, playbook and agent, byte for byte the same on every machine; `--check` writes nothing and lists what is out of date. Exit 0: written (also with errors in the set) or up to date; 1: out of date with `--check`, nothing found in a given folder, the folder changed during the run or a write failed; 2: usage or folder problem. See [docs/skills.md](docs/skills.md#map-in-the-repository) | Available from source |
 
-`validate`, `mcp`, `map`, `report`, `drift` and `skills validate` only read files (`drift --scaffold` writes only inside the new folder it names); `build` writes only inside its output folder; `discover` writes only its snapshot file. None of them makes network calls or sends telemetry, and none edits the catalogue. The text output and error messages of `validate`, `report`, `discover`, `drift` and `skills validate` carry no control characters from file names, options, catalogue or snapshot text, and their JSON output writes U+007F to U+009F as `\u` escapes; `build` and `mcp` keep their own rules, described in their documents.
+`validate`, `mcp`, `map`, `report`, `drift` and `skills validate` only read files (`drift --scaffold` writes only inside the new folder it names); `build` and `skills map` write only inside their output folder; `discover` writes only its snapshot file. None of them makes network calls or sends telemetry, and none edits the catalogue. The text output and error messages of `validate`, `report`, `discover`, `drift` and `skills validate` carry no control characters from file names, options, catalogue or snapshot text, and their JSON output writes U+007F to U+009F as `\u` escapes; `build` and `mcp` keep their own rules, described in their documents.
 
 ## The website
 
@@ -204,7 +206,7 @@ metadata:
   stackledger-agents: reviewer
 ```
 
-`stackledger-kind` is `skill` (the default) or `playbook`; the other two keys hold names separated by spaces. Give the folders one agent loads together, and check each tool folder on its own. A `.stackledgerignore` file at the top of a given folder skips templates, examples and test fixtures with `.gitignore` patterns, and the output counts and lists what it skipped. The format, every check and a CI example: [docs/skills.md](docs/skills.md).
+`stackledger-kind` is `skill` (the default) or `playbook`; the other two keys hold names separated by spaces. Give the folders one agent loads together, and check each tool folder on its own. A `.stackledgerignore` file at the top of a given folder skips templates, examples and test fixtures with `.gitignore` patterns, and the output counts and lists what it skipped. `stackledger skills map` writes the set's declared relations as Markdown pages with Mermaid diagrams into the repository, for offline reading and pull-request diffs, and `--check` fails a pipeline when they are out of date. The format, every check, the map and a CI example: [docs/skills.md](docs/skills.md).
 
 ## How this project is built
 

@@ -10,7 +10,7 @@
 - [x] 2.1 One test per scenario, named after it (map below). Fixtures are fictitious (Northwind) and built in temporary folders.
 - [x] 2.2 Add `mermaid` as an exact development dependency and render, in the existing browser test job, every diagram of the fixtures behind "Node names are not IDs", "Label that tries to close the node", "Diagram of a skill", "Two playbooks that load each other", "Skill that lists itself" and "Index at the edge budget"; a diagram that does not render fails the test. Those scenarios also have their unit test.
 - [x] 2.3 Add the map's source files to the skills network test (`test/unit/skills-offline.test.ts`).
-- [ ] 2.4 `docs/skills.md` "Map in the repository" section (command, layout, what is drawn and what is not, the owned entries and that files inside the kind folders are removed, the folder rules, `--check` in CI next to `skills validate`, not for two runs at once, run again after an interrupted run, which hosts render Mermaid); README Usage row and one sentence in "Agent skills"; `AGENTS.md` implemented list; `docs/roadmap.md` row 3 delivered and without "what it names". Check: `npx vitest run test/integration/docs.test.ts`.
+- [x] 2.4 `docs/skills.md` "Map in the repository" section (command, layout, what is drawn and what is not, the owned entries and that files inside the kind folders are removed, the folder rules, `--check` in CI next to `skills validate`, not for two runs at once, run again after an interrupted run, which hosts render Mermaid); README Usage row and one sentence in "Agent skills"; `AGENTS.md` implemented list; `docs/roadmap.md` row 3 delivered and without "what it names". Check: `npx vitest run test/integration/docs.test.ts`.
 
 ## 3. Integration
 
