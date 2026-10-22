@@ -4,14 +4,17 @@
  * Each test reads a fictitious Northwind skill set from a temporary folder with readSkillSet, then
  * calls the pure graph and page functions (src/skills/graph.ts, src/skills/mermaid.ts) with the real
  * paths the command would compute; nothing is written. The fixtures in test/skills-map-fixtures.ts are
- * also rendered by Mermaid in the browser test (test/browser/skills-map.spec.ts).
+ * also rendered by Mermaid in the browser test (test/browser/skills-map.spec.ts). Colliding page names
+ * also runs the command in process, with filesystem calls that record any write.
  */
 import { test, expect } from 'vitest';
-import { readdirSync, realpathSync } from 'node:fs';
+import { existsSync, readdirSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
-import { readSkillSet } from '../../src/skills/source.js';
+import { reportFailure } from '../../src/errors.js';
+import { readSkillSet, type Skill } from '../../src/skills/source.js';
 import { buildGraph } from '../../src/skills/graph.js';
-import { renderMap } from '../../src/skills/mermaid.js';
+import { NODE_MAP_FS, skillsMapCommand, type MapFsOps } from '../../src/skills/map-command.js';
+import { pagePath, renderMap } from '../../src/skills/mermaid.js';
 import { type ListFolder } from '../../src/skills/walk.js';
 import { agent, playbook, rules, skill, skillSet } from '../skills-helpers.js';
 import { HOSTILE_NAME, MERMAID_FIXTURES } from '../skills-map-fixtures.js';
@@ -58,6 +61,29 @@ test('Long name', async () => {
   expect([...pages.keys()]).toEqual(['README.md', 'skills/_616161616161616161616161616161616161616161616161616-635361c48bb.md']);
 });
 
+test('Colliding page names', async () => {
+  // Two long names whose 11-digit hashes collide, and two names that are not valid Unicode (lone
+  // surrogates, both encoded as EF BF BD).
+  const pairs = [['AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA5d4b0e', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA5dd060'], ['"\\uD800"', '"\\uD801"']];
+  for (const [first, second] of pairs) {
+    const folders = first!.startsWith('"') ? ['lone-a', 'lone-b'] : [first!, second!];
+    const root = skillSet({ [`skills/${folders[0]}/SKILL.md`]: skill(first!), [`skills/${folders[1]}/SKILL.md`]: skill(second!) });
+    const set = await readSkillSet([], { cwd: root });
+    expect(set.skills).toHaveLength(2);
+    expect(pagePath(set.skills[0]!)).toBe(pagePath(set.skills[1]!));
+    const writes: string[] = [];
+    const recording: MapFsOps = { ...NODE_MAP_FS, mkdir: path => { writes.push(path); }, writeNew: path => { writes.push(path); },
+      rename: from => { writes.push(from); }, rm: path => { writes.push(path); } };
+    const error = await skillsMapCommand(['skills', 'map', root, '--out', join(root, 'map')], recording).then(() => undefined, (failure: unknown) => failure);
+    const { stderr, exitCode } = reportFailure(error, 'usage\n');
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain(`skills/${folders[0]}/SKILL.md and `);
+    expect(stderr).toContain(`skills/${folders[1]}/SKILL.md give the same page`);
+    expect(writes).toEqual([]);
+    expect(existsSync(join(root, 'map'))).toBe(false);
+  }
+});
+
 test('Name in the text', async () => {
   const pages = await pagesOf(skillSet({ 'skills/writer/SKILL.md': skill('writer', { body: '# writer\n\nHand the draft to `editor` when done.\n' }), 'skills/editor/SKILL.md': skill('editor') }));
   const writer = page(pages, 'skills/writer.md');
@@ -85,6 +111,10 @@ test('Repeated preload', async () => {
   const pages = await pagesOf(root);
   expect(edges(blocks(page(pages, 'agents/drafter.md'))[0]!)).toEqual(['  a_drafter -->|preloads| out_s_writer']);
   expect(edges(blocks(page(pages, 'README.md'))[0]!)).toEqual(['  a_drafter -->|preloads| s_writer']);
+  // A name may hold a NUL (YAML \0): joined with NULs, these two different edges would give one key.
+  const item = (name: string, loads: string[]): Skill => ({ name, kind: 'skill', path: 'SKILL.md', description: '', given: root, files: [], skills: loads, agents: [], rules: [] });
+  const tricky = buildGraph({ skills: [item('p', ['q\0loads\0skill\0r']), item('q\0loads\0skill\0r', []), item('p\0loads\0skill\0q', ['r']), item('r', [])], agents: [] });
+  expect(tricky.edges.map(edge => [edge.from.name, edge.to.name])).toEqual([['p', 'q\0loads\0skill\0r'], ['p\0loads\0skill\0q', 'r']]);
 });
 
 test('Playbook page', async () => {
@@ -221,6 +251,20 @@ test('Multi-line description with a fence', async () => {
   expect(blocks(writer)).toEqual([['flowchart LR', '  s_writer["writer"]', '  classDef current stroke-width:4px', '  class s_writer current']]);
 });
 
+test('Description that would link or render math', async () => {
+  const pages = await pagesOf(skillSet({
+    'skills/writer/SKILL.md': skill('writer', { description: "'- see https://evil.example and www.evil.example for $\\color{red}{FAKE}$'" }),
+    // Format characters (a word joiner, tag characters) are removed; a leading number or `+` is not a list.
+    'skills/editor/SKILL.md': skill('editor', { description: '1. Edits\u2060 drafts\u{E0041}\u{E007F}.' }),
+    'skills/linter/SKILL.md': skill('linter', { description: '+ Lints mailto:team@northwind.example' }),
+  }));
+  const writer = page(pages, 'skills/writer.md');
+  expect(writer.split('\n')).toContain('\\- see https\\://evil.example and www\\.evil.example for <span>$</span>\\\\color{red}{FAKE}<span>$</span>');
+  for (const text of pages.values()) expect(text.replaceAll('<span>$</span>', '')).not.toContain('$');
+  expect(page(pages, 'skills/editor.md').split('\n')).toContain('1\\. Edits drafts.');
+  expect(page(pages, 'skills/linter.md').split('\n')).toContain('\\+ Lints mailto\\:team@northwind.example');
+});
+
 test('Description at the limit', async () => {
   const pages = await pagesOf(skillSet({ 'skills/whole/SKILL.md': skill('whole', { description: 'w'.repeat(1024) }), 'skills/cut/SKILL.md': skill('cut', { description: 'c'.repeat(1025) }) }));
   expect(page(pages, 'skills/whole.md').split('\n')).toContain('w'.repeat(1024));
@@ -235,7 +279,7 @@ test('Label that tries to close the node', async () => {
     for (const entity of ['#34;', '#93;', '#59;']) expect(label).toContain(entity);
     expect(lines.some(line => line.trim().startsWith('click'))).toBe(false);
   }
-  expect(page(pages, path)).toContain(`# a"\\]; click n1 "https://example.com`);
+  expect(page(pages, path)).toContain(`# a"\\]; click n1 "https\\://example.com`);
   expect(HOSTILE_NAME).toContain('click');
 });
 
@@ -256,6 +300,13 @@ test('Tool folder in the home folder', async () => {
     expect(text).not.toContain(root);
     expect(text).not.toContain(realpathSync(root));
   }
+});
+
+test('Map folder outside the current folder', async () => {
+  const root = skillSet({ 'repo/skills/writer/SKILL.md': skill('writer'), 'stackledger/package.json': '{}\n' });
+  const pages = await pagesOf(root, { cwd: join(root, 'stackledger'), folders: ['../repo'], out: '../repo/docs/skills-map' });
+  expect(section(page(pages, 'skills/writer.md'), 'Source files')).toBe('- skills/writer/SKILL.md (not linked: the map folder is outside the current folder)');
+  for (const text of pages.values()) expect(text).not.toContain(realpathSync(root));
 });
 
 test('Folder name with special characters', async () => {

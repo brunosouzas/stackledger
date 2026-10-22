@@ -50,8 +50,9 @@ export function compareEdges(left: MapEdge, right: MapEdge): number {
   return compareNodes(left.from, right.from) || RELATION_ORDER[left.kind] - RELATION_ORDER[right.kind] || compareNodes(left.to, right.to);
 }
 
-// A NUL cannot be part of a name read from YAML text, so it separates kind and name unambiguously.
-const keyOf = (kind: NodeKind, name: string) => `${kind}\u0000${name}`;
+// Keys are JSON arrays, never joined text: a YAML name can hold any character, a NUL or a quote
+// included, and JSON escapes them, so two different tuples never give one key.
+const keyOf = (kind: NodeKind, name: string) => JSON.stringify([kind, name]);
 
 /** The graph of a skill set's declared relations. */
 export function buildGraph(set: Pick<SkillSet, 'skills' | 'agents'>): SkillGraph {
@@ -70,7 +71,7 @@ export function buildGraph(set: Pick<SkillSet, 'skills' | 'agents'>): SkillGraph
   const seen = new Set<string>();
   const add = (from: MapNode, kind: RelationKind, to: MapNode | undefined) => {
     if (!to) return;
-    const key = `${from.key}\u0000${kind}\u0000${to.key}`;
+    const key = JSON.stringify([from.key, kind, to.key]);
     if (seen.has(key)) return;
     seen.add(key); edges.push({ from, kind, to });
   };
