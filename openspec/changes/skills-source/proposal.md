@@ -34,15 +34,22 @@ None. The software catalogue, `stackledger validate` and the other commands do n
 1. **Relation format.** Recommended: the `metadata` keys above, because the specification allows only `name`, `description`, `license`, `compatibility`, `metadata` and `allowed-tools` at the top level, `metadata` holds only string values, and the reference validator (`skills-ref`) rejects any other top-level field. The alternative, top-level `skills:` and `agents:` lists, is what the owner's own skills repository uses today, but it makes every playbook fail the reference validator. With the recommendation, that repository migrates its playbooks in a small pull request of its own.
 2. **Fields outside the specification** (for example `version`, `author`, `aliases`, or Claude Code's `model`): recommended one warning per skill naming them, because tools add their own fields and an error would fail almost every real set.
 3. **The same rule ID in two skills**: recommended a warning (the reviewer usually cites the rule with its skill), and an error only inside one rules file.
+4. **Copies in tool folders.** A skill set is what one agent sees, so two separate files with the same name are a duplicate-name error, while links to the same file are read once. Giving a repository and a tool folder that holds copies (not links) together therefore fails. Recommended: keep it, and document that each tool folder is checked on its own; comparing tool folders with a repository is the job of `skills drift` (roadmap change 4).
+5. **Templates and test fixtures inside a skills folder** (a `templates/skill/SKILL.md` mould, deliberately broken fixtures) are read like any skill. Recommended: no ignore mechanism in this change; point the command at the folders that hold real skills, and rename a mould file (for example `SKILL.md.template`). An ignore list can come with the settings file that `skills-site` needs anyway.
+6. **Secret scan over whole files, code blocks included.** A security skill that shows a PEM header as an example fails. Recommended: keep scanning everything, because a real key pasted in a code block is the case that matters; a run over 148 real `SKILL.md`, `rules.md` and agent files found no false positive.
 
 ## Implicit requirements
 
-- **Errors and invalid input:** requirement. Every problem has a path, position, severity and message; a folder that cannot be read stops the command with exit 2; a file that cannot be read is an error for that file only.
+- **Errors and invalid input:** requirement. Every problem has a path, position, severity and message; a given folder that cannot be read stops the command with exit 2; a sub-folder or file that cannot be read is an error for that path only, and the rest is still read.
 - **Limits:** requirement. Folders are walked at most five levels deep; files over 1 MiB are not read (the catalogue's limit).
 - **Repetition and idempotency:** requirement. The output is the same for the same files, whatever the order the file system lists them in; the same skill folder reached twice is read once.
 - **Concurrency:** n/a: one read-only process; files changed during a run may give a mixed result, as with `stackledger validate`.
 - **Security:** requirement. Read-only, no network, symbolic links to non-skill folders are not followed, private keys and payment-card numbers are errors whose message never repeats the value.
 - **Logs and observability:** requirement. Problems on stdout, usage and folder errors on stderr, no other logging.
+
+## Dependencies
+
+ADR 10 and the v2 section of `docs/roadmap.md` arrive with PR #12; this change's documentation tasks update that roadmap row after PR #12 is merged.
 
 ## Documentation
 

@@ -29,7 +29,10 @@ Agents are not Agent Skills: they keep their tool's format. Claude Code's subage
 | A name in `stackledger-skills` or `stackledger-agents` that is not in the set | A name in an agent's `skills` that is not in the set; an agent `skills` that is not a list of strings |
 | A rule ID twice in one `rules.md` | A rule ID also used by another skill |
 | Private key or payment-card number in any file read | A symbolic link that does not lead to a skill folder |
-| A given folder that holds no skill, playbook or agent | |
+| A given folder in which no skill folder or agent file is found | A file in `agents/` with no frontmatter |
+| A sub-folder that cannot be listed | |
+
+Inside one file the checks run in a fixed order (size, secrets, frontmatter shape, name and description, other fields), and an error stops the later steps; an item joins the set only without errors, and the checks that compare items use only items in the set. That keeps one root cause to one message, and keeps every value of a file with a secret out of other items' messages.
 
 Errors are things a pipeline should stop on; warnings are things a person should know but that tools tolerate. The specification's own constraints are warnings because a set the person does not own (bundled skills) would otherwise never pass.
 
@@ -37,13 +40,15 @@ Errors are things a pipeline should stop on; warnings are things a person should
 
 Each given folder is walked depth first, entries in code-point order, at most five levels below it. A folder with a `SKILL.md` file is a skill; the walk does not enter it (its sub-folders are its resources). Folders whose name starts with `.` (below the given folder) and `node_modules` are skipped.
 
-A symbolic link to a folder is read only when that folder holds a `SKILL.md`, and is never walked into; any other symbolic link gives one warning and is not followed. This reads tool folders made of links (`~/.claude/skills/x -> repo/skills/y/x`) and makes loops and escapes impossible. A skill folder reached twice (through a link and directly, or from two given folders) is read once, at the first path in walk order, which uses the folders in argument order.
+A symbolic link to a folder is read only when that folder holds a `SKILL.md`, and is never walked into; any other folder link gives one warning and is not followed. File links (`SKILL.md`, `rules.md`, agent files) are read, and a given folder that is a link is followed. This reads tool folders made of links (`~/.claude/skills/x -> repo/skills/y/x`, `~/.claude/agents/x.md -> repo/agents/x.md`), and the walk can never loop: the only things read from outside the given folders are linked skill folders and linked files, never walked into. An item reached twice (through a link and directly, or from two given folders) is read once, at the first path in walk order, which uses the folders in argument order; sameness is decided by device and inode numbers, which also works on case-insensitive file systems.
+
+Copies are not links: two separate files with one name are a duplicate. A skill set is what one agent sees, so each tool folder is checked on its own; comparing tool folders with a repository is the later `skills drift` command.
 
 The folder name used for the "name differs from the folder" warning is the name of the link or folder where the skill was found, because that is the name the tool sees.
 
 ### 4. Reuse
 
-Paths, positions, problem shape, the text and JSON line formats, control-character handling, the 1 MiB limit and the secret rules come from the catalogue code (`src/source.ts`, `src/control.ts`, `src/secrets.ts`). The skill code lives in `src/skills/` and is not imported by the catalogue commands.
+Reused as they are: the `Problem` shape, `fieldName` and `MAX_FILE_BYTES` (`src/source.ts`), `sortProblems` (`src/validate.ts`), `secretRules` (`src/secrets.ts`), `withoutControls` and `escapeJsonControls` (`src/control.ts`), and the `yaml` package's positions. New code: frontmatter splitting and positions (the catalogue's `problem()` puts a missing field at the start of the mapping, while this change wants `1:1`, and its parser reports one problem per parser error, while this change wants one per file), and the text formatter, because the catalogue one in `src/cli.ts` prints the catalogue's counts. The skill code lives in `src/skills/` and is not imported by the catalogue commands.
 
 ## Risks
 

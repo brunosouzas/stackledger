@@ -5,7 +5,7 @@ Defines how stackledger finds and reads agent skills, playbooks, agents and rule
 ## ADDED Requirements
 
 ### Requirement: Skill set
-A skill set SHALL be every skill, playbook, agent and rule read from one or more given folders, read in the order the folders are given. Reading SHALL only read files: nothing is created, changed or deleted, and nothing is sent over the network.
+A skill set SHALL be the skills, playbooks, agents and rules read from one or more given folders, in the order the folders are given: what one agent would see. Reading SHALL only read files: nothing is created, changed or deleted, and nothing is sent over the network.
 
 #### Scenario: Two folders form one set
 - **WHEN** folder `a` holds skill `writer` and folder `b` holds a playbook whose `stackledger-skills` is `writer`
@@ -15,8 +15,23 @@ A skill set SHALL be every skill, playbook, agent and rule read from one or more
 - **WHEN** a set is read
 - **THEN** the hash and modification time of every file in the given folders are the same before and after
 
+#### Scenario: Offline and write-protected
+- **WHEN** the command runs under Node's permission model with file reads allowed and no write, network or child-process permission
+- **THEN** its output and exit code equal those of an unrestricted run
+
+### Requirement: Files and links
+A file SHALL be an entry that is a regular file or a symbolic link to a regular file; a file link SHALL be read at the link's path. A given folder that is a symbolic link SHALL be followed. Folder links met by the walk follow "Symbolic links to folders". Two entries SHALL be the same item when their targets have the same device and inode numbers.
+
+#### Scenario: Linked SKILL.md
+- **WHEN** folder `writer` holds `SKILL.md` as a link to a regular file
+- **THEN** `writer` is a skill folder and its problems use the path `writer/SKILL.md`
+
+#### Scenario: Linked given folder
+- **WHEN** the given folder is a link to a folder holding skills
+- **THEN** the skills are read and paths start with the argument as given
+
 ### Requirement: Finding skill folders
-A folder holding a regular file named exactly `SKILL.md` SHALL be a skill folder. Each given folder SHALL be walked depth first, entries in code-point order, at most five levels below it; the walk SHALL NOT enter a skill folder, `node_modules`, or a folder below the given one whose name starts with `.`. The given folder itself MAY be a skill folder.
+A folder holding a file named exactly `SKILL.md` SHALL be a skill folder. Each given folder SHALL be walked depth first, entries in code-point order of their names, at most five levels below it. The walk SHALL NOT enter a skill folder, `node_modules`, or a folder below the given one whose name starts with `.`, and skipping SHALL give no problem. When the given folder is itself a skill folder, it SHALL give that one skill.
 
 #### Scenario: Grouped skills
 - **WHEN** a given folder holds `skills/developer/java/SKILL.md` and `skills/developer/developer/SKILL.md`
@@ -27,23 +42,23 @@ A folder holding a regular file named exactly `SKILL.md` SHALL be a skill folder
 - **THEN** only `writer` is read
 
 #### Scenario: Depth limit
-- **WHEN** a `SKILL.md` lies six levels below the given folder (`a/b/c/d/e/f/SKILL.md`)
-- **THEN** it is not read, and one at five levels is
+- **WHEN** a `SKILL.md` lies in a folder six levels below the given folder (`a/b/c/d/e/f/SKILL.md`)
+- **THEN** it is not read and there is no problem, and one in a folder five levels below (`a/b/c/d/e/SKILL.md`) is read
 
 #### Scenario: Hidden and dependency folders
 - **WHEN** a given folder holds `.git/x/SKILL.md` and `node_modules/x/SKILL.md`
-- **THEN** neither is read
+- **THEN** neither is read and there is no problem
 
 #### Scenario: Given folder is a hidden tool folder
 - **WHEN** the given folder is `.claude` and it holds `skills/writer/SKILL.md`
 - **THEN** `writer` is read
 
 #### Scenario: A single skill
-- **WHEN** the given folder itself holds `SKILL.md`
-- **THEN** the set has that one skill and the walk stops there
+- **WHEN** the given folder itself holds `SKILL.md` and an `agents` folder with `helper.md`
+- **THEN** that folder gives one skill and no agent
 
-### Requirement: Symbolic links
-A symbolic link to a folder that holds a `SKILL.md` SHALL be read as a skill folder found at the link's path, without walking into it. Any other symbolic link met by the walk (to a folder without `SKILL.md`, to a file, broken) SHALL get one warning on the link's path and SHALL NOT be followed.
+### Requirement: Symbolic links to folders
+A symbolic link to a folder holding a `SKILL.md` SHALL be read as a skill folder found at the link's path, without walking into it. Any other link the walk meets, except a file link where a file is expected, SHALL get one warning on the link's path and SHALL NOT be followed. So the walk never loops, and only linked skill folders are read from outside the given folders.
 
 #### Scenario: Tool folder made of links
 - **WHEN** `.claude/skills/writer` is a link to a folder holding `SKILL.md`
@@ -57,41 +72,74 @@ A symbolic link to a folder that holds a `SKILL.md` SHALL be read as a skill fol
 - **WHEN** `skills/old` is a link to a path that does not exist
 - **THEN** there is one warning on `skills/old` and the rest of the set is read
 
-### Requirement: One read per skill folder
-A skill folder reached more than once (through a link and directly, or from two given folders) SHALL be read once, at the first path in walk order, with no problem. Two folders are the same when their real paths are equal.
+### Requirement: One read per item
+A skill folder or agent file reached more than once (through a link and directly, or from two given folders) SHALL be read once, at the first path in walk order, with no problem. Walk order SHALL be the folders in argument order, each walked as in "Finding skill folders". Copies (separate files with the same content) are different items.
 
-#### Scenario: Repository and tool folder given together
-- **WHEN** the folders `repo` and `.claude` are given and `.claude/skills/writer` links to `repo/skills/writer/writer`
+#### Scenario: Linked copy of a repository skill
+- **WHEN** folders `repo` and `tool` are given and `tool/skills/writer` links to `repo/skills/writer`
 - **THEN** `writer` is read once, with the path under `repo`, and there is no duplicate-name error
 
+### Requirement: Folders that cannot be read
+A folder below a given folder that cannot be listed, or a linked skill folder that cannot be read, SHALL be an error at `1:1` on its path; the rest of the set SHALL still be read. A given folder that cannot be read is a command failure, defined by the command.
+
+#### Scenario: Unlistable sub-folder
+- **WHEN** `skills/private` cannot be listed
+- **THEN** there is one error on `skills/private` and the other skills are read
+
+### Requirement: Order of checks in one file
+Each `SKILL.md` and agent file SHALL be checked in this order, and an error at a step SHALL stop the later steps for that file: (1) size and readability; (2) secret rules; (3) frontmatter shape; (4) `name` and `description`, both reported; (5) every other field check, all reported. An item SHALL join the set only when its file has no error.
+
+#### Scenario: Secret and no frontmatter
+- **WHEN** a `SKILL.md` has no frontmatter and holds private-key material
+- **THEN** there is exactly one error, the secret one, and the skill is not in the set
+
+#### Scenario: Several field problems
+- **WHEN** a skill has `stackledger-kind: process` and a 1025-code-point description
+- **THEN** both problems are reported and the skill is not in the set
+
+#### Scenario: Name and description both missing
+- **WHEN** a `SKILL.md` frontmatter is `{}`
+- **THEN** there are two errors, for `name` and `description`
+
+### Requirement: Checks across items
+Checks that compare items (unique names, relation targets, agent preloads, rule IDs across skills) SHALL use only items that joined the set, in walk order. A file with an error SHALL give no problem other than its own, so a value of a rejected file is never repeated in another item's message.
+
+#### Scenario: Target excluded by an error
+- **WHEN** a playbook names `editor` and `editor`'s `SKILL.md` has no frontmatter
+- **THEN** there is an error on the playbook naming `editor`, besides the error on `editor`'s file
+
 ### Requirement: Frontmatter
-A `SKILL.md` SHALL start with a line `---`, after an optional byte-order mark, and the frontmatter SHALL end at the next line `---`; the text between SHALL be one YAML mapping. Line endings MAY be LF or CRLF. Otherwise the file SHALL get one error and the skill SHALL NOT join the set.
+A `SKILL.md` SHALL start with a line `---`, after an optional UTF-8 byte-order mark, and the frontmatter SHALL end at the next line `---`; the text between SHALL be one YAML mapping without duplicate keys. Line endings MAY be LF or CRLF. Otherwise the file SHALL get exactly one error at `1:1`.
 
 #### Scenario: No frontmatter
 - **WHEN** a `SKILL.md` starts with `# Writer`
 - **THEN** there is one error at `1:1` and the skill is not in the set
 
 #### Scenario: Invalid YAML
-- **WHEN** the frontmatter has a duplicate key or a syntax error
-- **THEN** there is one error on that file and the skill is not in the set
+- **WHEN** the frontmatter has a duplicate key and a syntax error
+- **THEN** there is exactly one error at `1:1` on that file and the skill is not in the set
 
-#### Scenario: CRLF file
-- **WHEN** a valid `SKILL.md` uses CRLF line endings
+#### Scenario: Frontmatter never closed
+- **WHEN** a `SKILL.md` starts with `---` and has no second `---` line
+- **THEN** there is one error at `1:1`
+
+#### Scenario: CRLF and byte-order mark
+- **WHEN** a valid `SKILL.md` starts with a byte-order mark and uses CRLF line endings
 - **THEN** it is read with no problem
 
 ### Requirement: Name and description
-`name` and `description` SHALL be non-empty strings; a missing, empty or non-string value SHALL be an error and the skill SHALL NOT join the set. A skill's identity in the set SHALL be its `name`, compared by code point.
+`name` and `description` SHALL be non-empty strings; a missing, empty or non-string value SHALL be an error with that field, at `1:1` when missing. A skill's identity SHALL be its `name`, compared by code point, because tools load a skill by its exact name.
 
 #### Scenario: Missing description
 - **WHEN** a `SKILL.md` has `name: writer` and no `description`
-- **THEN** there is an error with field `description` and `writer` is not in the set
+- **THEN** there is an error with field `description` at `1:1` and `writer` is not in the set
 
 #### Scenario: Name not a string
 - **WHEN** a `SKILL.md` has `name: 42`
 - **THEN** there is an error with field `name`
 
 ### Requirement: Agent Skills specification checks
-Each of these SHALL be a warning with the field it concerns: a `name` that is not 1–64 lower-case letters, digits and single hyphens with no hyphen at either end; a `name` different from the name of the folder or link where the skill was found; a `description` over 1024 characters; `compatibility` that is not a 1–500 character string; `license` or `allowed-tools` that is not a string.
+Each SHALL be a warning with its field: a `name` that, after NFKC normalisation, is over 64 code points, has an upper-case letter, holds anything but Unicode letters, digits and hyphens, starts or ends with `-`, or holds `--`; a `name` unlike the folder or link name where the skill was found; a `description` over 1024 code points; `compatibility` not a 1–500 code-point string; `license` or `allowed-tools` not a string.
 
 #### Scenario: Upper-case name
 - **WHEN** a skill has `name: Writer` in folder `Writer`
@@ -102,11 +150,11 @@ Each of these SHALL be a warning with the field it concerns: a `name` that is no
 - **THEN** there is a warning with field `name` naming the folder
 
 #### Scenario: Description at the limit
-- **WHEN** a description has 1024 characters
-- **THEN** there is no problem, and with 1025 characters there is one warning with field `description`
+- **WHEN** a description has 1024 code points, one of them an emoji
+- **THEN** there is no problem, and with 1025 code points there is one warning with field `description`
 
 ### Requirement: Fields outside the specification
-Top-level fields other than `name`, `description`, `license`, `compatibility`, `metadata` and `allowed-tools` SHALL give one warning per skill, at `1:1` with field `-`, naming every such field in code-point order. A `metadata` that is not a mapping, or a `metadata` value that is not a string under a key not starting with `stackledger-`, SHALL be a warning with its field.
+Top-level fields other than `name`, `description`, `license`, `compatibility`, `metadata` and `allowed-tools` SHALL give one warning per skill, at `1:1` with no field, naming them in code-point order. A `metadata` that is not a mapping, or a `metadata` value that is not a string under a key not starting with `stackledger-` in any letter case, SHALL be a warning with its field.
 
 #### Scenario: Tool-specific fields
 - **WHEN** a skill has top-level `version`, `author` and `aliases`
@@ -117,7 +165,7 @@ Top-level fields other than `name`, `description`, `license`, `compatibility`, `
 - **THEN** there is a warning with field `metadata.hermes`
 
 ### Requirement: Relation keys
-Keys in `metadata` starting with `stackledger-` in any letter case SHALL be only `stackledger-kind`, `stackledger-skills` and `stackledger-agents` (exact case), each with a string value; any other such key, or a non-string value, SHALL be an error with its field. `stackledger-kind` SHALL be `skill` or `playbook` (exact case); when absent the item is a skill.
+Keys in `metadata` starting with `stackledger-` in any letter case SHALL be only `stackledger-kind`, `stackledger-skills` and `stackledger-agents` (exact case), each with a string value. Any other such key SHALL be one error at the key; a non-string value, one error at the value. `stackledger-kind` SHALL be `skill` or `playbook` (exact case); absent means `skill`.
 
 #### Scenario: Playbook
 - **WHEN** a skill has `metadata.stackledger-kind: playbook`
@@ -125,7 +173,11 @@ Keys in `metadata` starting with `stackledger-` in any letter case SHALL be only
 
 #### Scenario: Typo in a key
 - **WHEN** a skill has `metadata.stackledger-skill: writer`
-- **THEN** there is an error with field `metadata.stackledger-skill`
+- **THEN** there is one error with field `metadata.stackledger-skill` at the key
+
+#### Scenario: Unknown key with a list value
+- **WHEN** a skill has `metadata.Stackledger-Uses` set to a YAML list
+- **THEN** there is exactly one error, at the key
 
 #### Scenario: Unknown kind
 - **WHEN** a skill has `metadata.stackledger-kind: process`
@@ -136,7 +188,7 @@ Keys in `metadata` starting with `stackledger-` in any letter case SHALL be only
 - **THEN** there is an error with field `metadata.stackledger-skills` saying it must be names separated by spaces
 
 ### Requirement: Declared relations
-`stackledger-skills` and `stackledger-agents` SHALL be read as names separated by one or more spaces; an empty or blank string declares none. Each name SHALL be a skill or playbook (for `stackledger-skills`) or an agent (for `stackledger-agents`) of the set; otherwise it SHALL be an error with the field, naming the missing item. A name listed twice, or a skill listing itself, SHALL be a warning.
+Skills and playbooks MAY declare `stackledger-skills` and `stackledger-agents`, read as names separated by whitespace (spaces, tabs, line breaks); a blank string declares none. Each distinct name not in the set as a skill or playbook (for `stackledger-skills`) or as an agent (for `stackledger-agents`) SHALL be one error with the field, naming it.
 
 #### Scenario: Missing skill
 - **WHEN** a playbook has `stackledger-skills: writer editr` and the set has no `editr`
@@ -146,27 +198,46 @@ Keys in `metadata` starting with `stackledger-` in any letter case SHALL be only
 - **WHEN** a playbook has `stackledger-agents: reviewer` and the set has no agent `reviewer`
 - **THEN** there is one error with field `metadata.stackledger-agents` naming `reviewer`
 
+#### Scenario: Names on several lines
+- **WHEN** `stackledger-skills` is a YAML block holding `writer` and `editor` on two lines, both in the set
+- **THEN** both relations are read and there is no problem
+
+### Requirement: Repeated and self relations
+A name listed more than once in one relation SHALL give one warning, and a skill or playbook listing itself in `stackledger-skills` SHALL give one warning; these come in addition to the missing-name error when the name is also missing.
+
 #### Scenario: Repeated name
 - **WHEN** a playbook has `stackledger-skills: writer  writer`
 - **THEN** there is one warning and no error
 
-#### Scenario: Target excluded by an error
-- **WHEN** a playbook names `editor` and `editor`'s `SKILL.md` has no frontmatter
-- **THEN** there is an error on the playbook naming `editor`, besides the error on `editor`'s file
+#### Scenario: Missing name repeated
+- **WHEN** a playbook has `stackledger-skills: editr editr` and the set has no `editr`
+- **THEN** there is one error and one warning
 
 ### Requirement: Agent files
-Each regular file ending in `.md` directly inside an `agents` folder at the top of a given folder SHALL be an agent file, read with the frontmatter rules of `SKILL.md`. `name` and `description` SHALL be non-empty strings, or the file SHALL get an error and the agent SHALL NOT join the set. Other fields SHALL be accepted without problems.
+Each file ending in `.md` directly in an `agents` folder at the top of a given folder that is not a skill folder SHALL be checked as an agent, with the frontmatter rules of `SKILL.md`, except that a file with no frontmatter block SHALL get one warning and not be an agent. `name` and `description` SHALL be non-empty strings, or the file SHALL get an error. Other fields SHALL give no problem.
 
 #### Scenario: Claude Code subagent
 - **WHEN** `agents/reviewer.md` has `name`, `description`, `tools` and `model`
 - **THEN** agent `reviewer` is in the set with no problem
+
+#### Scenario: Linked agent file
+- **WHEN** `agents/reviewer.md` is a link to a regular file with a valid agent
+- **THEN** agent `reviewer` is read at the path `agents/reviewer.md`
+
+#### Scenario: Agent without a name
+- **WHEN** `agents/helper.md` has a frontmatter with only `description`
+- **THEN** there is an error with field `name` and no agent from that file
+
+#### Scenario: Notes in the agents folder
+- **WHEN** `agents/README.md` has no frontmatter
+- **THEN** there is one warning and no agent from that file
 
 #### Scenario: Nested agents folder
 - **WHEN** a skill folder holds `agents/helper.md`
 - **THEN** it is not read as an agent
 
 ### Requirement: Preloaded skills of an agent
-An agent's `skills`, when present, SHALL be a YAML list of strings; otherwise it SHALL be a warning with field `skills` and no skill is read from it. Each name not in the set as a skill or playbook SHALL be a warning with the field `skills[n]`, because the tool loading the agent only skips it.
+An agent's `skills`, when present, SHALL be a YAML list of strings; otherwise it SHALL be one warning with field `skills` and no preload is read. Each listed name not in the set as a skill or playbook SHALL be a warning with field `skills[n]`, because the tool loading the agent only skips it.
 
 #### Scenario: Unknown preloaded skill
 - **WHEN** agent `reviewer` has `skills: [code-review, linting]` and the set has no `linting`
@@ -177,62 +248,89 @@ An agent's `skills`, when present, SHALL be a YAML list of strings; otherwise it
 - **THEN** there is a warning with field `skills`
 
 ### Requirement: Unique names
-A skill or playbook whose `name` is already used by an earlier skill or playbook of the set, in walk order, SHALL be an error on the later file and SHALL NOT join the set. The same SHALL hold for two agents with the same `name`. A skill and an agent MAY share a name.
+A skill or playbook whose `name` is already used by an earlier skill or playbook of the set SHALL be an error with field `name` on the later file, naming the earlier path, and SHALL NOT join the set. The same SHALL hold for two agents. A skill and an agent MAY share a name.
 
 #### Scenario: Same skill name in two folders
 - **WHEN** different folders `a/writer` and `b/writer` both have `name: writer`, given as `a b`
-- **THEN** there is one error on `b/writer/SKILL.md` naming the first path, and relations use the skill under `a`
+- **THEN** there is one error on `b/writer/SKILL.md` naming `a/writer/SKILL.md`, and relations use the skill under `a`
+
+#### Scenario: Two agents with one name
+- **WHEN** `agents/review.md` and `agents/reviewer.md` both have `name: reviewer`
+- **THEN** there is one error on `agents/reviewer.md`
 
 ### Requirement: Rules files
-A regular file `rules.md` directly inside a skill folder SHALL be read for rules: each line starting with `- **ID**`, where ID is an upper-case letter, then upper-case letters or digits, `-` and digits, starts a rule whose text is the rest of the line. Lines inside fenced code blocks SHALL be ignored. The nearest earlier `## ` heading SHALL be the rule's group.
+For a skill that joined the set, the file `rules.md` directly in its folder SHALL be read for rules: a line starting at column 1 with `- **ID**`, ID matching `[A-Z][A-Z0-9]*-[0-9]+`, then a space and text, starts a rule. Indented lines starting with `Why:` or `Check:` before the next rule or heading SHALL be its optional why and check. The nearest earlier `## ` heading SHALL be its group, or none.
 
 #### Scenario: Rule with why and check
-- **WHEN** `rules.md` holds `- **FLOW-1** Keep flows thin.` under `## Flows (FLOW)`
-- **THEN** rule `FLOW-1` with group `Flows (FLOW)` belongs to the skill
+- **WHEN** `rules.md` holds `- **FLOW-1** Keep flows thin.` under `## Flows (FLOW)`, then `  Why: logic hides.` and `  Check: one reference.`
+- **THEN** rule `FLOW-1` has that text, why, check and group `Flows (FLOW)`
 
-#### Scenario: Example inside a code fence
-- **WHEN** `- **LOG-1** example` appears inside a fenced code block
+#### Scenario: Indented item
+- **WHEN** a line is `  - **FLOW-2** nested`
 - **THEN** no rule is read from it
 
+### Requirement: Code fences in rules files
+A line starting with up to three spaces and then three or more backticks or tildes SHALL open a fenced block, closed by a line with at least as many of the same character; a block never closed runs to the end of the file. No rule SHALL be read inside a fenced block.
+
+#### Scenario: Example inside a code fence
+- **WHEN** `- **LOG-1** example` appears between two lines `~~~`
+- **THEN** no rule is read from it
+
+#### Scenario: Fence never closed
+- **WHEN** a line of three backticks has no closing line
+- **THEN** no rule is read after it
+
 ### Requirement: Rule IDs
-A rule ID already used earlier in the same `rules.md` SHALL be an error at the later line. A rule ID already used by a skill earlier in walk order SHALL be a warning at the later line naming that skill. Rule IDs SHALL be compared by code point.
+A rule ID used earlier in the same `rules.md` SHALL be an error at the later line, and that rule SHALL NOT be read. Otherwise, a rule ID used by a skill earlier in walk order SHALL be a warning at the later line naming that skill, and the rule SHALL be read. IDs SHALL be compared by code point.
 
 #### Scenario: Duplicate in one file
 - **WHEN** one `rules.md` defines `DOC-1` twice
-- **THEN** there is an error at the second line
+- **THEN** there is one error at the second line and the skill has one rule `DOC-1`
 
 #### Scenario: Same ID in two skills
 - **WHEN** skills `developer` and `documentation` both define `DOC-1`
 - **THEN** there is a warning on the later one naming the earlier skill, and no error
 
 ### Requirement: Secrets in skill files
-Every `SKILL.md`, `rules.md` and agent file read SHALL be checked with the catalogue's secret rules: private-key material, and a payment-card number of 13 to 19 digits passing the Luhn check. Each match SHALL be an error at `1:1` on that file with a fixed message that never repeats the value.
+Every `SKILL.md`, `rules.md` and agent file read SHALL be checked with the catalogue's secret rules (private-key material; a payment-card number of 13 to 19 digits passing the Luhn check), fenced blocks included. Each broken rule SHALL be one error at `1:1` with a fixed message that never repeats the value; a `rules.md` with such an error gives no rules.
 
 #### Scenario: Private key in a skill
 - **WHEN** a `SKILL.md` body holds a `-----BEGIN RSA PRIVATE KEY-----` block
 - **THEN** there is one error on that file and the output does not contain the key text
+
+#### Scenario: Card number as a skill name
+- **WHEN** a `SKILL.md` has `name: "4111111111111111"` and a playbook lists the same number in `stackledger-skills`
+- **THEN** each of the two files has one secret error and no other problem, and no output line contains the number
 
 #### Scenario: Ordinary numbers
 - **WHEN** a rules file holds `1234567890123` that fails the Luhn check
 - **THEN** there is no problem
 
 ### Requirement: Files that cannot be read
-A `SKILL.md`, `rules.md` or agent file over 1 MiB, or one that cannot be read, SHALL be an error at `1:1` on that file; the rest of the set SHALL still be read. A skill whose `SKILL.md` cannot be read SHALL NOT join the set; a skill whose `rules.md` cannot be read SHALL join it without rules.
+A `SKILL.md`, `rules.md` or agent file over 1 MiB, or one that cannot be read, SHALL be an error at `1:1` on that file; the rest of the set SHALL still be read. A skill whose `rules.md` has an error SHALL join the set with no rules.
 
 #### Scenario: Oversized rules file
 - **WHEN** a `rules.md` has 1 MiB and one byte
 - **THEN** there is one error on it and its skill is in the set with no rules
 
-### Requirement: Folders with nothing to read
-A given folder from which no skill, playbook or agent is read SHALL be an error with that folder as its path, so a wrong path fails in a pipeline. A folder whose items were all already read through an earlier folder SHALL NOT get this error.
+#### Scenario: Unreadable SKILL.md
+- **WHEN** a `SKILL.md` cannot be read
+- **THEN** there is one error on it, the skill is not in the set and the other skills are read
+
+### Requirement: Folders with nothing found
+A given folder in which no skill folder and no agent file is found, counting those already read through an earlier folder, SHALL be an error, so a wrong path fails a pipeline. Its path SHALL be the folder argument as given, or `.` when no folder is given.
 
 #### Scenario: Wrong folder
 - **WHEN** the given folder holds only `README.md`
 - **THEN** there is one error naming that folder
 
+#### Scenario: Everything already read
+- **WHEN** folders `repo` and `tool` are given and `tool` holds only links to skills of `repo`
+- **THEN** there is no problem about `tool`
+
 ### Requirement: Deterministic problems
 Problems SHALL be sorted by path, line, column, field, severity (error first) and message, comparing text by code point, so the same files give the same output on any machine.
 
 #### Scenario: Listing order does not matter
-- **WHEN** the same files are read on two file systems that list entries in different orders
+- **WHEN** the same files are read through a folder listing that returns entries in reversed order
 - **THEN** the problems are identical
