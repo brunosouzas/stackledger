@@ -22,7 +22,7 @@ import { neighbourhood, renderNeighbourhood, type DiagramNode } from '../map/nei
 import { renderLineBadge, renderStrip, strip } from '../map/strip.js';
 import { renderSvg, renderSymbol } from '../map/svg.js';
 import { displayOwner } from './owners.js';
-import { themes, type Theme } from '../map/themes.js';
+import { inkOf, themes, widestInk, type Theme } from '../map/themes.js';
 import { applyView, resolveHidden, settingsInError, type ViewName } from '../views.js';
 import type { Catalogue } from '../validate.js';
 import { licenceFields, type Licence, type LicenceField, type SiteColorName } from '../schema.js';
@@ -255,8 +255,10 @@ export function buildSiteData(catalogue: Catalogue, view: ViewName, version: str
   const graph = buildGraph(served);
   // The staff model never evaluates the date; pass none so nothing date-like can reach staff data.
   const model = buildMapModel(served, view === 'full' ? date! : '');
-  const geometry = layoutMap(model, themes.light.lineWidth);
-  const darkGeometry = themes.dark.lineWidth === themes.light.lineWidth ? geometry : layoutMap(model, themes.dark.lineWidth);
+  // One ink for both copies, so labels sit in the same places and zoom moves both maps alike.
+  const ink = widestInk(inkOf(themes.light), inkOf(themes.dark));
+  const geometry = layoutMap(model, themes.light.lineWidth, ink);
+  const darkGeometry = themes.dark.lineWidth === themes.light.lineWidth ? geometry : layoutMap(model, themes.dark.lineWidth, ink);
   const pages = new PageBuilder(graph, model, owners);
   const items = [...graph.items.values()].sort((one, two) => compareRefs(one.ref, two.ref));
   const components = items.filter((item): item is Extract<Item, { kind: 'component' }> => item.kind === 'component');

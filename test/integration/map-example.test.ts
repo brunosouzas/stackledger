@@ -10,30 +10,36 @@ import { buildMapModel } from '../../src/map/model.js';
 import { layoutMap } from '../../src/map/layout.js';
 import { suggestPositions, octile } from '../../src/map/suggest.js';
 import { routeMap, directionOf } from '../../src/map/route.js';
+import { themes, inkOf } from '../../src/map/themes.js';
 import { root, run } from './helpers.js';
 const example=join(root,'examples/northwind');
 test('Labels do not collide in the example',async()=>{
  const catalogue=await validateFolder(example);expect(catalogue.summary).toMatchObject({errors:0,warnings:0});expect(catalogue.problems).toEqual([]);
- const g=layoutMap(buildMapModel(applyView(catalogue.served,'full',resolveHidden(catalogue)),'2027-06-01'));
- expect(g.stations).toHaveLength(17);expect(g.lines).toHaveLength(7);expect(g.unrouted).toEqual([]);expect(g.suggestions).toEqual([]);
  const hits=(a:any,b:any)=>a.x<b.x+b.w && b.x<a.x+a.w && a.y<b.y+b.h && b.y<a.y+a.h;
- for(const label of g.labels){
-  for(const other of g.labels.filter(l=>l!==label))expect(hits(label.box,other.box),`${label.ref} covers ${other.ref}`).toBe(false);
-  for(const station of g.stations)expect(hits(label.box,station.marker.box),`${label.ref} covers ${station.ref}`).toBe(false);
-  for(const badge of g.badges)expect(hits(label.box,badge.box),`${label.ref} covers badge ${badge.text}`).toBe(false);
+ for(const theme of Object.values(themes))for(const view of ['full','staff'] as const){
+  // Markers and badges as drawn: outline (with rim) on every side, shadow to the right and below.
+  const ink=inkOf(theme),half=ink.outline/2,grow=(b:any)=>({x:b.x-half,y:b.y-half,w:b.w+ink.outline+ink.shadow[0],h:b.h+ink.outline+ink.shadow[1]});
+  const g=layoutMap(buildMapModel(applyView(catalogue.served,view,resolveHidden(catalogue)),'2027-06-01'),theme.lineWidth,ink);
+  expect(g.stations).toHaveLength(17);expect(g.lines).toHaveLength(7);expect(g.unrouted).toEqual([]);expect(g.suggestions).toEqual([]);
+  for(const label of g.labels){
+   for(const other of g.labels.filter(l=>l!==label))expect(hits(label.box,other.box),`${label.ref} covers ${other.ref}`).toBe(false);
+   for(const station of g.stations)expect(hits(label.box,grow(station.marker.box)),`${label.ref} covers ${station.ref} or its shadow`).toBe(false);
+   for(const badge of g.badges)expect(hits(label.box,grow(badge.box)),`${label.ref} covers badge ${badge.text} or its shadow`).toBe(false);
+  }
  }
 });
 test('Terminal badges in the example overlap no badge, station marker or licence marker',async()=>{
  const catalogue=await validateFolder(example);
  const hits=(a:any,b:any)=>a.x<b.x+b.w && b.x<a.x+a.w && a.y<b.y+b.h && b.y<a.y+a.h;
- for(const view of ['full','staff'] as const){
-  const g=layoutMap(buildMapModel(applyView(catalogue.served,view,resolveHidden(catalogue)),'2027-06-01'));
+ for(const theme of Object.values(themes))for(const view of ['full','staff'] as const){
+  const ink=inkOf(theme),half=ink.outline/2,grow=(b:any)=>({x:b.x-half,y:b.y-half,w:b.w+ink.outline+ink.shadow[0],h:b.h+ink.outline+ink.shadow[1]});
+  const g=layoutMap(buildMapModel(applyView(catalogue.served,view,resolveHidden(catalogue)),'2027-06-01'),theme.lineWidth,ink);
   expect(g.badges).toHaveLength(g.lines.length*2);
   for(const [i,badge] of g.badges.entries()){
-   for(const other of g.badges.slice(i+1))expect(hits(badge.box,other.box),`badge ${badge.text} covers badge ${other.text}`).toBe(false);
+   for(const other of g.badges.slice(i+1))expect(hits(grow(badge.box),grow(other.box)),`badge ${badge.text} or its shadow covers badge ${other.text}`).toBe(false);
    for(const station of g.stations){
-    expect(hits(badge.box,station.marker.box),`badge ${badge.text} covers ${station.ref}`).toBe(false);
-    if(station.licencePoint)expect(hits(badge.box,{x:station.licencePoint[0]-6,y:station.licencePoint[1]-6,w:12,h:12}),`badge ${badge.text} covers licence of ${station.ref}`).toBe(false);
+    expect(hits(grow(badge.box),grow(station.marker.box)),`badge ${badge.text} covers ${station.ref}`).toBe(false);
+    if(station.licencePoint)expect(hits(grow(badge.box),grow({x:station.licencePoint[0]-5,y:station.licencePoint[1]-5,w:10,h:10})),`badge ${badge.text} covers licence of ${station.ref}`).toBe(false);
    }
   }
  }

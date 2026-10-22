@@ -41,12 +41,16 @@ const thisFile = fileURLToPath(import.meta.url);
 const packageRoot = fileURLToPath(new URL('../../', import.meta.url));
 const siteSource = join(packageRoot, 'site');
 
-/** Font files copied from the @fontsource packages: Heebo for text, Signika for headings (as brunosouzas.com). */
+/** Font files copied from the @fontsource packages: Heebo for text, Signika for headings and Lato for
+ * the map and diagrams (as brunosouzas.com and its illustrations). */
 const FONT_FILES: readonly [string, string][] = [
   ['@fontsource/heebo', 'heebo-latin-400-normal.woff2'],
   ['@fontsource/heebo', 'heebo-latin-600-normal.woff2'],
   ['@fontsource/signika', 'signika-latin-500-normal.woff2'],
   ['@fontsource/signika', 'signika-latin-700-normal.woff2'],
+  ['@fontsource/lato', 'lato-latin-400-normal.woff2'],
+  ['@fontsource/lato', 'lato-latin-700-normal.woff2'],
+  ['@fontsource/lato', 'lato-latin-900-normal.woff2'],
 ];
 
 const HEX_COLOUR = /^#[0-9a-fA-F]{6}$/;

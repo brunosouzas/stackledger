@@ -13,12 +13,13 @@ The first version (v1) is split into OpenSpec changes, delivered in this order. 
 | 5 | `licence-reports` | Renewals, recurring cost per month and per year for each currency (no conversion) by owner, payer and zone, one-off costs, planned purchases and incomplete licences; a Reports page and a `renewals.ics` calendar file to download in the `full` site only; and `stackledger report` (text, JSON, CSV, iCalendar) | Delivered ([#7](https://github.com/brunosouzas/stackledger/pull/7)) |
 | 6 | `mac-discovery` | `stackledger discover` (Homebrew formulae and casks, App Store through `mas`, `/Applications` and `~/Applications`, launchd, mise, global npm packages and pipx; every program in the macOS sandbox with network and writes denied; one snapshot file per machine in `~/.stackledger/<machine>/`) and `stackledger drift` (installed but not declared, declared but missing, not checked), matched only through `stackledger/<source>` annotations; it proposes annotations and `dependsOn` relations a person confirms, and `--scaffold` writes draft component files outside the catalogue | Delivered ([#8](https://github.com/brunosouzas/stackledger/pull/8)); spec in `openspec/specs/mac-discovery/`, `discover-command/` and `drift-command/` |
 | 7 | `catalogue-deployment` | Publishable npm package, owner-approved release workflow with provenance and SBOM, a catalogue repository pipeline template, and protected hosting recipes ([ADR 6](adr/0006-authentication-at-an-identity-aware-proxy.md)) | Delivered, 0.1.0 not yet released ([#9](https://github.com/brunosouzas/stackledger/pull/9)) |
+| 8 | `map-theme-ink` | The map and the page diagrams in the illustrated style of brunosouzas.com: ink outline `#0A1033`, pipe lines with an ink casing, hard offset shadows (indigo with a light rim on dark), the tinted panel and navy backgrounds, and the Lato font shipped with the site; it replaces the look of the `light` and `dark` themes | Delivered ([#10](https://github.com/brunosouzas/stackledger/pull/10)) |
 
 ## Later
 
 - `map-backgrounds`: a city backdrop behind the map (`neutral`, `london`, `sao-paulo` to start), chosen in `Settings` or with `--background`. Drawn from OpenStreetMap data (rivers, coastline, parks), simplified and attributed, never from official metro maps, which are copyrighted. The map engine already draws an empty background layer for it.
 
-- `map-theme-ink`: an illustrated theme matching the diagrams of brunosouzas.com (ink outline `#0A1033`, hard offset shadow, light tinted panel, Lato font stack), added as theme data; icons and line badges drawn with the site's designer style.
+- Icons and line badges drawn with the designer style of brunosouzas.com.
 
 - Build from a Git URL as well as a local folder.
 - Merge catalogues from several repositories (for example, one per team), like Backstage catalogue locations.

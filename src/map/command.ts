@@ -12,7 +12,7 @@ import { isDate, localDate } from '../graph.js';
 import { buildMapModel } from './model.js';
 import { layoutMap, type MapGeometry } from './layout.js';
 import { renderSvg } from './svg.js';
-import { themes } from './themes.js';
+import { inkOf, themes } from './themes.js';
 import { internal } from '../errors.js';
 
 const plural = (count: number, word: string): string => `${count} ${count === 1 ? word : `${word}s`}`;
@@ -66,7 +66,7 @@ export async function mapCommand(args: string[]): Promise<void> {
   let geometry: MapGeometry;
   let svg: string;
   try {
-    geometry = layoutMap(buildMapModel(served, date), theme.lineWidth);
+    geometry = layoutMap(buildMapModel(served, date), theme.lineWidth, inkOf(theme));
     svg = renderSvg(geometry, theme);
   } catch (error) {
     throw internal('map', error);

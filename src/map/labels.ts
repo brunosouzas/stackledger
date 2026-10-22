@@ -89,6 +89,15 @@ export function overlapArea(a: Box, b: Box): number {
 
 /** Area of a convex polygon inside a box (Sutherland-Hodgman clipping, then the shoelace formula). */
 function polygonAreaInBox(polygon: Point[], box: Box): number {
+  // Most obstacles are far away: reject on the bounding box before clipping.
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [px, py] of polygon) {
+    if (px < minX) minX = px;
+    if (px > maxX) maxX = px;
+    if (py < minY) minY = py;
+    if (py > maxY) maxY = py;
+  }
+  if (maxX <= box.x || minX >= box.x + box.w || maxY <= box.y || minY >= box.y + box.h) return 0;
   const edges = [[0, box.x, 1], [0, box.x + box.w, -1], [1, box.y, 1], [1, box.y + box.h, -1]] as const;
   let clipped = polygon;
   for (const [axis, bound, sign] of edges) {

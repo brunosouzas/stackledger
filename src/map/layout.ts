@@ -1,6 +1,7 @@
 /** Assemble plain map geometry from a model: suggestions, routes, slots, markers and labels.
- * Call layoutMap(buildMapModel(view,date)); no I/O or mutation. Unrouted hops are retained
- * for the CLI to report. Theme-independent points keep stored stations stable.
+ * Call layoutMap(buildMapModel(view,date), theme.lineWidth, inkOf(theme)); no I/O or mutation.
+ * Unrouted hops are retained for the CLI to report. Theme-independent points keep stored stations
+ * stable; the theme's ink (casing, outline, shadow) only grows the obstacles of labels and badges.
  */
 import type { MapModel, MapStation, MapLine, Point } from './model.js';
 import { suggestPositions, type Suggestion } from './suggest.js';
@@ -9,9 +10,15 @@ import { parallelLines, GRID, type Stroke } from './parallel.js';
 import { placeLabels, segmentObstacle, textWidth, type Box, type Label, type Obstacle } from './labels.js';
 import { zoneGeometry, type ZoneGeometry } from './zones.js';
 import { badgeWidth, placeBadges, type Badge } from './badges.js';
+import { inkBox, inkOf, themes, type Ink } from './themes.js';
+
+export { inkBox } from './themes.js';
 
 export type { Badge } from './badges.js';
-export interface Marker { kind: 'tick' | 'interchange'; box: Box; contacts: Point[]; normal: Point; a: Point; b: Point }
+/** A stop is a circle on its line; an interchange a capsule: every point within `radius` of the
+ * segment `ends`, which runs along its contacts, so it contains them whatever the lines' angle.
+ * `box` bounds the shape; `halo` is the radius of renewal rings. */
+export interface Marker { kind: 'stop' | 'interchange'; box: Box; contacts: Point[]; ends: [Point, Point]; radius: number; halo: number }
 export interface StationGeometry extends MapStation { point: Point; suggested: boolean; marker: Marker; licencePoint: Point | undefined }
 export interface MapGeometry {
   view: MapModel['view'];
@@ -27,8 +34,11 @@ export interface MapGeometry {
   viewBox: Box;
 }
 
-const TICK_LENGTH = 11;
-const LICENCE_RADIUS = 6;
+const LICENCE_RADIUS = 5;
+/** A stop circle is a little wider than the pipe it sits on (as the banner's circles); interchanges are larger. */
+const stopRadius = (lineWidth: number, ink: Ink): number => (lineWidth + ink.casing) / 2 + 3;
+const INTERCHANGE_EXTRA = 2;
+const LABEL_CLEARANCE = 3;
 
 /** Bounding box of any number of points, computed without spreading them into Math.min/Math.max. */
 function bounding(points: Point[], padding: number): Box {
@@ -49,63 +59,92 @@ function bounding(points: Point[], padding: number): Box {
 
 const atGridPoint = (grid: Point, point: Point): boolean => grid[0] * GRID === point[0] && grid[1] * GRID === point[1];
 
-function stationGeometry(station: MapStation, point: Point, lines: Stroke[], suggested: boolean, lineWidth: number): StationGeometry {
+function stationGeometry(station: MapStation, point: Point, lines: Stroke[], suggested: boolean, radius: number): StationGeometry {
   const contacts: Point[] = [];
-  const normals: Point[] = [];
   for (const line of lines.filter(item => station.lines.includes(item.ref))) {
     for (const edge of line.edges) {
-      if (atGridPoint(edge.gridA, point)) {
-        contacts.push(edge.a);
-        normals.push(edge.normal);
-      }
-      if (atGridPoint(edge.gridB, point)) {
-        contacts.push(edge.b);
-        normals.push(edge.normal);
-      }
+      if (atGridPoint(edge.gridA, point)) contacts.push(edge.a);
+      if (atGridPoint(edge.gridB, point)) contacts.push(edge.b);
     }
   }
   if (!contacts.length) contacts.push(point);
-  const normal = normals[0] ?? [0, -1];
-  const kind = station.lines.length > 1 ? 'interchange' : 'tick';
-  const a = contacts[0]!;
-  const b: Point = [a[0] + normal[0] * TICK_LENGTH, a[1] + normal[1] * TICK_LENGTH];
-  const box = kind === 'tick' ? bounding([a, b], lineWidth / 2) : bounding(contacts, 7);
-  const licencePoint: Point | undefined = station.licence === 'none' ? undefined : [box.x + box.w + 7, box.y - 2];
-  return { ...station, point, suggested, marker: { kind, box, contacts, normal, a, b }, licencePoint };
+  const kind = station.lines.length > 1 ? 'interchange' : 'stop';
+  const [ends, spread] = kind === 'stop' ? [[contacts[0]!, contacts[0]!] as [Point, Point], 0] : capsuleAxis(contacts);
+  const markerRadius = kind === 'stop' ? radius : radius + INTERCHANGE_EXTRA + spread;
+  const box = bounding(ends, markerRadius);
+  const halo = Math.hypot(ends[1][0] - ends[0][0], ends[1][1] - ends[0][1]) / 2 + markerRadius + 6;
+  // The licence marker sits on the circle's upper right, just outside its outline.
+  const licencePoint: Point | undefined = station.licence === 'none' ? undefined : [box.x + box.w + 3, box.y - 3];
+  return { ...station, point, suggested, marker: { kind, box, contacts, ends, radius: markerRadius, halo }, licencePoint };
 }
 
-export function layoutMap(model: MapModel, lineWidth = 7): MapGeometry {
+/** The capsule's axis in linear time (a station can have very many contacts): the direction from the
+ * first contact to the one farthest from it; the ends are the extreme projections on that direction,
+ * so every contact projects inside the segment and lies at most `spread` off it. */
+function capsuleAxis(contacts: Point[]): [[Point, Point], number] {
+  const origin = contacts[0]!;
+  let far = origin;
+  let longest = 0;
+  for (const point of contacts) {
+    const length = Math.hypot(point[0] - origin[0], point[1] - origin[1]);
+    if (length > longest) {
+      longest = length;
+      far = point;
+    }
+  }
+  if (longest < 1e-9) return [[origin, origin], 0];
+  const u: Point = [(far[0] - origin[0]) / longest, (far[1] - origin[1]) / longest];
+  let low = Infinity;
+  let high = -Infinity;
+  let spread = 0;
+  for (const point of contacts) {
+    const along = (point[0] - origin[0]) * u[0] + (point[1] - origin[1]) * u[1];
+    const across = Math.abs(-(point[0] - origin[0]) * u[1] + (point[1] - origin[1]) * u[0]);
+    if (along < low) low = along;
+    if (along > high) high = along;
+    if (across > spread) spread = across;
+  }
+  const at = (t: number): Point => [origin[0] + u[0] * t, origin[1] + u[1] * t];
+  return [[at(low), at(high)], spread];
+}
+
+export function layoutMap(model: MapModel, lineWidth = themes.light.lineWidth, ink: Ink = inkOf(themes.light)): MapGeometry {
   const { positions, suggestions } = suggestPositions(model);
   const routes = routeMap(model, positions);
-  const lines = parallelLines(model, routes, lineWidth);
+  // Bundled pipes sit so that each casing just meets its neighbour's colour: no overlap, ink between.
+  const lines = parallelLines(model, routes, lineWidth + ink.casing / 2);
   const pointMap = new Map([...positions].map(([ref, cell]) => [ref, [cell[0] * GRID, cell[1] * GRID] as Point]));
+  const radius = stopRadius(lineWidth, ink);
   const stations = model.stations.map(station =>
-    stationGeometry(station, pointMap.get(station.ref)!, lines, suggestions.some(item => item.ref === station.ref), lineWidth));
+    stationGeometry(station, pointMap.get(station.ref)!, lines, suggestions.some(item => item.ref === station.ref), radius));
 
   const segments: Obstacle[] = [];
   for (const line of lines) {
-    for (let i = 1; i < line.points.length; i++) segments.push(segmentObstacle(line.points[i - 1]!, line.points[i]!, lineWidth));
+    for (let i = 1; i < line.points.length; i++) segments.push(segmentObstacle(line.points[i - 1]!, line.points[i]!, lineWidth + ink.casing));
   }
   const licenceBoxes: Box[] = stations.flatMap(station => {
     const centre = station.licencePoint;
     if (!centre) return [];
     return [{ x: centre[0] - LICENCE_RADIUS, y: centre[1] - LICENCE_RADIUS, w: LICENCE_RADIUS * 2, h: LICENCE_RADIUS * 2 }];
   });
-  const markers: Box[] = [...stations.map(station => station.marker.box), ...licenceBoxes];
-  const badges = placeBadges(lines, [...markers, ...segments]);
+  const markers: Box[] = [...stations.map(station => station.marker.box), ...licenceBoxes].map(box => inkBox(box, ink));
+  const badges = placeBadges(lines, [...markers, ...segments], ink);
   const zones = zoneGeometry(model, pointMap);
-  const obstacles: Obstacle[] = [...markers, ...badges.map(badge => badge.box), ...zones.map(zone => zone.titleBox), ...segments];
+  // Labels keep a little air from stickers, so text never touches an outline or shadow.
+  const clear = (box: Box): Box => ({ x: box.x - LABEL_CLEARANCE, y: box.y - LABEL_CLEARANCE, w: box.w + LABEL_CLEARANCE * 2, h: box.h + LABEL_CLEARANCE * 2 });
+  const obstacles: Obstacle[] = [...markers.map(clear), ...badges.map(badge => clear(inkBox(badge.box, ink))), ...zones.map(zone => zone.titleBox), ...segments];
   const labels = placeLabels(stations, obstacles);
 
   const extent: Point[] = [[0, 0], [320, 256], ...lines.flatMap(line => line.points)];
   const addBox = (box: Box): void => {
     extent.push([box.x, box.y], [box.x + box.w, box.y + box.h]);
   };
-  for (const box of [...labels.map(label => label.box), ...badges.map(badge => badge.box), ...markers]) addBox(box);
+  for (const box of [...labels.map(label => label.box), ...badges.map(badge => inkBox(badge.box, ink)), ...markers]) addBox(box);
   for (const station of stations) {
     // Suggestion discs and renewal rings are drawn around the station point.
-    const radius = station.suggested ? 19 : station.renewal ? 17 : 0;
-    if (radius) addBox({ x: station.point[0] - radius, y: station.point[1] - radius, w: radius * 2, h: radius * 2 });
+    const { halo } = station.marker;
+    const radius = station.suggested ? halo + 5 : station.renewal ? halo + 3 : 0;
+    if (radius) addBox(inkBox({ x: station.point[0] - radius, y: station.point[1] - radius, w: radius * 2, h: radius * 2 }, ink));
   }
   for (const zone of zones) {
     addBox(zone.titleBox);

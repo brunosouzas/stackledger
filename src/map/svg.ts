@@ -1,6 +1,9 @@
 /** Render plain geometry as a self-contained, safe SVG. Call renderSvg(geometry, themes.light).
  * Text has one escaping path; geometry has no external resources, IDs, links or CSS.
  * Every visual choice comes from Theme data. Invalid colours/nonfinite geometry throw.
+ * Ink style (theme casing, outline, shadow, rim): lines are pipes, an ink casing under the line
+ * colour; interchanges, badges, licence markers, renewal rings and the legend panel get an ink
+ * outline, and their hard shadow is a copy moved by the theme offset, drawn first in the same group.
  * Strokes, stations, labels, terminal badges and legend entries carry data-line (and stations
  * and labels data-zone) for the site's map script; those values are escaped like text.
  * renderSvg(geometry, theme, { chrome: false }) leaves out the title band and the legend panel and
@@ -14,12 +17,22 @@ import type { Box } from './labels.js';
 import type { ZoneGeometry } from './zones.js';
 import type { Stroke } from './parallel.js';
 import { badgeWidth } from './badges.js';
+import { sticker } from './ink.js';
 import { tag, escapeXml, number, color, tint, SVG_NAMESPACE, type Attributes } from './xml.js';
 
 export { escapeXml } from './xml.js';
 
 const HEADER_HEIGHT = 64;
 const FRAME_MARGIN = 16;
+
+/** A capsule (stadium) path: every point within r of the segment a-b, with half circles at both ends. */
+function capsulePath(a: Point, b: Point, r: number): string {
+  const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const n: Point = [-(b[1] - a[1]) / length * r, (b[0] - a[0]) / length * r];
+  const p = (point: Point, sign: number) => `${number(point[0] + n[0] * sign)},${number(point[1] + n[1] * sign)}`;
+  const radius = number(r);
+  return `M${p(a, 1)} L${p(b, 1)} A${radius},${radius} 0 0 0 ${p(b, -1)} L${p(a, -1)} A${radius},${radius} 0 0 0 ${p(a, 1)} Z`;
+}
 
 /** Element builders bound to one theme. Catalogue text only ever passes through `text` or `title`. */
 function painter(theme: Theme) {
@@ -32,29 +45,47 @@ function painter(theme: Theme) {
     tag('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], ...attrs });
   const circle = (centre: Point, r: number, attrs: Attributes): string =>
     tag('circle', { cx: centre[0], cy: centre[1], r, ...attrs });
-  const shiftBox = (box: Box): Box => ({ ...box, x: box.x + theme.shadow.dx, y: box.y + theme.shadow.dy });
-  const shift = (point: Point): Point => [point[0] + theme.shadow.dx, point[1] + theme.shadow.dy];
+  const add = (point: Point, by: Point, scale = 1): Point => [point[0] + by[0] * scale, point[1] + by[1] * scale];
+  const rimmed = (width: number): number => width + (theme.rim.enabled ? theme.rim.width * 2 : 0);
 
-  const badge = (item: Omit<Badge, 'line'>): string => [
-    theme.shadow.enabled ? rect(shiftBox(item.box), { fill: theme.shadow.color, rx: 3 }) : '',
-    rect(item.box, { fill: item.color, rx: 3 }),
-    text(item.text, item.point[0], item.point[1] + 4.5, { fill: theme.badgeText, 'font-size': 12, 'font-weight': 700, 'text-anchor': 'middle' }),
-  ].join('');
+  const boxSticker = (box: Box, rx: number, fill: string): string =>
+    sticker(theme, (by, attrs) => rect({ ...box, x: box.x + by[0], y: box.y + by[1] }, { ...attrs, rx }), fill);
+  const discSticker = (centre: Point, r: number, fill: string): string =>
+    sticker(theme, (by, attrs) => circle(add(centre, by), r, attrs), fill);
 
-  const marker = (item: Marker, muted: boolean, strokeColor: string, shadow = false): string => {
-    if (item.kind === 'interchange') {
-      const fill = shadow ? theme.shadow.color : muted ? theme.muted : theme.station;
-      const outline = shadow ? theme.shadow.color : muted ? theme.muted : theme.outline;
-      return rect(shadow ? shiftBox(item.box) : item.box, { fill, stroke: outline, 'stroke-width': 3, rx: 7 });
-    }
-    const stroke = shadow ? theme.shadow.color : muted ? theme.muted : strokeColor;
-    return line(shadow ? shift(item.a) : item.a, shadow ? shift(item.b) : item.b, { stroke, 'stroke-width': theme.lineWidth - 1, 'stroke-linecap': 'butt' });
+  /** A ring (renewal) drawn like a pipe bent round: rim and ink bands, then its colour. No shadow:
+   * around an interchange and its licence marker a second shadow only darkens the station. */
+  const ring = (centre: Point, r: number, colour: string, width: number): string => {
+    const ink = width + theme.outlineWidth;
+    const band = (stroke: string, strokeWidth: number) => circle(centre, r, { fill: 'none', stroke, 'stroke-width': strokeWidth });
+    return [
+      theme.rim.enabled ? band(theme.rim.color, rimmed(ink)) : '',
+      band(theme.outline, ink),
+      band(colour, width),
+    ].join('');
   };
 
-  const licence = (centre: Point, hollow: boolean): string =>
-    circle(centre, 4, { fill: hollow ? 'none' : theme.licence, stroke: theme.licence, 'stroke-width': 1.8 });
+  /** Terminal badges are pill stickers, like the banner's labels. */
+  const badge = (item: Omit<Badge, 'line'>): string => boxSticker(item.box, item.box.h / 2, item.color)
+    + text(item.text, item.point[0], item.point[1] + 4.5, { fill: theme.badgeText, 'font-size': 12, 'font-weight': 700, 'text-anchor': 'middle' });
 
-  return { text, title, rect, line, circle, shiftBox, badge, marker, licence };
+  /** A stop is a circle sticker on its pipe; an interchange a capsule over all its lines. */
+  const marker = (item: Marker, muted: boolean): string => {
+    const fill = muted ? theme.muted : theme.station;
+    const [a, b] = item.ends;
+    const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (length < 1e-9) return discSticker(a, item.radius, fill);
+    return sticker(theme, (by, attrs) => tag('path', { d: capsulePath(add(a, by), add(b, by), item.radius), ...attrs }), fill);
+  };
+
+  const licence = (centre: Point, hollow: boolean): string => discSticker(centre, 5, hollow ? theme.station : theme.licence);
+
+  /** A line sample for the legend, drawn as a pipe like the lines on the map. */
+  const pipe = (a: Point, b: Point, colour: string): string =>
+    (theme.casing.enabled ? line(a, b, { stroke: theme.casing.color, 'stroke-width': theme.lineWidth + theme.casing.extraWidth, 'stroke-linecap': 'round' }) : '')
+    + line(a, b, { stroke: colour, 'stroke-width': theme.lineWidth, 'stroke-linecap': 'round' });
+
+  return { text, title, rect, line, circle, boxSticker, discSticker, ring, badge, marker, licence, pipe };
 }
 
 type Painter = ReturnType<typeof painter>;
@@ -105,14 +136,14 @@ function stationData(station: StationGeometry, drawnZones: ReadonlySet<string>):
   return attrs;
 }
 
-function stationGroup(station: StationGeometry, lines: Stroke[], data: Attributes, theme: Theme, paint: Painter): string {
-  const lineColor = lines.find(line => line.ref === station.lines[0])!.color;
-  const shadow = theme.shadow.enabled ? paint.marker(station.marker, station.deprecated, lineColor, true) : '';
-  const mark = shadow + paint.marker(station.marker, station.deprecated, lineColor);
+function stationGroup(station: StationGeometry, data: Attributes, theme: Theme, paint: Painter): string {
+  const { box, halo } = station.marker;
+  const centre: Point = [box.x + box.w / 2, box.y + box.h / 2];
+  const mark = paint.marker(station.marker, station.deprecated);
   const suggested = station.suggested
-    ? paint.circle(station.point, 18, { fill: 'none', stroke: theme.muted, 'stroke-width': 1.5, 'stroke-dasharray': '4 3' })
+    ? paint.circle(centre, halo + 3, { fill: 'none', stroke: theme.muted, 'stroke-width': 1.5, 'stroke-dasharray': '4 3' })
     : '';
-  const ring = station.renewal ? paint.circle(station.point, 15, { fill: 'none', stroke: theme.renewal, 'stroke-width': 3 }) : '';
+  const ring = station.renewal ? paint.ring(centre, halo, theme.renewal, 3) : '';
   const licence = station.licencePoint ? paint.licence(station.licencePoint, station.licence === 'hollow') : '';
   return tag('g', { 'data-ref': station.ref, ...data }, paint.title(station.title) + suggested + ring + mark + licence);
 }
@@ -120,7 +151,7 @@ function stationGroup(station: StationGeometry, lines: Stroke[], data: Attribute
 function labelsLayer(geometry: MapGeometry, drawnZones: ReadonlySet<string>, theme: Theme, paint: Painter): string {
   return geometry.labels.map(label => {
     const station = geometry.stations.find(item => item.ref === label.ref)!;
-    const attrs = { fill: station.deprecated ? theme.muted : theme.text, 'font-weight': station.lines.length > 1 ? 700 : 500, ...stationData(station, drawnZones) };
+    const attrs = { fill: station.deprecated ? theme.muted : theme.text, 'font-weight': station.lines.length > 1 ? 900 : 700, ...stationData(station, drawnZones) };
     return label.rows.map((row, i) => paint.text(row, label.box.x, label.box.y + 13 + i * 17, attrs)).join('');
   }).join('');
 }
@@ -133,20 +164,19 @@ function headerLayer(geometry: MapGeometry, theme: Theme, paint: Painter): strin
 }
 
 function legendSymbol(symbol: string, centre: Point, theme: Theme, paint: Painter): string {
-  if (symbol === 'interchange') return paint.circle(centre, 7, { fill: theme.station, stroke: theme.outline, 'stroke-width': 3 });
+  if (symbol === 'interchange') return paint.discSticker(centre, 6, theme.station);
   if (symbol === 'licence' || symbol === 'licence to buy') return paint.licence(centre, symbol === 'licence to buy');
   if (symbol === 'suggested position') {
-    return paint.circle(centre, 10, { fill: 'none', stroke: theme.muted, 'stroke-width': 1.5, 'stroke-dasharray': '4 3' });
+    return paint.circle(centre, 9, { fill: 'none', stroke: theme.muted, 'stroke-width': 1.5, 'stroke-dasharray': '4 3' });
   }
-  return paint.circle(centre, 10, { fill: 'none', stroke: theme.renewal, 'stroke-width': 3 });
+  return paint.ring(centre, 6.5, theme.renewal, 3);
 }
 
 function legendLayer(geometry: MapGeometry, theme: Theme, paint: Painter): string {
   const panel = geometry.legend.box;
   const parts: string[] = [];
   let y = panel.y + 28;
-  if (theme.shadow.enabled) parts.push(paint.rect(paint.shiftBox(panel), { fill: theme.shadow.color, rx: 8 }));
-  parts.push(paint.rect(panel, { fill: theme.panel, rx: 8 }));
+  parts.push(paint.boxSticker(panel, 12, theme.panel));
   parts.push(paint.text('Lines (journeys)', panel.x + 18, y, { 'font-size': 16, 'font-weight': 700 }));
   y += 30;
   for (const item of geometry.legend.lines) {
@@ -154,7 +184,7 @@ function legendLayer(geometry: MapGeometry, theme: Theme, paint: Painter): strin
     const box: Box = { x: panel.x + 18, y: y - 15, w: badgeWidth(item.badge), h: 20 };
     const right = box.x + box.w;
     const entry = paint.badge({ point: [box.x + box.w / 2, y - 5], box, text: item.badge, color: item.color })
-      + paint.line([right + 18, y - 5], [right + 47, y - 5], { stroke: item.color, 'stroke-width': theme.lineWidth })
+      + paint.pipe([right + 21, y - 5], [right + 44, y - 5], item.color)
       + paint.text(item.title, right + 60, y);
     parts.push(tag('g', { 'data-line': item.ref }, entry));
     y += 30;
@@ -183,7 +213,8 @@ function frameView(geometry: MapGeometry): Box {
 export function renderSymbol(symbol: string, theme: Theme): string {
   const size = 24;
   const attrs: Attributes = { xmlns: SVG_NAMESPACE, role: 'img', viewBox: `0 0 ${size} ${size}`, width: size, height: size };
-  return tag('svg', attrs, legendSymbol(symbol, [size / 2, size / 2], theme, painter(theme)));
+  // Up and left of the centre, so the shadow down and to the right stays inside the square.
+  return tag('svg', attrs, legendSymbol(symbol, [size / 2 - 1.5, size / 2 - 1.5], theme, painter(theme)));
 }
 
 export function renderSvg(geometry: MapGeometry, theme: Theme, options: RenderOptions = {}): string {
@@ -195,7 +226,7 @@ export function renderSvg(geometry: MapGeometry, theme: Theme, options: RenderOp
   const badges = geometry.badges.map(badge => tag('g', { 'data-line': badge.line }, paint.badge(badge))).join('');
   const lines = geometry.lines.map(stroke => lineGroup(stroke, theme, paint)).join('') + badges;
   const stations = geometry.stations
-    .map(station => stationGroup(station, geometry.lines, stationData(station, drawnZones), theme, paint))
+    .map(station => stationGroup(station, stationData(station, drawnZones), theme, paint))
     .join('');
   const empty = geometry.lines.length ? '' : paint.text('No journeys yet', geometry.frame.x + 32, geometry.frame.y + 64, { 'font-size': 22 });
   const layers = [

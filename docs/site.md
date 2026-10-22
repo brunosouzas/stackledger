@@ -85,7 +85,7 @@ Without JavaScript every page still works as a document: the whole map, both leg
 
 ### Look and settings
 
-The look follows brunosouzas.com (based on the Astroplate theme, MIT), with the Heebo and Signika fonts shipped in the package. A theme switch in the header follows the system's light or dark setting until the reader chooses, then remembers the choice in the browser for every page of that site. `spec.site` in the `Settings` document sets the site title and up to four light-theme colours; see [the catalogue format](catalogue-format.md#settings-and-views).
+The look follows brunosouzas.com (based on the Astroplate theme, MIT), with the Heebo and Signika fonts shipped in the package. The map and the diagrams use the style of the site's illustrations (ink outlines, hard offset shadows, see [the map](map.md#routes-and-themes)) and the Lato font, also shipped in the package (`@fontsource/lato`, SIL Open Font License 1.1). A theme switch in the header follows the system's light or dark setting until the reader chooses, then remembers the choice in the browser for every page of that site. `spec.site` in the `Settings` document sets the site title and up to four light-theme colours; see [the catalogue format](catalogue-format.md#settings-and-views).
 
 **Known limitation:** a remembered theme is applied by a script file after the page starts to load (the policy forbids inline scripts), so a page can show the system theme for a moment before switching.
 

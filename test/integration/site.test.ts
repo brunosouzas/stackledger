@@ -392,6 +392,21 @@ test('Root robots', () => {
   for (const dir of [example.root, example.full, example.staff]) expect(read(dir, 'robots.txt')).toBe('User-agent: *\nDisallow: /\n');
 });
 
+test('Lato shipped locally', () => {
+  for (const site of [example.full, example.staff]) {
+    const files = tree(site);
+    const css = [...files.keys()].filter(file => file.endsWith('.css')).map(file => [file, files.get(file)!] as const);
+    const faces = css.flatMap(([file, content]) => [...content.matchAll(/@font-face\s*\{([^}]*)\}/g)].map(match => [file, match[1]!] as const))
+      .filter(([, body]) => /font-family:\s*["']?Lato["']?/.test(body));
+    expect(faces.map(([, body]) => body.match(/font-weight:\s*(\d+)/)![1]).sort()).toEqual(['400', '700', '900']);
+    for (const [file, body] of faces) {
+      const url = body.match(/url\(\s*["']?([^"')]+)/)![1]!;
+      expect(url).not.toMatch(/^[a-z]+:|^\/\//i);
+      expect(files.has(join(file, '..', url).replace(/\\/g, '/')), url).toBe(true);
+    }
+  }
+});
+
 test('Hostile title', () => {
   for (const site of [hostile.full, hostile.staff]) {
     let shown = 0;
