@@ -1,0 +1,51 @@
+# Fictitious Northwind skills map for stackledger: two skill lines, one ship line, and the two
+# playbooks as zones. editor and the reviewer agent belong to both playbooks, so the zones overlap;
+# they sit in the middle row, between the playbooks.
+apiVersion: stackledger/v1alpha1
+kind: MapLayout
+metadata:
+  name: northwind-skills
+spec:
+  stations:
+    "playbook:publishing": [0, 0]
+    "skill:writer": [2, 0]
+    "skill:editor": [4, 2]
+    "agent:reviewer": [6, 2]
+    "playbook:engineering": [0, 4]
+    "skill:spec-writer": [2, 4]
+    "skill:tester": [4, 4]
+    "skill:linter": [2, 6]
+    "agent:builder": [4, 6]
+  zones:
+    - { name: publishing, title: Publishing, color: "#F5A623" }
+    - { name: engineering, title: Engineering, color: "#7B61FF" }
+---
+apiVersion: stackledger/v1alpha1
+kind: Line
+metadata:
+  name: publish
+  title: Publish an article
+spec:
+  code: P
+  color: "#E4002B"
+  stops: ["playbook:publishing", "skill:writer", "skill:editor", "agent:reviewer"]
+---
+apiVersion: stackledger/v1alpha1
+kind: Line
+metadata:
+  name: change
+  title: Ship a change
+spec:
+  code: C
+  color: "#0072CE"
+  stops: ["playbook:engineering", "skill:spec-writer", "skill:tester", "skill:editor", "agent:reviewer"]
+---
+apiVersion: stackledger/v1alpha1
+kind: Line
+metadata:
+  name: build
+  title: Build and release
+spec:
+  code: B
+  color: "#00A651"
+  stops: ["playbook:engineering", "skill:linter", "agent:builder"]

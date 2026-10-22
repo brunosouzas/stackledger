@@ -13,12 +13,18 @@ export interface MapStation {
   title: string;
   lines: string[];
   deprecated: boolean;
-  zone: string | undefined;
+  /** The zones the station is in, in declaration order: at most one on a software map (its lower-cased
+   * `stackledger/zone`), any number of playbook page file names on a skills map, where zones may overlap. */
+  zones: string[];
   licence: 'none' | 'solid' | 'hollow';
   renewal: boolean;
 }
 export interface MapZone { name: string; title: string; color: string }
+/** A software map comes from a catalogue view; a skills map from a skill set (src/skills/metro.ts). */
+export type MapKind = 'software' | 'skills';
 export interface MapModel {
+  /** Absent: a software map, as before skills maps existed. */
+  kind?: MapKind;
   view: View['name'];
   lines: MapLine[];
   stations: MapStation[];
@@ -87,7 +93,7 @@ export function buildMapModel(view: View, date: string): MapModel {
       title: item.metadata.title ?? item.metadata.name,
       lines: lines.filter(line => line.stops.includes(ref)).map(line => line.ref),
       deprecated: item.spec.lifecycle.toLowerCase() === 'deprecated',
-      zone: item.metadata.labels?.['stackledger/zone']?.toLowerCase(),
+      zones: [item.metadata.labels?.['stackledger/zone']?.toLowerCase()].filter((zone): zone is string => zone !== undefined),
       licence: solid.length ? 'solid' : details.some(detail => detail.status === 'to-buy') ? 'hollow' : 'none',
       renewal: view.name === 'full' && solid.some(detail => renewsSoon(detail.renewsOn)),
     };

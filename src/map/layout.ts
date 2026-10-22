@@ -7,7 +7,7 @@ import type { MapModel, MapStation, MapLine, Point } from './model.js';
 import { suggestPositions, type Suggestion } from './suggest.js';
 import { routeMap, type RoutedHop } from './route.js';
 import { parallelLines, GRID, type Stroke } from './parallel.js';
-import { placeLabels, segmentObstacle, textWidth, type Box, type Label, type Obstacle } from './labels.js';
+import { chooseLabel, labelCandidates, placeLabels, segmentObstacle, textWidth, type Box, type Label, type Obstacle } from './labels.js';
 import { zoneGeometry, type ZoneGeometry } from './zones.js';
 import { badgeWidth, placeBadges, type Badge } from './badges.js';
 import { inkBox, inkOf, themes, type Ink } from './themes.js';
@@ -21,6 +21,7 @@ export type { Badge } from './badges.js';
 export interface Marker { kind: 'stop' | 'interchange'; box: Box; contacts: Point[]; ends: [Point, Point]; radius: number; halo: number }
 export interface StationGeometry extends MapStation { point: Point; suggested: boolean; marker: Marker; licencePoint: Point | undefined }
 export interface MapGeometry {
+  kind?: MapModel['kind'];
   view: MapModel['view'];
   stations: StationGeometry[];
   lines: Stroke[];
@@ -108,6 +109,24 @@ function capsuleAxis(contacts: Point[]): [[Point, Point], number] {
   return [[at(low), at(high)], spread];
 }
 
+/** Skills maps (metro-map, Playbook zone titles): a zone whose playbook is drawn gets its title next to
+ * that station, as a second label, so overlapping zones never show a title over the wrong area. The
+ * candidates are the station labels' own; `taken` holds every obstacle a label avoids plus the station
+ * labels, and grows with each title. A zone whose playbook is not drawn keeps its corner title. */
+function placeZoneTitles(zones: ZoneGeometry[], stations: StationGeometry[], taken: Obstacle[]): void {
+  for (const zone of zones) {
+    const station = stations.find(item => item.ref === `playbook:${zone.name}`);
+    if (!station) continue;
+    const marker = station.marker.box;
+    const gap = Math.max(marker.w, marker.h) / 2 + 10;
+    const centre: Point = [marker.x + marker.w / 2, marker.y + marker.h / 2];
+    // The corner title was an obstacle for the station labels; it no longer exists.
+    const others = taken.filter(obstacle => obstacle !== zone.titleBox);
+    zone.titleBox = chooseLabel(labelCandidates(centre, zone.titleBox.w, zone.titleBox.h, gap), others);
+    taken.push(zone.titleBox);
+  }
+}
+
 export function layoutMap(model: MapModel, lineWidth = themes.light.lineWidth, ink: Ink = inkOf(themes.light)): MapGeometry {
   const { positions, suggestions } = suggestPositions(model);
   const routes = routeMap(model, positions);
@@ -134,6 +153,7 @@ export function layoutMap(model: MapModel, lineWidth = themes.light.lineWidth, i
   const clear = (box: Box): Box => ({ x: box.x - LABEL_CLEARANCE, y: box.y - LABEL_CLEARANCE, w: box.w + LABEL_CLEARANCE * 2, h: box.h + LABEL_CLEARANCE * 2 });
   const obstacles: Obstacle[] = [...markers.map(clear), ...badges.map(badge => clear(inkBox(badge.box, ink))), ...zones.map(zone => zone.titleBox), ...segments];
   const labels = placeLabels(stations, obstacles);
+  if (model.kind === 'skills') placeZoneTitles(zones, stations, [...obstacles, ...labels.map(label => label.box)]);
 
   const extent: Point[] = [[0, 0], [320, 256], ...lines.flatMap(line => line.points)];
   const addBox = (box: Box): void => {
@@ -152,7 +172,8 @@ export function layoutMap(model: MapModel, lineWidth = themes.light.lineWidth, i
   }
   const frame = bounding(extent, 48);
 
-  const symbols = ['interchange', 'licence', 'licence to buy', 'suggested position', ...(model.view === 'full' ? ['renewal within 30 days'] : [])];
+  const symbols = model.kind === 'skills' ? ['interchange', 'suggested position']
+    : ['interchange', 'licence', 'licence to buy', 'suggested position', ...(model.view === 'full' ? ['renewal within 30 days'] : [])];
   const legendWidth = model.lines.reduce((width, line) => Math.max(width, textWidth(line.title) + badgeWidth(line.badge) + 96), 310);
   const legendBox: Box = { x: frame.x + frame.w + 28, y: frame.y + 12, w: legendWidth, h: 110 + model.lines.length * 30 + symbols.length * 32 };
   const viewBox: Box = {
@@ -162,6 +183,7 @@ export function layoutMap(model: MapModel, lineWidth = themes.light.lineWidth, i
     h: Math.max(frame.h, legendBox.h + 24) + 104,
   };
   return {
+    ...(model.kind ? { kind: model.kind } : {}),
     view: model.view,
     stations,
     lines,

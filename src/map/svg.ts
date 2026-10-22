@@ -132,7 +132,8 @@ function lineGroup(stroke: Stroke, theme: Theme, paint: Painter): string {
 /** data-line (the station's lines, in line order) and data-zone (only for a drawn zone), shared by a station and its label. */
 function stationData(station: StationGeometry, drawnZones: ReadonlySet<string>): Attributes {
   const attrs: Attributes = { 'data-line': station.lines.join(' ') };
-  if (station.zone !== undefined && drawnZones.has(station.zone)) attrs['data-zone'] = station.zone;
+  const zones = station.zones.filter(zone => drawnZones.has(zone));
+  if (zones.length) attrs['data-zone'] = zones.join(' ');
   return attrs;
 }
 
@@ -156,11 +157,18 @@ function labelsLayer(geometry: MapGeometry, drawnZones: ReadonlySet<string>, the
   }).join('');
 }
 
+/** The fixed texts of each kind of map; a skills map depends on no view (metro-map, Skills map drawing). */
+function texts(geometry: MapGeometry): { title: string; subtitle: string; empty: string; description: string } {
+  return geometry.kind === 'skills'
+    ? { title: 'Skills map', subtitle: 'stackledger · skill set', empty: 'No skill lines yet', description: 'Skill lines, stations and playbook zones.' }
+    : { title: 'Software map', subtitle: `stackledger · ${geometry.view} view`, empty: 'No journeys yet', description: 'Software journeys, stations, licences and zones.' };
+}
+
 function headerLayer(geometry: MapGeometry, theme: Theme, paint: Painter): string {
   const { viewBox } = geometry;
   return paint.rect({ x: viewBox.x, y: viewBox.y, w: viewBox.w, h: HEADER_HEIGHT }, { fill: theme.header })
-    + paint.text('Software map', viewBox.x + 32, viewBox.y + 42, { fill: theme.headerText, 'font-size': 29, 'font-weight': 700 })
-    + paint.text(`stackledger · ${geometry.view} view`, viewBox.x + 320, viewBox.y + 40, { fill: theme.headerText });
+    + paint.text(texts(geometry).title, viewBox.x + 32, viewBox.y + 42, { fill: theme.headerText, 'font-size': 29, 'font-weight': 700 })
+    + paint.text(texts(geometry).subtitle, viewBox.x + 320, viewBox.y + 40, { fill: theme.headerText });
 }
 
 function legendSymbol(symbol: string, centre: Point, theme: Theme, paint: Painter): string {
@@ -228,7 +236,7 @@ export function renderSvg(geometry: MapGeometry, theme: Theme, options: RenderOp
   const stations = geometry.stations
     .map(station => stationGroup(station, stationData(station, drawnZones), theme, paint))
     .join('');
-  const empty = geometry.lines.length ? '' : paint.text('No journeys yet', geometry.frame.x + 32, geometry.frame.y + 64, { 'font-size': 22 });
+  const empty = geometry.lines.length ? '' : paint.text(texts(geometry).empty, geometry.frame.x + 32, geometry.frame.y + 64, { 'font-size': 22 });
   const layers = [
     background,
     gridLayer(geometry.frame, theme, paint),
@@ -246,6 +254,6 @@ export function renderSvg(geometry: MapGeometry, theme: Theme, options: RenderOp
     height: viewBox.h,
     'font-family': theme.font,
   };
-  const head = tag('title', {}, 'Software map') + tag('desc', {}, 'Software journeys, stations, licences and zones.');
+  const head = tag('title', {}, texts(geometry).title) + tag('desc', {}, texts(geometry).description);
   return tag('svg', attrs, head + '\n' + layers);
 }
