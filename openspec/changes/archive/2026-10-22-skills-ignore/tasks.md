@@ -13,7 +13,7 @@
 ## 3. Integration
 
 - [x] 3.1 Full suite. Check: `npm test`.
-- [ ] 3.2 Release note: this change ships in the same npm release as `skills-source` (the `skills` command is unreleased, so the new counts are not a breaking change only then). Recorded in the pull request.
+- [x] 3.2 Release note: this change ships in the same npm release as `skills-source` (the `skills` command is unreleased, so the new counts are not a breaking change only then). Recorded in the pull request.
 
 | Capability | Scenario | Test file |
 |---|---|---|
