@@ -103,7 +103,7 @@ node dist/cli.js report examples/northwind --date 2027-06-01 --format csv > lice
 node dist/cli.js discover
 node dist/cli.js drift examples/northwind --snapshot examples/northwind-machine/snapshot.json
 node dist/cli.js skills validate /path/to/skills
-node dist/cli.js skills map /path/to/skills --out /path/to/skills/docs/skills-map
+cd /path/to/skills && node /path/to/stackledger/dist/cli.js skills map . --out docs/skills-map
 ```
 
 | Command | Does | Status |

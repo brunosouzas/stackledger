@@ -32,7 +32,7 @@
 | skills-map-command | Linked kind folder; Linked page; Hard-linked page; Writes stay in the map folder; Folder swapped; Kind folder appears as a link; Page that cannot be read | test/integration/skills-map.test.ts |
 | skills-map-command | Two runs; Checkout with CRLF; Stale map in a pipeline; Up to date; Set with errors; Wrong folder does not empty the map | test/integration/skills-map.test.ts |
 
-- [ ] 3.2 Code review fixes (round 1, Claude and Codex): the requirements and scenarios added after the code review, each with its test; the remaining findings listed in the pull request.
+- [x] 3.2 Code review fixes (round 1, Claude and Codex): the requirements and scenarios added after the code review, each with its test; the remaining findings listed in the pull request.
 
 ## Workflow follow-up
 
