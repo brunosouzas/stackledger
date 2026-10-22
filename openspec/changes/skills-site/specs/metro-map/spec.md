@@ -1,0 +1,95 @@
+## MODIFIED Requirements
+
+### Requirement: Map input
+A software map SHALL be drawn from one view of the catalogue (`full` or `staff`), using only the documents that view serves. A station is a component that is a stop of at least one drawn line. Components on no line SHALL NOT be drawn. A line stop that matches no served component SHALL be skipped. A line with fewer than two served stops SHALL NOT be drawn nor listed in the legend.
+
+#### Scenario: Component on no line
+- **WHEN** component `scanner` is a stop of no line
+- **THEN** the map has no station `component:scanner`
+
+#### Scenario: Stop with errors
+- **WHEN** line `ship` stops at `editor`, `forge` and `deploy`, and `forge` has a field error
+- **THEN** the map draws `ship` from `editor` to `deploy` with no station `forge`
+
+#### Scenario: Line left with one stop
+- **WHEN** line `ship` has two stops and one of them has a field error
+- **THEN** `ship` is neither drawn nor listed in the legend
+
+#### Scenario: No lines
+- **WHEN** the catalogue has no drawn line
+- **THEN** the map is a valid SVG showing the text `No journeys yet`
+
+### Requirement: Legend
+A software map SHALL have a legend listing every drawn line in line order with its badge, colour and title (or name), followed by a fixed set of symbols per view: interchange, licence, licence to buy and suggested position in both views, and renewal within 30 days in `full` only.
+
+#### Scenario: Legend in staff
+- **WHEN** the map is drawn in the `staff` view
+- **THEN** the legend has no renewal symbol
+
+### Requirement: Safe SVG structure
+The SVG SHALL be one XML document with `role="img"`, a `title`, one element per station with `data-ref` holding its station reference and one per line with `data-ref="line:<name>"`. Element names SHALL be limited to `svg`, `title`, `desc`, `g`, `path`, `line`, `rect`, `circle`, `ellipse`, `polygon`, `polyline`, `text` and `tspan`. No attribute named `href`, `style`, `id` or starting with `on` SHALL appear; fonts are named, never embedded.
+
+#### Scenario: Allowed names only
+- **WHEN** any map is drawn
+- **THEN** every element and attribute name in the SVG is on the allow-lists
+
+#### Scenario: No embedded font
+- **WHEN** any map is drawn in either theme
+- **THEN** the SVG names its font stack in `font-family` and contains no `@font-face`, `url(` or font data
+
+### Requirement: Safe SVG text
+Every text taken from the catalogue or a skill set SHALL be XML-escaped (`&`, `<`, `>`, `"`, `'`), with characters not allowed in XML 1.0 replaced by U+FFFD. No such text SHALL appear in an attribute except `data-ref`, `data-line` and `data-zone`, and colours are written only after matching `#RRGGBB`.
+
+#### Scenario: Hostile titles
+- **WHEN** component, line and zone titles contain `<script>`, `&`, `"`, `'`, `]]>`, `javascript:`, U+0001 and U+FFFE
+- **THEN** the SVG parses as XML, every element and attribute name is on the allow-lists, and the titles appear only as text
+
+#### Scenario: Hostile skill names
+- **WHEN** a skill on a skills map is named `a"><script>x</script>` and its line's title holds U+0001
+- **THEN** the SVG parses as XML, every element and attribute name is on the allow-lists, and the name and title appear only as text and in `data-ref`
+
+## ADDED Requirements
+
+### Requirement: Station references
+A station reference SHALL be `component:<name>` on a software map, with the component's `metadata.name`, and `skill:<name>`, `playbook:<name>` or `agent:<name>` on a skills map, with the item's kind and name as written in its file.
+
+#### Scenario: Software station
+- **WHEN** component `editor` is a station of a software map
+- **THEN** its element has `data-ref="component:editor"`
+
+#### Scenario: Skills stations
+- **WHEN** a skill line stops at the playbook `publishing`, the skill `writer` and the agent `reviewer`
+- **THEN** the skills map has stations with `data-ref` `playbook:publishing`, `skill:writer` and `agent:reviewer`
+
+### Requirement: Skills map input
+A skills map SHALL be drawn from a skill set's lines and layout, as `skill-source` reads them. A station is a skill, playbook or agent of the set that is a stop of at least one drawn line, labelled with its name. A stop naming no item of the set SHALL be skipped; a line left with fewer than two stops SHALL NOT be drawn nor listed. A layout key naming no item of the set still reserves its cell.
+
+#### Scenario: Stop not in the set
+- **WHEN** skill line `publish` stops at `skill:writer`, `skill:broken` and `skill:editor`, and `broken` has an error
+- **THEN** the map draws `publish` from `writer` to `editor` with no station `skill:broken`
+
+#### Scenario: No skill lines
+- **WHEN** the skill set has no drawn line
+- **THEN** the skills map is a valid SVG showing the text `No skill lines yet`
+
+### Requirement: Skills map drawing
+A skills map SHALL follow every other requirement of this spec except "Map input", "Legend", "Zones", "Licence markers", "Renewal ring" and the muting of deprecated stations: it has no zone, licence marker or renewal ring, does not depend on a view or a date, has the SVG title `Skills map`, and its legend lists the drawn lines, then only the symbols interchange and suggested position.
+
+#### Scenario: Legend of a skills map
+- **WHEN** a skills map with two lines is drawn with its title band and legend
+- **THEN** its legend lists the two lines and exactly the symbols interchange and suggested position, and its `title` is `Skills map`
+
+#### Scenario: Same skills map everywhere
+- **WHEN** one skill set is drawn for the `full` and the `staff` site, with two different dates, and again read through a folder listing in reversed order
+- **THEN** the SVGs of each theme are byte-identical
+
+#### Scenario: Suggested skill station
+- **WHEN** skill line `publish` stops at `a`, `b` and `c` and there is no `MapLayout`
+- **THEN** `skill:a` is suggested at `[0, 0]`, `skill:b` at `[1, 0]` and `skill:c` at `[2, 0]`, each with the dashed suggestion disc
+
+### Requirement: Software map unchanged
+For the same catalogue, view, theme and map date, the software map SHALL be byte-identical to the one stackledger 0.2.0 draws.
+
+#### Scenario: Example map
+- **WHEN** the example catalogue is drawn with `stackledger map` in both views and both themes
+- **THEN** each SVG equals the one recorded from 0.2.0
