@@ -47,19 +47,9 @@ Planned for the first version:
 
 ## How it works
 
-```mermaid
-flowchart LR
-    repo["Catalogue repository<br/>(YAML, private)"] -->|stackledger build| full["Site: full view"]
-    repo -->|stackledger build| staff["Site: staff view"]
-    full --> proxy["Identity-aware proxy<br/>(for example Cloudflare Access)"]
-    staff --> proxy
-    proxy --> finance["Owners and finance"]
-    proxy --> people["Everyone else"]
-    repo -->|stackledger mcp| agent["Your AI agent"]
-    mac["Your Mac"] -->|stackledger discover| snapshot["Snapshot<br/>(outside the catalogue)"]
-    snapshot -->|stackledger drift| person["You or your agent"]
-    person -->|pull request| repo
-```
+![How stackledger works: the catalogue in a private Git repository, GitHub Actions validates and builds it with stackledger from npm, and publishes the static site to Cloudflare Pages behind Cloudflare Access; discovery stays on your Mac](https://raw.githubusercontent.com/brunosouzas/stackledger/main/docs/images/how-it-works.svg)
+
+The diagram as Mermaid, and the personal and corporate modes: [docs/how-it-works.md](https://github.com/brunosouzas/stackledger/blob/main/docs/how-it-works.md).
 
 1. **The catalogue lives in its own repository**, private when it holds real data. stackledger never holds your data. A company that already uses Backstage can point it at the same files. Why: [ADR 2](docs/adr/0002-catalogue-in-backstage-format-in-its-own-repository.md).
 2. **Lines are journeys, not categories.** A journey has an order; a category does not. Categories become zones. Why: [ADR 3](docs/adr/0003-lines-are-journeys.md).
