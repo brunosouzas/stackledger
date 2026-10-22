@@ -94,7 +94,7 @@ A skill whose `rules.md` is too large, unreadable or holds a secret still joins 
 Each problem is one line, `<path>:<line>:<column> <error|warning> <field> <message>` (`-` when there is no field), sorted by path, position, field, severity and message; the last line gives the counts of what joined the set:
 
 ```text
-skills/release/SKILL.md:5:23 error metadata.stackledger-skills Skill editr is not in the set
+skills/release/SKILL.md:6:23 error metadata.stackledger-skills Skill editr is not in the set
 skills: 3, playbooks: 1, agents: 2, rules: 10, errors: 1, warnings: 0
 ```
 

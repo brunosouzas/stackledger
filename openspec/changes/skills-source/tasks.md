@@ -33,8 +33,8 @@ Levels: U unit (`src/skills/` functions on folders built in a temporary director
 
 ## 3. Integration
 
-- [ ] 3.1 Full checks from clean: `rm -rf node_modules dist && npm ci && npm run build && npm test`. Check: all pass.
-- [ ] 3.2 Adversarial run of the built CLI (by hand, beyond the tests): a skill with a private key, a link loop made of two folder links, a card number used as a name, `--help` mixed with bad arguments. Check: no key text or number in the output, no hang, exit codes as specified.
+- [x] 3.1 Full checks from clean: `rm -rf node_modules dist && npm ci && npm run build && npm test`. Check: all pass.
+- [x] 3.2 Adversarial run of the built CLI (by hand, beyond the tests): a skill with a private key, a link loop made of two folder links, a card number used as a name, `--help` mixed with bad arguments. Check: no key text or number in the output, no hang, exit codes as specified.
 
 ## Workflow follow-up
 

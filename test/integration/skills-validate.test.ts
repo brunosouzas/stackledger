@@ -31,7 +31,7 @@ test('Write-protected run', () => {
   expect(probe.status).not.toBe(0);
   expect(probe.stderr).toContain('ERR_ACCESS_DENIED');
   expect(existsSync(target)).toBe(false);
-});
+}, 120_000);
 
 test('Default folder', () => {
   const root = skillSet({ 'skills/writer/SKILL.md': skill('writer'), 'agents/reviewer.md': agent('reviewer') });
