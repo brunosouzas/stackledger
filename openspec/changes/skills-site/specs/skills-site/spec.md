@@ -173,11 +173,15 @@ Every box of the relation diagram SHALL carry `data-ref` with the item's station
 - **THEN** the whole map is shown at full size
 
 ### Requirement: Rules index
-`/rules/` SHALL list every rule of the set in one table with its ID, text, group and skill (a link to the skill's page), sorted by ID, then skill name, by code point; a rule ID used by two skills SHALL give two rows. A search box SHALL hide rows that do not contain the typed text, ignoring case, in their shown cells; without JavaScript the whole table is shown.
+`/rules/` SHALL list every rule of the set in one table with its ID, text, group and the skill or playbook that defines it (a link to its page), sorted by ID, then that item's name, by code point; a rule ID used by two skills SHALL give two rows. A search box SHALL hide rows that do not contain the typed text, ignoring case, in their shown cells; without JavaScript the whole table is shown.
 
 #### Scenario: Shared rule ID
 - **WHEN** the skills `developer` and `documentation` both define `DOC-1`
 - **THEN** the index has two `DOC-1` rows, `developer`'s first
+
+#### Scenario: Rule of a playbook
+- **WHEN** the playbook `release` has a `rules.md` defining `REL-1`
+- **THEN** the `REL-1` row links `/playbooks/release/`
 
 #### Scenario: Search rules
 - **WHEN** the reader types `doc-1`

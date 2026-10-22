@@ -69,8 +69,12 @@ A station reference SHALL be `component:<name>` on a software map, with the comp
 A skills map SHALL be drawn from a skill set's lines and layout, as `skill-source` reads them. A station is a skill, playbook or agent of the set that is a stop of at least one drawn line, labelled with its name. A stop naming no item of the set SHALL be skipped; a line left with fewer than two stops SHALL NOT be drawn nor listed. A layout key naming no item of the set still reserves its cell.
 
 #### Scenario: Stop not in the set
-- **WHEN** skill line `publish` stops at `skill:writer`, `skill:broken` and `skill:editor`, and `broken` has an error
+- **WHEN** skill line `publish` stops at `skill:writer`, `skill:broken` and `skill:editor`, and `broken`'s `SKILL.md` has no frontmatter, so `broken` is not in the set
 - **THEN** the map draws `publish` from `writer` to `editor` with no station `skill:broken`
+
+#### Scenario: Relation error keeps the station
+- **WHEN** skill line `publish` stops at `skill:writer` and `skill:editor`, and `editor` is valid but lists the missing skill `ghost`
+- **THEN** the map draws `publish` with the station `skill:editor`
 
 #### Scenario: No skill lines
 - **WHEN** the skill set has no drawn line
@@ -92,8 +96,12 @@ A skills map SHALL follow every other requirement of this spec except "Map input
 - **THEN** `skill:a` is suggested at `[0, 0]`, `skill:b` at `[1, 0]` and `skill:c` at `[2, 0]`, each with the dashed suggestion disc
 
 ### Requirement: Software map unchanged
-For the same catalogue, view, theme and map date, the software map SHALL be byte-identical to the one stackledger 0.2.0 draws.
+For the same catalogue, view, theme and map date, the software map SHALL be byte-identical to the one stackledger 0.2.0 draws, unless the catalogue holds a file named `stackledger-skills.yaml`, which is no longer a catalogue file.
 
 #### Scenario: Example map
 - **WHEN** the example catalogue is drawn with `stackledger map` in both views and both themes
 - **THEN** each SVG equals the one recorded from 0.2.0
+
+#### Scenario: Software lines in a skills map file name
+- **WHEN** a catalogue keeps its software `Line` documents in a file named `stackledger-skills.yaml`
+- **THEN** those lines are not drawn, and drawing them again needs only renaming the file

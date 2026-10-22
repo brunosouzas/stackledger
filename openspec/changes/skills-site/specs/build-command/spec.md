@@ -43,7 +43,7 @@ The same catalogue, skill files, `--date` and stackledger version SHALL produce 
 ## ADDED Requirements
 
 ### Requirement: Skill folders
-The skill set SHALL be read as `stackledger skills validate` reads it, from the folders in use: the `--skills` folders, in the order given and used as received, when there is at least one; otherwise the Settings' `spec.skills.folders`, each resolved from the catalogue folder; otherwise there is no skill set and no Skills section. Only folders in use are checked.
+The skill set SHALL be read as `stackledger skills validate` reads it, from the folders in use: the `--skills` folders, in the order given and used as received, when there is at least one; otherwise, when the Settings in use has no error, its `spec.skills.folders`, each resolved from the catalogue folder; otherwise there is no skill set and no Skills section. Only folders in use are checked.
 
 #### Scenario: Folders from the settings
 - **WHEN** the catalogue `cat` has `spec.skills.folders: [../kit]` and the command has no `--skills`
@@ -62,19 +62,27 @@ The skill set SHALL be read as `stackledger skills validate` reads it, from the 
 - **THEN** no skill folder is read and no site has a Skills page
 
 ### Requirement: Skills settings with problems
-Without `--skills`, `spec.skills.folders` SHALL be used from the Settings in use whenever `spec.skills` itself has no error, even if other Settings fields have one. When `spec.skills` has an error, the command SHALL exit 1 with nothing published changed, naming `spec.skills` and `stackledger validate`. When no Settings could be read (a YAML error in `stackledger.yaml`), there is no skill set and stderr says why.
+Without `--skills`, when the Settings in use has an error (as catalogue-views defines it) and any parsed document whose `kind` is `Settings`, ignoring case, has a `spec.skills` key, the command SHALL exit 1 before anything is written, naming `stackledger validate`, with nothing published changed and no folder in use. Without such a key there is no skill set; when a file that may hold a Settings could not be parsed, stderr says skill folders could not be read.
 
 #### Scenario: Error elsewhere in the settings
-- **WHEN** the Settings has `spec.skills.folders: [../kit]` and an error in `spec.site.colors`, and the command has no `--skills`
-- **THEN** the skill set is read from `../kit`, the sites use the default title and colours, and the exit code is 0
+- **WHEN** an earlier build exists in `--out`, the Settings has `spec.skills.folders: [../kit]` and an error in `spec.site.colors`, and the command has no `--skills`
+- **THEN** the exit code is 1, stderr names `stackledger validate`, and the earlier build is unchanged
 
 #### Scenario: Error in the skills settings
-- **WHEN** an earlier build exists in `--out`, the Settings has `spec.skills.folders: [/home/northwind/kit]`, and the command has no `--skills`
-- **THEN** the exit code is 1, stderr names `spec.skills` and `stackledger validate`, and the earlier build is unchanged
+- **WHEN** the Settings has `spec.skills.folders: [/home/northwind/kit]`, a folder that does not exist, and the command has no `--skills`
+- **THEN** the exit code is 1, not 2, and nothing is created
+
+#### Scenario: Broken settings and the option
+- **WHEN** the Settings has an invalid `spec.skills` and the command has `--skills team`
+- **THEN** the skill set is read from `team`, the settings' folders are not checked, and the exit code is 0
 
 #### Scenario: Unreadable settings file
-- **WHEN** `stackledger.yaml` cannot be parsed and the command has no `--skills`
-- **THEN** both sites are built without a Skills section, the exit code is 0, and stderr says the skill folders could not be read from the settings
+- **WHEN** `settings.yaml` holds a `Settings` document and a YAML syntax error, and the command has no `--skills`
+- **THEN** both sites are built without a Skills section, the exit code is 0, and stderr says skill folders could not be read from the settings
+
+#### Scenario: Broken settings without skills
+- **WHEN** the Settings has an error in `spec.site.colors` and no `spec.skills`
+- **THEN** both sites are built without a Skills section and the exit code is 0, as before this change
 
 ### Requirement: Skill folder errors
 An empty `--skills` value, or a skills folder in use that does not exist, is not a folder or cannot be listed, SHALL be a usage error: exit 2, stderr naming the folder as given or written (and `spec.skills.folders` when it comes from there), nothing created or changed. Every exit-2 check, refused output folders included, comes before any exit-1 check; a skills folder in which nothing is found SHALL exit 1 before anything is written, with nothing published changed.
@@ -107,10 +115,14 @@ Two items of one kind whose page file names are equal (a hash collision, or name
 - **THEN** the exit code is 1, stderr names both `SKILL.md` files, and the earlier build is unchanged
 
 ### Requirement: Output folder and the skill set
-After resolving symbolic links, the output folder SHALL also be refused, with exit 2 and no change, when it is, contains or is inside a skills folder, or is or contains the real path of any skill folder, agent file, file read (rejected ones included, the ignore files and the skills map file too) of the set, or is inside such a skill folder.
+After resolving symbolic links, the output folder SHALL also be refused, with exit 2 and no change, when it is or contains a skills folder or the real path of any skill folder, agent file or file read of the set (rejected ones, ignore files and the skills map file included), or is inside such a skill folder or a skills folder's top-level `agents/`. Elsewhere inside a skills folder it is allowed, as for `skills map`.
 
-#### Scenario: Output inside the skills folder
-- **WHEN** `--out` is `./skills/site` and the command has `--skills ./skills`
+#### Scenario: Output inside a skill folder
+- **WHEN** `--out` is `./skills/writer/site`, `./skills/writer/SKILL.md` exists and the command has `--skills ./skills`
+- **THEN** the exit code is 2 and nothing is written
+
+#### Scenario: Output in the agents folder
+- **WHEN** `--out` is `./skills/agents/site` and the command has `--skills ./skills`
 - **THEN** the exit code is 2 and nothing is written
 
 #### Scenario: Output contains the skills folder
@@ -121,12 +133,16 @@ After resolving symbolic links, the output folder SHALL also be refused, with ex
 - **WHEN** an earlier build exists in `public`, and `skills/writer/rules.md` is a link to `public/full/notes.md`
 - **THEN** the command with `--skills skills --out public` exits 2 and `public/full/notes.md` is unchanged
 
+#### Scenario: Building inside the skills repository
+- **WHEN** the command runs at the top of a repository holding `catalog/` and skills as `stackledger build catalog --skills . --out public`, and `public` does not exist
+- **THEN** both sites are built into `public` and the exit code is 0
+
 #### Scenario: Output inside a linked skill folder
 - **WHEN** `tool/writer` links to `kit/skills/writer`, the command has `--skills tool`, and `--out` is `kit/skills/writer/site`
 - **THEN** the exit code is 2 and nothing is written
 
 ### Requirement: Skills build report
-With a skill set, the report SHALL hold, in order: one line `Skills: <n> skills, <n> playbooks, <n> agents, <n> rules`; when the set has an error or a warning, one line with both counts and a hint to run `stackledger skills validate`; and the skills map's suggested positions and unrouted hops, written as for the software map but naming the skills map. A skill set with errors SHALL still be built.
+With a skill set, the report SHALL hold, in order: `Skills: <n> skills, <n> playbooks, <n> agents, <n> rules`; with any error or warning in the set, a line with both counts and a hint to run `stackledger skills validate`; then the skills map's suggested positions and unrouted hops as for the software map, naming the skills map and each station by its map-file key `<kind>:<name>`, control characters removed as `skills validate` does. A set with errors SHALL still be built.
 
 #### Scenario: Counts line
 - **WHEN** the set has 3 skills, 1 playbook, 2 agents and 10 rules and no problem
@@ -139,6 +155,14 @@ With a skill set, the report SHALL hold, in order: one line `Skills: <n> skills,
 #### Scenario: Suggested skill position
 - **WHEN** `skill:writer` is a stop of a skill line and has no position
 - **THEN** stderr gives a suggested position for `skill:writer` under a line naming the skills map's `MapLayout`
+
+#### Scenario: Suggested position of a name that is not a file name
+- **WHEN** the unplaced stop is the skill `Writer`
+- **THEN** the suggestion line names `skill:Writer`, the key to paste into `stackledger-skills.yaml`
+
+#### Scenario: Control character in a suggested name
+- **WHEN** the unplaced skill's name holds U+001B
+- **THEN** no stderr line holds U+001B
 
 ### Requirement: Build time with skills
 Both sites for a catalogue of 300 items and 20 lines, with a skill set of 200 skills, 20 playbooks, 10 agents, 2,000 rules and 10 skill lines, SHALL be built within 150 seconds.
