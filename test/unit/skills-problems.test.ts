@@ -121,3 +121,11 @@ test('Everything already read', async () => {
   expect(set.problems).toEqual([]);
   expect(set.summary.skills).toBe(2);
 });
+
+test('Everything ignored', async () => {
+  const root = skillSet({ 'repo/.stackledgerignore': '*\n', 'repo/skills/writer/SKILL.md': skill('writer') });
+  const set = await read(root, ['repo']);
+  expect(set.problems).toEqual([{ path: 'repo', line: 1, column: 1, severity: 'error', field: null,
+    message: 'No skill folder or agent file found in this folder; 1 entry was skipped by .stackledgerignore' }]);
+  expect(set.summary.ignored).toBe(1);
+});

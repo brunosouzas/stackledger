@@ -204,7 +204,7 @@ metadata:
   stackledger-agents: reviewer
 ```
 
-`stackledger-kind` is `skill` (the default) or `playbook`; the other two keys hold names separated by spaces. Give the folders one agent loads together, and check each tool folder on its own. The format, every check and a CI example: [docs/skills.md](docs/skills.md).
+`stackledger-kind` is `skill` (the default) or `playbook`; the other two keys hold names separated by spaces. Give the folders one agent loads together, and check each tool folder on its own. A `.stackledgerignore` file at the top of a given folder skips templates, examples and test fixtures with `.gitignore` patterns, and the output counts and lists what it skipped. The format, every check and a CI example: [docs/skills.md](docs/skills.md).
 
 ## How this project is built
 
