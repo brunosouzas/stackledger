@@ -18,7 +18,7 @@
 ## 4. Site
 
 - [ ] 4.1 `src/site/skills-data.ts`: page data from the set, graph and skills map model (rows, item pages, rules rows, lines at each item, source paths below the given folder, text cleaning), added identically to every view's `SiteData`. Check: `npx vitest run test/unit/site-skills-data.test.ts`.
-- [ ] 4.2 `site/`: the dynamic routes for the list, skills map, rules index and item pages; the `Skills` header link and the sub-navigation; the list and rules search and filter; the map page with the zone filter when zones are drawn (membership in a space-separated `data-zone`); `links.ts` for `skill:`, `playbook:` and `agent:` references. Check: `npx vitest run test/integration/site-skills.test.ts` and `npm run test:browser`.
+- [ ] 4.2 `site/`: the dynamic routes for the list, skills map, rules index and item pages; the `Skills` header link and the sub-navigation; the list and rules search and filter; the map page with the zone filter when zones are drawn (list mode on the skills page only; the software page keeps whole-value matching, with a browser regression test for a zone named `Team tools`); `links.ts` for `skill:`, `playbook:` and `agent:` references. Check: `npx vitest run test/integration/site-skills.test.ts` and `npm run test:browser`.
 - [ ] 4.3 `src/site/command.ts` and `build.ts`: `--skills` (repeatable, empty refused); the folders in use (option, else `spec.skills.folders` resolved from the catalogue folder, used when the Settings in use has no error; with a broken Settings, exit 1 when any parsed Settings document has a `spec.skills` key, otherwise no skill set, with a report line when a Settings file could not be parsed); the check order (exit 2 before exit 1); the output-folder refusals against the folders, every recorded input, skill folders and top-level `agents/` (output elsewhere inside a skills folder allowed); "nothing found" and page-name collisions before staging; the report lines (suggestions written as map-file keys, control characters removed). Check: `npx vitest run test/integration/build.test.ts test/integration/build-skills.test.ts`.
 - [ ] 4.4 `src/cli.ts`: usage text with `[--skills <folder>]...`. Check: `npx vitest run test/integration/cli.test.ts`.
 
@@ -49,9 +49,11 @@
 | metro-map | Component on no line; Stop with errors; Line left with one stop; No lines; Legend in staff; Allowed names only; No embedded font; Hostile titles (unchanged) | test/unit/map-svg.test.ts, test/unit/map-model.test.ts (unit, existing) |
 | metro-map | Software lines in a skills map file name | test/unit/map-svg.test.ts (unit) |
 | metro-map | Hostile skill names; Software station; Skills stations; Names that XML cannot hold; Stop not in the set; Relation error keeps the station; No skill lines; Legend of a skills map; Same skills map everywhere; Suggested skill station | test/unit/skills-metro.test.ts (unit) |
-| metro-map | Overlapping zones; Two zones with one corner | test/unit/skills-metro.test.ts (unit) |
+| metro-map | Overlapping zones; Multi-word software zone; Two zones with one corner | test/unit/skills-metro.test.ts (unit) |
 | metro-map | Example map | test/unit/map-svg.test.ts (unit) |
 | catalogue-site | Theme remembered; Site title; View in the footer; Reports link (unchanged) | test/integration/site.test.ts, test/browser/site.spec.ts (existing) |
+| catalogue-site | Station link; Highlight a line (unchanged) | test/browser/site.spec.ts (existing) |
+| catalogue-site | Zone with a space in its name | test/browser/site.spec.ts (e2e) |
 | catalogue-site | Skills link | test/integration/site-skills.test.ts (integration) |
 | build-command | Two sites; One error; Proxy reminder; Built twice (unchanged) | test/integration/build.test.ts (existing) |
 | build-command | Sandboxed build | test/integration/build.test.ts (integration, updated) |

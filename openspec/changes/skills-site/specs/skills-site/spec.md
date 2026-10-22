@@ -154,7 +154,7 @@ Every box of the relation diagram SHALL carry `data-ref` with the item's station
 - **THEN** the browser opens `release`'s page
 
 ### Requirement: Skills map page
-`/skill-map/` SHALL show the skills map of the set in the page theme, with zoom, pan, reset, line highlight and, when a zone is drawn, the zone filter as on the software map page (a station in several zones stays lit for each), the line chips and the symbols of the skills map's legend. The page script SHALL make each station a link to its item page. A list of the drawn lines with their stops as links SHALL follow the map, as its text alternative.
+`/skill-map/` SHALL show the skills map of the set in the page theme, with zoom, pan, reset, line highlight and, when a zone is drawn, the zone filter as on the software map page, reading `data-zone` as a space-separated list (a station in several zones stays lit for each), the line chips and the symbols of the skills map's legend. The page script SHALL make each station a link to its item page. A list of the drawn lines with their stops as links SHALL follow the map, as its text alternative.
 
 #### Scenario: Station link
 - **WHEN** the reader clicks station `skill:writer`, or focuses it and presses Enter

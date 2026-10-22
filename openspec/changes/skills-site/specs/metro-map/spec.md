@@ -99,14 +99,18 @@ A skills map SHALL follow every other requirement of this spec except "Map input
 On a skills map, a station SHALL join every zone whose members (skill-source, "Playbook zones") include its item, so zones may overlap; each zone is drawn as the "Zones" requirement says. A station in a drawn zone SHALL carry `data-zone` with the page file names of its zones' playbooks, separated by spaces, in declaration order.
 
 #### Scenario: Overlapping zones
-- **WHEN** the zones `release` and `review` both have `writer` among their members, with other drawn members each
+- **WHEN** the layout declares the zones `release` then `review`, and both have `writer` among their members, with other drawn members each
 - **THEN** both zone areas contain `writer`'s point, and its station has `data-zone="release review"`
 
 ### Requirement: Zone titles apart
 On a skills map, a zone title box that would overlap an earlier zone's title box SHALL move up by its height plus 4 units, as many times as needed, so no two zone titles overlap.
 
+#### Scenario: Multi-word software zone
+- **WHEN** a software map's component is in the zone `Team tools`
+- **THEN** its station has `data-zone="team tools"`, as before this change
+
 #### Scenario: Two zones with one corner
-- **WHEN** the zones `release` and `review` have the same top-left member
+- **WHEN** the layout declares the zones `release` then `review`, and they have the same top-left member
 - **THEN** their title boxes do not overlap, and `review`'s is above `release`'s
 
 ### Requirement: Software map unchanged
