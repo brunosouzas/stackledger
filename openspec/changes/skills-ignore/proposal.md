@@ -33,6 +33,10 @@ None.
 2. **An `ignored` count in the output.** Recommended: without it, a pattern that hides real skills passes silently. The counts line changes before the skills commands are first released, so no released format breaks.
 3. **The `ignore` package instead of our own matcher.** Recommended: `.gitignore` semantics have many edge cases (negation, anchoring, `**`, escapes, a folder that cannot be re-included); a small, widely used library with no dependencies is safer than new code.
 
+## Gate 1
+
+The owner approved the three decisions above as recommended (2026-10-22).
+
 ## Implicit requirements
 
 - **Errors and invalid input:** requirement. An ignore file that cannot be used is an error on that file, and its folder is read with no patterns, so nothing is hidden by a broken file. A line that is not a valid pattern matches nothing, as in Git (the `ignore` package drops such lines without telling, so a warning would need our own parser).
@@ -44,7 +48,7 @@ None.
 
 ## Dependencies
 
-PR #12 (ADR 10 and the v2 roadmap, where this change is row 2) should be merged first.
+ADR 10 and the v2 roadmap (PR #12, merged), where this change is row 2.
 
 ## Documentation
 
