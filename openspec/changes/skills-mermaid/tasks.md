@@ -14,7 +14,7 @@
 
 ## 3. Integration
 
-- [ ] 3.1 Full suite. Check: `npm test`.
+- [x] 3.1 Full suite. Check: `npm test`.
 
 | Capability | Scenario | Test file |
 |---|---|---|
