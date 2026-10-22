@@ -22,12 +22,13 @@ The skills, agents, playbooks and rules that AI coding agents use, as a second l
 | # | Change | Delivers | Status |
 |---|---|---|---|
 | 1 | `skills-source` | Reading skill folders (the [Agent Skills](https://agentskills.io/specification) format), agent files, playbooks and rules files from one or more folders, with relations declared in each skill; `stackledger skills validate` for a person or a pipeline | Planned |
-| 2 | `skills-mermaid` | `stackledger skills map`: one Markdown page per skill with a Mermaid diagram of who brings it in and what it names, written into the skills repository for offline reading and pull-request diffs | Planned |
-| 3 | `skills-site` | The Skills section of `stackledger build`: the skills map (`Line` and `MapLayout` with skill stops), one page per skill with its diagram, the rules index, agents and playbooks; the map engine's title, legend and station symbols become data | Planned |
-| 4 | `skills-drift` | `stackledger skills drift`, on the person's machine only: what each tool (Claude Code, Codex, Copilot, Cursor, Hermes…) has installed compared with the source, or with each other when there is no source | Planned |
-| 5 | `skills-software-links` | Skills that declare the software they need: links both ways between skill and software pages, and what breaks when software is removed | Planned |
-| 6 | `local-preview` | `stackledger preview`, serving a build on `127.0.0.1` only, and a "use it locally" guide | Planned |
-| 7 | `pipeline-recipes` | The three steps any CI runs (fetch the repositories, `validate`, `build`) and examples for GitLab CI, Jenkins and Azure Pipelines next to the GitHub Actions template | Planned |
+| 2 | `skills-ignore` | A `.stackledgerignore` file in the skills folder, with `.gitignore` patterns, so templates, examples and test fixtures that look like skills are not read as skills | Planned |
+| 3 | `skills-mermaid` | `stackledger skills map`: one Markdown page per skill with a Mermaid diagram of who brings it in and what it names, written into the skills repository for offline reading and pull-request diffs | Planned |
+| 4 | `skills-site` | The Skills section of `stackledger build`: the skills map (`Line` and `MapLayout` with skill stops), one page per skill with its diagram, the rules index, agents and playbooks; the map engine's title, legend and station symbols become data | Planned |
+| 5 | `skills-drift` | `stackledger skills drift`, on the person's machine only: what each tool (Claude Code, Codex, Copilot, Cursor, Hermes…) has installed compared with the source, or with each other when there is no source | Planned |
+| 6 | `skills-software-links` | Skills that declare the software they need: links both ways between skill and software pages, and what breaks when software is removed | Planned |
+| 7 | `local-preview` | `stackledger preview`, serving a build on `127.0.0.1` only, and a "use it locally" guide | Planned |
+| 8 | `pipeline-recipes` | The three steps any CI runs (fetch the repositories, `validate`, `build`) and examples for GitLab CI, Jenkins and Azure Pipelines next to the GitHub Actions template | Planned |
 
 ## Later
 
