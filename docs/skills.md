@@ -243,3 +243,85 @@ stdout stays empty; stderr gives the pages created, updated and removed.
 ### Where the diagrams render
 
 GitHub, GitLab and Visual Studio Code render `mermaid` code blocks in Markdown. Bitbucket Cloud and Azure Repos files do not (and Azure DevOps wikis do not support `flowchart`): there the diagrams show as text, and the lists and tables still hold every relation.
+
+## Skills on the site
+
+`stackledger build` publishes a skill set next to the software: give it `--skills <folder>` (repeatable), or list the folders in the catalogue's `Settings` under `spec.skills.folders`, paths relative to the catalogue folder. `--skills` replaces the setting entirely. The rules for both, with a laptop and a pipeline example, are in the [README](../README.md#skills-on-the-site); the build's refusals and exit codes in [docs/site.md](site.md#skills).
+
+The set is read exactly as `skills validate` reads it: the same folders give the same skills, the same problems and the same counts. A set with errors is still built, without the items that failed their own checks; the build report gives the counts and points to `skills validate`.
+
+### The skills map file
+
+The skills map lives in `stackledger-skills.yaml` at the top of a skills folder (never in a sub-folder, and not in a folder that is itself one skill). It holds the same `Line` and `MapLayout` documents as a catalogue, with skill references for stops and stations:
+
+```yaml
+apiVersion: stackledger/v1alpha1
+kind: MapLayout
+metadata:
+  name: skills
+spec:
+  stations:
+    "playbook:publishing": [0, 0]
+    "skill:writer": [2, 0]
+    "skill:editor": [4, 2]
+    "agent:reviewer": [6, 2]
+    "playbook:engineering": [0, 4]
+    "skill:tester": [2, 4]
+  zones:
+    - { name: publishing, title: Publishing, color: "#F5A623" }
+    - { name: engineering, title: Engineering, color: "#7B61FF" }
+---
+apiVersion: stackledger/v1alpha1
+kind: Line
+metadata:
+  name: publish
+  title: Publish an article
+spec:
+  code: P
+  color: "#E4002B"
+  stops: ["playbook:publishing", "skill:writer", "skill:editor", "agent:reviewer"]
+```
+
+- A reference is `skill:`, `playbook:` or `agent:` in lower case, then the item's exact name. A reference to something that is not in the set, or not of that kind, is an error at it, and that stop is not drawn; the item itself stays in the set.
+- Every catalogue rule for lines and layouts applies: at least two stops, unique names and codes, one layout, positions on whole grid cells, the secret guard. A stop without a position is placed by the map, and the build report suggests a position to paste, written as the key (`skill:writer: [2, 0]`).
+- With several skills folders, their map files read as one: the first `MapLayout` wins, and a line name used twice is an error.
+- `skills validate` checks the map file too, so a renamed skill fails the pipeline that checks the skills repository. It adds no count to its summary line.
+- The catalogue never reads a file with this name, even inside the catalogue folder, so one repository can hold both. A catalogue that used this name for its own lines must rename the file.
+
+**Playbook zones.** Each zone's `name` must be a playbook of the set. Its members are the playbook and what it names directly in `stackledger-skills` and `stackledger-agents` (not what the skills it loads bring in). A skill in two playbooks is in both zones, so zones overlap; the area of a zone is the convex outline of its members, so place the shared skills between the playbooks, as `editor` and `reviewer` above, and the overlap stays a clean band. Each zone title sits next to its playbook's station. You choose which playbooks are zones: with many playbooks, colour only the few that matter. A zone that names no playbook is an error on its `name`; the rest of the layout is still used.
+
+### What the site shows
+
+| Page | Path | Shows |
+| --- | --- | --- |
+| Skills | `/skills/` | The counts, and every skill, playbook and agent with its kind, description and number of rules; search and a kind filter |
+| Skill map | `/skill-map/` | The skills metro map with zoom, pan, line highlight and a playbook filter (a station in two zones stays lit for both), then each line's stops as links |
+| Rules | `/rules/` | Every rule with its ID, text, group and the skill or playbook that defines it; search |
+| Skill, playbook, agent | `/skills/<file>/`, `/playbooks/<file>/`, `/agents/<file>/` | Name, kind, description, a diagram of what brings it in and what it brings in, the same as lists, "Reached through", the skill lines that stop at it, its rules and its source files |
+
+`<file>` is the page name `skills map` uses, so `writer` is `/skills/writer/` and `Writer` is `/skills/_577269746572/`. Descriptions are shown on one line, cut at 1,024 characters; the body of `SKILL.md` is not published. Source files are shown as their path below the skills folder, never as an absolute path.
+
+### In CI
+
+The catalogue pipeline needs the skills too. Check out the skills repository from a trusted branch, next to the catalogue, and build as usual:
+
+```yaml
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: catalogue
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: northwind/ai-kit
+          ref: main
+          path: ai-kit
+          token: ${{ secrets.AI_KIT_READ_TOKEN }}
+          persist-credentials: false
+      - run: npx --yes stackledger@<version> build catalogue --out public --skills ai-kit
+```
+
+- A private skills repository needs a token that can only read it. Keep it out of pull requests from forks: build those without the skills (no `--skills` and no `spec.skills`), and never publish a pull-request build.
+- The site changes when the skills change: rebuild on a schedule, or trigger the catalogue pipeline from the skills repository's main branch.
+- Any Git host works the same way: two checkouts, then one command.
+- No software catalogue yet? A catalogue folder with only `stackledger.yaml` (`spec.sites: [full]` and `spec.skills.folders`) builds a site whose Software map is empty and whose Skills section is complete.
+
