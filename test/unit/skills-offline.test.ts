@@ -1,6 +1,6 @@
 /** Network not used (skill-source spec): Node 22's permission model does not restrict the network, so
  * the skill reading and the command are inspected instead: src/skills/*.ts and every project module
- * they import, transitively. Run npm test.
+ * they import, transitively, plus the `ignore` package they use. Run npm test.
  */
 import { test, expect } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -13,7 +13,7 @@ const IMPORT = /\b(?:import|export)\b[^'";]*?\bfrom\s*['"]([^'"]+)['"]|\bimport\
 
 test('Network not used', () => {
   const start = readdirSync(join(src, 'skills')).filter(name => name.endsWith('.ts')).map(name => join(src, 'skills', name));
-  expect(start.map(file => relative(src, file)).sort()).toEqual(['skills/command.ts', 'skills/frontmatter.ts', 'skills/rules.ts', 'skills/source.ts', 'skills/walk.ts']);
+  expect(start.map(file => relative(src, file)).sort()).toEqual(['skills/command.ts', 'skills/frontmatter.ts', 'skills/ignore.ts', 'skills/read.ts', 'skills/rules.ts', 'skills/source.ts', 'skills/walk.ts']);
   const seen = new Set<string>(), queue = [...start], findings: string[] = [];
   while (queue.length) {
     const file = queue.pop()!;
@@ -26,10 +26,12 @@ test('Network not used', () => {
       if (NETWORK_MODULES.includes(bare)) findings.push(`${relative(src, file)} imports ${specifier}`);
       // Follow the project's own modules (compiled .js names map to the .ts sources).
       if (specifier.startsWith('.')) queue.push(resolve(dirname(file), specifier.replace(/\.js$/, '.ts')));
+      // The ignore file matcher is a dependency (one file, no dependencies of its own): inspect it as well.
+      if (specifier === 'ignore') queue.push(fileURLToPath(new URL('../../node_modules/ignore/index.js', import.meta.url)));
     }
     if (/\bfetch\s*\(/.test(text)) findings.push(`${relative(src, file)} calls fetch`);
   }
   expect(findings).toEqual([]);
   // The inspection really reached the reused catalogue modules.
-  expect([...seen].map(file => relative(src, file))).toEqual(expect.arrayContaining(['source.ts', 'secrets.ts', 'validate.ts', 'control.ts', 'errors.ts']));
+  expect([...seen].map(file => relative(src, file))).toEqual(expect.arrayContaining(['source.ts', 'secrets.ts', 'validate.ts', 'control.ts', 'errors.ts', '../node_modules/ignore/index.js']));
 });

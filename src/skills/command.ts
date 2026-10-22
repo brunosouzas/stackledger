@@ -2,10 +2,12 @@
  * src/cli.ts; run `node dist/cli.js skills validate /path/to/skills`.
  *
  * Reads the given folders (none: the current folder) as one skill set through src/skills/source.ts and
- * prints its problems: one line each and a counts line, or one JSON object with `--json`. Exit 0 with
+ * prints its problems: one line each and a counts line (`ignored` counts the entries skipped by
+ * `.stackledgerignore` files), or one JSON object with `--json`. Exit 0 with
  * no error (warnings allowed), 1 with at least one error. A usage error or a given folder that cannot
  * be checked throws a plain Error before anything is written, so src/cli.ts prints the reason and the
- * usage on stderr and exits 2 with stdout empty; any other failure is an InternalError (exit 1).
+ * usage on stderr and exits 2 with stdout empty; any other failure (an ignore file matcher that throws,
+ * say) is an InternalError (exit 1).
  *
  * Text lines lose their control characters and JSON has U+007F–U+009F as `\u` escapes (src/control.ts),
  * because folder and file names come from outside and may hold ESC or U+009B. Only reads; no network.
@@ -23,12 +25,13 @@ const SUBCOMMANDS = ['validate'];
 export function formatText(set: Pick<SkillSet, 'problems' | 'summary'>): string {
   const lines = set.problems.map(p => withoutControls(`${p.path}:${p.line}:${p.column} ${p.severity} ${p.field ?? '-'} ${p.message}`));
   const s = set.summary;
-  lines.push(`skills: ${s.skills}, playbooks: ${s.playbooks}, agents: ${s.agents}, rules: ${s.rules}, errors: ${s.errors}, warnings: ${s.warnings}`);
+  lines.push(`skills: ${s.skills}, playbooks: ${s.playbooks}, agents: ${s.agents}, rules: ${s.rules}, ignored: ${s.ignored}, errors: ${s.errors}, warnings: ${s.warnings}`);
   return lines.join('\n') + '\n';
 }
-/** The `--json` output: problems and summary, with U+007F–U+009F escaped. */
-export function formatJson(set: Pick<SkillSet, 'problems' | 'summary'>): string {
-  return escapeJsonControls(JSON.stringify({ problems: set.problems, summary: set.summary })) + '\n';
+/** The `--json` output: problems, the paths skipped by ignore files and the summary, in that order, with
+ * U+007F–U+009F escaped. */
+export function formatJson(set: Pick<SkillSet, 'problems' | 'ignored' | 'summary'>): string {
+  return escapeJsonControls(JSON.stringify({ problems: set.problems, ignored: set.ignored, summary: set.summary })) + '\n';
 }
 
 /** Run `stackledger skills …` with the whole argument list (`skills` first). */

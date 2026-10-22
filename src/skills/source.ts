@@ -11,17 +11,19 @@
  * 3. The set is now fixed. Declared relations, agent preloads and rules (rule IDs across skills) are
  *    checked against it; their problems never remove an item, so there is no cascade.
  * A file rejected in phase 1 or 2 never reaches the set, so its values (a secret, say) never appear in
- * another item's message. Problems are sorted with the catalogue's sortProblems.
+ * another item's message. Problems are sorted with the catalogue's sortProblems. Entries skipped by a
+ * `.stackledgerignore` file never reach phase 1; they are only counted and listed (src/skills/walk.ts).
  *
  * What can go wrong: a given folder that is missing, not a folder or cannot be listed throws
  * SkillsFolderError (src/skills/walk.ts); every other failure is a problem on its path.
  */
-import { constants } from 'node:fs';
-import { open, stat } from 'node:fs/promises';
+import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { compareText } from '../identity.js';
 import { fileProblem, MAX_FILE_BYTES, type Problem } from '../source.js';
-import { secretRules } from '../secrets.js';
 import { sortProblems } from '../validate.js';
+import { IGNORE_FILE } from './ignore.js';
+import { readBounded, secretProblems } from './read.js';
 import { AGENTS_KEY, SKILLS_KEY, at, checkAgentFields, checkNameAndDescription, checkSkillFields, readFrontmatter,
   relationNames, type Frontmatter, type SkillKind } from './frontmatter.js';
 import { parseRules, type Rule } from './rules.js';
@@ -43,8 +45,15 @@ export interface Agent {
   /** Preloaded skills, as listed. */
   preloads: string[];
 }
-export interface SkillsSummary { skills: number; playbooks: number; agents: number; rules: number; errors: number; warnings: number }
-export interface SkillSet { skills: Skill[]; agents: Agent[]; problems: Problem[]; summary: SkillsSummary }
+export interface SkillsSummary { skills: number; playbooks: number; agents: number; rules: number; ignored: number; errors: number; warnings: number }
+export interface SkillSet {
+  skills: Skill[];
+  agents: Agent[];
+  problems: Problem[];
+  /** Display paths of the entries skipped by ignore files, each once, sorted by code point. */
+  ignored: string[];
+  summary: SkillsSummary;
+}
 
 interface SkillCandidate { found: FoundSkill; frontmatter: Frontmatter; kind: SkillKind }
 interface AgentCandidate { found: FoundAgent; frontmatter: Frontmatter; preloads: string[] }
@@ -54,36 +63,10 @@ function displayJoin(folder: string, file: string): string {
   if (!folder) return file;
   return folder.endsWith('/') ? folder + file : `${folder}/${file}`;
 }
-/** A file's text, or the error that stops its checks (too large or unreadable). The file is opened once,
- * non-blocking, and checked through its handle, so a file swapped for a FIFO or grown after the walk's
- * check can neither hang the run nor be read past the limit. */
-async function readText(absolute: string, path: string): Promise<{ text: string } | { problem: Problem }> {
-  let handle;
-  try {
-    handle = await open(absolute, constants.O_RDONLY | constants.O_NONBLOCK);
-    const info = await handle.stat();
-    if (!info.isFile()) return { problem: fileProblem(path, 'File cannot be read') };
-    if (info.size > MAX_FILE_BYTES) return { problem: fileProblem(path, 'File is larger than 1 MiB; not read') };
-    const buffer = Buffer.alloc(MAX_FILE_BYTES + 1);
-    let length = 0;
-    for (;;) {
-      const { bytesRead } = await handle.read(buffer, length, buffer.length - length, length);
-      if (!bytesRead) break;
-      length += bytesRead;
-      if (length > MAX_FILE_BYTES) return { problem: fileProblem(path, 'File is larger than 1 MiB; not read') };
-    }
-    return { text: buffer.subarray(0, length).toString('utf8') };
-  } catch {
-    return { problem: fileProblem(path, 'File cannot be read') };
-  } finally {
-    await handle?.close();
-  }
-}
-/** One error at `1:1` per secret rule the texts break, with the rule's fixed message. */
-function secretProblems(path: string, texts: Iterable<string>): Problem[] {
-  const rules = new Set<string>();
-  for (const text of texts) for (const rule of secretRules(text)) rules.add(rule);
-  return [...rules].map(rule => fileProblem(path, rule));
+/** A file's text, or the error that stops its checks (too large or unreadable), read once and bounded
+ * (src/skills/read.ts). */
+function readText(absolute: string, path: string): ReturnType<typeof readBounded> {
+  return readBounded(absolute, path, { bytes: MAX_FILE_BYTES, tooLarge: 'File is larger than 1 MiB; not read', unreadable: 'File cannot be read' });
 }
 /** Every key and scalar of a decoded frontmatter value, as text: strings, numbers (a hexadecimal key decodes
  * to a number), and the keys and members of the `Map` and `Set` objects that `!!omap`, `!!pairs` and `!!set`
@@ -128,7 +111,11 @@ export async function readSkillSet(folders: string[], options: WalkOptions = {})
   const walked = await walkSkillFolders(folders, options);
   const problems: Problem[] = [...walked.problems];
   for (const folder of walked.folders) {
-    if (!folder.found) problems.push(fileProblem(folder.path, 'No skill folder or agent file found in this folder'));
+    if (folder.found) continue;
+    // Skipped entries are not found, so a pattern that hides everything fails; the message says it was the ignore file.
+    const skipped = folder.ignored === 1 ? '; 1 entry was skipped by ' + IGNORE_FILE
+      : folder.ignored ? `; ${folder.ignored} entries were skipped by ${IGNORE_FILE}` : '';
+    problems.push(fileProblem(folder.path, `No skill folder or agent file found in this folder${skipped}`));
   }
 
   // Phase 1: own checks; phase 2: unique names among candidates, in walk order.
@@ -198,11 +185,12 @@ export async function readSkillSet(folders: string[], options: WalkOptions = {})
 
   sortProblems(problems);
   const count = (severity: Problem['severity']) => problems.filter(problem => problem.severity === severity).length;
-  return { skills, agents, problems, summary: {
+  return { skills, agents, problems, ignored: [...walked.ignored].sort(compareText), summary: {
     skills: skills.filter(skill => skill.kind === 'skill').length,
     playbooks: skills.filter(skill => skill.kind === 'playbook').length,
     agents: agents.length,
     rules: skills.reduce((sum, skill) => sum + skill.rules.length, 0),
+    ignored: walked.ignored.length,
     errors: count('error'), warnings: count('warning'),
   } };
 }
