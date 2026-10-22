@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-/** Command line: validate, mcp, map, build, report, discover and drift; run node dist/cli.js --help for their options.
- * Usage/folder failures exit 2 on stderr with empty stdout; internal failures exit 1 without usage. Validate reports problems on stdout;
+/** Command line: validate, mcp, map, build, report, discover, drift and skills validate; run node dist/cli.js --help for their options.
+ * Usage/folder failures exit 2 on stderr with empty stdout; internal failures exit 1 without usage. Validate and skills validate report problems on stdout;
  * map writes SVG, report the licence report and drift the comparison with a snapshot on stdout, diagnostics on stderr. MCP stdout contains protocol messages only.
  * Validate's text lines lose their control characters (a file name may hold ESC or U+009B) and its JSON has U+007F–U+009F as \u escapes (src/control.ts).
  */
@@ -11,7 +11,7 @@ import { loadFolder } from './source.js';
 import { viewNames, type ViewName } from './views.js';
 import { reportFailure } from './errors.js';
 import { escapeJsonControls, withoutControls } from './control.js';
-const usage = 'Usage: stackledger validate [folder] [--json]\n       stackledger mcp <folder> [--view full|staff]\n       stackledger map <folder> [--view full|staff] [--theme light|dark] [--date YYYY-MM-DD]\n       stackledger build <folder> --out <dir> [--date YYYY-MM-DD]\n       stackledger report <folder> [--date YYYY-MM-DD] [--days N] [--format text|json|csv|ics]\n       stackledger discover\n       stackledger drift <folder> [--snapshot <file>] [--format text|json] [--scaffold <dir>]\n       stackledger --help\n';
+const usage = 'Usage: stackledger validate [folder] [--json]\n       stackledger mcp <folder> [--view full|staff]\n       stackledger map <folder> [--view full|staff] [--theme light|dark] [--date YYYY-MM-DD]\n       stackledger build <folder> --out <dir> [--date YYYY-MM-DD]\n       stackledger report <folder> [--date YYYY-MM-DD] [--days N] [--format text|json|csv|ics]\n       stackledger discover\n       stackledger drift <folder> [--snapshot <file>] [--format text|json] [--scaffold <dir>]\n       stackledger skills validate [folder...] [--json]\n       stackledger --help\n';
 function text(result: Result): string {
   const lines = result.problems.map(p => withoutControls(`${p.path}:${p.line}:${p.column} ${p.severity} ${p.field ?? '-'} ${p.message}`));
   const s = result.summary;
@@ -54,7 +54,8 @@ async function main(args: string[]): Promise<void> {
     else if (command === 'report') { const { reportCommand } = await import('./report-command.js'); await reportCommand(args); }
     else if (command === 'discover') { const { discoverCommand } = await import('./discover-command.js'); await discoverCommand(args); }
     else if (command === 'drift') { const { driftCommand } = await import('./drift-command.js'); await driftCommand(args); }
-    else throw new Error('Unknown command; expected validate, mcp, map, build, report, discover or drift');
+    else if (command === 'skills') { const { skillsCommand } = await import('./skills/command.js'); await skillsCommand(args); }
+    else throw new Error('Unknown command; expected validate, mcp, map, build, report, discover, drift or skills');
   } catch (error) {
     const { stderr, exitCode } = reportFailure(error, usage);
     process.stderr.write(stderr);
