@@ -60,9 +60,13 @@ The Skills pages SHALL be built from one skill set for every site built, and eac
 - **WHEN** JavaScript is disabled
 - **THEN** the whole table is shown, unfiltered
 
-#### Scenario: Every item has an error
-- **WHEN** every skill and agent found in the skills folders has an error
+#### Scenario: Every item rejected
+- **WHEN** every `SKILL.md` and agent file found in the skills folders has an error in its own checks, so none joins the set
 - **THEN** `/skills/`, `/skill-map/` and `/rules/` exist and say there are no skills, no skill lines and no rules
+
+#### Scenario: Relation error keeps the page
+- **WHEN** the playbook `release` lists the missing skill `ghost` and is otherwise valid
+- **THEN** `release` is in the list and has its page
 
 ### Requirement: Skill and playbook pages
 A skill or playbook page SHALL show its name as the `h1`, its kind, its description, the relation diagram, the lists "Brought in by" and "Brings in" (each item with its relation kind and a link to its page), "Reached through", the skill lines that stop at it, its rules in file order with ID, group, text, why and check, and its source files.
@@ -143,7 +147,7 @@ A side with more than 100 items SHALL NOT be drawn: the diagram SHALL be replace
 - **THEN** its page has no relation diagram, says it has 101 relations, and lists all 101
 
 ### Requirement: Diagram links
-Every box of the relation diagram SHALL carry `data-ref` with `skill:<name>`, `playbook:<name>` or `agent:<name>`, and the page script SHALL open that item's page when the box is clicked, or focused and Enter is pressed. The lists SHALL hold the same items as links, as the diagram's text alternative.
+Every box of the relation diagram SHALL carry `data-ref` with the item's station reference (`skill:<file>`, `playbook:<file>` or `agent:<file>`, as the metro-map spec defines it), and the page script SHALL open that item's page when the box is clicked, or focused and Enter is pressed. The lists SHALL hold the same items as links, as the diagram's text alternative.
 
 #### Scenario: Box link
 - **WHEN** the reader clicks the `release` box on `writer`'s page, or focuses it and presses Enter
@@ -184,7 +188,7 @@ Every box of the relation diagram SHALL carry `data-ref` with `skill:<name>`, `p
 - **THEN** the page says there are no rules
 
 ### Requirement: Text from skill files
-Names, descriptions, rule texts and paths from skill files SHALL be shown only as text, escaped by the template engine or the SVG renderer. Descriptions SHALL be made one line, lose control and format characters and be cut at 1,024 code points as `stackledger skills map` does; rule texts, whys and checks SHALL lose control and format characters.
+Text from skill files and map files SHALL be shown only as text, escaped by the template engine or the SVG renderer. Descriptions SHALL be made one line, lose control and format characters (Unicode `Cc` and `Cf`) and be cut at 1,024 code points as `stackledger skills map` does. Names, rule IDs, texts, whys, checks and groups, and line titles SHALL lose those characters where shown; identities, file names and references are unchanged.
 
 #### Scenario: Description with HTML
 - **WHEN** a description holds `<img src=x onerror=alert(1)>`
@@ -195,15 +199,19 @@ Names, descriptions, rule texts and paths from skill files SHALL be shown only a
 - **THEN** no page has a script element other than the site's script files
 
 #### Scenario: Bidirectional override
-- **WHEN** a description and a rule text hold U+202E
-- **THEN** no file of the site holds U+202E
+- **WHEN** a skill name, a description, a rule text, a rule group and a skill line title hold U+202E
+- **THEN** no file of the site holds U+202E, and the skill's page is still named after its page file name
 
 ### Requirement: Source paths
-A source file SHALL be shown as its path below its given folder, separated by `/`, without a link. No file of the site SHALL hold an absolute path, a given folder's own path or the catalogue folder's path.
+A source file SHALL be shown as its path below its given folder, separated by `/`, without a link. No path stackledger computes for a page SHALL be absolute or include a skills folder argument, a skills folder's real path or the catalogue folder's path; text taken from a file is shown as written.
 
 #### Scenario: Tool folder in the home folder
-- **WHEN** the skills folder is `/home/northwind/.claude/skills` and holds `writer/SKILL.md`
+- **WHEN** the skills folder is `/home/northwind/.claude/skills`, holds `writer/SKILL.md`, and no skill file mentions `/home/northwind`
 - **THEN** `writer`'s page shows `writer/SKILL.md`, and no file of the site holds `/home/northwind`
+
+#### Scenario: Relative skills folder
+- **WHEN** the command has `--skills ../northwind-kit`, that folder holds `skills/writer/SKILL.md`, and no skill file mentions `northwind-kit`
+- **THEN** `writer`'s page shows `skills/writer/SKILL.md`, and no file of the site holds `northwind-kit`
 
 ### Requirement: Skills pages under the site policy
 The Skills pages SHALL follow the site-security requirements of the other pages: the same Content Security Policy, no inline code, relative URLs, `noindex`, no external request.

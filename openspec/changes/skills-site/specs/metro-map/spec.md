@@ -46,12 +46,12 @@ Every text taken from the catalogue or a skill set SHALL be XML-escaped (`&`, `<
 
 #### Scenario: Hostile skill names
 - **WHEN** a skill on a skills map is named `a"><script>x</script>` and its line's title holds U+0001
-- **THEN** the SVG parses as XML, every element and attribute name is on the allow-lists, and the name and title appear only as text and in `data-ref`
+- **THEN** the SVG parses as XML, every element and attribute name is on the allow-lists, and the name and title appear only as text
 
 ## ADDED Requirements
 
 ### Requirement: Station references
-A station reference SHALL be `component:<name>` on a software map, with the component's `metadata.name`, and `skill:<name>`, `playbook:<name>` or `agent:<name>` on a skills map, with the item's kind and name as written in its file.
+A station reference SHALL be `component:<name>` on a software map, with the component's `metadata.name`, and `skill:<file>`, `playbook:<file>` or `agent:<file>` on a skills map, `<file>` being the item's page file name as `stackledger skills map` gives it, without `.md`, so the reference is ASCII and names one item of its kind. A skills station's `title` SHALL hold the item's name.
 
 #### Scenario: Software station
 - **WHEN** component `editor` is a station of a software map
@@ -60,6 +60,10 @@ A station reference SHALL be `component:<name>` on a software map, with the comp
 #### Scenario: Skills stations
 - **WHEN** a skill line stops at the playbook `publishing`, the skill `writer` and the agent `reviewer`
 - **THEN** the skills map has stations with `data-ref` `playbook:publishing`, `skill:writer` and `agent:reviewer`
+
+#### Scenario: Names that XML cannot hold
+- **WHEN** two skills on one line are named `a` U+0001 `b` and `a` U+FFFD `b`
+- **THEN** their stations have different `data-ref` values, both of the form `skill:_` and hexadecimal digits
 
 ### Requirement: Skills map input
 A skills map SHALL be drawn from a skill set's lines and layout, as `skill-source` reads them. A station is a skill, playbook or agent of the set that is a stop of at least one drawn line, labelled with its name. A stop naming no item of the set SHALL be skipped; a line left with fewer than two stops SHALL NOT be drawn nor listed. A layout key naming no item of the set still reserves its cell.
@@ -73,7 +77,7 @@ A skills map SHALL be drawn from a skill set's lines and layout, as `skill-sourc
 - **THEN** the skills map is a valid SVG showing the text `No skill lines yet`
 
 ### Requirement: Skills map drawing
-A skills map SHALL follow every other requirement of this spec except "Map input", "Legend", "Zones", "Licence markers", "Renewal ring" and the muting of deprecated stations: it has no zone, licence marker or renewal ring, does not depend on a view or a date, has the SVG title `Skills map`, and its legend lists the drawn lines, then only the symbols interchange and suggested position.
+A skills map SHALL follow every other requirement of this spec except "Map input", "Legend", "Zones", "Licence markers", "Renewal ring", the muting in "Stations and interchanges" and the source of the text in "Label text" (its label is the item's name): it has no zone, licence marker or renewal ring, does not depend on a view or a date, has the SVG title `Skills map`, and its legend lists the lines, then only interchange and suggested position.
 
 #### Scenario: Legend of a skills map
 - **WHEN** a skills map with two lines is drawn with its title band and legend
