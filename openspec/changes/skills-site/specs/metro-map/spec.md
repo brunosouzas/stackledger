@@ -81,7 +81,7 @@ A skills map SHALL be drawn from a skill set's lines and layout, as `skill-sourc
 - **THEN** the skills map is a valid SVG showing the text `No skill lines yet`
 
 ### Requirement: Skills map drawing
-A skills map SHALL follow every other requirement of this spec except "Map input", "Legend", "Zones", "Licence markers", "Renewal ring", the muting in "Stations and interchanges" and the source of the text in "Label text" (its label is the item's name): it has no zone, licence marker or renewal ring, does not depend on a view or a date, has the SVG title `Skills map`, and its legend lists the lines, then only interchange and suggested position.
+A skills map SHALL follow every other requirement of this spec except "Map input", "Legend", "Licence markers", "Renewal ring", the muting in "Stations and interchanges", the label source in "Label text" (its label is the item's name), and zone membership and `data-zone` (see "Skills map zones"): no licence marker or renewal ring, no view or date dependence, the SVG title `Skills map`, a legend of the lines, then only interchange and suggested position.
 
 #### Scenario: Legend of a skills map
 - **WHEN** a skills map with two lines is drawn with its title band and legend
@@ -94,6 +94,20 @@ A skills map SHALL follow every other requirement of this spec except "Map input
 #### Scenario: Suggested skill station
 - **WHEN** skill line `publish` stops at `a`, `b` and `c` and there is no `MapLayout`
 - **THEN** `skill:a` is suggested at `[0, 0]`, `skill:b` at `[1, 0]` and `skill:c` at `[2, 0]`, each with the dashed suggestion disc
+
+### Requirement: Skills map zones
+On a skills map, a station SHALL join every zone whose members (skill-source, "Playbook zones") include its item, so zones may overlap; each zone is drawn as the "Zones" requirement says. A station in a drawn zone SHALL carry `data-zone` with the page file names of its zones' playbooks, separated by spaces, in declaration order.
+
+#### Scenario: Overlapping zones
+- **WHEN** the zones `release` and `review` both have `writer` among their members, with other drawn members each
+- **THEN** both zone areas contain `writer`'s point, and its station has `data-zone="release review"`
+
+### Requirement: Zone titles apart
+On a skills map, a zone title box that would overlap an earlier zone's title box SHALL move up by its height plus 4 units, as many times as needed, so no two zone titles overlap.
+
+#### Scenario: Two zones with one corner
+- **WHEN** the zones `release` and `review` have the same top-left member
+- **THEN** their title boxes do not overlap, and `review`'s is above `release`'s
 
 ### Requirement: Software map unchanged
 For the same catalogue, view, theme and map date, the software map SHALL be byte-identical to the one stackledger 0.2.0 draws, unless the catalogue holds a file named `stackledger-skills.yaml`, which is no longer a catalogue file.

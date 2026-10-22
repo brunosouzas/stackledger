@@ -154,7 +154,7 @@ Every box of the relation diagram SHALL carry `data-ref` with the item's station
 - **THEN** the browser opens `release`'s page
 
 ### Requirement: Skills map page
-`/skill-map/` SHALL show the skills map of the set in the page theme, with zoom, pan, reset and line highlight as on the software map page, the line chips and the symbols of the skills map's legend, and no zone filter. The page script SHALL make each station a link to its item page. A list of the drawn lines with their stops as links SHALL follow the map, as its text alternative.
+`/skill-map/` SHALL show the skills map of the set in the page theme, with zoom, pan, reset, line highlight and, when a zone is drawn, the zone filter as on the software map page (a station in several zones stays lit for each), the line chips and the symbols of the skills map's legend. The page script SHALL make each station a link to its item page. A list of the drawn lines with their stops as links SHALL follow the map, as its text alternative.
 
 #### Scenario: Station link
 - **WHEN** the reader clicks station `skill:writer`, or focuses it and presses Enter
@@ -163,6 +163,14 @@ Every box of the relation diagram SHALL carry `data-ref` with the item's station
 #### Scenario: Highlight a skill line
 - **WHEN** the reader chooses line `publish` in the line chips, then chooses it again
 - **THEN** every other line is dimmed, then restored
+
+#### Scenario: Filter by a playbook zone
+- **WHEN** `writer` is in the zones `release` and `review`, `editor` only in `release`, and the reader chooses the zone `review`
+- **THEN** `editor` is dimmed and `writer` is not; choosing `release` leaves both lit
+
+#### Scenario: No zone filter without zones
+- **WHEN** the skills layout declares no zone
+- **THEN** the page has no zone filter
 
 #### Scenario: No skill lines
 - **WHEN** no given folder has a skills map file

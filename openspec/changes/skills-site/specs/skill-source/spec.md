@@ -54,15 +54,11 @@ A skills map file over 1 MiB, one that cannot be read, one that is neither a reg
 - **THEN** every skill is still in the set
 
 ### Requirement: Skills map documents
-Each document of a skills map file SHALL get every catalogue check that applies to a `Line` or a `MapLayout` (document shape, identity, namespaces, metadata types, fields outside the format, duplicate names, line fields, stop repeats and colours, map layout, positions and lines agree, secrets), except that references follow "Skill references" and a `MapLayout` with `spec.zones` SHALL have an error on it. Any other kind SHALL be an error on `kind`, any other `apiVersion` on `apiVersion`.
+Each document of a skills map file SHALL get every catalogue check that applies to a `Line` or a `MapLayout` (document shape, identity, namespaces, metadata types, fields outside the format, duplicate names, line fields, stop repeats and colours, map layout and its zone fields, positions and lines agree, secrets), except that references follow "Skill references" and zones follow "Playbook zones". Any other kind SHALL be an error on `kind`, any other `apiVersion` on `apiVersion`.
 
 #### Scenario: Component in the map file
 - **WHEN** a document of the map file has `kind: Component`
 - **THEN** there is an error on its `kind`
-
-#### Scenario: Zones in a skills layout
-- **WHEN** the `MapLayout` of the map file has `spec.zones`
-- **THEN** there is an error on `spec.zones`, and, as for any layout with a field error, its positions are not used
 
 #### Scenario: Line with one stop
 - **WHEN** a line of the map file has one stop
@@ -98,6 +94,25 @@ In a skills map file, each stop and each `MapLayout` station key SHALL be `skill
 #### Scenario: Stop excluded by an error
 - **WHEN** a line stops at `skill:editor` and `editor`'s `SKILL.md` has no frontmatter
 - **THEN** there is an error on that stop, besides the error on `editor`'s file
+
+### Requirement: Playbook zones
+In a skills `MapLayout`, each zone of `spec.zones` (`name`, `title`, `color`, as in the catalogue) SHALL name a playbook of the set by its exact name; a name that is no playbook of the set SHALL be an error on that zone's `name`, a reference error like a missing station: the layout is still used and that zone has no member. The zone's members are the playbook and the skills, playbooks and agents its `stackledger-skills` and `stackledger-agents` name in the set.
+
+#### Scenario: Playbook as a zone
+- **WHEN** the layout declares the zone `release` with a title and a colour, and the playbook `release` loads `writer` and `editor` and uses `reviewer`
+- **THEN** there is no problem and the zone's members are `release`, `writer`, `editor` and `reviewer`
+
+#### Scenario: Zone that is not a playbook
+- **WHEN** the layout declares the zone `writer` and `writer` is a skill
+- **THEN** there is an error on that zone's `name` saying it must name a playbook, the layout's positions are still used, and the zone is not drawn
+
+#### Scenario: Only direct members
+- **WHEN** the zone `ship` is the playbook `ship`, which loads the playbook `release`, which loads `writer`
+- **THEN** the members of `ship` are `ship` and `release`, not `writer`
+
+#### Scenario: One skill in two zones
+- **WHEN** the playbooks `release` and `review` both load `writer` and both are zones
+- **THEN** `writer` is a member of both zones and there is no problem
 
 ### Requirement: Several skills map files
 The skills map files of several given folders SHALL be read, in folder order, as the documents of one catalogue: a line name or code already used by an earlier line is an error on the later one, and only the earliest `MapLayout` is used, a later one being an error naming the earlier file.
