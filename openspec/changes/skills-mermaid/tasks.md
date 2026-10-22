@@ -19,6 +19,7 @@
 | Capability | Scenario | Test file |
 |---|---|---|
 | skills-map-command | Name with a path; Names that differ only in case; Windows device name; Long name | test/unit/skills-map.test.ts |
+| skills-map-command | Colliding page names; Description that would link or render math; Map folder outside the current folder | test/unit/skills-map.test.ts |
 | skills-map-command | Name in the text; Missing relation target; Same name in two namespaces; Repeated preload | test/unit/skills-map.test.ts |
 | skills-map-command | Playbook page; Skill page; Reached through a playbook; Listing order does not matter | test/unit/skills-map.test.ts |
 | skills-map-command | Diagram of a skill; Two playbooks that load each other; Skill that lists itself; New skill in a diff; Node names are not IDs | test/unit/skills-map.test.ts |
@@ -26,10 +27,12 @@
 | skills-map-command | Description with HTML; Multi-line description with a fence; Description at the limit; Label that tries to close the node | test/unit/skills-map.test.ts |
 | skills-map-command | Skill in the repository; Tool folder in the home folder; Folder name with special characters | test/unit/skills-map.test.ts |
 | skills-map-command | Missing out; Out is a file; Same set as validate; Help | test/integration/skills-map.test.ts |
-| skills-map-command | Output is the given folder; Output holds a linked source; Output inside a skill folder; Output in the agents folder; Output in a tool folder; Output inside the given folder | test/integration/skills-map.test.ts |
-| skills-map-command | Unrelated non-empty folder; Marker that is not valid; Other files kept; Removed skill | test/integration/skills-map.test.ts |
-| skills-map-command | Linked kind folder; Linked page; Hard-linked page; Writes stay in the map folder; Folder swapped | test/integration/skills-map.test.ts |
+| skills-map-command | Output is the given folder; Output holds a linked source; Output inside a skill folder; Output in the agents folder; Output in a tool folder; Output holds a linked source file; Output inside the given folder | test/integration/skills-map.test.ts |
+| skills-map-command | Unrelated non-empty folder; Marker that is not valid; Other files kept; Removed skill; Stray spelling on a case-insensitive disk (skipped on a case-sensitive file system) | test/integration/skills-map.test.ts |
+| skills-map-command | Linked kind folder; Linked page; Hard-linked page; Writes stay in the map folder; Folder swapped; Kind folder appears as a link; Page that cannot be read | test/integration/skills-map.test.ts |
 | skills-map-command | Two runs; Checkout with CRLF; Stale map in a pipeline; Up to date; Set with errors; Wrong folder does not empty the map | test/integration/skills-map.test.ts |
+
+- [ ] 3.2 Code review fixes (round 1, Claude and Codex): the requirements and scenarios added after the code review, each with its test; the remaining findings listed in the pull request.
 
 ## Workflow follow-up
 
