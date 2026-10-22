@@ -49,7 +49,8 @@ jobs:
       # Timing checks run alone, after the suite, so elapsed time is meaningful.
       - run: npm run test:perf
   browser:
-    # Playwright (Chromium) on the built Northwind sites served under /full/ and /staff/; see test/browser/.
+    # Playwright (Chromium) on the built Northwind sites served under /full/ and /staff/, and the pinned
+    # mermaid package rendering the skills map's fixture diagrams offline; see test/browser/.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
