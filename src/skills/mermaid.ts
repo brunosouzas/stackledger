@@ -36,7 +36,7 @@ export const INDEX_PAGE = 'README.md';
 /** Labels show at most this many code points of a name (one non-ASCII character can become eight as an entity). */
 const MAX_LABEL_CODE_POINTS = 64;
 const MAX_DESCRIPTION_CODE_POINTS = 1024;
-/** Mermaid 11 refuses more than 500 edges and about 50,000 characters by default; the budget leaves room for host differences. */
+/** Mermaid 11 and 12 refuse more than 500 edges and about 50,000 characters by default; the budget leaves room for host differences. */
 export const MAX_DIAGRAM_EDGES = 400;
 export const MAX_DIAGRAM_CHARACTERS = 40_000;
 const MAX_FILE_NAME = 64;
