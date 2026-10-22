@@ -54,7 +54,7 @@ Line endings MAY be LF or CRLF, and a leading UTF-8 byte-order mark SHALL be dro
 - **THEN** neither skill is read
 
 ### Requirement: Matching paths
-The walk SHALL test, right after the hidden and `node_modules` skip, each folder, symbolic link, skill folder's `SKILL.md` and `.md` file directly in the top-level `agents/` folder that it meets below a given folder. A skill folder SHALL be skipped when its own path or its `SKILL.md` path matches. Other files SHALL NOT be tested or counted. A pattern for a hidden entry (such as `!.claude/`) has no effect.
+The walk SHALL test, right after the hidden and `node_modules` skip, each folder, symbolic link (except one to a regular file that is not an agent file), skill folder's `SKILL.md` and `.md` file directly in the top-level `agents/` folder that it meets below a given folder. A skill folder SHALL be skipped when its own path or its `SKILL.md` path matches. Other files SHALL NOT be tested or counted. A pattern for a hidden entry (such as `!.claude/`) has no effect.
 
 #### Scenario: SKILL.md pattern
 - **WHEN** the ignore file holds `fixtures/*/SKILL.md` and the folder holds `fixtures/broken/SKILL.md`
@@ -63,6 +63,10 @@ The walk SHALL test, right after the hidden and `node_modules` skip, each folder
 #### Scenario: Files the walk does not use
 - **WHEN** the ignore file holds `*.txt` and `README.md`, and the folder holds `README.md`, `notes.txt` and `skills/writer/SKILL.md`
 - **THEN** `writer` is read and the ignored count is 0
+
+#### Scenario: Linked file the walk does not use
+- **WHEN** the ignore file holds `README.md` and `*.txt`, and `README.md` and `link.txt` are links to regular files
+- **THEN** the ignored count is 0 and the `ignored` list is empty
 
 ### Requirement: Tested path
 The tested path SHALL be relative to the given folder, separated by `/`, and end in `/` only for a real folder. A symbolic link SHALL always be tested without `/`, whatever its target, as Git does (a folder-only pattern does not match a link), and the `SKILL.md` of a linked skill folder SHALL NOT be tested.
@@ -146,10 +150,6 @@ An ignore file SHALL have at most 100 pattern lines (not blank, not comments), e
 
 ### Requirement: Ignore file problems
 An ignore file over 64 KiB, one that cannot be read, one that breaks a secret rule, and an entry named `.stackledgerignore` that is neither a regular file nor a link to one (a folder, a FIFO or other special file, a broken or looping link) SHALL be an error at `1:1` on it, with a fixed message that never repeats its text, reported once per run at the first path in walk order. Its given folder SHALL then be walked with no patterns.
-
-#### Scenario: Matcher failure
-- **WHEN** the matcher throws while an entry is tested
-- **THEN** the command fails as an internal failure and its message holds neither the ignore file's text nor the tested path
 
 #### Scenario: Secret in the ignore file
 - **WHEN** the ignore file holds `4111111111111111/` and `templates/`, and the folder holds `templates/skill/SKILL.md`

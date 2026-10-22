@@ -25,7 +25,7 @@ import { lstat, readdir, stat } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { compareText } from '../identity.js';
 import { fileProblem, type Problem } from '../source.js';
-import { createMatcher, IGNORE_FILE, ignores, readIgnoreFile, type CreateMatcher, type Matcher } from './ignore.js';
+import { createMatcher, IGNORE_FILE, ignores, readIgnoreFile, type Matcher } from './ignore.js';
 
 /** How many folder levels below a given folder are looked at: `a/b/c/d/e/SKILL.md` is read, `a/b/c/d/e/f/SKILL.md` is not. */
 export const MAX_DEPTH = 5;
@@ -73,8 +73,6 @@ export interface Walked {
 export interface WalkOptions {
   cwd?: string;
   list?: ListFolder;
-  /** Builds each ignore file's matcher; tests inject one that fails. */
-  matcher?: CreateMatcher;
 }
 
 /** Remove trailing separators from a folder argument: `repo/` and `repo//` both display as `repo`. */
@@ -101,7 +99,6 @@ function hidden(name: string): boolean {
 export async function walkSkillFolders(folders: string[], options: WalkOptions = {}): Promise<Walked> {
   const cwd = options.cwd ?? process.cwd();
   const list = options.list ?? listFolder;
-  const create = options.matcher ?? createMatcher;
   const walked: Walked = { items: [], problems: [], ignored: [], folders: [] };
   const seenItems = new Set<string>();
   const seenProblems = new Set<string>();
@@ -169,10 +166,11 @@ export async function walkSkillFolders(folders: string[], options: WalkOptions =
       const entryKey = identity(entry);
       if (entry.isSymbolicLink()) {
         // A link is tested by its own name, never with `/`: a folder-only pattern does not match a link in
-        // Git either. A skipped link is not followed, so it gets no link warning.
-        if (skip(childRelative, entryKey, display)) continue;
+        // Git either. A skipped link is not followed, so it gets no link warning. A link to a file the walk
+        // does not use (anything but an agent file) is like that file: never tested, never counted.
         let target;
         try { target = await stat(childAbsolute, { bigint: true }); } catch (error) {
+          if (skip(childRelative, entryKey, display)) continue;
           // A loop of links (ELOOP) is not a missing target (ENOENT): say which one it is.
           const message = (error as NodeJS.ErrnoException).code === 'ELOOP'
             ? 'Symbolic link cannot be resolved (it loops); not followed' : 'Symbolic link is broken; not followed';
@@ -180,9 +178,10 @@ export async function walkSkillFolders(folders: string[], options: WalkOptions =
         }
         if (target.isFile()) {
           // A file link is read where a file is expected (an agent file); elsewhere it is ignored like any file.
-          if (agents && name.endsWith('.md')) await addAgent(childAbsolute, display);
+          if (agents && name.endsWith('.md') && !skip(childRelative, entryKey, display)) await addAgent(childAbsolute, display);
           continue;
         }
+        if (skip(childRelative, entryKey, display)) continue;
         if (!target.isDirectory()) {
           problemOnce(`link:${entryKey}`, fileProblem(display, 'Symbolic link leads to neither a file nor a folder; not followed', 'warning')); continue;
         }
@@ -227,7 +226,7 @@ export async function walkSkillFolders(folders: string[], options: WalkOptions =
     if (await holdsSkill(absolute, names)) await addSkill(absolute, prefix, basename(absolute), names);
     else {
       if (names.includes(IGNORE_FILE)) {
-        const file = await readIgnoreFile(absolute, below(prefix, IGNORE_FILE), create);
+        const file = await readIgnoreFile(absolute, below(prefix, IGNORE_FILE), createMatcher);
         // A file with a problem gives no patterns: the folder is read whole, and the problem shows why.
         if (file.status === 'read') matcher = file.matcher;
         else for (const problem of file.problems) problemOnce(`ignore:${file.key}:${problem.message}`, problem);

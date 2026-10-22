@@ -9,8 +9,7 @@ import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { readSkillSet } from '../../src/skills/source.js';
 import { formatJson, formatText } from '../../src/skills/command.js';
-import { IgnoreMatcherError, MAX_IGNORE_BYTES } from '../../src/skills/ignore.js';
-import { internal } from '../../src/errors.js';
+import { MAX_IGNORE_BYTES } from '../../src/skills/ignore.js';
 import { agent, link, rules, skill, skillSet } from '../skills-helpers.js';
 
 const IGNORE = '.stackledgerignore';
@@ -140,6 +139,15 @@ test('SKILL.md pattern', async () => {
   expect(set.ignored).toEqual(['fixtures/broken']);
 });
 
+test('Linked file the walk does not use', async () => {
+  const root = skillSet({ [IGNORE]: 'README.md\n*.txt\n', 'docs/README.md': '# Northwind\n', 'notes.txt': 'x\n',
+    'README.md': link('docs/README.md'), 'link.txt': link('notes.txt'), 'skills/writer/SKILL.md': skill('writer') });
+  const set = await read(root);
+  expect(names(set)).toEqual(['writer']);
+  expect(set.summary.ignored).toBe(0);
+  expect(set.ignored).toEqual([]);
+});
+
 test('Files the walk does not use', async () => {
   const set = await read(skillSet({ [IGNORE]: '*.txt\nREADME.md\n', 'README.md': '# Northwind skills\n', 'notes.txt': 'Northwind notes\n',
     'skills/writer/SKILL.md': skill('writer') }));
@@ -218,18 +226,6 @@ test('Too many wildcards', async () => {
   const set = await read(skillSet({ [IGNORE]: `templates/\n${'*'.repeat(17)}\n`, 'skills/writer/SKILL.md': skill('writer') }));
   expect(set.problems).toEqual([expect.objectContaining({ path: IGNORE, severity: 'error' })]);
   expect(set.problems[0]!.message).toContain('line 2');
-});
-
-test('Matcher failure', async () => {
-  const root = skillSet({ [IGNORE]: 'templates/\n', 'skills/writer/SKILL.md': skill('writer') });
-  // A matcher whose own message repeats the pattern and the tested path, as a library error might.
-  const failing = () => ({ ignores(path: string): boolean { throw new Error(`pattern templates/ failed on ${path}`); } });
-  const failure = await readSkillSet([], { cwd: root, matcher: failing }).catch((error: unknown) => error);
-  expect(failure).toBeInstanceOf(IgnoreMatcherError);
-  const message = internal('skills validate', failure).message;
-  expect(message).toMatch(/^stackledger skills validate: internal error: /);
-  // The first tested path is `skills/`; the command's own name holds the word skills.
-  for (const text of ['templates', 'skills/', 'writer']) expect(message).not.toContain(text);
 });
 
 test('Secret in the ignore file', async () => {

@@ -19,10 +19,11 @@
 |---|---|---|
 | skill-source | Template folder ignored; Ignore file below the top; Ignore file above the given folder; Ignore file in a skill folder | test/unit/skills-ignore.test.ts |
 | skill-source | Negation re-includes a skill; Ignored folder cannot be re-included below; Pattern syntax table; CRLF and byte-order mark | test/unit/skills-ignore.test.ts |
-| skill-source | Link matched by its name; Folder pattern does not match a link; Broken link matched; Folder pattern does not match a broken link; SKILL.md pattern and a linked skill; Folder pattern does not match a file; SKILL.md pattern; Files the walk does not use | test/unit/skills-ignore.test.ts |
+| skill-source | Link matched by its name; Folder pattern does not match a link; Broken link matched; Folder pattern does not match a broken link; SKILL.md pattern and a linked skill; Folder pattern does not match a file; SKILL.md pattern; Files the walk does not use; Linked file the walk does not use | test/unit/skills-ignore.test.ts |
 | skill-source | Agent file ignored; Patterns stay in their folder; Overlapping folders; Rules file is never ignored | test/unit/skills-ignore.test.ts |
 | skill-source | Count; Skill skipped by its SKILL.md; Folder given twice with an ignore file | test/unit/skills-ignore.test.ts |
-| skill-source | Too many pattern lines; Line too long for the matcher; Too many wildcards; Matcher failure; Secret in the ignore file; Oversized ignore file; FIFO ignore file; Broken link ignore file; Ignore file problem in a folder given twice | test/unit/skills-ignore.test.ts |
+| skill-source | Too many pattern lines; Line too long for the matcher; Too many wildcards; Secret in the ignore file; Oversized ignore file; FIFO ignore file; Broken link ignore file; Ignore file problem in a folder given twice | test/unit/skills-ignore.test.ts |
+| skill-source | Matcher failure (through the command, with the matcher replaced in that file only) | test/unit/skills-matcher-failure.test.ts |
 | skill-source | Linked copy of a repository skill (existing test, unchanged) | test/unit/skills-walk.test.ts |
 | skill-source | Wrong folder; Everything already read (existing tests, unchanged); Everything ignored | test/unit/skills-problems.test.ts |
 | skills-validate-command | Problem line; Control characters in a file name; Clean set; JSON with one error; JSON ignored list | test/integration/skills-validate.test.ts |
