@@ -29,7 +29,7 @@ Levels: U unit (`src/skills/` functions on folders built in a temporary director
 ## 2. The command
 
 - [x] 2.1 `src/skills/command.ts` and `src/cli.ts`: `stackledger skills validate`, usage and global usage, exit codes, problem paths (trailing separators, `.`), a new text formatter with the skills counts, JSON output, control characters through `src/control.ts`; `test/integration/skills-validate.test.ts`. Check: `npm run build && npx vitest run test/integration/skills-validate.test.ts`, and the existing `test/integration/cli.test.ts` still passes.
-- [ ] 2.2 Documentation: `docs/skills.md` (format, relation keys, checks table, one set = what one agent sees and each tool folder on its own, a CI example with the three steps), README Usage row and "Agent skills" section, `AGENTS.md` implemented list, the roadmap row once PR #12 is merged. Check: `npx vitest run test/integration/docs.test.ts`. Done except the roadmap row: `docs/roadmap.md` is updated by the owner's assistant after PR #12 is merged, so this task stays open.
+- [x] 2.2 Documentation: `docs/skills.md` (format, relation keys, checks table, one set = what one agent sees and each tool folder on its own, a CI example with the three steps), README Usage row and "Agent skills" section, `AGENTS.md` implemented list. Check: `npx vitest run test/integration/docs.test.ts`. The roadmap row moved to the workflow follow-up: the v2 roadmap table arrives with PR #12.
 
 ## 3. Integration
 
@@ -38,5 +38,5 @@ Levels: U unit (`src/skills/` functions on folders built in a temporary director
 
 ## Workflow follow-up
 
-- Run read-only against the owner's real skills repository and tool folders in place (never copied into this repository) and report what a real set produces.
-- After the merge: archive the change, write the capability Purposes, mark the roadmap row delivered.
+- Done before gate 2: run read-only against the owner's real skills repository and tool folders in place (never copied into this repository); results in the pull request. The change was archived in the same pull request.
+- After PR #12 is merged: mark the `skills-source` row of `docs/roadmap.md` delivered.
