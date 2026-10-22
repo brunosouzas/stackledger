@@ -15,7 +15,9 @@ import { inkBox, inkOf, themes, type Ink } from './themes.js';
 export { inkBox } from './themes.js';
 
 export type { Badge } from './badges.js';
-export interface Marker { kind: 'tick' | 'interchange'; box: Box; contacts: Point[]; normal: Point; a: Point; b: Point }
+/** A stop is a circle on its line (box = the circle's square); an interchange is a capsule round all
+ * its contacts (box with corner radius half its short side). `halo` is the radius of renewal rings. */
+export interface Marker { kind: 'stop' | 'interchange'; box: Box; contacts: Point[]; halo: number }
 export interface StationGeometry extends MapStation { point: Point; suggested: boolean; marker: Marker; licencePoint: Point | undefined }
 export interface MapGeometry {
   view: MapModel['view'];
@@ -31,8 +33,11 @@ export interface MapGeometry {
   viewBox: Box;
 }
 
-const TICK_LENGTH = 11;
 const LICENCE_RADIUS = 5;
+/** A stop circle is a little wider than the pipe it sits on (as the banner's circles); interchanges are larger. */
+const stopRadius = (lineWidth: number, ink: Ink): number => (lineWidth + ink.casing) / 2 + 3;
+const INTERCHANGE_EXTRA = 2;
+const LABEL_CLEARANCE = 3;
 
 /** Bounding box of any number of points, computed without spreading them into Math.min/Math.max. */
 function bounding(points: Point[], padding: number): Box {
@@ -53,38 +58,32 @@ function bounding(points: Point[], padding: number): Box {
 
 const atGridPoint = (grid: Point, point: Point): boolean => grid[0] * GRID === point[0] && grid[1] * GRID === point[1];
 
-function stationGeometry(station: MapStation, point: Point, lines: Stroke[], suggested: boolean, lineWidth: number): StationGeometry {
+function stationGeometry(station: MapStation, point: Point, lines: Stroke[], suggested: boolean, radius: number): StationGeometry {
   const contacts: Point[] = [];
-  const normals: Point[] = [];
   for (const line of lines.filter(item => station.lines.includes(item.ref))) {
     for (const edge of line.edges) {
-      if (atGridPoint(edge.gridA, point)) {
-        contacts.push(edge.a);
-        normals.push(edge.normal);
-      }
-      if (atGridPoint(edge.gridB, point)) {
-        contacts.push(edge.b);
-        normals.push(edge.normal);
-      }
+      if (atGridPoint(edge.gridA, point)) contacts.push(edge.a);
+      if (atGridPoint(edge.gridB, point)) contacts.push(edge.b);
     }
   }
   if (!contacts.length) contacts.push(point);
-  const normal = normals[0] ?? [0, -1];
-  const kind = station.lines.length > 1 ? 'interchange' : 'tick';
-  const a = contacts[0]!;
-  const b: Point = [a[0] + normal[0] * TICK_LENGTH, a[1] + normal[1] * TICK_LENGTH];
-  const box = kind === 'tick' ? bounding([a, b], lineWidth / 2) : bounding(contacts, 7);
-  const licencePoint: Point | undefined = station.licence === 'none' ? undefined : [box.x + box.w + 10, box.y - 4];
-  return { ...station, point, suggested, marker: { kind, box, contacts, normal, a, b }, licencePoint };
+  const kind = station.lines.length > 1 ? 'interchange' : 'stop';
+  const box = kind === 'stop' ? bounding([contacts[0]!], radius) : bounding(contacts, radius + INTERCHANGE_EXTRA);
+  const halo = Math.max(box.w, box.h) / 2 + 6;
+  // The licence marker sits on the circle's upper right, just outside its outline.
+  const licencePoint: Point | undefined = station.licence === 'none' ? undefined : [box.x + box.w + 3, box.y - 3];
+  return { ...station, point, suggested, marker: { kind, box, contacts, halo }, licencePoint };
 }
 
-export function layoutMap(model: MapModel, lineWidth = 7, ink: Ink = inkOf(themes.light)): MapGeometry {
+export function layoutMap(model: MapModel, lineWidth = themes.light.lineWidth, ink: Ink = inkOf(themes.light)): MapGeometry {
   const { positions, suggestions } = suggestPositions(model);
   const routes = routeMap(model, positions);
-  const lines = parallelLines(model, routes, lineWidth);
+  // Bundled pipes sit so that each casing just meets its neighbour's colour: no overlap, ink between.
+  const lines = parallelLines(model, routes, lineWidth + ink.casing / 2);
   const pointMap = new Map([...positions].map(([ref, cell]) => [ref, [cell[0] * GRID, cell[1] * GRID] as Point]));
+  const radius = stopRadius(lineWidth, ink);
   const stations = model.stations.map(station =>
-    stationGeometry(station, pointMap.get(station.ref)!, lines, suggestions.some(item => item.ref === station.ref), lineWidth));
+    stationGeometry(station, pointMap.get(station.ref)!, lines, suggestions.some(item => item.ref === station.ref), radius));
 
   const segments: Obstacle[] = [];
   for (const line of lines) {
@@ -95,12 +94,12 @@ export function layoutMap(model: MapModel, lineWidth = 7, ink: Ink = inkOf(theme
     if (!centre) return [];
     return [{ x: centre[0] - LICENCE_RADIUS, y: centre[1] - LICENCE_RADIUS, w: LICENCE_RADIUS * 2, h: LICENCE_RADIUS * 2 }];
   });
-  // Ticks wear the line's casing, the other markers an outline; both throw the shadow.
-  const markerInk: Ink = { ...ink, outline: Math.max(ink.outline, ink.casing) };
-  const markers: Box[] = [...stations.map(station => station.marker.box), ...licenceBoxes].map(box => inkBox(box, markerInk));
+  const markers: Box[] = [...stations.map(station => station.marker.box), ...licenceBoxes].map(box => inkBox(box, ink));
   const badges = placeBadges(lines, [...markers, ...segments], ink);
   const zones = zoneGeometry(model, pointMap);
-  const obstacles: Obstacle[] = [...markers, ...badges.map(badge => inkBox(badge.box, ink)), ...zones.map(zone => zone.titleBox), ...segments];
+  // Labels keep a little air from stickers, so text never touches an outline or shadow.
+  const clear = (box: Box): Box => ({ x: box.x - LABEL_CLEARANCE, y: box.y - LABEL_CLEARANCE, w: box.w + LABEL_CLEARANCE * 2, h: box.h + LABEL_CLEARANCE * 2 });
+  const obstacles: Obstacle[] = [...markers.map(clear), ...badges.map(badge => clear(inkBox(badge.box, ink))), ...zones.map(zone => zone.titleBox), ...segments];
   const labels = placeLabels(stations, obstacles);
 
   const extent: Point[] = [[0, 0], [320, 256], ...lines.flatMap(line => line.points)];
@@ -110,7 +109,8 @@ export function layoutMap(model: MapModel, lineWidth = 7, ink: Ink = inkOf(theme
   for (const box of [...labels.map(label => label.box), ...badges.map(badge => inkBox(badge.box, ink)), ...markers]) addBox(box);
   for (const station of stations) {
     // Suggestion discs and renewal rings are drawn around the station point.
-    const radius = station.suggested ? 19 : station.renewal ? 17 : 0;
+    const { halo } = station.marker;
+    const radius = station.suggested ? halo + 5 : station.renewal ? halo + 3 : 0;
     if (radius) addBox(inkBox({ x: station.point[0] - radius, y: station.point[1] - radius, w: radius * 2, h: radius * 2 }, ink));
   }
   for (const zone of zones) {

@@ -27,7 +27,7 @@ const MIN_SPACING = 150;
 const LABEL_WIDTH = 170;
 const BADGE_HEIGHT = 20;
 // Wide enough that a badge's shadow and rim do not touch the next badge.
-const BADGE_GAP = 8;
+const BADGE_GAP = 11;
 const STOP_HIT_MIN_WIDTH = 32;
 
 /** Plain input for one drawn line: its stops with the other drawn lines that stop there, in line order. */
@@ -60,7 +60,7 @@ function fit(title: string): string {
 function badgeShape(item: { badge: string; color: string }, x: number, y: number, theme: Theme, flat = false): string {
   const width = badgeWidth(item.badge);
   const inset = flat ? theme.outlineWidth / 2 : 0;
-  const shape: Shape = (by, attrs) => tag('rect', { x: x + inset + by[0], y: y + inset + by[1], width: width - inset * 2, height: BADGE_HEIGHT - inset * 2, rx: 4, ...attrs });
+  const shape: Shape = (by, attrs) => tag('rect', { x: x + inset + by[0], y: y + inset + by[1], width: width - inset * 2, height: BADGE_HEIGHT - inset * 2, rx: BADGE_HEIGHT / 2 - inset, ...attrs });
   const face = flat ? shape([0, 0], { fill: item.color, stroke: theme.outline, 'stroke-width': theme.outlineWidth }) : sticker(theme, shape, item.color);
   return face
     + tag('text', { x: x + width / 2, y: y + 14.5, fill: theme.badgeText, 'font-size': 12, 'font-weight': 700, 'text-anchor': 'middle' }, escapeXml(item.badge));
@@ -80,18 +80,21 @@ function interchangeRow(stop: StripStop, centre: number, y: number, theme: Theme
 function stopGroup(input: Strip, stop: StripStop, x: number, theme: Theme): string {
   const interchange = stop.interchanges.length > 0;
   const disc = (r: number): Shape => (by, attrs) => tag('circle', { cx: x + by[0], cy: LINE_Y + by[1], r, ...attrs });
-  // An interchange is a white sticker; a plain stop is a ring in the line's colour inside an ink sticker.
+  // Every stop is a white circle sticker on the pipe, as on the map; an interchange is larger.
   const marker = interchange
-    ? sticker(theme, disc(10), theme.station)
-    : sticker(theme, disc(9), theme.outline) + disc(7)([0, 0], { fill: theme.station, stroke: input.color, 'stroke-width': 3 });
+    ? sticker(theme, disc(stopRadius(theme) + 3), theme.station)
+    : sticker(theme, disc(stopRadius(theme)), theme.station);
   const title = fit(stop.title);
   const label = tag('text', { x, y: LINE_Y + 36, fill: theme.text, 'font-size': 13, 'font-weight': interchange ? 900 : 700, 'text-anchor': 'middle' }, escapeXml(title));
   // An invisible area over the marker and its label, so a click between them still opens the stop.
   const hitWidth = Math.max(STOP_HIT_MIN_WIDTH, textWidth(title) + 16);
-  const hit = tag('rect', { x: x - hitWidth / 2, y: LINE_Y - 14, width: hitWidth, height: 56, fill: theme.background, 'fill-opacity': 0 });
+  const hit = tag('rect', { x: x - hitWidth / 2, y: LINE_Y - 18, width: hitWidth, height: 60, fill: theme.background, 'fill-opacity': 0 });
   const lines = [input.ref, ...stop.interchanges.map(item => item.ref)].join(' ');
   return tag('g', { 'data-ref': stop.ref, 'data-line': lines }, tag('title', {}, escapeXml(stop.title)) + hit + marker + label);
 }
+
+/** A stop circle a little wider than the pipe, as on the map. */
+const stopRadius = (theme: Theme): number => (theme.lineWidth + (theme.casing.enabled ? theme.casing.extraWidth : 0)) / 2 + 3;
 
 /** The journey's line as a pipe: the ink casing, then the line's colour. */
 function pipe(from: number, to: number, color: string, theme: Theme): string {

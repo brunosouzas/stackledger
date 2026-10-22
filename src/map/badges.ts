@@ -20,7 +20,8 @@ const SIDEWAYS = [0, 18, -18];
 
 interface Terminal { stroke: Stroke; station: Point; direction: Point; end: Point }
 
-export const badgeWidth = (text: string): number => Math.max(20, textWidth(text) + 8);
+// Pills, like the banner's labels: always wider than tall, even for a one-character code.
+export const badgeWidth = (text: string): number => Math.max(30, textWidth(text) + 18);
 
 function towards(from: Point, to: Point): Point {
   const length = Math.hypot(to[0] - from[0], to[1] - from[1]) || 1;
