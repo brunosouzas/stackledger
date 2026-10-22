@@ -27,7 +27,7 @@ Positions are one-based. Values point at their value; secret keys, unknown field
 ## Files and document order
 
 - `.git` and `node_modules` directories and non-YAML files are skipped.
-- A file named exactly `stackledger-skills.yaml` is never read: it is a [skills map file](skills.md#the-skills-map-file), so a skills repository can hold the catalogue. Since the version after 0.2.0; a catalogue that used this name for its own documents must rename the file.
+- A file named exactly `stackledger-skills.yaml` is never read: it is a [skills map file](skills.md#the-skills-map-file), so a skills repository can hold the catalogue. Since 0.3.0; a catalogue that used this name for its own documents must rename the file.
 - Every symbolic link gets a warning and is never followed, including broken links and links inside the folder.
 - Files exceeding 1 MiB get an error without being read. Unreadable files or subfolders get errors; other files still run.
 - Use `---` between documents. Empty/comment-only documents, including a trailing separator, are skipped silently.
@@ -195,7 +195,7 @@ spec:
 | `spec.views.staff.hide` | Optional list of licence field names without repeats, each one of `vendor`, `status`, `cycle`, `cost`, `currency`, `renewsOn`, `seats`, `paidBy`, `vaultItem` and `note` |
 | `spec.site.title` | Optional title of both [sites](site.md), a non-empty string of at most 60 characters; default `Software map` |
 | `spec.site.colors` | Optional mapping with any of `primary`, `accent`, `body` and `text`, each `#` and six hexadecimal digits (quote it: `#` starts a YAML comment). They replace the matching colours of the light theme only; the dark theme keeps its own |
-| `spec.skills.folders` | Optional list of 1 to 20 skills folders for `stackledger build`, without repeats, each relative to the catalogue folder (`..` allowed; no leading `/`, `\\` or `~`, and no drive letter such as `C:`). `--skills` replaces it. From the version after 0.2.0, which reads it as an error: pin one version everywhere. See [Skills on the site](../README.md#skills-on-the-site) |
+| `spec.skills.folders` | Optional list of 1 to 20 skills folders for `stackledger build`, without repeats, each relative to the catalogue folder (`..` allowed; no leading `/`, `\\` or `~`, and no drive letter such as `C:`). `--skills` replaces it. From 0.3.0; 0.2.0 reads it as an error: pin one version everywhere. See [Skills on the site](../README.md#skills-on-the-site) |
 | `spec.sites` | Optional list of the sites `stackledger build` writes: `[full]` (personal mode) or `[full, staff]` (corporate mode, the default), in any order, without repeats. `[staff]` alone, an empty list or any other value is an error |
 
 Unlisted fields anywhere in a Settings document are errors, so `spec.view` instead of `spec.views` is reported, and so is `spec.site.logo`. While the Settings document has an error, the sites use the default title and colours. When `hide` is given it replaces the default list entirely: `[cost]` hides only the cost, and `[]` hides nothing. Without `hide`, the default list applies.
