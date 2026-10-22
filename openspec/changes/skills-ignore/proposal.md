@@ -5,8 +5,8 @@ A skills repository often holds things that look like skills but are not: a temp
 ## What Changes
 
 - A `.stackledgerignore` file at the top of a given folder lists, in `.gitignore` syntax, the entries the walk skips there: a skipped folder is not entered, a skipped skill folder or agent file is not read.
-- The counts line and the JSON summary gain an `ignored` count, so excluding too much is visible.
-- A problem with the ignore file itself (too large, unreadable, a secret) is an error, and that folder is then read with no patterns.
+- The counts line and the JSON summary gain an `ignored` count, and the JSON lists the skipped paths, so excluding too much is visible.
+- A problem with the ignore file itself (over 64 KiB, unreadable, not a regular file, a secret) is an error, and that folder is then read with no patterns.
 - New dependency: `ignore` (MIT, no dependencies of its own), the `.gitignore` matcher used by ESLint and Prettier, pinned to an exact version.
 
 ## Capabilities
@@ -18,11 +18,13 @@ None.
 ### Modified Capabilities
 
 - `skill-source`: adds the ignore file, its syntax and where it applies.
-- `skills-validate-command`: the text counts line and the JSON summary gain `ignored`.
+- `skills-validate-command`: the text counts line and the JSON summary gain `ignored`; the JSON gains the `ignored` list.
 
 ## Out of scope
 
-- `.stackledgerignore` files below the top of a given folder (nested ignore files, as `.gitignore` allows), and global or per-user ignore files.
+- `.stackledgerignore` files below the top of a given folder (nested ignore files, as `.gitignore` allows) or above it, and global or per-user ignore files.
+- A list of the ignored paths in the text output: it stays one counts line; the JSON has the list.
+- An option that makes any ignore an error in CI: the JSON count does it (`jq -e '.summary.ignored == N'`), shown in the docs.
 - An option to bypass the file (`--no-ignore`).
 - Ignoring files inside a skill folder (a skill is read whole or not at all) and the software catalogue (`stackledger validate`).
 - Reading `.gitignore` itself: what Git ignores is not always what a skill set should skip.
@@ -35,15 +37,15 @@ None.
 
 ## Gate 1
 
-The owner approved the three decisions above as recommended (2026-10-22).
+The owner approved the three decisions above as recommended (2026-10-22). After the first spec review, the spec also: tests `<skill>/SKILL.md` as Git would (so `fixtures/*/SKILL.md` works); tests only the entries that can add to the set; lowers the ignore file limit to 64 KiB; and adds the JSON `ignored` list.
 
 ## Implicit requirements
 
-- **Errors and invalid input:** requirement. An ignore file that cannot be used is an error on that file, and its folder is read with no patterns, so nothing is hidden by a broken file. A line that is not a valid pattern matches nothing, as in Git (the `ignore` package drops such lines without telling, so a warning would need our own parser).
-- **Limits:** requirement. The ignore file follows the 1 MiB limit of every file read.
+- **Errors and invalid input:** requirement. An ignore file that cannot be used is an error on that file, and its folder is read with no patterns, so nothing is hidden by a broken file. Each line means what it means to `ignore@7.0.13`, which follows Git; a line Git cannot match (such as `a[`) matches nothing and gives no problem, because the package does not report such lines.
+- **Limits:** requirement. The ignore file has its own limit of 64 KiB: matching cost grows with entries times lines, and a fork's pull request must not be able to stall CI.
 - **Repetition and idempotency:** requirement. The same files give the same output.
 - **Concurrency:** n/a: one read-only process.
-- **Security:** requirement. The file is checked with the secret rules like every file read, and messages about it never repeat a line's text, only its number.
+- **Security:** requirement. The file is checked with the secret rules like every file read, and messages about it are fixed texts that never repeat its content.
 - **Logs and observability:** requirement. The `ignored` count; no other logging.
 
 ## Dependencies
@@ -52,7 +54,7 @@ ADR 10 and the v2 roadmap (PR #12, merged), where this change is row 2.
 
 ## Documentation
 
-- `docs/skills.md`: the ignore file, its syntax, an example for templates and fixtures, the `ignored` count.
+- `docs/skills.md`: the ignore file, its syntax, where to put it, an example for templates and fixtures, the `ignored` count and list, a CI check on the count, and the `.gitignore` caveat; the counts sentence (now seven counts).
 - `README.md`: one sentence in "Agent skills".
-- `docs/roadmap.md`: the row of `skills-ignore`, after PR #12.
+- `docs/roadmap.md`: the row of `skills-ignore`.
 - Brain vault: the stackledger architecture, roadmap and changelog.
