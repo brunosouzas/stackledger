@@ -23,7 +23,7 @@ test('Global help lists both commands', () => {
  const help = run(['--help']); expect(help.status).toBe(0);
  for (const command of ['validate', 'mcp', 'map', 'build', 'report', 'drift']) expect(help.stdout).toContain(`stackledger ${command} `);
  expect(help.stdout).toContain('stackledger discover\n');
- const unknown = run(['publish']); expect(unknown.status).toBe(2); expect(unknown.stderr).toContain('expected validate, mcp, map, build, report, discover or drift');
+ const unknown = run(['publish']); expect(unknown.status).toBe(2); expect(unknown.stderr).toContain('expected validate, mcp, map, build, report, discover, drift or skills');
 });
 test('Hostile annotation key', () => {
  // YAML's \x9b escape puts a raw U+009B (CSI) into the key; output must show it only as \u009b.
