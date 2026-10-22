@@ -18,6 +18,8 @@ export interface Source {
 /** settingsUnread: a file that failed to parse or expand holds a document that reads as Settings. */
 export interface Loaded { files: number; sources: Source[]; problems: Problem[]; settingsUnread?: boolean }
 export const MAX_FILE_BYTES = 1024 * 1024;
+/** The skills map file (skill-source): never a catalogue file, even inside the catalogue folder. */
+export const SKILLS_MAP_FILE = 'stackledger-skills.yaml';
 
 const SHORT_ESCAPES: Record<string, string> = { b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' };
 /** A bracketed key as JSON text, with U+0000–U+001F and U+007F–U+009F always as `\u` escapes:
@@ -147,6 +149,9 @@ export async function loadFolder(folder: string): Promise<Loaded> {
           await walk(path); continue;
         }
         if (!stat.isFile() || !/\.ya?ml$/.test(entry.name)) continue;
+        // A skills map file holds skill lines (skill-source); read as software it would give false
+        // stop errors and could take the software MapLayout's place (catalogue, Catalogue files).
+        if (entry.name === SKILLS_MAP_FILE) continue;
         loaded.files++;
         if (stat.size > MAX_FILE_BYTES) { loaded.problems.push(fileProblem(path, 'File exceeds 1 MiB')); continue; }
         if (!(stat.mode & 0o444)) { loaded.problems.push(fileProblem(path, 'File cannot be read')); continue; }
