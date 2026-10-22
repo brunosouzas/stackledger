@@ -2,7 +2,6 @@
 // Rules index (skills-site, Rules index): every rule of the set, sorted by ID then the item that
 // defines it, each row linking that item's page. Search reuses the software list's script.
 import Base from '../../layouts/Base.astro';
-import SkillsNav from '../../components/SkillsNav.astro';
 import { href, rootFor, site } from '../../lib/site';
 
 export function getStaticPaths() {
@@ -13,9 +12,8 @@ const { skills } = Astro.props;
 const root = rootFor(Astro.url.pathname);
 ---
 
-<Base title="Rules" current="skills">
+<Base title="Rules" current="rules">
   <section class="container section">
-    <SkillsNav root={root} current="rules" />
     <h1>Rules</h1>
     {
       skills.rules.length === 0 ? (

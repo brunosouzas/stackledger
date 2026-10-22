@@ -3,7 +3,6 @@
 // sorted by name then kind. The route is a rest parameter so it gives /skills/ only when the build
 // has a skill set; search and the kind filter reuse the software list's script on this table.
 import Base from '../../layouts/Base.astro';
-import SkillsNav from '../../components/SkillsNav.astro';
 import { href, rootFor, site } from '../../lib/site';
 
 export function getStaticPaths() {
@@ -17,7 +16,6 @@ const plural = (count: number, word: string) => `${count} ${count === 1 ? word :
 
 <Base title="Skills" current="skills">
   <section class="container section">
-    <SkillsNav root={root} current="skills" />
     <h1>Skills</h1>
     <p class="lead">
       {plural(skills.counts.skills, 'skill')}, {plural(skills.counts.playbooks, 'playbook')}, {plural(skills.counts.agents, 'agent')} and

@@ -4,7 +4,6 @@
 // is marked data-zone-mode="list" because playbook zones overlap (scripts/map.ts). The lines and their
 // stops follow the map as links: the map's text alternative.
 import Base from '../../layouts/Base.astro';
-import SkillsNav from '../../components/SkillsNav.astro';
 import Themed from '../../components/Themed.astro';
 import { href, rootFor, site } from '../../lib/site';
 
@@ -17,9 +16,8 @@ const root = rootFor(Astro.url.pathname);
 const { lines, zones, symbols } = skills.map;
 ---
 
-<Base title="Skill map" current="skills">
+<Base title="Skill map" current="skill-map">
   <section class="container section">
-    <SkillsNav root={root} current="skill-map" />
     <h1>Skill map</h1>
     {
       skills.map.empty ? (

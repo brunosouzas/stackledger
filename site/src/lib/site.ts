@@ -20,3 +20,6 @@ export function rootFor(pathname: string): string {
 export function href(root: string, path: string): string {
   return root + path || './';
 }
+
+/** A page's entry in its division's sub-navigation (components/SubNav.astro). */
+export type Page = 'map' | 'software' | 'journeys' | 'reports' | 'skills' | 'skill-map' | 'rules';

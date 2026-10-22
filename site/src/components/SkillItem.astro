@@ -16,7 +16,7 @@ const root = rootFor(Astro.url.pathname);
 const kinds: Record<string, string> = { skill: 'Skill', playbook: 'Playbook', agent: 'Agent' };
 ---
 
-<Base title={page.name} current="skills">
+<Base title={page.name} current="skills" exact={false}>
   <article class="container section">
     <p class="kicker"><a href={href(root, 'skills/')}>Skills</a> · {kinds[page.kind]}</p>
     <h1>{page.name}</h1>

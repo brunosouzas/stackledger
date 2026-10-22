@@ -16,7 +16,7 @@ Choosing a line in the legend SHALL dim every other line's strokes and badges an
 - **THEN** that component's station stays lit and stations in other zones are dimmed
 
 ### Requirement: Layout
-Every page SHALL share one layout: a header with the site title (from `spec.site.title`, default `Software map`) and links to Map, Software and Journeys, plus Skills when the site has a skill set and Reports in the `full` site; a footer with the view name and the stackledger version; and a theme switch that follows `prefers-color-scheme` until the reader chooses light or dark, then remembers the choice in the browser.
+Every page SHALL share one layout: a header with the site title (from `spec.site.title`, default `Software map`) and the divisions Software (`/`) and, with a skill set, Skills (`/skills/`); under it the division's sub-navigation, for Software: Map, List (`/software/`), Journeys, and Reports in the `full` site; a footer with the view name and the stackledger version; and a theme switch that follows `prefers-color-scheme` until the reader chooses light or dark, then remembers the choice in the browser.
 
 #### Scenario: Theme remembered
 - **WHEN** the reader chooses dark on one page and opens another page
@@ -31,8 +31,12 @@ Every page SHALL share one layout: a header with the site title (from `spec.site
 - **THEN** its footer says `staff view`
 
 #### Scenario: Reports link
-- **WHEN** any page is opened
-- **THEN** its header links Reports in the `full` site and not in the `staff` site
+- **WHEN** any Software page is opened
+- **THEN** its sub-navigation links Reports in the `full` site and not in the `staff` site
+
+#### Scenario: Software sub-navigation
+- **WHEN** the reader opens `/journeys/`, then the page of the journey `ship`
+- **THEN** the header marks Software, the sub-navigation links Map, List and Journeys, and only on `/journeys/` is Journeys marked with `aria-current="page"`
 
 #### Scenario: Skills link
 - **WHEN** both sites are built with a skill set, and again without one

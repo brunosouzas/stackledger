@@ -227,13 +227,13 @@
   white-space: nowrap;
 }
 
-/* Skills section: the sub-navigation shared by the list, the skill map and the rules index. */
+/* The division's sub-navigation under the header: Software (Map, List, Journeys, Reports) or Skills. */
 .sub-nav ul {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 1.25rem;
-  margin: 0 0 1rem;
-  padding: 0;
+  gap: 0.25rem 1.5rem;
+  margin: 0;
+  padding: 0.85rem 0 0;
   list-style: none;
 }
 

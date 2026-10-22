@@ -24,7 +24,7 @@ When a skill set is built, each site SHALL have the list `/skills/`, the map `/s
 - **THEN** it has no `/skills/`, `/skill-map/`, `/rules/`, `/playbooks/` or `/agents/` folder and no page links to one
 
 ### Requirement: Skills sub-navigation
-The list, the skills map and the rules index SHALL share a sub-navigation linking `Skills` (`/skills/`), `Skill map` (`/skill-map/`) and `Rules` (`/rules/`), the current page marked with `aria-current="page"`. Item pages SHALL link back to the list.
+Every Skills page SHALL have the Skills division's sub-navigation (catalogue-site, Layout) linking `List` (`/skills/`), `Map` (`/skill-map/`) and `Rules` (`/rules/`), the current page marked with `aria-current="page"`; an item page marks none and links back to the list.
 
 #### Scenario: Rules page
 - **WHEN** the reader opens `/rules/`
