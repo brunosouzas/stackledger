@@ -111,7 +111,8 @@ export function renderStrip(input: Strip, theme: Theme): string {
   const hasInterchanges = input.stops.some(stop => stop.interchanges.length > 0);
   const width = last + spacing / 2 + PADDING;
   const height = LINE_Y + (hasInterchanges ? 92 : 60);
-  const terminal = (x: number) => badgeShape(input, x - badgeWidth(input.badge) / 2, LINE_Y - 42, theme);
+  // High enough that the badge's shadow clears the rim of an interchange at the end of the line.
+  const terminal = (x: number) => badgeShape(input, x - badgeWidth(input.badge) / 2, LINE_Y - 48, theme);
   const body = [
     tag('rect', { x: 0, y: 0, width, height, fill: theme.background }),
     tag('g', { 'data-line': input.ref },

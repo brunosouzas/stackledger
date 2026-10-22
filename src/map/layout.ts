@@ -15,9 +15,10 @@ import { inkBox, inkOf, themes, type Ink } from './themes.js';
 export { inkBox } from './themes.js';
 
 export type { Badge } from './badges.js';
-/** A stop is a circle on its line (box = the circle's square); an interchange is a capsule round all
- * its contacts (box with corner radius half its short side). `halo` is the radius of renewal rings. */
-export interface Marker { kind: 'stop' | 'interchange'; box: Box; contacts: Point[]; halo: number }
+/** A stop is a circle on its line; an interchange a capsule: every point within `radius` of the
+ * segment `ends`, which runs along its contacts, so it contains them whatever the lines' angle.
+ * `box` bounds the shape; `halo` is the radius of renewal rings. */
+export interface Marker { kind: 'stop' | 'interchange'; box: Box; contacts: Point[]; ends: [Point, Point]; radius: number; halo: number }
 export interface StationGeometry extends MapStation { point: Point; suggested: boolean; marker: Marker; licencePoint: Point | undefined }
 export interface MapGeometry {
   view: MapModel['view'];
@@ -68,11 +69,43 @@ function stationGeometry(station: MapStation, point: Point, lines: Stroke[], sug
   }
   if (!contacts.length) contacts.push(point);
   const kind = station.lines.length > 1 ? 'interchange' : 'stop';
-  const box = kind === 'stop' ? bounding([contacts[0]!], radius) : bounding(contacts, radius + INTERCHANGE_EXTRA);
-  const halo = Math.max(box.w, box.h) / 2 + 6;
+  const [ends, spread] = kind === 'stop' ? [[contacts[0]!, contacts[0]!] as [Point, Point], 0] : capsuleAxis(contacts);
+  const markerRadius = kind === 'stop' ? radius : radius + INTERCHANGE_EXTRA + spread;
+  const box = bounding(ends, markerRadius);
+  const halo = Math.hypot(ends[1][0] - ends[0][0], ends[1][1] - ends[0][1]) / 2 + markerRadius + 6;
   // The licence marker sits on the circle's upper right, just outside its outline.
   const licencePoint: Point | undefined = station.licence === 'none' ? undefined : [box.x + box.w + 3, box.y - 3];
-  return { ...station, point, suggested, marker: { kind, box, contacts, halo }, licencePoint };
+  return { ...station, point, suggested, marker: { kind, box, contacts, ends, radius: markerRadius, halo }, licencePoint };
+}
+
+/** The capsule's axis in linear time (a station can have very many contacts): the direction from the
+ * first contact to the one farthest from it; the ends are the extreme projections on that direction,
+ * so every contact projects inside the segment and lies at most `spread` off it. */
+function capsuleAxis(contacts: Point[]): [[Point, Point], number] {
+  const origin = contacts[0]!;
+  let far = origin;
+  let longest = 0;
+  for (const point of contacts) {
+    const length = Math.hypot(point[0] - origin[0], point[1] - origin[1]);
+    if (length > longest) {
+      longest = length;
+      far = point;
+    }
+  }
+  if (longest < 1e-9) return [[origin, origin], 0];
+  const u: Point = [(far[0] - origin[0]) / longest, (far[1] - origin[1]) / longest];
+  let low = Infinity;
+  let high = -Infinity;
+  let spread = 0;
+  for (const point of contacts) {
+    const along = (point[0] - origin[0]) * u[0] + (point[1] - origin[1]) * u[1];
+    const across = Math.abs(-(point[0] - origin[0]) * u[1] + (point[1] - origin[1]) * u[0]);
+    if (along < low) low = along;
+    if (along > high) high = along;
+    if (across > spread) spread = across;
+  }
+  const at = (t: number): Point => [origin[0] + u[0] * t, origin[1] + u[1] * t];
+  return [[at(low), at(high)], spread];
 }
 
 export function layoutMap(model: MapModel, lineWidth = themes.light.lineWidth, ink: Ink = inkOf(themes.light)): MapGeometry {

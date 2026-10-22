@@ -25,6 +25,15 @@ export { escapeXml } from './xml.js';
 const HEADER_HEIGHT = 64;
 const FRAME_MARGIN = 16;
 
+/** A capsule (stadium) path: every point within r of the segment a-b, with half circles at both ends. */
+function capsulePath(a: Point, b: Point, r: number): string {
+  const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const n: Point = [-(b[1] - a[1]) / length * r, (b[0] - a[0]) / length * r];
+  const p = (point: Point, sign: number) => `${number(point[0] + n[0] * sign)},${number(point[1] + n[1] * sign)}`;
+  const radius = number(r);
+  return `M${p(a, 1)} L${p(b, 1)} A${radius},${radius} 0 0 0 ${p(b, -1)} L${p(a, -1)} A${radius},${radius} 0 0 0 ${p(a, 1)} Z`;
+}
+
 /** Element builders bound to one theme. Catalogue text only ever passes through `text` or `title`. */
 function painter(theme: Theme) {
   const text = (value: string, x: number, y: number, attrs: Attributes = {}): string =>
@@ -63,8 +72,10 @@ function painter(theme: Theme) {
   /** A stop is a circle sticker on its pipe; an interchange a capsule over all its lines. */
   const marker = (item: Marker, muted: boolean): string => {
     const fill = muted ? theme.muted : theme.station;
-    if (item.kind === 'interchange') return boxSticker(item.box, Math.min(item.box.w, item.box.h) / 2, fill);
-    return discSticker([item.box.x + item.box.w / 2, item.box.y + item.box.h / 2], item.box.w / 2, fill);
+    const [a, b] = item.ends;
+    const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (length < 1e-9) return discSticker(a, item.radius, fill);
+    return sticker(theme, (by, attrs) => tag('path', { d: capsulePath(add(a, by), add(b, by), item.radius), ...attrs }), fill);
   };
 
   const licence = (centre: Point, hollow: boolean): string => discSticker(centre, 5, hollow ? theme.station : theme.licence);
