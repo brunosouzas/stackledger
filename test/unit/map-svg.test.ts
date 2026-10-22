@@ -307,3 +307,18 @@ test('Legend symbols on their own', () => {
     }
   }
 });
+// metro-map "Software map unchanged": the example's SVGs must equal the ones the 0.2.0 engine drew
+// (recorded by test/fixtures/map-0.2.0/record.mjs from the 0.2.0 code), as `stackledger map` and the site draw them.
+test('Example map',async()=>{
+ const { readFileSync } = await import('node:fs'); const { join } = await import('node:path');
+ const { loadFolder } = await import('../../src/source.js'); const { validateLoaded } = await import('../../src/validate.js');
+ const { widestInk } = await import('../../src/map/themes.js');
+ const fixtures=join(import.meta.dirname,'../fixtures/map-0.2.0');
+ const catalogue=validateLoaded(await loadFolder(join(import.meta.dirname,'../../examples/northwind')));
+ for(const view of ['full','staff'] as const)for(const name of ['light','dark'] as const)for(const chrome of [true,false]){
+  const theme=themes[name],ink=chrome?inkOf(theme):widestInk(inkOf(themes.light),inkOf(themes.dark));
+  const served=applyView(catalogue.served,view,resolveHidden(catalogue));
+  const svg=renderSvg(layoutMap(buildMapModel(served,'2027-06-01'),chrome?theme.lineWidth:themes.light.lineWidth,ink),theme,{chrome});
+  expect(svg+'\n',`${view}-${name}${chrome?'':'-site'}`).toBe(readFileSync(join(fixtures,`${view}-${name}${chrome?'':'-site'}.svg`),'utf8'));
+ }
+});
