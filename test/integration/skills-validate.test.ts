@@ -36,7 +36,7 @@ test('Write-protected run', () => {
 test('Default folder', () => {
   const root = skillSet({ 'skills/writer/SKILL.md': skill('writer'), 'agents/reviewer.md': agent('reviewer') });
   const result = run(['skills', 'validate'], root);
-  expect(result).toEqual({ status: 0, stderr: '', stdout: 'skills: 1, playbooks: 0, agents: 1, rules: 0, errors: 0, warnings: 0\n' });
+  expect(result).toEqual({ status: 0, stderr: '', stdout: 'skills: 1, playbooks: 0, agents: 1, rules: 0, ignored: 0, errors: 0, warnings: 0\n' });
 });
 
 test('Several folders', () => {
@@ -44,14 +44,14 @@ test('Several folders', () => {
   const result = run(['skills', 'validate', 'team', 'vendor'], root);
   // `team` is read first, so the duplicate is the copy under `vendor`, and the playbook finds `writer`.
   expect(result.stdout).toBe('vendor/writer/SKILL.md:2:7 error name Name writer is already used by team/writer/SKILL.md\n'
-    + 'skills: 1, playbooks: 1, agents: 0, rules: 0, errors: 1, warnings: 0\n');
+    + 'skills: 1, playbooks: 1, agents: 0, rules: 0, ignored: 0, errors: 1, warnings: 0\n');
   expect(result.status).toBe(1);
 });
 
 test('Folder given twice', () => {
   const root = skillSet({ 'team/writer/SKILL.md': skill('writer'), 'team/agents/reviewer.md': agent('reviewer') });
   const result = run(['skills', 'validate', 'team', './team/'], root);
-  expect(result).toEqual({ status: 0, stderr: '', stdout: 'skills: 1, playbooks: 0, agents: 1, rules: 0, errors: 0, warnings: 0\n' });
+  expect(result).toEqual({ status: 0, stderr: '', stdout: 'skills: 1, playbooks: 0, agents: 1, rules: 0, ignored: 0, errors: 0, warnings: 0\n' });
 });
 
 test('Help wins', () => {
@@ -168,7 +168,7 @@ test('Clean set', () => {
     'agents/executor.md': agent('executor'),
   });
   const result = run(['skills', 'validate'], root);
-  expect(result.stdout).toBe('skills: 3, playbooks: 1, agents: 2, rules: 10, errors: 0, warnings: 0\n');
+  expect(result.stdout).toBe('skills: 3, playbooks: 1, agents: 2, rules: 10, ignored: 0, errors: 0, warnings: 0\n');
   expect(result.status).toBe(0);
 });
 
@@ -178,6 +178,22 @@ test('JSON with one error', () => {
   expect(result.stdout.endsWith('}\n')).toBe(true);
   const output = JSON.parse(result.stdout);
   expect(output.problems).toEqual([{ path: 'repo/skills/release/SKILL.md', line: 6, column: 23, severity: 'error', field: 'metadata.stackledger-skills', message: 'Skill editr is not in the set' }]);
-  expect(output.summary).toEqual({ skills: 1, playbooks: 1, agents: 0, rules: 0, errors: 1, warnings: 0 });
+  expect(Object.keys(output)).toEqual(['problems', 'ignored', 'summary']);
+  expect(output.ignored).toEqual([]);
+  expect(output.summary).toEqual({ skills: 1, playbooks: 1, agents: 0, rules: 0, ignored: 0, errors: 1, warnings: 0 });
   expect(result.status).toBe(1);
+});
+
+test('JSON ignored list', () => {
+  const root = skillSet({ 'repo/.stackledgerignore': 'fixtures/\ntemplates/\n', 'repo/skills/writer/SKILL.md': skill('writer'),
+    'repo/fixtures/broken/SKILL.md': '# Broken on purpose\n', 'repo/templates/skill/SKILL.md': skill('{{name}}') });
+  const result = run(['skills', 'validate', 'repo', '--json'], root);
+  const output = JSON.parse(result.stdout);
+  expect(output.ignored).toEqual(['repo/fixtures', 'repo/templates']);
+  expect(output.summary.ignored).toBe(2);
+  expect(Object.keys(output.summary)).toEqual(['skills', 'playbooks', 'agents', 'rules', 'ignored', 'errors', 'warnings']);
+  expect(output.problems).toEqual([]);
+  expect(result.status).toBe(0);
+  const text = run(['skills', 'validate', 'repo'], root);
+  expect(text.stdout).toBe('skills: 1, playbooks: 0, agents: 0, rules: 0, ignored: 2, errors: 0, warnings: 0\n');
 });
