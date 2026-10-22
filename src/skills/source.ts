@@ -16,8 +16,8 @@
  *
  * Each item also keeps what `stackledger skills map` (src/skills/map-command.ts) needs and validate
  * does not print: its description, its given folder and its source files, and the set records the real
- * paths of every skill folder and agent file the walk found, rejected ones included, so the map can
- * refuse an output folder that would hold an input. These fields change neither the output nor the set.
+ * paths of every skill folder, agent file, SKILL.md and rules.md the walk found, rejected ones
+ * included, so the map can refuse an output folder that would hold an input. These fields change neither the output nor the set.
  *
  * What can go wrong: a given folder that is missing, not a folder or cannot be listed throws
  * SkillsFolderError (src/skills/walk.ts); every other failure is a problem on its path.
@@ -77,7 +77,8 @@ export interface SkillSet {
   /** Display paths of the entries skipped by ignore files, each once, sorted by code point. */
   ignored: string[];
   summary: SkillsSummary;
-  /** Real paths of every skill folder and agent file the walk found, rejected ones included, in walk order. */
+  /** Real paths of every skill folder and agent file the walk found, and of the SKILL.md and rules.md
+   * in each skill folder, rejected ones included, each once, in walk order. */
   found: string[];
 }
 
@@ -225,8 +226,15 @@ export async function readSkillSet(folders: string[], options: WalkOptions = {})
   }
 
   sortProblems(problems);
-  const foundPaths: string[] = [];
-  for (const item of walked.items) foundPaths.push(await realOrAbsolute(item.absolute));
+  // Every skill folder and agent file, and every SKILL.md and rules.md in a skill folder, by real path:
+  // a file can be a link into the map folder, which cleaning would delete (rejected items included).
+  const foundPaths = new Set<string>();
+  for (const item of walked.items) {
+    foundPaths.add(await realOrAbsolute(item.absolute));
+    if (item.type !== 'skill') continue;
+    foundPaths.add(await realOrAbsolute(join(item.absolute, SKILL_FILE)));
+    if (item.hasRules) foundPaths.add(await realOrAbsolute(join(item.absolute, RULES_FILE)));
+  }
   const count = (severity: Problem['severity']) => problems.filter(problem => problem.severity === severity).length;
   return { skills, agents, problems, ignored: [...walked.ignored].sort(compareText), summary: {
     skills: skills.filter(skill => skill.kind === 'skill').length,
@@ -235,7 +243,7 @@ export async function readSkillSet(folders: string[], options: WalkOptions = {})
     rules: skills.reduce((sum, skill) => sum + skill.rules.length, 0),
     ignored: walked.ignored.length,
     errors: count('error'), warnings: count('warning'),
-  }, found: foundPaths };
+  }, found: [...foundPaths] };
 }
 
 /** The rules of a skill in the set; a rules file that was read is added to `files`. A rules file that is too large, unreadable or breaks a secret rule

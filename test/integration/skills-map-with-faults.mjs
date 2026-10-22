@@ -2,7 +2,7 @@
  *
  * Why: the shipped CLI has no test hook, so a user can never trigger a fault; the Folder swapped test
  * still needs a real child process whose output folder is replaced between the check and the first
- * change. This script passes test/fs-wrapper.mjs's wrapper as the `ops` argument of skillsMapCommand
+ * change (Kind folder appears as a link: a link appears there instead). This script passes test/fs-wrapper.mjs's wrapper as the `ops` argument of skillsMapCommand
  * (its `atCheck` counts the lstat calls on the output folder: the first records the identity, the
  * second is the check before the first change). It lives under test/ and is not part of the package.
  *
