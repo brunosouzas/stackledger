@@ -102,15 +102,23 @@ On a skills map, a station SHALL join every zone whose members (skill-source, "P
 - **WHEN** the layout declares the zones `release` then `review`, and both have `writer` among their members, with other drawn members each
 - **THEN** both zone areas contain `writer`'s point, and its station has `data-zone="release review"`
 
-### Requirement: Zone titles apart
-On a skills map, a zone title box that would overlap an earlier zone's title box SHALL move up by its height plus 4 units, as many times as needed, so no two zone titles overlap.
-
 #### Scenario: Multi-word software zone
 - **WHEN** a software map's component is in the zone `Team tools`
 - **THEN** its station has `data-zone="team tools"`, as before this change
 
+### Requirement: Playbook zone titles
+On a skills map, a zone's title SHALL be placed next to its playbook's station, as a second label of that station: after the station labels, at the first of the label candidates that overlaps nothing, obstacles as in "Label placement" plus earlier labels and zone titles; when all overlap, the least overlap wins. A zone whose playbook is not drawn keeps the corner title, moved up by its height plus 4 units while it overlaps an earlier zone title.
+
+#### Scenario: Title by its playbook
+- **WHEN** the zone `review` has its playbook `review` drawn at `[0, 4]` and another member at `[2, 1]`
+- **THEN** `review`'s title box is next to the `review` station, not at the zone's top-left corner
+
+#### Scenario: Title clear of the lines
+- **WHEN** a line runs below and to the right of the playbook `release`'s station
+- **THEN** `release`'s zone title box overlaps no line segment, station marker or label
+
 #### Scenario: Two zones with one corner
-- **WHEN** the layout declares the zones `release` then `review`, and they have the same top-left member
+- **WHEN** the layout declares the zones `release` then `review`, neither playbook is a station of a drawn line, and the zones have the same top-left member
 - **THEN** their title boxes do not overlap, and `review`'s is above `release`'s
 
 ### Requirement: Software map unchanged
