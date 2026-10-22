@@ -8,7 +8,7 @@ A given folder that is not itself a skill folder MAY hold, at its top, an entry 
 - **THEN** only `writer` is read and there is no problem
 
 #### Scenario: Ignore file below the top
-- **WHEN** `repo/skills/.stackledgerignore` holds `writer/` and `repo/skills/writer/SKILL.md` exists
+- **WHEN** the given folder is `repo`, `repo/skills/.stackledgerignore` holds `writer/` and `repo/skills/writer/SKILL.md` exists
 - **THEN** `writer` is read
 
 #### Scenario: Ignore file above the given folder
@@ -65,11 +65,15 @@ The walk SHALL test, right after the hidden and `node_modules` skip, each folder
 - **THEN** `writer` is read and the ignored count is 0
 
 ### Requirement: Tested path
-The tested path SHALL be relative to the given folder, separated by `/`, and end in `/` for a folder or a link whose target is a folder. Any other link (to a file, broken, looping, or to neither) SHALL be tested without `/`.
+The tested path SHALL be relative to the given folder, separated by `/`, and end in `/` only for a real folder. A symbolic link SHALL always be tested without `/`, whatever its target, as Git does (a folder-only pattern does not match a link), and the `SKILL.md` of a linked skill folder SHALL NOT be tested.
 
-#### Scenario: Link matched with a folder pattern
-- **WHEN** the ignore file holds `shared/` and `shared` is a link to a skill folder elsewhere
+#### Scenario: Link matched by its name
+- **WHEN** the ignore file holds `shared` and `shared` is a link to a skill folder elsewhere
 - **THEN** the link is not followed, there is no problem and the ignored count is 1
+
+#### Scenario: Folder pattern does not match a link
+- **WHEN** the ignore file holds `shared/` and `shared` is a link to a skill folder elsewhere
+- **THEN** the linked skill is read, as Git would not ignore the link
 
 #### Scenario: Broken link matched
 - **WHEN** the ignore file holds `old` and `old` is a broken link
@@ -78,6 +82,10 @@ The tested path SHALL be relative to the given folder, separated by `/`, and end
 #### Scenario: Folder pattern does not match a broken link
 - **WHEN** the ignore file holds `old/` and `old` is a broken link
 - **THEN** there is one warning on `old`, as without an ignore file
+
+#### Scenario: SKILL.md pattern and a linked skill
+- **WHEN** the ignore file holds `fixtures/*/SKILL.md` and `fixtures/shared` is a link to a skill folder elsewhere
+- **THEN** the linked skill is read
 
 #### Scenario: Folder pattern does not match a file
 - **WHEN** the ignore file holds `helper.md/` and `agents/helper.md` is an agent file
@@ -103,18 +111,45 @@ A matched entry SHALL be skipped with no problem: a folder is not entered, a lin
 - **THEN** the rules of `writer` are read
 
 ### Requirement: Ignored count and list
-Each entry skipped by a pattern SHALL be counted once per run, identified by the device and inode numbers of the entry itself; a skipped folder counts as one whatever it holds, so `fixtures/` counts one where `fixtures/*` counts each entry in it. Entries skipped because they are hidden or named `node_modules` SHALL NOT be counted. The skipped entries' paths, as displayed in problems and sorted by code point, SHALL be kept for the JSON output.
+Each entry skipped by a pattern SHALL be counted once per run, identified by the device and inode numbers of the entry itself (a link's own; a skill folder's, even when its `SKILL.md` matched). A skipped folder counts as one whatever it holds. Entries skipped because they are hidden or named `node_modules` SHALL NOT be counted. The skipped entries' paths, as displayed in problems and sorted by code point, SHALL be kept for the JSON output.
 
 #### Scenario: Count
 - **WHEN** the ignore file holds `templates/` and `fixtures/*`, and the folder holds `templates/skill/SKILL.md`, `fixtures/broken/SKILL.md` and `fixtures/empty/SKILL.md`
 - **THEN** the ignored count is 3
 
+#### Scenario: Skill skipped by its SKILL.md
+- **WHEN** the ignore file holds `**/draft/SKILL.md` and `skills/draft/SKILL.md` exists, and `--json` is given
+- **THEN** `ignored` is `["skills/draft"]` (relative to the given folder `.`)
+
 #### Scenario: Folder given twice with an ignore file
 - **WHEN** the command runs as `stackledger skills validate team ./team/` and `team/.stackledgerignore` holds `templates/` and `team/templates/skill/SKILL.md` exists
 - **THEN** the ignored count is 1
 
+### Requirement: Ignore file limits
+An ignore file SHALL have at most 100 pattern lines (not blank, not comments), each of at most 200 characters and 16 wildcard characters (`*`, `?`, `[`). Every pattern line SHALL be compiled when the file is read. A file over a limit, or a line that cannot compile, SHALL be an ignore file problem naming the line number, never its text, and no pattern of that file is used. A later matcher failure SHALL be an internal failure holding no pattern or path.
+
+#### Scenario: Too many pattern lines
+- **WHEN** the ignore file holds 101 pattern lines and `templates/` is the first
+- **THEN** there is one error on it naming line 101, and `templates/skill/SKILL.md` is read
+
+#### Scenario: Line too long for the matcher
+- **WHEN** a pattern line has 201 characters
+- **THEN** there is one error on the ignore file naming that line, and its text is not in the output
+
+#### Scenario: Too many wildcards
+- **WHEN** a pattern line holds 17 `*` characters
+- **THEN** there is one error on the ignore file naming that line
+
+#### Scenario: Matcher failure
+- **WHEN** the matcher throws while an entry is tested
+- **THEN** the command fails as an internal failure and its message holds neither the ignore file's text nor the tested path
+
 ### Requirement: Ignore file problems
 An ignore file over 64 KiB, one that cannot be read, one that breaks a secret rule, and an entry named `.stackledgerignore` that is neither a regular file nor a link to one (a folder, a FIFO or other special file, a broken or looping link) SHALL be an error at `1:1` on it, with a fixed message that never repeats its text, reported once per run at the first path in walk order. Its given folder SHALL then be walked with no patterns.
+
+#### Scenario: Matcher failure
+- **WHEN** the matcher throws while an entry is tested
+- **THEN** the command fails as an internal failure and its message holds neither the ignore file's text nor the tested path
 
 #### Scenario: Secret in the ignore file
 - **WHEN** the ignore file holds `4111111111111111/` and `templates/`, and the folder holds `templates/skill/SKILL.md`

@@ -24,7 +24,7 @@ None.
 
 - `.stackledgerignore` files below the top of a given folder (nested ignore files, as `.gitignore` allows) or above it, and global or per-user ignore files.
 - A list of the ignored paths in the text output: it stays one counts line; the JSON has the list.
-- An option that makes any ignore an error in CI: the JSON count does it (`jq -e '.summary.ignored == N'`), shown in the docs.
+- An option that makes any ignore an error in CI: comparing the JSON list with a trusted one does it (`jq -e '.ignored == [...]'`), shown in the docs.
 - An option to bypass the file (`--no-ignore`).
 - Ignoring files inside a skill folder (a skill is read whole or not at all) and the software catalogue (`stackledger validate`).
 - Reading `.gitignore` itself: what Git ignores is not always what a skill set should skip.
@@ -37,12 +37,12 @@ None.
 
 ## Gate 1
 
-The owner approved the three decisions above as recommended (2026-10-22). After the first spec review, the spec also: tests `<skill>/SKILL.md` as Git would (so `fixtures/*/SKILL.md` works); tests only the entries that can add to the set; lowers the ignore file limit to 64 KiB; and adds the JSON `ignored` list.
+The owner approved the three decisions above as recommended (2026-10-22). After the first spec review, the spec also: tests `<skill>/SKILL.md` as Git would (so `fixtures/*/SKILL.md` works); tests only the entries that can add to the set; bounds the ignore file (64 KiB, 100 pattern lines, 200 characters and 16 wildcards per line); tests links without `/`, as Git does; and adds the JSON `ignored` list.
 
 ## Implicit requirements
 
 - **Errors and invalid input:** requirement. An ignore file that cannot be used is an error on that file, and its folder is read with no patterns, so nothing is hidden by a broken file. Each line means what it means to `ignore@7.0.13`, which follows Git; a line Git cannot match (such as `a[`) matches nothing and gives no problem, because the package does not report such lines.
-- **Limits:** requirement. The ignore file has its own limit of 64 KiB: matching cost grows with entries times lines, and a fork's pull request must not be able to stall CI.
+- **Limits:** requirement. The ignore file has its own limits (64 KiB, 100 pattern lines, 200 characters and 16 wildcards per line), and every line is compiled when read: a fork's pull request must not be able to stall CI or crash the matcher.
 - **Repetition and idempotency:** requirement. The same files give the same output.
 - **Concurrency:** n/a: one read-only process.
 - **Security:** requirement. The file is checked with the secret rules like every file read, and messages about it are fixed texts that never repeat its content.
