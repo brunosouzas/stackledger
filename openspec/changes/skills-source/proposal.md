@@ -29,7 +29,10 @@ None. The software catalogue, `stackledger validate` and the other commands do n
 - Following a symbolic link to a folder that is not itself a skill (see the design).
 - Fixing anything: the command only reads.
 
-## Open questions for gate 1
+## Decisions (gate 1, approved by the owner on 2026-10-22)
+
+All six recommendations below were accepted as written. On 5 the owner asked for an ignore file like `.gitignore` as a product feature; it is roadmap change 2 (`skills-ignore`, a `.stackledgerignore` file with `.gitignore` patterns), not part of this one.
+
 
 1. **Relation format.** Recommended: the `metadata` keys above, because the specification allows only `name`, `description`, `license`, `compatibility`, `metadata` and `allowed-tools` at the top level, `metadata` holds only string values, and the reference validator (`skills-ref`) rejects any other top-level field. The alternative, top-level `skills:` and `agents:` lists, is what the owner's own skills repository uses today, but it makes every playbook fail the reference validator. With the recommendation, that repository migrates its playbooks in a small pull request of its own.
 2. **Fields outside the specification** (for example `version`, `author`, `aliases`, or Claude Code's `model`): recommended one warning per skill naming them, because tools add their own fields and an error would fail almost every real set.
