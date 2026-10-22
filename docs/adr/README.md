@@ -13,3 +13,4 @@ Decisions that shape the whole project. How they relate to the OpenSpec changes 
 | 7 | [Two views, built as separate sites](0007-two-views-built-as-separate-sites.md) | Accepted |
 | 8 | [A read-only MCP server comes early; no AI model inside the core](0008-read-only-mcp-early-no-ai-in-the-core.md) | Accepted |
 | 9 | [TypeScript end to end](0009-typescript-end-to-end.md) | Accepted |
+| 10 | [Agent skills are a second ledger in the same tool, read from their own folders](0010-agent-skills-are-a-second-ledger-read-from-their-folders.md) | Accepted |
