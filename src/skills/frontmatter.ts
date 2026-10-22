@@ -84,8 +84,12 @@ export function at(frontmatter: Frontmatter, path: FieldPath, message: string, s
 function codePoints(text: string): number {
   return Array.from(text).length;
 }
+/** A plain YAML mapping. `!!omap`, `!!pairs` and `!!set` decode to `Map` or `Set` objects and are not
+ * accepted, so a relation written inside one is reported instead of silently skipped. */
 function isMapping(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 /** Step 5: `name` and `description` must be non-empty strings; both are reported. */

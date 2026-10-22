@@ -92,6 +92,13 @@ test('Number as a metadata key', async () => {
   expect(set.problems).toHaveLength(1);
 });
 
+test('Ordered map as metadata is not a mapping (regression)', async () => {
+  const set = await one(skill('writer', { extra: 'metadata: !!omap [{stackledger-skills: missing}]\n' }));
+  expect(set.problems).toMatchObject([{ field: 'metadata', severity: 'warning' }]);
+  expect(set.problems).toHaveLength(1);
+  expect(set.skills.map(s => s.kind)).toEqual(['skill']);
+});
+
 test('Nested metadata', async () => {
   const set = await one(skill('writer', { extra: 'metadata:\n  hermes:\n    tags: [writing]\n' }));
   expect(set.problems).toMatchObject([{ field: 'metadata.hermes', line: 6, severity: 'warning' }]);

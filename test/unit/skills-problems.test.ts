@@ -32,6 +32,17 @@ test('Escaped card number', async () => {
   for (const line of outputs(set).split('\n')) expect(line).not.toContain(CARD);
 });
 
+test('Escaped card number inside a YAML set or ordered map (regression)', async () => {
+  for (const extra of ['metadata: !!set {"411111111111111\\u0031": null}\n', 'labels: !!omap [{"411111111111111\\u0031": x}]\n', 'code: 0xe9b08a568f1c7\n']) {
+    const text = skill('release', { extra });
+    expect(text).not.toContain(CARD);
+    const set = await read(skillSet({ 'release/SKILL.md': text }));
+    expect(set.problems).toEqual([{ path: 'release/SKILL.md', line: 1, column: 1, severity: 'error', field: null, message: 'Payment-card number is not allowed' }]);
+    expect(set.skills).toEqual([]);
+    for (const line of outputs(set).split('\n')) expect(line).not.toContain(CARD);
+  }
+});
+
 test('Several field problems', async () => {
   const set = await read(skillSet({ 'writer/SKILL.md': skill('writer', { description: 'd'.repeat(1025), metadata: { 'stackledger-kind': 'process' } }) }));
   expect(set.problems.map(p => [p.field, p.severity])).toEqual([['description', 'warning'], ['metadata.stackledger-kind', 'error']]);

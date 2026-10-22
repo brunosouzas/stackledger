@@ -49,6 +49,11 @@ export interface SkillSet { skills: Skill[]; agents: Agent[]; problems: Problem[
 interface SkillCandidate { found: FoundSkill; frontmatter: Frontmatter; kind: SkillKind }
 interface AgentCandidate { found: FoundAgent; frontmatter: Frontmatter; preloads: string[] }
 
+/** A file's display path inside a skill folder; a folder of `/` (or ending in `/`) adds no second separator. */
+function displayJoin(folder: string, file: string): string {
+  if (!folder) return file;
+  return folder.endsWith('/') ? folder + file : `${folder}/${file}`;
+}
 /** A file's text, or the error that stops its checks (too large or unreadable). The file is opened once,
  * non-blocking, and checked through its handle, so a file swapped for a FIFO or grown after the walk's
  * check can neither hang the run nor be read past the limit. */
@@ -80,11 +85,19 @@ function secretProblems(path: string, texts: Iterable<string>): Problem[] {
   for (const text of texts) for (const rule of secretRules(text)) rules.add(rule);
   return [...rules].map(rule => fileProblem(path, rule));
 }
-/** Every key and string of a decoded frontmatter value; aliases can share objects, so each is visited once. */
+/** Every key and scalar of a decoded frontmatter value, as text: strings, numbers (a hexadecimal key decodes
+ * to a number), and the keys and members of the `Map` and `Set` objects that `!!omap`, `!!pairs` and `!!set`
+ * produce. Aliases can share objects, so each is visited once. */
 function* decodedStrings(value: unknown, seen = new Set<object>()): Generator<string> {
   if (typeof value === 'string') { yield value; return; }
+  if (typeof value === 'number' || typeof value === 'bigint') { yield String(value); return; }
   if (value === null || typeof value !== 'object' || seen.has(value)) return;
   seen.add(value);
+  if (value instanceof Map) {
+    for (const [key, child] of value) { yield* decodedStrings(key, seen); yield* decodedStrings(child, seen); }
+    return;
+  }
+  if (value instanceof Set) { for (const member of value) yield* decodedStrings(member, seen); return; }
   for (const [key, child] of Object.entries(value)) {
     if (!Array.isArray(value)) yield key;
     yield* decodedStrings(child, seen);
@@ -123,7 +136,7 @@ export async function readSkillSet(folders: string[], options: WalkOptions = {})
   const agentCandidates: AgentCandidate[] = [];
   const skillPaths = new Map<string, string>(), agentPaths = new Map<string, string>();
   for (const found of walked.items) {
-    const path = found.type === 'skill' ? `${found.folder ? `${found.folder}/` : ''}${SKILL_FILE}` : found.path;
+    const path = found.type === 'skill' ? displayJoin(found.folder, SKILL_FILE) : found.path;
     const absolute = found.type === 'skill' ? join(found.absolute, SKILL_FILE) : found.absolute;
     const own = await ownFrontmatter(absolute, path, found.type === 'agent');
     problems.push(...own.problems);
@@ -197,7 +210,7 @@ export async function readSkillSet(folders: string[], options: WalkOptions = {})
 /** The rules of a skill in the set. A rules file that is too large, unreadable or breaks a secret rule
  * gives no rules; a rule ID repeated in the file drops that rule; one used by an earlier skill is a warning. */
 async function readRules(found: FoundSkill, skill: string, owners: Map<string, string>, problems: Problem[]): Promise<Rule[]> {
-  const path = `${found.folder ? `${found.folder}/` : ''}${RULES_FILE}`;
+  const path = displayJoin(found.folder, RULES_FILE);
   const absolute = join(found.absolute, RULES_FILE);
   try { if (!(await stat(absolute)).isFile()) return []; } catch { /* A broken link or a vanished file: readText reports it. */ }
   const read = await readText(absolute, path);
