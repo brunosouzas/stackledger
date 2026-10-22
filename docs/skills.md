@@ -142,7 +142,7 @@ Paths start with the folder argument as given (without trailing `/`), or with no
 
 ## In CI
 
-A workflow for a skills repository (skills in sub-folders, agents in `agents/` at the top) that checks every pull request in three steps: check out, set up Node.js, validate. stackledger is not on npm yet: until 0.1.0 is released, build it from source instead of the `npx` line.
+A workflow for a skills repository (skills in sub-folders, agents in `agents/` at the top) that checks every pull request in three steps: check out, set up Node.js, validate. The skills commands need stackledger 0.2.0 or later.
 
 ```yaml
 name: Skills
@@ -160,7 +160,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-      - run: npx --yes stackledger@0.1.0 skills validate
+      - run: npx --yes stackledger@0.2.0 skills validate
 ```
 
 With no folder the repository root is checked, so problem paths are relative to it. The job fails on any error and passes with warnings. Name folders on the last line (for example `skills validate skills vendor`) to check only those, together.
@@ -169,7 +169,7 @@ A pull request can also change `.stackledgerignore` to hide a real skill. To ref
 
 ```yaml
       - run: |
-          npx --yes stackledger@0.1.0 skills validate --json > skills.json || true
+          npx --yes stackledger@0.2.0 skills validate --json > skills.json || true
           jq -e '.summary.errors == 0 and .ignored == ["skills/fixtures","templates"]' skills.json
 ```
 
@@ -236,8 +236,8 @@ stdout stays empty; stderr gives the pages created, updated and removed.
 `--check` writes nothing. It prints one line per file that would be created, updated or removed (`update skills/writer.md`) and exits 1 when there is any, so a pipeline can fail a pull request that changed skills without running the map. It reads CRLF as LF, for checkouts made before `.gitattributes` existed. Run it next to `skills validate`, which is what fails on errors:
 
 ```yaml
-      - run: npx --yes stackledger@0.1.0 skills validate
-      - run: npx --yes stackledger@0.1.0 skills map . --out docs/skills-map --check
+      - run: npx --yes stackledger@0.2.0 skills validate
+      - run: npx --yes stackledger@0.2.0 skills map . --out docs/skills-map --check
 ```
 
 ### Where the diagrams render

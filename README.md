@@ -82,14 +82,14 @@ stackledger does not call any AI model. Instead, a read-only [MCP](https://model
 
 ## Usage
 
-The package is not published to npm yet. Once 0.1.0 is released, use npm with Node.js 22.12 or later:
+Use npm with Node.js 22.12 or later. Version 0.2.0 adds the agent skills commands (`skills validate`, `.stackledgerignore`, `skills map`); 0.1.0 has the catalogue commands only.
 
 ```sh
-npx stackledger@0.1.0 --help
-npx stackledger@0.1.0 validate /path/to/catalogue
+npx stackledger@0.2.0 --help
+npx stackledger@0.2.0 validate /path/to/catalogue
 ```
 
-Until then, run it from source:
+To run it from source (for development, or a change not yet on npm):
 
 ```sh
 npm ci
