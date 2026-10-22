@@ -38,6 +38,10 @@ None. It reads skill sets as `skill-source` defines them.
 4. **A set with errors is still mapped, exit 0**, with the counts in the index and on stderr, **except** when a given folder has nothing found in it (a wrong path or an ignore file hiding everything): then exit 1 and nothing changes, so a mistake cannot empty the map. Recommended: failing on errors is `skills validate`'s job, and the docs' pipeline runs both.
 5. **The index draws every relation in one diagram, within a budget**: at most 400 edges and 40,000 characters (measured: Mermaid 11 refuses 501 edges and about 50,000 characters); over it, the page says so and the tables hold everything. Recommended: no page breaks on a large set.
 
+## Gate 1
+
+The owner approved the five decisions above as recommended (2026-10-22), after both spec reviews.
+
 ## Implicit requirements
 
 - **Errors and invalid input:** requirement. Usage errors and refused folders exit 2 with nothing written; a write failure or a folder changed during the run exits 1 and names it.
