@@ -1,5 +1,7 @@
 // Shared by the map and diagram scripts: turn SVG groups with data-ref into keyboard-usable links.
-// Pages are at root + 'software/<name>/', 'licences/<name>/' and 'journeys/<name>/'; the root
+// Pages are at root + 'software/<name>/', 'licences/<name>/' and 'journeys/<name>/', and the Skills
+// pages at 'skills/<file>/', 'playbooks/<file>/' and 'agents/<file>/' (the ref already holds the
+// page file name, lowercase ASCII, so nothing is encoded here); the root
 // ('../' per folder level) comes from the body's data-root, written by the layout.
 
 const ROOT = document.body.dataset.root ?? '';
@@ -9,7 +11,9 @@ export function pageOf(ref: string): string | undefined {
   const [kind, name] = ref.split(':');
   if (!name) return undefined;
   const folder = kind === 'component' ? 'software' : kind === 'resource' ? 'licences' : kind === 'line' ? 'journeys' : undefined;
-  return folder ? `${ROOT}${folder}/${name.toLowerCase()}/` : undefined;
+  if (folder) return `${ROOT}${folder}/${name.toLowerCase()}/`;
+  const skills = kind === 'skill' ? 'skills' : kind === 'playbook' ? 'playbooks' : kind === 'agent' ? 'agents' : undefined;
+  return skills && /^[a-z0-9_-]+$/.test(name) ? `${ROOT}${skills}/${name}/` : undefined;
 }
 
 /** Make an SVG group focusable as a link: click, or Enter while focused, opens `url`. */

@@ -1,0 +1,14 @@
+---
+// Agent pages (skills-site): one per agent of the skill set, at its page file name; none without a skill set.
+import SkillItem from '../../components/SkillItem.astro';
+import { site } from '../../lib/site';
+
+export function getStaticPaths() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (site.skills?.items ?? []).filter((page: any) => page.kind === 'agent').map((page: any) => ({ params: { file: page.file }, props: { page } }));
+}
+
+const { page } = Astro.props;
+---
+
+<SkillItem page={page} />

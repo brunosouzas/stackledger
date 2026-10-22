@@ -29,7 +29,7 @@ function spec(entity: Identified): Record<string, unknown> { return object(entit
 function metadata(entity: Identified): Record<string, unknown> { return object(entity.source.value.metadata); }
 function strings(value: unknown): string[] { return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []; }
 function identityKey(kind: string, entityName: string): string { return `${kind.toLowerCase()}:${entityName.toLowerCase()}`; }
-function schemaProblems(source: Source, issues: z.core.$ZodIssue[]): Problem[] {
+export function schemaProblems(source: Source, issues: z.core.$ZodIssue[]): Problem[] {
   const seen = new Set<string>();
   return issues.flatMap(issue => {
     const path = issue.path.map(part => typeof part === 'number' ? part : String(part));

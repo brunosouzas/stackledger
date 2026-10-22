@@ -244,16 +244,27 @@ test('Reports in full only', () => {
   }
 });
 
-const REPORTS_LINK = /<a class="nav-link" href="(?:\.\.\/)*reports\/"[^>]*>Reports<\/a>/;
+const REPORTS_LINK = /<a class="sub-link" href="(?:\.\.\/)*reports\/"[^>]*>\s*Reports\s*<\/a>/;
+const subNav = (html: string) => /<nav class="sub-nav[^"]*" aria-label="Software">[\s\S]*?<\/nav>/.exec(html)?.[0] ?? '';
 
 test('Reports link', () => {
-  for (const page of pages(main.full)) {
-    const header = /<header[\s\S]*?<\/header>/.exec(read(main.full, page))![0];
-    expect(header, page).toMatch(REPORTS_LINK);
-  }
-  for (const page of pages(main.staff)) expect(read(main.staff, page), page).not.toContain('>Reports<');
+  for (const page of pages(main.full)) expect(subNav(read(main.full, page)), page).toMatch(REPORTS_LINK);
+  for (const page of pages(main.staff)) expect(read(main.staff, page), page).not.toContain('Reports');
   // Relative from a nested page too.
-  expect(read(main.full, 'software/editor/index.html')).toContain('<a class="nav-link" href="../../reports/">Reports</a>');
+  expect(subNav(read(main.full, 'software/editor/index.html'))).toMatch(/href="\.\.\/\.\.\/reports\/"/);
+});
+
+test('Software sub-navigation', () => {
+  for (const page of ['journeys/index.html', 'journeys/ship/index.html']) {
+    const html = read(main.full, page);
+    const header = /<header[\s\S]*?<\/header>/.exec(html)![0];
+    expect(header).toMatch(/aria-current="page"[^>]*>\s*Software|>\s*Software\s*<\/a>/);
+    expect(header).not.toContain('Journeys');
+    const nav = subNav(html);
+    for (const title of ['Map', 'List', 'Journeys']) expect(nav, page).toMatch(new RegExp(`>\\s*${title}\\s*<`));
+    const marked = [...nav.matchAll(/<a [^>]*aria-current="page"[^>]*>\s*([^<]+?)\s*</g)].map(match => match[1]);
+    expect(marked, page).toEqual(page === 'journeys/index.html' ? ['Journeys'] : []);
+  }
 });
 
 // licence-reports

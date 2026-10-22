@@ -16,7 +16,7 @@ const root = rootFor(Astro.url.pathname);
 const near = page.neighbourhood;
 ---
 
-<Base title={page.title} current="software">
+<Base title={page.title} current="software" exact={false}>
   <article class="container section">
     <p class="kicker">Component</p>
     <h1>{page.title}</h1>

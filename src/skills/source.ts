@@ -33,6 +33,7 @@ import { readBounded, secretProblems } from './read.js';
 import { AGENTS_KEY, SKILLS_KEY, at, checkAgentFields, checkNameAndDescription, checkSkillFields, readFrontmatter,
   relationNames, type Frontmatter, type SkillKind } from './frontmatter.js';
 import { parseRules, type Rule } from './rules.js';
+import { readSkillsMap, type ItemKind, type SkillsMap } from './lines.js';
 import { RULES_FILE, SKILL_FILE, walkSkillFolders, type FoundAgent, type FoundSkill, type WalkOptions } from './walk.js';
 
 /** A file an item was read from. */
@@ -78,8 +79,10 @@ export interface SkillSet {
   /** Display paths of the entries skipped by ignore files, each once, sorted by code point. */
   ignored: string[];
   summary: SkillsSummary;
+  /** The served documents of the skills map files (src/skills/lines.ts): lines and the first layout. */
+  map: SkillsMap;
   /** Real paths of every skill folder and agent file the walk found, and of the SKILL.md and rules.md
-   * in each skill folder, rejected ones included, then of every ignore file read, each once. */
+   * in each skill folder, rejected ones included, then of every ignore file and map file read, each once. */
   found: string[];
 }
 
@@ -226,6 +229,13 @@ export async function readSkillSet(folders: string[], options: WalkOptions = {})
       given: found.given, files: [await sourceFile(found.path, found.absolute, found.relative)], preloads: candidate.preloads });
   }
 
+  // The map files are checked against the fixed set; their problems never remove an item.
+  const kinds = new Map<string, ItemKind[]>();
+  for (const item of [...skills, ...agents]) {
+    const kind: ItemKind = 'kind' in item ? item.kind : 'agent';
+    kinds.set(item.name, [...(kinds.get(item.name) ?? []), kind]);
+  }
+  const map = await readSkillsMap(walked.mapFiles, kinds, problems);
   sortProblems(problems);
   // Every skill folder and agent file, and every SKILL.md and rules.md in a skill folder, by real path:
   // a file can be a link into the map folder, which cleaning would delete (rejected items included).
@@ -238,6 +248,8 @@ export async function readSkillSet(folders: string[], options: WalkOptions = {})
   }
   // An ignore file can be a link into the map folder too; cleaning would delete its target.
   for (const file of walked.ignoreFiles) foundPaths.add(await realOrAbsolute(file));
+  // A map file too (skill-source, One read per map file).
+  for (const file of walked.mapFiles) foundPaths.add(await realOrAbsolute(file.absolute));
   const count = (severity: Problem['severity']) => problems.filter(problem => problem.severity === severity).length;
   return { skills, agents, problems, ignored: [...walked.ignored].sort(compareText), summary: {
     skills: skills.filter(skill => skill.kind === 'skill').length,
@@ -246,7 +258,7 @@ export async function readSkillSet(folders: string[], options: WalkOptions = {})
     rules: skills.reduce((sum, skill) => sum + skill.rules.length, 0),
     ignored: walked.ignored.length,
     errors: count('error'), warnings: count('warning'),
-  }, found: [...foundPaths] };
+  }, map, found: [...foundPaths] };
 }
 
 /** The rules of a skill in the set; a rules file that was read is added to `files`. A rules file that is too large, unreadable or breaks a secret rule

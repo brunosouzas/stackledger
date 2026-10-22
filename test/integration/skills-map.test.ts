@@ -495,3 +495,14 @@ test('Wrong folder does not empty the map', () => {
   }
   expect(snapshot(map, true)).toEqual(before);
 });
+
+// skills-site: the skills map file is an input `skills map` refuses to overwrite (skills-map-command delta).
+test('Output holds the linked skills map file', () => {
+  const root = skillSet({ 'repo/map/.stackledger-skills-map': MARKER[1], 'repo/map/skills.yaml': 'apiVersion: stackledger/v1alpha1\nkind: Line\nmetadata:\n  name: publish\nspec:\n  color: "#E4002B"\n  stops: ["skill:writer", "skill:writer"]\n',
+    'tool/writer/SKILL.md': skill('writer'), 'tool/stackledger-skills.yaml': link('repo/map/skills.yaml') });
+  const before = snapshot(root);
+  const result = run(['skills', 'map', 'tool', '--out', 'repo/map'], root);
+  expect(result.status).toBe(2);
+  expect(result.stderr).toContain('must not hold');
+  expect(snapshot(root)).toEqual(before);
+});

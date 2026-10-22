@@ -4,7 +4,11 @@
 import data from '../data/site.json';
 import policyText from '../data/policy.json';
 
-export const site = data;
+// SiteData of src/site/data.ts; `skills` is there only when the build has a skill set.
+// The working copy is built outside this repository, so the shape is not imported from src/: pages
+// are checked by the build tests (test/integration/site-skills.test.ts), not by a type check.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const site = data as typeof data & { skills?: any };
 export const policy: string = policyText;
 
 /** '../' once per folder level of the page, so links work under any path prefix (trailingSlash 'always'). */
@@ -16,3 +20,6 @@ export function rootFor(pathname: string): string {
 export function href(root: string, path: string): string {
   return root + path || './';
 }
+
+/** A page's entry in its division's sub-navigation (components/SubNav.astro). */
+export type Page = 'map' | 'software' | 'journeys' | 'reports' | 'skills' | 'skill-map' | 'rules';

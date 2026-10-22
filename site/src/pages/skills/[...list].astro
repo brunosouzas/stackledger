@@ -1,0 +1,75 @@
+---
+// Skills list (skills-site, Skills list): counts and one table of every skill, playbook and agent,
+// sorted by name then kind. The route is a rest parameter so it gives /skills/ only when the build
+// has a skill set; search and the kind filter reuse the software list's script on this table.
+import Base from '../../layouts/Base.astro';
+import { href, rootFor, site } from '../../lib/site';
+
+export function getStaticPaths() {
+  return site.skills ? [{ params: { list: undefined }, props: { skills: site.skills } }] : [];
+}
+
+const { skills } = Astro.props;
+const root = rootFor(Astro.url.pathname);
+const plural = (count: number, word: string) => `${count} ${count === 1 ? word : `${word}s`}`;
+---
+
+<Base title="Skills" current="skills">
+  <section class="container section">
+    <h1>Skills</h1>
+    <p class="lead">
+      {plural(skills.counts.skills, 'skill')}, {plural(skills.counts.playbooks, 'playbook')}, {plural(skills.counts.agents, 'agent')} and
+      {plural(skills.counts.rules, 'rule')}, as an agent would load them.
+    </p>
+    {
+      skills.rows.length === 0 ? (
+        <p>No skills: no skill folder or agent file passed its checks. Run <code>stackledger skills validate</code> on the skills folders.</p>
+      ) : (
+        <>
+          <div class="list-tools" data-list-tools hidden>
+            <label class="field list-search">
+              Search
+              <input type="search" data-search autocomplete="off" placeholder="Name, description…" />
+            </label>
+            <label class="field">
+              Kind
+              <select data-filter="kind">
+                <option value="">All</option>
+                <option value="skill">skill</option>
+                <option value="playbook">playbook</option>
+                <option value="agent">agent</option>
+              </select>
+            </label>
+          </div>
+          <p class="muted" data-count aria-live="polite" />
+          <div class="table-wrap">
+            <table data-software>
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Kind</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Rules</th>
+                </tr>
+              </thead>
+              <tbody>
+                {skills.rows.map((row: { href: string; name: string; kind: string; description: string; rules: number }) => (
+                  <tr>
+                    <td data-column="name"><a href={href(root, row.href)}>{row.name}</a></td>
+                    <td data-column="kind">{row.kind}</td>
+                    <td data-column="description">{row.description}</td>
+                    <td data-column="rules">{row.rules}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p class="no-match" data-no-match hidden>No item matches.</p>
+        </>
+      )
+    }
+  </section>
+  <script>
+    import '../../scripts/software.ts';
+  </script>
+</Base>

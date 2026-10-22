@@ -17,6 +17,7 @@ import { yaml } from './mcp-helpers.js';
 import { cli, root } from './helpers.js';
 import { MARKER, MARKER_NAME } from '../../src/site/policy.js';
 import { manualRestore } from '../manual-restore.js';
+import { largeCatalogue } from '../large-catalogue.js';
 
 const DATE = '2027-06-01';
 const PROXY = /identity-aware proxy/;
@@ -270,7 +271,7 @@ describe('Usage errors', () => {
     for (const args of [['build', '--help'], ['build', catalogue, '--out', out, '--date', 'never', '--help']]) {
       const result = await build(args);
       expect(result.status).toBe(0);
-      expect(result.stdout).toContain('stackledger build <folder> --out <dir> [--date YYYY-MM-DD]');
+      expect(result.stdout).toContain('stackledger build <folder> --out <dir> [--date YYYY-MM-DD] [--skills <folder>]...');
       expect(result.stderr).toBe('');
     }
     expect(existsSync(out)).toBe(false);
@@ -668,30 +669,6 @@ test.concurrent('Built twice', async () => {
 }, 120_000);
 
 /** 280 components, 20 licences and 20 lines of 12 stops, with stored positions (a fixed seed). */
-function largeCatalogue(): Record<string, string> {
-  let seed = 20271020;
-  const random = (n: number) => {
-    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-    return seed % n;
-  };
-  const names = Array.from({ length: 280 }, (_, i) => `app-${String(i).padStart(3, '0')}`);
-  const licences = Array.from({ length: 20 }, (_, i) => licence(`licence-${String(i).padStart(2, '0')}`));
-  const components = names.map((name, i) => depends(component(name), [`resource:licence-${String(i % 20).padStart(2, '0')}`, ...(i ? [`component:${names[i - 1]}`] : [])]));
-  const stopLists = Array.from({ length: 20 }, (_, i) => names.slice(i * 10, i * 10 + 10));
-  for (const list of stopLists) while (list.length < 12) {
-    const name = names[random(200)]!;
-    if (!list.includes(name)) list.push(name);
-  }
-  const lines = stopLists.map((list, i) => set(set(stops(`journey-${i}`, list), 'spec.code', String(i)), 'spec.color', '#336699'));
-  const cells = Array.from({ length: 25 * 12 }, (_, i) => [(i % 25) * 2, Math.floor(i / 25) * 2] as [number, number]);
-  for (let i = cells.length - 1; i > 0; i--) {
-    const j = random(i + 1);
-    [cells[i], cells[j]] = [cells[j]!, cells[i]!];
-  }
-  const map = set(layout(), 'spec.stations', Object.fromEntries(names.slice(0, 200).map((name, i) => [`component:${name}`, cells[i]!])));
-  return { 'catalog-info.yaml': yaml(...components, ...licences, ...lines, map) };
-}
-
 test('Large catalogue', async () => {
   const folder = writeFolder(fresh('large'), largeCatalogue());
   const out = fresh('large-out');

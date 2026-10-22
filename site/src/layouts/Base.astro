@@ -9,13 +9,17 @@ import '../styles/base.css';
 import '../styles/pages.css';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
-import { href, policy, rootFor, site } from '../lib/site';
+import SubNav from '../components/SubNav.astro';
+import { href, policy, rootFor, site, type Page } from '../lib/site';
 
 interface Props {
   title: string;
-  current?: 'map' | 'software' | 'journeys' | 'reports';
+  /** The page's entry in its division's sub-navigation; `exact` false on an item page, which marks none. */
+  current: Page;
+  exact?: boolean;
 }
-const { title, current } = Astro.props;
+const { title, current, exact = true } = Astro.props;
+const division = ['skills', 'skill-map', 'rules'].includes(current) ? 'skills' : 'software';
 const root = rootFor(Astro.url.pathname);
 ---
 
@@ -35,7 +39,8 @@ const root = rootFor(Astro.url.pathname);
   </head>
   <body data-root={root}>
     <a class="skip-link" href="#main">Skip to content</a>
-    <Header root={root} current={current} />
+    <Header root={root} current={division} />
+    <SubNav root={root} current={current} exact={exact} />
     <main id="main">
       <slot />
     </main>

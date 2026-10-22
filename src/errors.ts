@@ -9,6 +9,12 @@ export class InternalError extends Error {
   override name = 'InternalError';
 }
 
+/** An expected exit-1 stop caused by the input, not a bug (a build that must not publish, say):
+ * reported like an InternalError, one line and no usage. */
+export class CommandStop extends InternalError {
+  override name = 'CommandStop';
+}
+
 /** Wrap an unexpected failure from inside a command as a one-line InternalError. */
 export function internal(command: string, error: unknown): InternalError {
   const detail = error instanceof Error ? error.message : String(error);

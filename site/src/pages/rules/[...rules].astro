@@ -1,0 +1,61 @@
+---
+// Rules index (skills-site, Rules index): every rule of the set, sorted by ID then the item that
+// defines it, each row linking that item's page. Search reuses the software list's script.
+import Base from '../../layouts/Base.astro';
+import { href, rootFor, site } from '../../lib/site';
+
+export function getStaticPaths() {
+  return site.skills ? [{ params: { rules: undefined }, props: { skills: site.skills } }] : [];
+}
+
+const { skills } = Astro.props;
+const root = rootFor(Astro.url.pathname);
+---
+
+<Base title="Rules" current="rules">
+  <section class="container section">
+    <h1>Rules</h1>
+    {
+      skills.rules.length === 0 ? (
+        <p class="lead">No rules: no skill or playbook of the set has a <code>rules.md</code> with rules.</p>
+      ) : (
+        <>
+          <p class="lead">{skills.rules.length} rules from the skills' and playbooks' <code>rules.md</code> files.</p>
+          <div class="list-tools" data-list-tools hidden>
+            <label class="field list-search">
+              Search
+              <input type="search" data-search autocomplete="off" placeholder="ID, text, group…" />
+            </label>
+          </div>
+          <p class="muted" data-count aria-live="polite" />
+          <div class="table-wrap">
+            <table data-software>
+              <thead>
+                <tr>
+                  <th scope="col">ID</th>
+                  <th scope="col">Rule</th>
+                  <th scope="col">Group</th>
+                  <th scope="col">Defined by</th>
+                </tr>
+              </thead>
+              <tbody>
+                {skills.rules.map((rule: { id: string; text: string; group: string; owner: { href: string; name: string; kind: string } }) => (
+                  <tr>
+                    <td data-column="id"><code>{rule.id}</code></td>
+                    <td data-column="text">{rule.text}</td>
+                    <td data-column="group">{rule.group}</td>
+                    <td data-column="owner"><a href={href(root, rule.owner.href)}>{rule.owner.name}</a> <span class="muted">({rule.owner.kind})</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p class="no-match" data-no-match hidden>No rule matches.</p>
+        </>
+      )
+    }
+  </section>
+  <script>
+    import '../../scripts/software.ts';
+  </script>
+</Base>

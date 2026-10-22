@@ -1,19 +1,18 @@
 ---
-// Sticky header from brunosouzas.com (Astroplate theme, MIT): brand, navigation, theme switch.
-// Reports is linked only when the site's data has a report, which only the full site's has.
+// Sticky header from brunosouzas.com (Astroplate theme, MIT): brand, the divisions, theme switch.
+// The divisions are Software (the map, its home) and, only when the build was given a skill set,
+// Skills (skills-site, Skills pages); each division's pages are in its sub-navigation (SubNav.astro).
 import ThemeSwitch from './ThemeSwitch.astro';
 import { href, site } from '../lib/site';
 
 interface Props {
   root: string;
-  current?: 'map' | 'software' | 'journeys' | 'reports' | undefined;
+  current: 'software' | 'skills';
 }
 const { root, current } = Astro.props;
 const links = [
-  { key: 'map', title: 'Map', path: '' },
-  { key: 'software', title: 'Software', path: 'software/' },
-  { key: 'journeys', title: 'Journeys', path: 'journeys/' },
-  ...('report' in site ? [{ key: 'reports', title: 'Reports', path: 'reports/' }] : []),
+  { key: 'software', title: 'Software', path: '' },
+  ...('skills' in site && site.skills ? [{ key: 'skills', title: 'Skills', path: 'skills/' }] : []),
 ];
 ---
 

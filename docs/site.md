@@ -12,7 +12,7 @@ npm run build
 node dist/cli.js build examples/northwind --out ./public --date 2027-06-01
 ```
 
-`stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` writes `<dir>/full/`, `<dir>/staff/`, `<dir>/_headers`, `<dir>/robots.txt`, `<dir>/_redirects` and the marker `<dir>/.stackledger-build`. In the personal mode there is no `staff/`, and one left by an earlier build is removed with the rest of that build. `_redirects` sends `/` to `/staff/`, or to `/full/` in the personal mode, as `/ /staff/ 302` (the Cloudflare Pages and Netlify format). `--date` sets the map date and the report date of the `full` site (renewals within 30 days are ringed on the map; the Reports page and `renewals.ics` cover the 90 days from it); the default is the machine's local date. The `staff` site never depends on the date.
+`stackledger build <folder> --out <dir> [--date YYYY-MM-DD] [--skills <folder>]...` writes `<dir>/full/`, `<dir>/staff/`, `<dir>/_headers`, `<dir>/robots.txt`, `<dir>/_redirects` and the marker `<dir>/.stackledger-build`. In the personal mode there is no `staff/`, and one left by an earlier build is removed with the rest of that build. `_redirects` sends `/` to `/staff/`, or to `/full/` in the personal mode, as `/ /staff/ 302` (the Cloudflare Pages and Netlify format). `--date` sets the map date and the report date of the `full` site (renewals within 30 days are ringed on the map; the Reports page and `renewals.ics` cover the 90 days from it); the default is the machine's local date. The `staff` site never depends on the date.
 
 | Exit | When |
 | --- | --- |
@@ -22,7 +22,7 @@ node dist/cli.js build examples/northwind --out ./public --date 2027-06-01
 
 The output folder is refused (exit 2) when, after resolving symbolic links, it is the catalogue folder, inside it, contains it, or is a non-empty folder without the marker of an earlier build. The marker counts only as a regular file (not a link or a folder) holding exactly the text stackledger writes. The folder is also refused when `full`, `staff`, `_headers`, `robots.txt`, `_redirects` or the marker is a symbolic link: the build never renames or removes through a link. A missing output folder is created. Building again into the same folder replaces the previous build completely.
 
-stderr holds the report, in this order: the catalogue's error and warning counts with a hint to run `stackledger validate` (only when there is at least one), the map's suggested positions, unrouted hops and unused layout as [`stackledger map`](map.md) writes them for the `full` view, one line per site built with its folder and page count, and a reminder that the folders must be served behind an identity-aware proxy.
+stderr holds the report, in this order: the catalogue's error and warning counts with a hint to run `stackledger validate` (only when there is at least one), the map's suggested positions, unrouted hops and unused layout as [`stackledger map`](map.md) writes them for the `full` view, the skill set's lines (see [Skills](#skills)), one line per site built with its folder and page count, and a reminder that the folders must be served behind an identity-aware proxy.
 
 **What it writes.** Only inside `--out`. Astro runs from a copy of the site project in a staging folder `--out/.stackledger-tmp-*`, with every cache there too; nothing is written to the catalogue, the installed package, the system temporary folder or your home folder, and there are no network calls and no telemetry. You can check it with the Node.js permission model (Node 22.13 or later):
 
@@ -39,7 +39,21 @@ Create `/path/to/out` first and give real paths (without symbolic links): the bu
 
 **Interrupted publication.** A staging folder without `old/` never touched a published entry (a build that crashed or failed before publishing): the next build removes it. A staging folder with `old/` may hold the only copy of the previous build, after a failed undo (for example a folder made read-only during the build) or a process killed during publication. stackledger never moves those entries back by itself: while such a folder exists, every build exits 1, names it and changes nothing, until you restore by hand as described below. Automatic recovery was tried and dropped, because trusting what a staging folder says about itself could move or delete the published site.
 
-**Deterministic.** The same catalogue, `--date` and stackledger version produce byte-identical files, whatever the order of files and documents in the catalogue folder.
+**Deterministic.** The same catalogue, skill files, `--date` and stackledger version produce byte-identical files, whatever the order of files and documents in the catalogue folder, and wherever the catalogue and skills folders are on disk.
+
+### Skills
+
+With a skill set, both sites get the Skills pages ([docs/skills.md](skills.md#skills-on-the-site)). The folders in use are the `--skills` folders, as given, when there is at least one; otherwise `spec.skills.folders` of a `Settings` without errors, each resolved from the catalogue folder; otherwise there is no skill set. The set is read as `stackledger skills validate` reads it.
+
+| Exit | When |
+| --- | --- |
+| 0 | Built, also when the set has errors: the items that failed their own checks are left out, and the report says how many problems there are. |
+| 1 | Nothing published changes: a `Settings` with an error that sets `spec.skills` (without `--skills`); a skills folder in which nothing is found; two items of one kind with the same page name (stderr names both files). |
+| 2 | Nothing is created: an empty `--skills`; a skills folder in use that is missing, not a folder or unreadable (named as written, with `spec.skills.folders` when it comes from there); an output folder that is or contains a skills folder or any file the set was read from (the skills map file and ignore files included, through links too), or is inside a skill folder or a skills folder's top-level `agents/`. Elsewhere inside a skills folder is fine: `stackledger build catalog --skills . --out public` at the top of a repository works. |
+
+All exit-2 checks come before the exit-1 ones, and all of them before anything is written. A `Settings` file that cannot be parsed at all gives no skill set and one report line, so a catalogue that built before still builds.
+
+The report adds, after the map's lines: `Skills: <n> skills, <n> playbooks, <n> agents, <n> rules`; a line with the set's errors and warnings and a hint to run `stackledger skills validate`, when there are any; then the skills map's suggested positions and unrouted hops, each station written as the key to paste into `stackledger-skills.yaml` (`skill:writer: [2, 0]`).
 
 ### Restoring after a failed publication
 
@@ -66,12 +80,12 @@ After step 3, `<out>` holds the previous build byte for byte; the build tests fo
 
 ## Pages
 
-Each site has the same pages, filled from its own view; the `full` site also has the Reports page and the calendar file.
+Each site has the same pages, filled from its own view; the `full` site also has the Reports page and the calendar file. The header links two divisions: **Software** (the pages below) and, with a skill set, **Skills** ([its pages](skills.md#what-the-site-shows), the same in both sites). Each division has its own menu under the header: Map, List, Journeys and Reports for Software; List, Map and Rules for Skills.
 
 | Page | Path | Shows |
 | --- | --- | --- |
 | Map | `/` | The metro map in the page's theme, with zoom in, zoom out, reset and drag to pan; a zone filter; the lines as buttons under the map (choose one to dim the others, choose it again to restore); the map symbols. Each station opens its item page by click, or by focus and Enter. |
-| Software | `/software/` | Every component and licence in one table: name, kind, type, lifecycle or status, owner and zone, sorted by reference. Search (any shown cell, ignoring case) and filters work on the table itself. |
+| Software list | `/software/` | Every component and licence in one table: name, kind, type, lifecycle or status, owner and zone, sorted by reference. Search (any shown cell, ignoring case) and filters work on the table itself. |
 | Component | `/software/<name>/` | Title, name, description, type, lifecycle, owner, zone and tags; its licences with the licence fields of the view; the journeys that stop at it; a neighbourhood diagram (what it depends on, what depends on it) with the same items as text links; the impact of removing it; references that match nothing. |
 | Licence | `/licences/<name>/` | Title, name, owner and the licence fields of the view; the components that use it; the impact of removing it. |
 | Journeys | `/journeys/` | Every drawn line in line order, with badge, title and number of stops. |

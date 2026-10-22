@@ -76,3 +76,13 @@ test('Broken settings build both sites', () => {
  expect(resolveSites(check(sites(['staff'])))).toEqual(['full', 'staff']);
  expect(resolveSites(check(settings('settings', { sites: ['full'], site: { logo: 'logo.png' } })))).toEqual(['full', 'staff']);
 });
+// catalogue spec, Skills settings.
+const skills = (value: unknown) => settings('settings', { skills: value });
+test('Two skills folders', () => { expect(check(skills({ folders: ['../kit', '../openspec'] })).problems).toEqual([]); });
+test('Absolute path', () => { const result = errors(skills({ folders: ['/home/northwind/kit'] })); expect(result).toMatchObject([{ field: 'spec.skills.folders[0]' }]); expect(result[0]!.message).toContain('relative to the catalogue folder'); });
+test('Home folder shortcut', () => { expect(errors(skills({ folders: ['~/kit'] }))).toMatchObject([{ field: 'spec.skills.folders[0]' }]); expect(errors(skills({ folders: ['\\\\server\\kit'] }))).toMatchObject([{ field: 'spec.skills.folders[0]' }]); });
+test('Drive letter', () => { expect(errors(skills({ folders: ['C:kit'] }))).toMatchObject([{ field: 'spec.skills.folders[0]' }]); expect(check(skills({ folders: ['kit:v2'] })).problems).toEqual([]); });
+test('Empty list', () => { expect(errors(skills({ folders: [] }))).toMatchObject([{ field: 'spec.skills.folders' }]); expect(errors(skills({ folders: [''] }))).toMatchObject([{ field: 'spec.skills.folders[0]' }]); });
+test('Too many folders', () => { expect(errors(skills({ folders: Array.from({ length: 21 }, (_, i) => `f${i}`) }))).toMatchObject([{ field: 'spec.skills.folders' }]); expect(check(skills({ folders: Array.from({ length: 20 }, (_, i) => `f${i}`) })).problems).toEqual([]); });
+test('Repeated folder', () => { expect(errors(skills({ folders: ['../kit', '../kit'] }))).toMatchObject([{ field: 'spec.skills.folders[1]' }]); expect(errors(skills({ folders: ['../kit', '../kit'] }))).toHaveLength(1); });
+test('Unknown skills field', () => { expect(errors(skills({ folder: ['../kit'] }))).toMatchObject([{ field: 'spec.skills.folder', message: 'Unlisted field' }]); });

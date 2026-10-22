@@ -53,3 +53,8 @@ node dist/cli.js map examples/northwind --theme dark --date 2027-06-01 > docs/im
 ```
 
 Tests cover scenario-named numeric geometry, independently parsed hostile SVG, staff/full differential output, read-only execution under Node's permission model, example collisions and a seeded 200-station, 20-line fixture required to render within 5 seconds.
+
+## Skills map
+
+The site's Skills division draws a second metro map with the same engine, from a skill set's `stackledger-skills.yaml` ([docs/skills.md](skills.md#the-skills-map-file)). Its stations are skills, playbooks and agents; its zones are playbooks and may overlap, each title next to its playbook's station; its legend has only the interchange and suggested-position symbols, and it depends on no view or date. Station references use the item's page name (`skill:writer`, `skill:_577269746572` for `Writer`). The software map is unchanged: the same catalogue, view, theme and date draw the same bytes as 0.2.0.
+

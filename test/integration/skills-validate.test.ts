@@ -197,3 +197,21 @@ test('JSON ignored list', () => {
   const text = run(['skills', 'validate', 'repo'], root);
   expect(text.stdout).toBe('skills: 1, playbooks: 0, agents: 0, rules: 0, ignored: 2, errors: 0, warnings: 0\n');
 });
+
+// skills-site: the skills map file in `skills validate` (skills-validate-command delta).
+const LINE = 'apiVersion: stackledger/v1alpha1\nkind: Line\nmetadata:\n  name: publish\nspec:\n  color: "#E4002B"\n  stops: ["skill:writer", "skill:editor"]\n';
+test('Broken map file fails a pipeline', () => {
+  const root = skillSet({ 'writer/SKILL.md': skill('writer'), 'editor/SKILL.md': skill('editor'), 'stackledger-skills.yaml': 'kind: [\n' });
+  const result = run(['skills', 'validate'], root);
+  expect(result.status).toBe(1);
+  expect(result.stdout).toMatch(/^stackledger-skills\.yaml:\d+:\d+ error /m);
+});
+test('Counts line unchanged', () => {
+  const files = { 'writer/SKILL.md': skill('writer'), 'editor/SKILL.md': skill('editor') };
+  const without = run(['skills', 'validate', '--json'], skillSet(files));
+  const withMap = run(['skills', 'validate', '--json'], skillSet({ ...files, 'stackledger-skills.yaml': LINE }));
+  expect(Object.keys(JSON.parse(withMap.stdout).summary)).toEqual(Object.keys(JSON.parse(without.stdout).summary));
+  const counts = (text: string) => text.trimEnd().split('\n').at(-1)!.replace(/warnings: \d+/, 'warnings: n');
+  expect(counts(run(['skills', 'validate'], skillSet({ ...files, 'stackledger-skills.yaml': LINE })).stdout))
+    .toBe(counts(run(['skills', 'validate'], skillSet(files)).stdout));
+});

@@ -40,3 +40,12 @@ test('Document that is a list', async () => {
  const result = await loadFolder(folder({ 'list.yaml': '- a\n- b\n' }));
  expect(result.sources).toEqual([]); expect(result.problems).toMatchObject([{ field: null, severity: 'error', message: 'Document must be a mapping' }]);
 });
+// catalogue, Catalogue files: a skills map file is never a catalogue file, wherever it is.
+test('Skills map file in the catalogue folder', async () => {
+ const { validateLoaded } = await import('../../src/validate.js');
+ const skillsMap = 'apiVersion: stackledger/v1alpha1\nkind: MapLayout\nmetadata:\n  name: a-skills\nspec:\n  stations:\n    "skill:writer": [9, 9]\n---\napiVersion: stackledger/v1alpha1\nkind: Line\nmetadata:\n  name: publish\nspec:\n  color: "#FF0000"\n  stops: ["skill:writer", "skill:editor"]\n';
+ const softwareLayout = 'apiVersion: stackledger/v1alpha1\nkind: MapLayout\nmetadata:\n  name: software\nspec:\n  stations:\n    "component:a": [0, 0]\n';
+ const result = validateLoaded(await loadFolder(folder({ 'a.yaml': component('a'), 'map-layout.yaml': softwareLayout, 'skills/stackledger-skills.yaml': skillsMap })));
+ expect(result.summary.errors).toBe(0); expect(result.problems.filter(p => p.path.includes('stackledger-skills'))).toEqual([]); expect(result.summary.files).toBe(2);
+ expect(result.served.layouts.map(l => l.metadata.name)).toEqual(['software']); expect(result.served.lines).toEqual([]);
+});

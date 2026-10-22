@@ -14,7 +14,7 @@ const IMPORT = /\b(?:import|export)\b[^'";]*?\bfrom\s*['"]([^'"]+)['"]|\bimport\
 
 test('Network not used', () => {
   const start = readdirSync(join(src, 'skills')).filter(name => name.endsWith('.ts')).map(name => join(src, 'skills', name));
-  expect(start.map(file => relative(src, file)).sort()).toEqual(['skills/command.ts', 'skills/frontmatter.ts', 'skills/graph.ts', 'skills/ignore.ts', 'skills/map-command.ts', 'skills/mermaid.ts',
+  expect(start.map(file => relative(src, file)).sort()).toEqual(['skills/command.ts', 'skills/frontmatter.ts', 'skills/graph.ts', 'skills/ignore.ts', 'skills/lines.ts', 'skills/map-command.ts', 'skills/mermaid.ts', 'skills/metro.ts',
     'skills/read.ts', 'skills/rules.ts', 'skills/source.ts', 'skills/walk.ts']);
   const seen = new Set<string>(), queue = [...start], findings: string[] = [];
   while (queue.length) {

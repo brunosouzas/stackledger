@@ -62,10 +62,23 @@ const sites = z.array(z.enum(siteNames)).superRefine((list, context) => {
   });
   if (!list.includes('full')) context.addIssue({ code: 'custom', message: 'Must include full: use [full] or [full, staff]' });
 });
+/** Most skills folders a Settings may list (catalogue spec, Skills settings). */
+export const MAX_SKILLS_FOLDERS = 20;
+// A configured skills folder is resolved from the catalogue folder (build-command, Skill folders), so it
+// must be relative: an absolute path, `~` (no shell expands it) or a drive would tie the catalogue to one machine.
+const relativeFolder = text.refine(value => !/^[/\\~]/.test(value) && !/^[A-Za-z]:/.test(value),
+  'Path must be relative to the catalogue folder: no leading /, \\, ~ or drive letter');
+const skillsSettings = z.strictObject({
+  folders: z.array(relativeFolder).min(1, 'Must list at least one folder').max(MAX_SKILLS_FOLDERS, `Must list at most ${MAX_SKILLS_FOLDERS} folders`)
+    .superRefine((list, context) => list.forEach((value, index) => {
+      if (list.indexOf(value) < index) context.addIssue({ code: 'custom', message: 'Folder is already listed', path: [index] });
+    })).optional(),
+});
 export const settingsSchema = z.strictObject({
   apiVersion: z.literal('stackledger/v1alpha1'), kind: z.literal('Settings'),
   metadata: z.strictObject({ ...identity, title: text.optional() }),
-  spec: z.strictObject({ views: z.strictObject({ staff: z.strictObject({ hide: hide.optional() }).optional() }).optional(), site: site.optional(), sites: sites.optional() }),
+  spec: z.strictObject({ views: z.strictObject({ staff: z.strictObject({ hide: hide.optional() }).optional() }).optional(), site: site.optional(), sites: sites.optional(),
+    skills: skillsSettings.optional() }),
 });
 export const schemas = { Component: componentSchema, Resource: licenceSchema, Line: lineSchema, MapLayout: layoutSchema, Settings: settingsSchema };
 export type Component = z.infer<typeof componentSchema>;

@@ -14,7 +14,7 @@ const { page } = Astro.props;
 const root = rootFor(Astro.url.pathname);
 ---
 
-<Base title={page.title} current="journeys">
+<Base title={page.title} current="journeys" exact={false}>
   <article class="container section">
     <p class="kicker">Journey</p>
     <h1 class="journey-title"><span class="badge" set:html={page.badgeSvg} />{page.title}</h1>

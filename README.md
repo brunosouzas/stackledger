@@ -23,6 +23,7 @@ stackledger is a small, local-first tool for people and small companies who want
 - [Using it with AI agents](#using-it-with-ai-agents)
 - [Usage](#usage)
 - [The website](#the-website)
+- [Skills on the site](#skills-on-the-site)
 - [Catalogue format](#catalogue-format)
 - [Agent skills](#agent-skills)
 - [How this project is built](#how-this-project-is-built)
@@ -45,6 +46,7 @@ Planned for the first version:
 - **Drift on a Mac.** What is installed but not declared, and what is declared but missing.
 - **Two views.** A `full` view for owners and finance, and a `staff` view without costs or renewal dates.
 - **An MCP server**, so your AI agent can query and check the catalogue.
+- **Your agent skills on the same site.** Skills, playbooks and agents with their declared relations, rules and a skills metro map whose zones are your playbooks.
 
 ## How it works
 
@@ -82,7 +84,7 @@ stackledger does not call any AI model. Instead, a read-only [MCP](https://model
 
 ## Usage
 
-Use npm with Node.js 22.12 or later. Version 0.2.0 adds the agent skills commands (`skills validate`, `.stackledgerignore`, `skills map`); 0.1.0 has the catalogue commands only.
+Use npm with Node.js 22.12 or later. Version 0.2.0 adds the agent skills commands (`skills validate`, `.stackledgerignore`, `skills map`); 0.1.0 has the catalogue commands only. The Skills section of `stackledger build` (`--skills`, `spec.skills.folders`, `stackledger-skills.yaml`) is on `main` and not yet released.
 
 ```sh
 npx stackledger@0.2.0 --help
@@ -99,6 +101,7 @@ node dist/cli.js validate /path/to/catalogue --json
 node dist/cli.js mcp /path/to/catalogue --view staff
 node dist/cli.js map examples/northwind --date 2027-06-01 > map.svg
 node dist/cli.js build examples/northwind --out ./public --date 2027-06-01
+node dist/cli.js build examples/northwind --out ./public --date 2027-06-01 --skills examples/northwind-skills
 node dist/cli.js report examples/northwind --date 2027-06-01 --format csv > licences.csv
 node dist/cli.js discover
 node dist/cli.js drift examples/northwind --snapshot examples/northwind-machine/snapshot.json
@@ -111,7 +114,7 @@ cd /path/to/skills && node /path/to/stackledger/dist/cli.js skills map . --out d
 | `stackledger validate [folder]` | Checks a catalogue and reports each problem with file, line and field. Exit 0: no errors (warnings allowed); 1: catalogue errors; 2: usage or folder problem | Available from source |
 | `stackledger mcp <folder> [--view full\|staff]` | Serves the catalogue read-only to AI agents over MCP on stdio; see [docs/mcp.md](docs/mcp.md). Exit 2: usage or folder problem | Available from source |
 | `stackledger map <folder> [--view full\|staff] [--theme light\|dark] [--date YYYY-MM-DD]` | Draws a self-contained SVG on stdout; diagnostics and suggestions on stderr. Exit 0 even with catalogue errors; 2 for usage/folder problems. See [docs/map.md](docs/map.md) | Available from source |
-| `stackledger build <folder> --out <dir> [--date YYYY-MM-DD]` | Builds the `full` and `staff` static sites into `<dir>/full/` and `<dir>/staff/` (only `full` in the personal mode), with `_headers`, `robots.txt` and `_redirects`, replacing an earlier build atomically; report on stderr. Exit 0 even with catalogue errors; 1: internal failure (the earlier build is left as it was); 2: usage or folder problem. See [docs/site.md](docs/site.md) | Available from source |
+| `stackledger build <folder> --out <dir> [--date YYYY-MM-DD] [--skills <folder>]...` | Builds the `full` and `staff` static sites into `<dir>/full/` and `<dir>/staff/` (only `full` in the personal mode), with `_headers`, `robots.txt` and `_redirects`, replacing an earlier build atomically; with a skill set, both sites get the Skills section ([Skills on the site](#skills-on-the-site)); report on stderr. Exit 0 even with catalogue or skill-set errors; 1: internal failure, a broken `Settings` that sets `spec.skills`, a skills folder with nothing in it or two items with one page name (the earlier build is left as it was); 2: usage or folder problem. See [docs/site.md](docs/site.md) | Available from source |
 | `stackledger report <folder> [--date YYYY-MM-DD] [--days N] [--format text\|json\|csv\|ics]` | Prints the licence report of the `full` view on stdout: renewals in the next `--days` (default 90), recurring cost per currency by owner, payer and zone, one-off and planned costs, incomplete licences; or the renewal calendar. Exit 0 even with catalogue errors; 1: the report could not be computed or written; 2: usage or folder problem. See [docs/reports.md](docs/reports.md) | Available from source |
 | `stackledger discover` | Reads what this Mac has installed (Homebrew, App Store, applications, launchd, mise, npm, pipx), with every program in the macOS sandbox, and writes `~/.stackledger/<machine>/snapshot.json`; one summary line per source on stdout. Exit 0 also with skipped sources; 1: not macOS, no sandbox or the file could not be written safely; 2: usage problem. See [docs/discovery.md](docs/discovery.md) | Available from source |
 | `stackledger drift <folder> [--snapshot <file>] [--format text\|json] [--scaffold <dir>]` | Compares the snapshot with the catalogue through `stackledger/<source>` annotations: what is not declared (with the annotation to add), what is missing, what could not be checked, and `dependsOn` relations to confirm; `--scaffold` writes draft component files into a new folder outside the catalogue. Exit 0 even with catalogue errors; 1: internal or write failure; 2: usage, folder or snapshot problem. See [docs/discovery.md](docs/discovery.md) | Available from source |
@@ -122,7 +125,7 @@ cd /path/to/skills && node /path/to/stackledger/dist/cli.js skills map . --out d
 
 ## The website
 
-`stackledger build` makes two static sites from one catalogue: `full` for owners and finance, `staff` for everyone else, without costs, renewal dates, payers, seats, password-manager references or notes. Serve them behind an identity-aware proxy, publishing only `full/`, `staff/`, `_headers`, `robots.txt` and `_redirects`; with `spec.sites: [full]` (the personal mode) only `full` is built; [docs/site.md](docs/site.md) explains the pages, the hosting and the security rules. Screenshots from the fictitious [Northwind catalogue](examples/northwind/), dated 2027-06-01:
+`stackledger build` makes two static sites from one catalogue, each with a **Software** division (map, list, journeys and, in `full`, reports) and, when given a skill set, a **Skills** division: `full` for owners and finance, `staff` for everyone else, without costs, renewal dates, payers, seats, password-manager references or notes. Serve them behind an identity-aware proxy, publishing only `full/`, `staff/`, `_headers`, `robots.txt` and `_redirects`; with `spec.sites: [full]` (the personal mode) only `full` is built; [docs/site.md](docs/site.md) explains the pages, the hosting and the security rules. Screenshots from the fictitious [Northwind catalogue](examples/northwind/), dated 2027-06-01:
 
 | | |
 |---|---|
@@ -136,6 +139,36 @@ cd /path/to/skills && node /path/to/stackledger/dist/cli.js skills map . --out d
 | **Journeys** | **Journey**: stops in order, with the other lines at each interchange |
 | ![Reports page with the recurring cost per currency and the renewals](docs/images/site-reports.png) | |
 | **Reports**, `full` site only: renewals, cost per month and year per currency and group, and the calendar file | |
+
+## Skills on the site
+
+Give `stackledger build` a skill set and both sites get a **Skills** division next to **Software**: a list of every skill, playbook and agent, a skills metro map, one page per item with a diagram of its declared relations, and an index of every rule. The pages are the same in the `full` and `staff` sites: nothing about a skill is hidden from staff.
+
+There are two ways to say where the skills are, and **the option always wins**:
+
+- `--skills <folder>`, repeatable: `--skills ../kit --skills ~/.claude/skills`. Paths are taken as you type them, from the current folder. When the command has at least one `--skills`, the setting below is ignored completely, not even checked.
+- `spec.skills.folders` in the catalogue's `Settings` (in `stackledger.yaml`), used when there is no `--skills`. Each path is **relative to the catalogue folder**, not to where you run the command, so the same catalogue works on a laptop and in a pipeline. Absolute paths, `~` and drive letters are refused: they would tie the catalogue to one machine. `..` is fine.
+
+```yaml
+apiVersion: stackledger/v1alpha1
+kind: Settings
+metadata:
+  name: settings
+spec:
+  skills:
+    folders: [../ai-kit]
+```
+
+On a laptop, with the catalogue and the skills repository side by side:
+
+```sh
+npx stackledger build ./catalogue --out ./public              # reads ./ai-kit, from spec.skills.folders
+npx stackledger build ./catalogue --out ./public --skills ~/.claude/skills   # this folder instead
+```
+
+In a pipeline, check out the skills repository next to the catalogue (so `../ai-kit` exists), or pass `--skills` with the path the checkout used. Pin one stackledger version everywhere: 0.2.0 reads `spec.skills` as an error. If the `Settings` has an error and sets `spec.skills`, the build stops with exit 1 and changes nothing published, rather than publish a site without its Skills section; fix it, or pass `--skills`.
+
+The skills map is drawn from `stackledger-skills.yaml` at the top of a skills folder: `Line` and `MapLayout` documents, as in the catalogue, with stops such as `skill:writer`, `playbook:release` and `agent:reviewer`. Playbooks can be zones; a skill in two playbooks sits in both zones, so place the shared skills between the playbooks and the zones overlap there cleanly. The format, the CI recipe and what each page shows: [docs/skills.md](docs/skills.md#skills-on-the-site).
 
 ## Catalogue format
 
@@ -206,7 +239,7 @@ metadata:
   stackledger-agents: reviewer
 ```
 
-`stackledger-kind` is `skill` (the default) or `playbook`; the other two keys hold names separated by spaces. Give the folders one agent loads together, and check each tool folder on its own. A `.stackledgerignore` file at the top of a given folder skips templates, examples and test fixtures with `.gitignore` patterns, and the output counts and lists what it skipped. `stackledger skills map` writes the set's declared relations as Markdown pages with Mermaid diagrams into the repository, for offline reading and pull-request diffs, and `--check` fails a pipeline when they are out of date. The format, every check, the map and a CI example: [docs/skills.md](docs/skills.md).
+`stackledger-kind` is `skill` (the default) or `playbook`; the other two keys hold names separated by spaces. Give the folders one agent loads together, and check each tool folder on its own. A `.stackledgerignore` file at the top of a given folder skips templates, examples and test fixtures with `.gitignore` patterns, and the output counts and lists what it skipped. `stackledger skills map` writes the set's declared relations as Markdown pages with Mermaid diagrams into the repository, for offline reading and pull-request diffs, and `--check` fails a pipeline when they are out of date. The format, every check, the map and a CI example: [docs/skills.md](docs/skills.md). With `--skills` or `spec.skills.folders`, `stackledger build` also publishes the set on the site ([Skills on the site](#skills-on-the-site)).
 
 ## How this project is built
 

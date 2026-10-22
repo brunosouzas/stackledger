@@ -1,6 +1,9 @@
 // Map page (catalogue-site, Map page and Map interaction): zoom and pan by changing the SVG viewBox,
 // line highlight and zone filter by toggling a class on elements with data-line and data-zone (from
 // the map engine), and stations as links. Both themed copies of the map change together.
+// The skills map page (skills-site, Skills map page) marks its frame with data-zone-mode="list": a
+// station's data-zone is then a space-separated list of playbook page names, since zones overlap; the
+// software map compares the whole value, because a software zone name may hold spaces.
 import { makeLink, pageOf } from './links.ts';
 
 const frame = document.querySelector<HTMLElement>('[data-map]');
@@ -67,7 +70,13 @@ for (const button of document.querySelectorAll<HTMLButtonElement>('[data-zoom]')
 const lineButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-map-lines] [data-line]')];
 const zoneSelect = document.querySelector<HTMLSelectElement>('[data-zone-filter]');
 const marked = svgs.flatMap((svg) => [...svg.querySelectorAll<SVGElement>('[data-line]')]);
-const isStationLike = (element: Element) => element.tagName.toLowerCase() === 'text' || (element.getAttribute('data-ref') ?? '').startsWith('component:');
+const STATION = /^(component|skill|playbook|agent):/;
+const isStationLike = (element: Element) => element.tagName.toLowerCase() === 'text' || STATION.test(element.getAttribute('data-ref') ?? '');
+const listMode = frame?.dataset.zoneMode === 'list';
+const inZoneOf = (element: Element, zone: string) => {
+  const value = element.getAttribute('data-zone') ?? '';
+  return listMode ? value.split(' ').includes(zone) : value === zone;
+};
 const linesOf = (element: Element) => (element.getAttribute('data-line') ?? '').split(' ').filter(Boolean);
 let highlighted: string | undefined;
 
@@ -88,10 +97,10 @@ function filterZone(zone: string): void {
   highlight(undefined);
   if (zoneSelect) zoneSelect.value = zone;
   if (!zone) return;
-  const inZone = marked.filter((element) => isStationLike(element) && element.getAttribute('data-zone') === zone);
+  const inZone = marked.filter((element) => isStationLike(element) && inZoneOf(element, zone));
   const zoneLines = new Set(inZone.flatMap(linesOf));
   for (const element of marked) {
-    const keep = isStationLike(element) ? element.getAttribute('data-zone') === zone : linesOf(element).some((line) => zoneLines.has(line));
+    const keep = isStationLike(element) ? inZoneOf(element, zone) : linesOf(element).some((line) => zoneLines.has(line));
     if (!keep) element.classList.add(DIMMED);
   }
 }
@@ -111,7 +120,7 @@ for (const element of marked) {
   });
 }
 for (const svg of svgs) {
-  for (const station of svg.querySelectorAll<SVGElement>('[data-ref^="component:"]')) {
+  for (const station of [...svg.querySelectorAll<SVGElement>('[data-ref]')].filter((element) => STATION.test(element.getAttribute('data-ref') ?? ''))) {
     const url = pageOf(station.getAttribute('data-ref') ?? '');
     if (url) makeLink(station, url, () => !dragged);
   }

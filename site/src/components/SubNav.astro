@@ -1,0 +1,40 @@
+---
+// Sub-navigation of a division (catalogue-site, Layout; skills-site, Skills sub-navigation): the
+// Software division's Map, List, Journeys and (full site) Reports; the Skills division's List, Map
+// and Rules. The page itself is marked with aria-current; an item page marks nothing.
+import { href, site, type Page } from '../lib/site';
+
+interface Props {
+  root: string;
+  current: Page;
+  exact: boolean;
+}
+const { root, current, exact } = Astro.props;
+const software = [
+  { key: 'map', title: 'Map', path: '' },
+  { key: 'software', title: 'List', path: 'software/' },
+  { key: 'journeys', title: 'Journeys', path: 'journeys/' },
+  ...('report' in site ? [{ key: 'reports', title: 'Reports', path: 'reports/' }] : []),
+];
+const skills = [
+  { key: 'skills', title: 'List', path: 'skills/' },
+  { key: 'skill-map', title: 'Map', path: 'skill-map/' },
+  { key: 'rules', title: 'Rules', path: 'rules/' },
+];
+const links = ['skills', 'skill-map', 'rules'].includes(current) ? skills : software;
+const label = links === skills ? 'Skills' : 'Software';
+---
+
+<nav class="sub-nav container" aria-label={label}>
+  <ul>
+    {
+      links.map((link) => (
+        <li>
+          <a class="sub-link" href={href(root, link.path)} aria-current={exact && link.key === current ? 'page' : undefined}>
+            {link.title}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>

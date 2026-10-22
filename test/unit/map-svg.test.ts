@@ -307,3 +307,27 @@ test('Legend symbols on their own', () => {
     }
   }
 });
+// metro-map "Software map unchanged": the example's SVGs must equal the ones the 0.2.0 engine drew
+// (recorded by test/fixtures/map-0.2.0/record.mjs from the 0.2.0 code), as `stackledger map` and the site draw them.
+test('Example map',async()=>{
+ const { readFileSync } = await import('node:fs'); const { join } = await import('node:path');
+ const { loadFolder } = await import('../../src/source.js'); const { validateLoaded } = await import('../../src/validate.js');
+ const { widestInk } = await import('../../src/map/themes.js');
+ const fixtures=join(import.meta.dirname,'../fixtures/map-0.2.0');
+ const catalogue=validateLoaded(await loadFolder(join(import.meta.dirname,'../../examples/northwind')));
+ for(const view of ['full','staff'] as const)for(const name of ['light','dark'] as const)for(const chrome of [true,false]){
+  const theme=themes[name],ink=chrome?inkOf(theme):widestInk(inkOf(themes.light),inkOf(themes.dark));
+  const served=applyView(catalogue.served,view,resolveHidden(catalogue));
+  const svg=renderSvg(layoutMap(buildMapModel(served,'2027-06-01'),chrome?theme.lineWidth:themes.light.lineWidth,ink),theme,{chrome});
+  expect(svg+'\n',`${view}-${name}${chrome?'':'-site'}`).toBe(readFileSync(join(fixtures,`${view}-${name}${chrome?'':'-site'}.svg`),'utf8'));
+ }
+});
+// metro-map "Software lines in a skills map file name": a catalogue file with that name is not read, so its lines are not drawn.
+test('Software lines in a skills map file name',async()=>{
+ const { folder } = await import('../helpers.js'); const { loadFolder } = await import('../../src/source.js'); const { validateLoaded } = await import('../../src/validate.js');
+ const { stringify } = await import('yaml');
+ const docs=[component('a'),component('b'),journey('ship',['a','b'])].map(d=>stringify(d));
+ const read=async(name:string)=>{const c=validateLoaded(await loadFolder(folder({'items.yaml':docs.slice(0,2).join('---\n'),[name]:docs[2]!})));return layoutMap(buildMapModel(applyView(c.served,'full',resolveHidden(c)),'2027-06-01')).lines.map(l=>l.ref);};
+ expect(await read('stackledger-skills.yaml')).toEqual([]);
+ expect(await read('lines.yaml')).toEqual(['line:ship']);
+});
