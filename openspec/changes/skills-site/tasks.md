@@ -12,7 +12,7 @@
 ## 3. Engine
 
 - [ ] 3.1 `src/map/model.ts`, `layout.ts`, `svg.ts`: map kind, title, empty text and legend symbols as model data; station references. Check: the "Example map" fixtures and `npx vitest run test/unit/map-*.test.ts`.
-- [ ] 3.2 `src/skills/metro.ts` and `src/map/zones.ts`: `buildSkillsMapModel` from the set's served lines and layout (references with page file names, cleaned labels, stops not in the set skipped, short lines dropped, layout keys reserving cells, no licence, renewal or muting); stations with a list of zones, playbook zone members, `data-zone` lists, zone titles moved apart on skills maps. Check: `npx vitest run test/unit/skills-metro.test.ts`.
+- [ ] 3.2 `src/skills/metro.ts` and `src/map/zones.ts`: `buildSkillsMapModel` from the set's served lines and layout (references with page file names, cleaned labels, stops not in the set skipped, short lines dropped, layout keys reserving cells, no licence, renewal or muting); stations with a list of zones, playbook zone members, `data-zone` lists, zone titles placed by their playbook's station (label candidates), or at the corner and moved apart when the playbook is not drawn. Check: `npx vitest run test/unit/skills-metro.test.ts`.
 - [ ] 3.3 `src/map/relations.ts`: the relation diagram (columns, shapes, relation-kind text, self and both-sides neighbours, 64-code-point names with `title`, the 100-item budget, allow-lists, file-name references). Check: `npx vitest run test/unit/skills-relations-diagram.test.ts`.
 
 ## 4. Site
@@ -49,7 +49,7 @@
 | metro-map | Component on no line; Stop with errors; Line left with one stop; No lines; Legend in staff; Allowed names only; No embedded font; Hostile titles (unchanged) | test/unit/map-svg.test.ts, test/unit/map-model.test.ts (unit, existing) |
 | metro-map | Software lines in a skills map file name | test/unit/map-svg.test.ts (unit) |
 | metro-map | Hostile skill names; Software station; Skills stations; Names that XML cannot hold; Stop not in the set; Relation error keeps the station; No skill lines; Legend of a skills map; Same skills map everywhere; Suggested skill station | test/unit/skills-metro.test.ts (unit) |
-| metro-map | Overlapping zones; Multi-word software zone; Two zones with one corner | test/unit/skills-metro.test.ts (unit) |
+| metro-map | Overlapping zones; Multi-word software zone; Title by its playbook; Title clear of the lines; Two zones with one corner | test/unit/skills-metro.test.ts (unit) |
 | metro-map | Example map | test/unit/map-svg.test.ts (unit) |
 | catalogue-site | Theme remembered; Site title; View in the footer; Reports link (unchanged) | test/integration/site.test.ts, test/browser/site.spec.ts (existing) |
 | catalogue-site | Station link; Highlight a line (unchanged) | test/browser/site.spec.ts (existing) |
