@@ -61,6 +61,49 @@ test('Pipe line',()=>{
   expect(paths[0]!.getAttribute('d')).toBe(paths[1]!.getAttribute('d'));
   expect(num(paths[0]!,'stroke-width')).toBeGreaterThan(num(paths[1]!,'stroke-width'));
   expect(paths[0]!.getAttribute('stroke-linecap')).toBe('round');
+  // Banner pipes: a thick line inside a clearly wider ink stroke, rounded at ends and corners.
+  expect(num(paths[1]!,'stroke-width')).toBeGreaterThanOrEqual(12);
+  expect(num(paths[0]!,'stroke-width')-num(paths[1]!,'stroke-width')).toBeGreaterThanOrEqual(6);
+  for(const p of paths)expect(p.getAttribute('stroke-linejoin')).toBe('round');
+ }
+});
+
+test('Stations are circles',()=>{
+ for(const theme of Object.values(themes)){
+  const g=geometry(interchangeDocs()),doc=safe(renderSvg(g,theme)),outer=theme.lineWidth+theme.casing.extraWidth;
+  const stop=shapes(groupOf(doc,'component:a'));
+  expect(stop.some(e=>e.tagName==='line')).toBe(false);
+  const circles=stop.filter(e=>e.tagName==='circle'),face=circles.at(-1)!;
+  expect(circles[0]!.getAttribute('fill')).toBe(theme.shadow.color);
+  expect(face.getAttribute('fill')).toBe('#FFFFFF');expect(face.getAttribute('stroke')).toBe(INK);
+  // The circle is wider than the pipe it sits on, and centred on it.
+  expect(2*num(face,'r')).toBeGreaterThan(outer);
+  const a=g.stations.find(s=>s.name==='a')!;expect([num(face,'cx'),num(face,'cy')]).toEqual(a.marker.contacts[0]);
+  // An interchange is a capsule: radius half its short side, larger than a stop, covering every line through it.
+  const s=g.stations.find(s=>s.name==='slack')!,cap=shapes(groupOf(doc,'component:slack')).filter(e=>e.tagName==='rect').at(-1)!;
+  expect(num(cap,'rx')).toBe(Math.min(s.marker.box.w,s.marker.box.h)/2);
+  expect(num(cap,'rx')).toBeGreaterThan(num(face,'r'));
+  for(const p of s.marker.contacts)expect(p[0]>=s.marker.box.x&&p[0]<=s.marker.box.x+s.marker.box.w&&p[1]>=s.marker.box.y&&p[1]<=s.marker.box.y+s.marker.box.h).toBe(true);
+ }
+});
+
+test('One-character badge',()=>{
+ const g=geometry();expect(g.badges.map(b=>b.text)).toEqual(['S','S']);
+ const doc=safe(renderSvg(g,themes.light));
+ for(const badge of g.badges){
+  expect(badge.box.w).toBeGreaterThan(badge.box.h);
+  const face=Array.from(doc.getElementsByTagName('rect')).find(r=>num(r,'x')===badge.box.x&&num(r,'y')===badge.box.y&&r.getAttribute('stroke')===INK)!;
+  expect(num(face,'rx')).toBe(badge.box.h/2);
+ }
+});
+
+test('Bundled pipes fit side by side',()=>{
+ // Two lines over the same edge: their colours never overlap and the ink between them stays visible.
+ const docs2=[component('a'),component('b'),journey('ship',['a','b']),journey('design',['a','b']),positions({a:[0,0],b:[4,0]})];
+ for(const theme of Object.values(themes)){
+  const g=layoutMap(buildMapModel(viewOf(docs2),'2027-06-01'),theme.lineWidth,inkOf(theme));
+  const [one,two]=g.lines;const gap=Math.abs(one!.points[0]![1]-two!.points[0]![1]);
+  expect(gap).toBeGreaterThanOrEqual(theme.lineWidth+theme.casing.extraWidth/2);
  }
 });
 
@@ -76,11 +119,11 @@ test('Shadow under an interchange',()=>{
  expect([num(shadow,'x'),num(shadow,'y')]).toEqual([marker.box.x+themes.light.shadow.dx,marker.box.y+themes.light.shadow.dy]);
  expect([num(rects[outlined]!,'x'),num(rects[outlined]!,'y')]).toEqual([marker.box.x,marker.box.y]);
  expect(num(rects[outlined]!,'stroke-width')).toBe(themes.light.outlineWidth);
- // Ticks start with their shadow, badges hold a shadow copy before their outlined face.
- const tick=shapes(groupOf(doc,'component:a'));expect(tick[0]!.getAttribute('stroke')).toBe(INK);expect(tick.some(e=>e.getAttribute('stroke')==='#FF0000')).toBe(true);
+ // Stops start with their shadow; badges are pills holding a shadow copy before their outlined face.
+ const stop=shapes(groupOf(doc,'component:a'));expect(stop[0]!.getAttribute('fill')).toBe(INK);expect(stop[0]!.tagName).toBe('circle');
  const badges=Array.from(doc.getElementsByTagName('g')).filter(e=>e.getAttribute('data-line')&&!e.getAttribute('data-ref')&&shapes(e).length===3&&shapes(e)[2]!.tagName==='text');
  expect(badges.length).toBeGreaterThanOrEqual(4);
- for(const badge of badges){const [shade,face]=shapes(badge);expect(shade!.getAttribute('fill')).toBe(INK);expect(face!.getAttribute('stroke')).toBe(INK);expect(num(shade!,'x')-num(face!,'x')).toBe(themes.light.shadow.dx);}
+ for(const badge of badges){const [shade,face]=shapes(badge);expect(shade!.getAttribute('fill')).toBe(INK);expect(face!.getAttribute('stroke')).toBe(INK);expect(num(shade!,'x')-num(face!,'x')).toBe(themes.light.shadow.dx);expect(num(face!,'rx')).toBe(num(face!,'height')/2);}
  expect(svg).not.toMatch(/transform|filter/);
 });
 

@@ -4,7 +4,7 @@ Levels: U unit, I integration (built files or CLI), B browser (Playwright). Ever
 
 | Spec | Scenarios | File | Level |
 | --- | --- | --- | --- |
-| metro-map | Pipe line; Shadow under an interchange; Dark shadow and rim; Light theme; Dark theme; Larger ink pushes a label out; Allowed names only; No embedded font | `test/unit/map-svg.test.ts` | U |
+| metro-map | Pipe line; Bundled pipes fit side by side; Stations are circles; One-character badge; Interchange (`test/unit/map-layout.test.ts`); Shadow under an interchange; Dark shadow and rim; Light theme; Dark theme; Larger ink pushes a label out; Allowed names only; No embedded font | `test/unit/map-svg.test.ts` | U |
 | metro-map | Labels do not collide in the example | `test/integration/map-example.test.ts` | I |
 | catalogue-site | Neighbourhood boxes; Strip line and stops; Resource without a shadow | `test/unit/map-diagrams.test.ts` | U |
 | catalogue-site | Accent override; Broken settings (unchanged tests) | `test/integration/site.test.ts` | I |
@@ -14,7 +14,7 @@ Levels: U unit, I integration (built files or CLI), B browser (Playwright). Ever
 
 - [x] 1.1 Tests first: replace the test that asserts casing and shadow are off; add the metro-map scenarios above. Verify: they fail on `main`'s renderer.
 - [x] 1.2 `src/map/themes.ts`: the new colours, `outlineWidth`, `rim`, `accent`, Lato stack, casing and shadow on; `inkOf(theme)`. Verify: `npm test`.
-- [x] 1.3 `src/map/layout.ts` and `badges.ts`: obstacles grown by the ink; `src/map/svg.ts`: outlines, shadows, rims, pipe ticks. Callers pass `inkOf(theme)`. Verify: `npm test`, `npm run test:perf`.
+- [x] 1.3 `src/map/layout.ts` and `badges.ts`: obstacles grown by the ink; `src/map/svg.ts`: outlines, shadows, rims, pipes, circle stations, capsule interchanges, pill badges. Callers pass `inkOf(theme)`. Verify: `npm test`, `npm run test:perf`.
 
 ## 2. Diagrams
 

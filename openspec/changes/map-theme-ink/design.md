@@ -14,7 +14,11 @@ Options: (a) an SVG `filter` or `transform="translate()"`, as the reference does
 
 ### 3. Scale to the map
 
-The map is drawn at about a third of the reference's scale (line 7 against pipe 22), so: casing 5 units wider than the line, outline 2.5, shadow offset 2.5. The neighbourhood diagram, drawn larger, scales outline and shadow by 1.6 (outline 4, as in the reference); the strip uses the map's values. Ticks and renewal rings have no shadow: on the first PNG review a tick's shadow read as a detached dark block and a ring's shadow muddied the station under it.
+First version (superseded by 3b): line 7, casing 5 units wider, outline 2.5, shadow offset 2.5. The neighbourhood diagram, drawn larger, scales outline and shadow by 1.6 (outline 4, as in the reference); the strip uses the map's values. Ticks and renewal rings have no shadow: on the first PNG review a tick's shadow read as a detached dark block and a ring's shadow muddied the station under it.
+
+### 3b. Banner pipes and circles (owner feedback, 2026-10-22)
+
+The first version still read as a thin-line metro map. Following the home banner of brunosouzas.com, lines are pipes 12 units wide in a casing 6 wider (the banner's 22 / 30, scaled to the 64-unit grid), with round caps and joins; bundled lines are spaced by the line width plus half the casing, so each casing meets its neighbour's colour. Stations are white circle stickers wider than the pipe (radius = outer half-width + 3), interchanges capsules 2 units larger, and badges pills at least 30 wide; outline 3 and shadow 3.5. Labels keep 3 units of clearance from stickers.
 
 ### 4. Layout counts the ink
 

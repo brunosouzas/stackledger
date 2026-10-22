@@ -1,14 +1,18 @@
 ## ADDED Requirements
 
 ### Requirement: Ink casing and outline
-In both themes every drawn line and station tick SHALL have a casing in the ink `#0A1033` wider than its stroke, with the catalogue colour inside. Interchanges, terminal badges, licence markers, renewal rings and the legend panel SHALL have an ink outline.
+In both themes every drawn line SHALL be a pipe: at least 12 units wide in the catalogue colour, over an ink `#0A1033` casing at least 6 units wider, both with round caps and joins. Lines sharing an edge SHALL be spaced at least the line width plus half the casing apart, so their colours never overlap. Stations, terminal badges, licence markers, renewal rings and the legend panel SHALL have an ink outline.
 
 #### Scenario: Pipe line
 - **WHEN** line `ship` in `#FF0000` is drawn in either theme
-- **THEN** its group holds a path stroked `#0A1033` wider than the line, followed by the same path stroked `#FF0000`
+- **THEN** its group holds a path stroked `#0A1033` at least 6 units wider than the line, followed by the same path stroked `#FF0000`, both with round joins
+
+#### Scenario: Bundled pipes fit side by side
+- **WHEN** lines `ship` and `design` both run from `a` to `b`
+- **THEN** their strokes are at least the line width plus half the casing apart
 
 ### Requirement: Hard offset shadow
-Interchanges, terminal badges, licence markers and the legend panel SHALL have a hard offset shadow: a copy of the shape in the theme's shadow colour, moved right and down by the theme's offset, drawn first in the same group, without `transform` or `filter`. Lines, ticks and renewal rings have no shadow.
+Stations, terminal badges, licence markers and the legend panel SHALL have a hard offset shadow: a copy of the shape in the theme's shadow colour, moved right and down by the theme's offset, drawn first in the same group, without `transform` or `filter`. Lines and renewal rings have no shadow.
 
 #### Scenario: Shadow under an interchange
 - **WHEN** `slack` is an interchange drawn in the `light` theme
@@ -19,6 +23,28 @@ Interchanges, terminal badges, licence markers and the legend panel SHALL have a
 - **THEN** shadows are filled `#4C5CB8`, outlined stickers carry a `#EEF1FF` rim, and no shadow is filled `#0A1033`
 
 ## MODIFIED Requirements
+
+### Requirement: Stations and interchanges
+A station served by one line SHALL be drawn as a circle in the theme's station colour, centred on its line and wider than the pipe. A station served by two or more lines SHALL be drawn as an interchange: a capsule (corner radius half its short side) in the station colour, larger than a stop circle, spanning every line through it. A component whose `spec.lifecycle` equals `deprecated`, ignoring case, has its station marker and label muted; its lines are not.
+
+#### Scenario: Interchange
+- **WHEN** `slack` is a stop of three lines
+- **THEN** it is drawn as one interchange marker spanning the three lines
+
+#### Scenario: Stations are circles
+- **WHEN** `a` is a stop of one line and `slack` of two, in either theme
+- **THEN** `a` is a white circle with an ink outline whose diameter exceeds the pipe's outer width, and `slack` is a capsule with a larger radius that contains all its contact points
+
+### Requirement: Terminals
+Each end of a drawn line SHALL carry a badge in the line's colour with its `code`, or the first character of `metadata.name` upper-cased when it has no code. Badges are pills (corner radius half their height), always wider than tall. Badges may repeat between lines.
+
+#### Scenario: Line without code
+- **WHEN** line `ship` has no `code`
+- **THEN** its terminals carry the badge `S`
+
+#### Scenario: One-character badge
+- **WHEN** line `ship` has the badge `S`
+- **THEN** its badges are pills wider than their height
 
 ### Requirement: Themes
 The map SHALL support a `light` and a `dark` theme. Line and zone colours come from the catalogue in both themes; background, text, station, outline and shadow colours come from the theme. The `light` background SHALL be the tinted panel `#EEF2FF` and the `dark` background the navy `#14215A`. Text SHALL use the font stack `Lato, Helvetica Neue, Helvetica, Arial, sans-serif`, and station labels are bold.

@@ -191,7 +191,10 @@ test('Strip line and stops', () => {
   for (const ref of ['component:linear', 'component:slack']) {
     const circles = shapesOf(all.find(group => group.getAttribute('data-ref') === ref)!).filter(item => item.tagName === 'circle');
     expect(circles[0]!.getAttribute('fill')).toBe('#4C5CB8');
-    expect(circles.at(-1)!.getAttribute('stroke')).toBe(ref === 'component:slack' ? INK : '#FF0000');
+    // Every stop is a white circle with an ink outline, as on the map; interchanges are larger.
+    expect(circles.at(-1)!.getAttribute('stroke')).toBe(INK);
+    expect(circles.at(-1)!.getAttribute('fill')).toBe('#FFFFFF');
+    expect(2 * Number(circles.at(-1)!.getAttribute('r'))).toBeGreaterThan(themes.dark.lineWidth + themes.dark.casing.extraWidth);
   }
 });
 
