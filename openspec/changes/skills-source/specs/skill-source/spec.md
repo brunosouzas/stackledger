@@ -117,7 +117,7 @@ Top-level fields other than `name`, `description`, `license`, `compatibility`, `
 - **THEN** there is a warning with field `metadata.hermes`
 
 ### Requirement: Relation keys
-Keys in `metadata` starting with `stackledger-` SHALL be only `stackledger-kind`, `stackledger-skills` and `stackledger-agents`, each with a string value; any other such key, or a non-string value, SHALL be an error with its field. `stackledger-kind` SHALL be `skill` or `playbook`; when absent the item is a skill.
+Keys in `metadata` starting with `stackledger-` in any letter case SHALL be only `stackledger-kind`, `stackledger-skills` and `stackledger-agents` (exact case), each with a string value; any other such key, or a non-string value, SHALL be an error with its field. `stackledger-kind` SHALL be `skill` or `playbook` (exact case); when absent the item is a skill.
 
 #### Scenario: Playbook
 - **WHEN** a skill has `metadata.stackledger-kind: playbook`
