@@ -1,63 +1,123 @@
+## Purpose
+Defines `stackledger skills map`: deterministic Markdown pages with Mermaid diagrams of a skill set's declared relations, written into a folder stackledger owns, for offline reading and pull-request review, and `--check` for pipelines.
+
 ## ADDED Requirements
 
 ### Requirement: Map command input
-`stackledger skills map [folder...] --out <folder> [--check]` SHALL read one skill set from the given folders exactly as `stackledger skills validate` does, the current folder when none is given. `--out` SHALL be required. A missing `--out`, an unknown option, a given folder that does not exist or cannot be listed SHALL exit 2 with stderr naming the problem, stdout empty and nothing written.
+`stackledger skills map [folder...] --out <folder> [--check]` SHALL read one skill set from the given folders exactly as `stackledger skills validate` does, the current folder when none is given. A missing or empty `--out`, an unknown option, an `--out` that exists and is not a folder, or a given folder that does not exist or cannot be listed SHALL exit 2 with stderr naming the problem, stdout empty and nothing written.
 
 #### Scenario: Missing out
-- **WHEN** the command runs as `stackledger skills map repo`
+- **WHEN** the command runs as `stackledger skills map repo` or `stackledger skills map repo --check`
 - **THEN** the exit code is 2, stderr says `--out` is required and nothing is written
 
-#### Scenario: Same set as validate
-- **WHEN** `repo` holds a `.stackledgerignore` with `templates/` and `templates/skill/SKILL.md`, and the command runs as `stackledger skills map repo --out map`
-- **THEN** no page is written for the template skill
+#### Scenario: Out is a file
+- **WHEN** `--out` names an existing regular file
+- **THEN** the exit code is 2 and the file is unchanged
 
-### Requirement: Safe map folder
-After resolving symbolic links, the output folder SHALL be refused, with exit 2 and nothing written, when it is a given folder, contains one, or is inside a skill folder of the set; when it is non-empty and has no marker `.stackledger-skills-map`, a regular file with fixed content; or when the marker, `README.md`, `skills`, `playbooks` or `agents` in it is a symbolic link.
+#### Scenario: Same set as validate
+- **WHEN** folders `repo` and `tool` are given, `repo` ignores `templates/`, `tool/skills/writer` links to `repo/skills/writer`, and `tool/skills/writer2` repeats the name `writer`
+- **THEN** the map has one page for `writer`, from `repo`, and none for the template
+
+### Requirement: Map usage text
+The global usage text and `stackledger --help` SHALL list `stackledger skills map [folder...] --out <folder> [--check]`. `--help` SHALL win over every other argument, as for the other commands.
+
+#### Scenario: Help
+- **WHEN** the command runs as `stackledger skills map --help --bogus`
+- **THEN** the exit code is 0 and stdout holds the usage text with the `skills map` line
+
+### Requirement: Inputs the map folder must not touch
+After resolving links, the output folder SHALL be refused, with exit 2 and nothing written, when it is or contains a given folder, or the real path of any skill folder or agent file the walk found (rejected ones included); is inside such a skill folder; is or is inside the top-level `agents/` of a given folder; or has a path segment below the current folder starting with `.`, or named `openspec`.
 
 #### Scenario: Output is the given folder
 - **WHEN** the command runs as `stackledger skills map repo --out repo`
 - **THEN** the exit code is 2 and nothing is written
 
+#### Scenario: Output holds a linked source
+- **WHEN** a given folder `tool` holds `skills/writer`, a link to `repo/map/skills/writer`, and `--out` is `repo/map`
+- **THEN** the exit code is 2 and nothing is removed
+
+#### Scenario: Output inside a skill folder
+- **WHEN** `--out` is `repo/skills/writer/map` and `repo/skills/writer/SKILL.md` exists
+- **THEN** the exit code is 2
+
+#### Scenario: Output in the agents folder
+- **WHEN** `--out` is `repo/agents` for the given folder `repo`
+- **THEN** the exit code is 2
+
+#### Scenario: Output in a tool folder
+- **WHEN** `--out` is `.claude/commands/map` or `openspec/specs/map`
+- **THEN** the exit code is 2
+
 #### Scenario: Output inside the given folder
-- **WHEN** the command runs as `stackledger skills map repo --out repo/docs/skills-map` and that folder does not exist
-- **THEN** the folder is created with the marker, the index and the pages, and the exit code is 0
+- **WHEN** the command runs in `repo` as `stackledger skills map . --out docs/skills-map` and that folder does not exist
+- **THEN** the folder is created with the marker, `.gitattributes`, the index and the pages, and the exit code is 0
+
+### Requirement: Owned entries of the map folder
+stackledger SHALL own, in the output folder, the marker `.stackledger-skills-map` (a regular file holding exactly `stackledger skills map` and a newline), `.gitattributes` (`* text eol=lf` and a newline), `README.md`, and the whole `skills/`, `playbooks/` and `agents/` subtrees. Every other top-level entry SHALL be left untouched. An existing non-empty folder without a valid marker SHALL be refused with exit 2.
 
 #### Scenario: Unrelated non-empty folder
 - **WHEN** `--out` is a folder holding `notes.md` and no marker
 - **THEN** the exit code is 2 and `notes.md` is untouched
 
-#### Scenario: Linked pages folder
-- **WHEN** `skills` in a marked output folder is a symbolic link to another folder
-- **THEN** the exit code is 2 and the link's target is untouched
-
-### Requirement: Map folder contents
-The output folder SHALL hold the marker, `README.md`, and one page per item in `skills/<file>.md` (kind `skill`), `playbooks/<file>.md` (kind `playbook`) and `agents/<file>.md`. Every other entry under `skills/`, `playbooks/` and `agents/` SHALL be removed, and nothing else in the folder SHALL be touched. A page SHALL be written only when its content differs.
-
-#### Scenario: Removed skill
-- **WHEN** a marked map folder holds `skills/old.md` and `old` is no longer in the set
-- **THEN** `skills/old.md` is removed
-
-#### Scenario: Skill and agent with one name
-- **WHEN** the set has a skill and an agent both named `reviewer`
-- **THEN** both `skills/reviewer.md` and `agents/reviewer.md` are written
+#### Scenario: Marker that is not valid
+- **WHEN** the marker is a folder, a link or holds other text
+- **THEN** the exit code is 2 and nothing changes
 
 #### Scenario: Other files kept
 - **WHEN** a marked map folder holds `notes.txt` at its top
 - **THEN** `notes.txt` is untouched
 
+#### Scenario: Removed skill
+- **WHEN** a marked map folder holds `skills/old.md` and `skills/scratch/x.md`, and `old` is no longer in the set
+- **THEN** both are removed
+
+### Requirement: Writing without following links
+An owned entry that is a symbolic link SHALL be refused with exit 2 when it is the marker, `.gitattributes`, `README.md` or a kind folder, and removed without being followed anywhere below a kind folder. A page SHALL be written to a new file in its folder and renamed into place, never written through an existing entry. The command SHALL write only inside the output folder and open no network connection.
+
+#### Scenario: Linked kind folder
+- **WHEN** `skills` in a marked map folder is a link to another folder
+- **THEN** the exit code is 2 and the link's target is untouched
+
+#### Scenario: Linked page
+- **WHEN** `skills/writer.md` in a marked map folder is a link to a file outside it
+- **THEN** the target is unchanged and `skills/writer.md` is a regular file
+
+#### Scenario: Hard-linked page
+- **WHEN** `skills/writer.md` is a hard link to a file outside the map folder and the page changes
+- **THEN** the outside file is unchanged
+
+#### Scenario: Writes stay in the map folder
+- **WHEN** the command runs under the Node permission model with writes allowed only in `--out`
+- **THEN** it exits 0
+
+### Requirement: Folder changed during the run
+The device and inode of the output folder and of each kind folder SHALL be recorded when checked and compared again right before the first change; any difference SHALL stop the run with exit 1, naming the folder, before anything is changed.
+
+#### Scenario: Folder swapped
+- **WHEN** the output folder is replaced by another folder between the check and the first write
+- **THEN** the exit code is 1 and neither folder is changed
+
 ### Requirement: Page file names
-A name that matches `^[a-z0-9]+(-[a-z0-9]+)*$` and has at most 64 characters SHALL be the page's file name. Any other name SHALL be written as `_` followed by the lowercase hexadecimal of its UTF-8 bytes; when that is longer than 64 characters, it SHALL be cut to 52 and followed by `-` and the first 11 hexadecimal digits of the SHA-256 of the name.
+A name SHALL be the page's file name when it matches `^[a-z0-9]+(-[a-z0-9]+)*$`, has at most 64 characters and is not a Windows device name (`con`, `prn`, `aux`, `nul`, `com0`–`com9`, `lpt0`–`lpt9`). Any other name SHALL be written as `_` and the lowercase hexadecimal of its UTF-8 bytes; when that has more than 64 characters, its first 52 characters, `-`, and the first 11 hexadecimal digits of the SHA-256 of those bytes.
 
 #### Scenario: Name with a path
 - **WHEN** a skill is named `../writer`
-- **THEN** its page is `skills/_2e2e2f777269746572.md` inside the map folder and nothing is written outside it
+- **THEN** its page is `skills/_2e2e2f777269746572.md` and nothing is written outside the map folder
 
 #### Scenario: Names that differ only in case
 - **WHEN** a skill is named `Writer` and another `writer`
 - **THEN** the pages are `skills/_577269746572.md` and `skills/writer.md`
 
+#### Scenario: Windows device name
+- **WHEN** a skill is named `con`
+- **THEN** its page is `skills/_636f6e.md`
+
+#### Scenario: Long name
+- **WHEN** a skill is named with 65 `a` characters
+- **THEN** its page is `skills/_616161616161616161616161616161616161616161616161616-635361c48bb.md`
+
 ### Requirement: Declared relations only
-The map SHALL draw only declared relations: `loads` from a skill or playbook to each name in its `stackledger-skills`, `uses` to each name in its `stackledger-agents`, and `preloads` from an agent to each skill in its `skills`. A relation to a name not in the set SHALL NOT be drawn. Nothing SHALL be drawn from the text of a file.
+The map SHALL draw only declared relations: `loads` from a skill or playbook to each skill or playbook in its `stackledger-skills`, `uses` to each agent in its `stackledger-agents`, and `preloads` from an agent to each skill or playbook in its `skills`. A relation to a name not in the set SHALL NOT be drawn, and repeats SHALL be drawn once. Nothing SHALL be drawn from the text of a file.
 
 #### Scenario: Name in the text
 - **WHEN** a skill's body names another skill in backticks and declares no relation
@@ -67,82 +127,154 @@ The map SHALL draw only declared relations: `loads` from a skill or playbook to 
 - **WHEN** a playbook lists `ghost` in `stackledger-skills` and there is no such skill
 - **THEN** no page shows `ghost`
 
+#### Scenario: Same name in two namespaces
+- **WHEN** a playbook loads `reviewer` and uses `reviewer`, and both a skill and an agent are named `reviewer`
+- **THEN** its page links `skills/reviewer.md` for `loads` and `agents/reviewer.md` for `uses`
+
+#### Scenario: Repeated preload
+- **WHEN** an agent lists `writer` twice in `skills`
+- **THEN** one `preloads` relation is drawn
+
 ### Requirement: Item page
-Each item page SHALL hold, in order: `# <name>`, a notice that the file is generated by `stackledger skills map`, the kind, the description, the one-hop diagram, "Brought in by" and "Brings in" lists with each relation's kind and a link to the other item's page, the item's rule IDs in file order, its source files, and a link to `README.md`.
+Each item page SHALL hold, in order: `# <name>`, a notice that `stackledger skills map` generated it, the kind, the description, a legend, the one-hop diagram, "Brought in by" and "Brings in" lists (relation kind and a link to the other page), "Reached through" (items that bring it in through two or more relations), its rule IDs in file order, its source files, and a link to `README.md`.
 
 #### Scenario: Playbook page
 - **WHEN** the playbook `release` loads `writer` and `editor` and uses the agent `reviewer`
-- **THEN** `playbooks/release.md` lists under "Brings in" `writer` and `editor` (loads) and `reviewer` (uses), each linked to its page
+- **THEN** `playbooks/release.md` lists under "Brings in" `editor` (loads), `reviewer` (uses) and `writer` (loads), each linked
 
 #### Scenario: Skill page
-- **WHEN** the skill `writer` is loaded by `release` and preloaded by the agent `drafter`, and its `rules.md` defines `WR-1` and `WR-2`
-- **THEN** `skills/writer.md` lists under "Brought in by" `release` (loads) and `drafter` (preloads), and lists `WR-1, WR-2`
+- **WHEN** the skill `writer` is loaded by `release`, preloaded by the agent `drafter`, and its `rules.md` defines `WR-1` and `WR-2`
+- **THEN** `skills/writer.md` lists under "Brought in by" `drafter` (preloads) and `release` (loads), and lists `WR-1, WR-2`
+
+#### Scenario: Reached through a playbook
+- **WHEN** the playbook `ship` loads the playbook `release`, which loads `writer`
+- **THEN** `skills/writer.md` lists `ship` under "Reached through" and not under "Brought in by"
+
+### Requirement: Order of relations
+Lists and tables SHALL be sorted by name, then kind (skill, playbook, agent), comparing by code point. Diagram nodes SHALL be listed by kind then name, and edges by source node, relation kind and target node.
+
+#### Scenario: Listing order does not matter
+- **WHEN** the same files are read through a folder listing that returns entries in reversed order
+- **THEN** every page is byte for byte the same
 
 ### Requirement: One-hop diagram
-Each item page SHALL hold one fenced `mermaid` block, a `flowchart LR` with the item and its direct relations only: what brings it in on the left, what it brings in on the right, the item with a thick border. Playbooks SHALL be rounded boxes, agents hexagons and skills plain boxes. Node IDs SHALL be `n1`, `n2`, … in drawing order. An item with no relation SHALL have a diagram of itself alone.
+Each item page SHALL hold one `mermaid` block, a `flowchart LR` with the item (thick border) and its direct relations: what brings it in on the left, what it brings in on the right. A neighbour on both sides SHALL appear on both; a relation to itself SHALL be a loop on the item. Playbooks SHALL be rounded boxes, agents hexagons, skills plain boxes.
 
 #### Scenario: Diagram of a skill
 - **WHEN** the skill `writer` is loaded by `release`
-- **THEN** its page's diagram has a rounded node `release`, a plain node `writer` with a thick border and one edge labelled `loads` from `release` to `writer`
+- **THEN** the diagram has a rounded node `release`, a plain node `writer` with a thick border and one edge labelled `loads` from `release` to `writer`
+
+#### Scenario: Two playbooks that load each other
+- **WHEN** `a` loads `b` and `b` loads `a`
+- **THEN** `b` appears on both sides of `a`'s diagram, with one `loads` edge each way
+
+#### Scenario: Skill that lists itself
+- **WHEN** `writer` lists `writer` in `stackledger-skills`
+- **THEN** its diagram has one `loads` edge from `writer` to itself
+
+### Requirement: Stable node IDs
+A node ID SHALL be `s_`, `p_` or `a_` (skill, playbook, agent) followed by the page file name without `.md`, with `-` written as `_`; in a one-hop diagram, neighbours SHALL start with `in_` or `out_`. So adding an item SHALL change only the lines about it.
+
+#### Scenario: New skill in a diff
+- **WHEN** a skill `aardvark` loaded by `release` is added to a set that already maps `release`
+- **THEN** the index diagram gains only the lines of the `s_aardvark` node and its edge
 
 #### Scenario: Node names are not IDs
 - **WHEN** a skill is named `end`, a Mermaid keyword
-- **THEN** its diagram uses a generated node ID and renders, with `end` as the label
+- **THEN** its node ID is `s_end`, its label is `end`, and the block renders
+
+### Requirement: Diagram budget
+A label SHALL show at most 64 code points of the name, then `…`. A diagram SHALL be drawn only when it has at most 400 edges and its block has at most 40,000 characters; otherwise the page SHALL say `This set has <N> relations, too many for one diagram; the lists below hold them all.` in its place.
+
+#### Scenario: Index at the edge budget
+- **WHEN** the set has exactly 400 relations
+- **THEN** the index has a diagram with 400 edges
+
+#### Scenario: Index over the edge budget
+- **WHEN** the set has 401 relations
+- **THEN** the index has no `mermaid` block, says it has 401 relations, and its tables list every relation
 
 ### Requirement: Map index
-`README.md` SHALL hold the generated-file notice, the counts of skills, playbooks, agents and rules, one `flowchart LR` of every drawn relation (no diagram when there is none), and one table each for playbooks, agents and skills, sorted by name, with each item linked to its page, what it brings in and what brings it in.
+`README.md` SHALL hold the generated notice; a note that only declared relations are drawn; the counts of skills, playbooks, agents, rules, ignored entries, errors and warnings with a hint to run `stackledger skills validate`; a legend; one `flowchart LR` of every drawn relation, within the budget; tables of playbooks, agents and skills with what each brings in and what brings it in; and "No declared incoming relations", the skills and playbooks nothing brings in.
 
 #### Scenario: Index tables
 - **WHEN** the set has 2 playbooks, 1 agent and 5 skills
-- **THEN** `README.md` has a playbooks table with 2 rows, an agents table with 1 row and a skills table with 5 rows, sorted by name
+- **THEN** `README.md` has tables with 2, 1 and 5 rows, sorted by name
 
 #### Scenario: Set with no relations
 - **WHEN** no item declares a relation
-- **THEN** `README.md` has no `mermaid` block and still lists every item
+- **THEN** `README.md` has no `mermaid` block and lists every skill and playbook under "No declared incoming relations"
 
-### Requirement: Untrusted text
-Text taken from the files SHALL have control characters removed. In Mermaid labels, every character other than ASCII letters, digits, space and `-_.:/()` SHALL be written as `#<decimal code>;`. In Markdown text, `\`, `` ` ``, `*`, `_`, `[`, `]`, `<`, `>`, `|`, `#` and `&` SHALL be escaped. A description longer than 1,024 code points SHALL be cut to 1,024 and end with `…`.
+#### Scenario: Errors recorded in the index
+- **WHEN** one skill has no description
+- **THEN** `README.md` gives 1 error and the validate hint
 
-#### Scenario: Label that tries to close the node
-- **WHEN** a skill is named `a"]; click n1 "https://example.com`
-- **THEN** the diagram's label holds `#34;` and `#93;` and the block has no `click` statement
+### Requirement: Text from the files
+Descriptions SHALL have every run of whitespace turned into one space, control and Unicode format characters (U+200B–U+200F, U+202A–U+202E, U+2066–U+2069) removed, then be cut to their first 1,023 code points and `…` when longer than 1,024. In Markdown text, `\`, `` ` ``, `*`, `_`, `[`, `]`, `<`, `>`, `|`, `#`, `&` and `~` SHALL be escaped with `\`.
 
 #### Scenario: Description with HTML
 - **WHEN** a description holds `<img src=x onerror=alert(1)>`
-- **THEN** the page holds `\<img src=x onerror=alert(1)\>` and no `<img`
+- **THEN** the page source holds `\<img src=x onerror=alert(1)\>` and every `<` from the description is preceded by `\`
 
-### Requirement: Source paths
-A page SHALL link a source file only when the file's real path is inside the real path of the working folder, as a path relative to the page. Otherwise it SHALL show the file name and the words "outside the working folder". No page SHALL hold an absolute path.
+#### Scenario: Multi-line description with a fence
+- **WHEN** a `|` description has the lines `First line.`, `~~~` and `Last line.`
+- **THEN** the page holds `First line. \~\~\~ Last line.` on one line, and the diagram after it is intact
 
-#### Scenario: Tool folder in the home folder
-- **WHEN** the command runs in `repo` as `stackledger skills map . /home/northwind/.claude --out docs/skills-map`
-- **THEN** pages for skills under `/home/northwind/.claude` show their file names, the words "outside the working folder", and no `/home/northwind`
+#### Scenario: Description at the limit
+- **WHEN** descriptions have 1,024 and 1,025 code points
+- **THEN** the first is shown whole and the second as its first 1,023 code points and `…`
+
+### Requirement: Mermaid labels
+In a Mermaid label, every character other than ASCII letters, digits, space and `-_.:/()` SHALL be written as `#<decimal code point>;`, after control and format characters are removed.
+
+#### Scenario: Label that tries to close the node
+- **WHEN** a skill is named `a"]; click n1 "https://example.com`
+- **THEN** the label holds `#34;`, `#93;` and `#59;`, no line of the block starts with `click`, and the block renders with the name as text
+
+### Requirement: Source files
+An item's source files SHALL be its `SKILL.md` and the `rules.md` read for it, or its agent file. A page SHALL link one only when its real path is inside the real path of the current folder and a relative path exists, as a URL with `/` separators and percent-encoded segments; otherwise it SHALL show the path below its given folder and "outside the current folder". No path the command computes SHALL be absolute.
 
 #### Scenario: Skill in the repository
 - **WHEN** the command runs in `repo` as `stackledger skills map . --out docs/skills-map` and `skills/writer/SKILL.md` exists
 - **THEN** `docs/skills-map/skills/writer.md` links `../../../skills/writer/SKILL.md`
 
+#### Scenario: Tool folder in the home folder
+- **WHEN** the command runs in `repo` as `stackledger skills map . /home/northwind/.claude --out docs/skills-map`
+- **THEN** pages for skills under `/home/northwind/.claude` show `skills/<name>/SKILL.md`, "outside the current folder", and no `/home/northwind`
+
+#### Scenario: Folder name with special characters
+- **WHEN** a skill folder in the repository is named `my skill#1`
+- **THEN** its link is `../../../skills/my%20skill%231/SKILL.md`
+
 ### Requirement: Deterministic map
-The same files SHALL give the same bytes on any machine: no date, version or time, tables and lists sorted by code point except where an order is stated, LF line endings, and one newline at the end of each file.
+The same files SHALL give the same bytes on any machine and platform: no date, version or time, the orders stated above, `/` in every link, LF line endings and one newline at the end of each file. `--check` SHALL compare after turning CRLF into LF.
 
 #### Scenario: Two runs
 - **WHEN** the command runs twice on the same files
-- **THEN** the second run writes no file and stderr says nothing changed
+- **THEN** the second run changes no file and stderr says nothing changed
+
+#### Scenario: Checkout with CRLF
+- **WHEN** every page in the map folder has CRLF line endings and is otherwise up to date
+- **THEN** `--check` exits 0
 
 ### Requirement: Check mode
-With `--check`, the command SHALL write nothing, list on stderr each page that would be written, changed or removed, one per line, and exit 1 when there is any, 0 otherwise. The safe map folder rules SHALL apply; a missing output folder SHALL be out of date.
+With `--check`, the command SHALL write nothing, print on stderr one line per page that would be created, updated or removed (`create`, `update` or `remove`, a space, and its path inside the map folder), and exit 1 when there is any, 0 otherwise. The folder rules SHALL apply; a missing output folder SHALL be out of date.
 
 #### Scenario: Stale map in a pipeline
 - **WHEN** a skill gained a relation after the map was written, and the command runs with `--check`
-- **THEN** the exit code is 1, stderr names the changed pages and no file changes
+- **THEN** the exit code is 1, stderr has an `update` line for each changed page, and no file changes
 
 #### Scenario: Up to date
 - **WHEN** the command runs with `--check` right after a run without it
 - **THEN** the exit code is 0
 
 ### Requirement: Map exit codes and messages
-Without `--check`, the command SHALL exit 0 when the map was written, whatever the set's problems; 1 when a file cannot be written or removed, naming it; 2 for usage errors and refused folders. stderr SHALL say how many pages were written, changed and removed and, when the set has problems, their counts with a hint to run `stackledger skills validate`. stdout SHALL stay empty.
+Without `--check`, the command SHALL exit 0 when the map was written; 1 when a given folder has the "No skill folder or agent file found" error (nothing changed), when the folder changed during the run, or when a file cannot be written or removed (naming it); 2 for usage errors and refused folders. stderr SHALL give the pages created, updated and removed and, with problems, their counts and the validate hint; stdout stays empty.
 
 #### Scenario: Set with errors
 - **WHEN** one skill has no description and the rest are valid
 - **THEN** the map is written without that skill, the exit code is 0, and stderr gives the error count and the hint
+
+#### Scenario: Wrong folder does not empty the map
+- **WHEN** a marked map exists and the command is given a folder with nothing found in it
+- **THEN** the exit code is 1 and no page is removed
