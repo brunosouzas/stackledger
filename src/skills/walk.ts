@@ -18,13 +18,17 @@
  *   patterns of one given folder never apply to entries reached through another. Each skipped entry is
  *   recorded once per run by the device and inode of the entry itself.
  *
+ * - The skills map file (`stackledger-skills.yaml`, src/skills/lines.ts) is looked for only at the top of
+ *   a given folder that is not a skill folder, like the ignore file; it is never tested by an ignore
+ *   file, never counted as found, and recorded once per device and inode of its target.
+ *
  * A given folder that is missing, not a folder or cannot be listed throws SkillsFolderError (the
  * command turns it into exit 2); every other failure is a problem on its path and the walk goes on.
  */
 import { lstat, readdir, stat } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { compareText } from '../identity.js';
-import { fileProblem, type Problem } from '../source.js';
+import { fileProblem, SKILLS_MAP_FILE, type Problem } from '../source.js';
 import { createMatcher, IGNORE_FILE, ignores, readIgnoreFile, type Matcher } from './ignore.js';
 
 /** How many folder levels below a given folder are looked at: `a/b/c/d/e/SKILL.md` is read, `a/b/c/d/e/f/SKILL.md` is not. */
@@ -79,6 +83,8 @@ export interface Walked {
   folders: { path: string; found: number; ignored: number }[];
   /** Absolute paths of the `.stackledgerignore` files read (a link included), in argument order. */
   ignoreFiles: string[];
+  /** The skills map files at the top of the given folders, each target once, in argument order. */
+  mapFiles: { path: string; absolute: string }[];
 }
 export interface WalkOptions {
   cwd?: string;
@@ -109,7 +115,8 @@ function hidden(name: string): boolean {
 export async function walkSkillFolders(folders: string[], options: WalkOptions = {}): Promise<Walked> {
   const cwd = options.cwd ?? process.cwd();
   const list = options.list ?? listFolder;
-  const walked: Walked = { items: [], problems: [], ignored: [], folders: [], ignoreFiles: [] };
+  const walked: Walked = { items: [], problems: [], ignored: [], folders: [], ignoreFiles: [], mapFiles: [] };
+  const seenMapFiles = new Set<string>();
   const seenItems = new Set<string>();
   const seenProblems = new Set<string>();
   const seenIgnored = new Set<string>();
@@ -243,6 +250,13 @@ export async function walkSkillFolders(folders: string[], options: WalkOptions =
         // A file with a problem gives no patterns: the folder is read whole, and the problem shows why.
         if (file.status === 'read') matcher = file.matcher;
         else for (const problem of file.problems) problemOnce(`ignore:${file.key}:${problem.message}`, problem);
+      }
+      if (names.includes(SKILLS_MAP_FILE)) {
+        const mapAbsolute = join(absolute, SKILLS_MAP_FILE);
+        // A broken link has no target identity: it is keyed by its path, and the read reports it.
+        let key = `path:${mapAbsolute}`;
+        try { key = identity(await stat(mapAbsolute, { bigint: true })); } catch { /* reported when read */ }
+        if (!seenMapFiles.has(key)) { seenMapFiles.add(key); walked.mapFiles.push({ path: below(prefix, SKILLS_MAP_FILE), absolute: mapAbsolute }); }
       }
       await walkEntries(absolute, '', 0, names, prefix);
     }
