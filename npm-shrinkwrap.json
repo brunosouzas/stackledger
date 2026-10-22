@@ -14,6 +14,7 @@
         "@fontsource/signika": "5.3.0",
         "@modelcontextprotocol/sdk": "1.32.1",
         "astro": "7.3.8",
+        "ignore": "7.0.13",
         "yaml": "2.9.1",
         "zod": "4.6.7"
       },
@@ -3651,6 +3652,15 @@
       "funding": {
         "type": "opencollective",
         "url": "https://opencollective.com/express"
+      }
+    },
+    "node_modules/ignore": {
+      "version": "7.0.13",
+      "resolved": "https://registry.npmjs.org/ignore/-/ignore-7.0.13.tgz",
+      "integrity": "sha512-2E8Q6rh+1RRSq/YdaGsNfXsEZy9FVqv6BSSrkmZJP7BnaoPnRfKL+YaofPvP+5rzdk144qSm6i4+hvPgUcbV4Q==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 4"
       }
     },
     "node_modules/inherits": {
