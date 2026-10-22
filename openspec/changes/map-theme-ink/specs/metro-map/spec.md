@@ -35,6 +35,10 @@ A station served by one line SHALL be drawn as a circle in the theme's station c
 - **WHEN** `a` is a stop of one line and `slack` of two, in either theme
 - **THEN** `a` is a white circle with an ink outline whose diameter exceeds the pipe's outer width, and `slack` is a capsule with a larger radius that contains all its contact points
 
+#### Scenario: Diagonal interchange contains every contact
+- **WHEN** eight lines share the diagonal edge from `a` at `[0, 0]` to `b` at `[4, 4]`
+- **THEN** every contact of the lines at `a` lies inside the drawn interchange capsule, in both themes
+
 ### Requirement: Terminals
 Each end of a drawn line SHALL carry a badge in the line's colour with its `code`, or the first character of `metadata.name` upper-cased when it has no code. Badges are pills (corner radius half their height), always wider than tall. Badges may repeat between lines.
 

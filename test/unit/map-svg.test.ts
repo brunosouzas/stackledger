@@ -79,11 +79,39 @@ test('Stations are circles',()=>{
   // The circle is wider than the pipe it sits on, and centred on it.
   expect(2*num(face,'r')).toBeGreaterThan(outer);
   const a=g.stations.find(s=>s.name==='a')!;expect([num(face,'cx'),num(face,'cy')]).toEqual(a.marker.contacts[0]);
-  // An interchange is a capsule: radius half its short side, larger than a stop, covering every line through it.
-  const s=g.stations.find(s=>s.name==='slack')!,cap=shapes(groupOf(doc,'component:slack')).filter(e=>e.tagName==='rect').at(-1)!;
-  expect(num(cap,'rx')).toBe(Math.min(s.marker.box.w,s.marker.box.h)/2);
-  expect(num(cap,'rx')).toBeGreaterThan(num(face,'r'));
-  for(const p of s.marker.contacts)expect(p[0]>=s.marker.box.x&&p[0]<=s.marker.box.x+s.marker.box.w&&p[1]>=s.marker.box.y&&p[1]<=s.marker.box.y+s.marker.box.h).toBe(true);
+  // An interchange is a capsule round the segment `ends`, larger than a stop, containing every contact.
+  const s=g.stations.find(s=>s.name==='slack')!,cap=shapes(groupOf(doc,'component:slack')).filter(e=>e.getAttribute('fill')==='#FFFFFF').at(-1)!;
+  expect(s.marker.radius).toBeGreaterThan(num(face,'r'));
+  const r=Math.round(s.marker.radius*100)/100;
+  if(cap.tagName==='circle')expect(num(cap,'r')).toBe(r);else expect(cap.getAttribute('d')).toContain(`A${r},${r}`);
+  for(const p of s.marker.contacts)expect(toSegment(p,s.marker.ends[0],s.marker.ends[1])).toBeLessThanOrEqual(s.marker.radius+1e-6);
+ }
+});
+
+/** Distance from p to the segment a-b. */
+const toSegment=(p:number[],a:number[],b:number[])=>{const dx=b[0]!-a[0]!,dy=b[1]!-a[1]!,len=dx*dx+dy*dy;const t=len?Math.max(0,Math.min(1,((p[0]!-a[0]!)*dx+(p[1]!-a[1]!)*dy)/len)):0;return Math.hypot(p[0]!-a[0]!-t*dx,p[1]!-a[1]!-t*dy);};
+
+test('Diagonal interchange contains every contact',()=>{
+ // Eight lines share the diagonal from a to b: the drawn capsule must contain all eight contacts at a.
+ const names=['l1','l2','l3','l4','l5','l6','l7','l8'];
+ const docs8=[component('a'),component('b'),...names.map(n=>journey(n,['a','b'])),positions({a:[0,0],b:[4,4]})];
+ for(const theme of Object.values(themes)){
+  const g=layoutMap(buildMapModel(viewOf(docs8),'2027-06-01'),theme.lineWidth,inkOf(theme));
+  const s=g.stations.find(x=>x.name==='a')!;expect(s.marker.contacts).toHaveLength(8);
+  const doc=safe(renderSvg(g,theme)),face=shapes(groupOf(doc,'component:a')).filter(e=>e.getAttribute('fill')==='#FFFFFF').at(-1);
+  expect(face).toBeDefined();
+  let inside:(p:number[])=>boolean;
+  if(face!.tagName==='rect'){
+   // An axis-aligned capsule: radius rx around the segment through the rect's long axis.
+   const x=num(face!,'x'),y=num(face!,'y'),w=num(face!,'width'),h=num(face!,'height'),r=num(face!,'rx');
+   const a=w>=h?[x+r,y+h/2]:[x+w/2,y+r],b=w>=h?[x+w-r,y+h/2]:[x+w/2,y+h-r];
+   inside=p=>toSegment(p,a,b)<=r+1e-6;
+  }else{
+   const {ends,radius}=s.marker as any;
+   const r=Math.round(radius*100)/100;expect(face!.getAttribute('d')).toContain(`A${r},${r}`);
+   inside=p=>toSegment(p,ends[0],ends[1])<=radius+1e-6;
+  }
+  for(const p of s.marker.contacts)expect(inside(p),JSON.stringify(p)).toBe(true);
  }
 });
 
@@ -110,15 +138,16 @@ test('Bundled pipes fit side by side',()=>{
 test('Shadow under an interchange',()=>{
  const g=geometry(interchangeDocs()),svg=renderSvg(g,themes.light),doc=safe(svg);
  const marker=g.stations.find(s=>s.name==='slack')!.marker;expect(marker.kind).toBe('interchange');
- const rects=shapes(groupOf(doc,'component:slack')).filter(e=>e.tagName==='rect');
- // The face is drawn last: white with the ink outline; the shadow copy comes right before it.
- const outlined=rects.length-1;
- expect(rects[outlined]!.getAttribute('fill')).toBe('#FFFFFF');expect(rects[outlined]!.getAttribute('stroke')).toBe(INK);
- const shadow=rects[outlined-1]!;
- expect(shadow.getAttribute('fill')).toBe(INK);
- expect([num(shadow,'x'),num(shadow,'y')]).toEqual([marker.box.x+themes.light.shadow.dx,marker.box.y+themes.light.shadow.dy]);
- expect([num(rects[outlined]!,'x'),num(rects[outlined]!,'y')]).toEqual([marker.box.x,marker.box.y]);
- expect(num(rects[outlined]!,'stroke-width')).toBe(themes.light.outlineWidth);
+ const parts=shapes(groupOf(doc,'component:slack'));
+ // The face is drawn last: white with the ink outline; the shadow copy comes right before it, moved by the offset.
+ const face=parts.at(-1)!,shadow=parts.at(-2)!;
+ expect(face.getAttribute('fill')).toBe('#FFFFFF');expect(face.getAttribute('stroke')).toBe(INK);
+ expect(num(face,'stroke-width')).toBe(themes.light.outlineWidth);
+ expect(shadow.getAttribute('fill')).toBe(INK);expect(shadow.tagName).toBe(face.tagName);
+ const start=(e:Element)=>e.tagName==='circle'?[num(e,'cx'),num(e,'cy')]:e.getAttribute('d')!.slice(1).split(' ')[0]!.split(',').map(Number);
+ const [fx,fy]=start(face),[sx,sy]=start(shadow);
+ expect(sx!-fx!).toBeCloseTo(themes.light.shadow.dx,1);expect(sy!-fy!).toBeCloseTo(themes.light.shadow.dy,1);
+ expect(marker.box.x).toBeLessThanOrEqual(Math.min(...marker.contacts.map(p=>p[0])));
  // Stops start with their shadow; badges are pills holding a shadow copy before their outlined face.
  const stop=shapes(groupOf(doc,'component:a'));expect(stop[0]!.getAttribute('fill')).toBe(INK);expect(stop[0]!.tagName).toBe('circle');
  const badges=Array.from(doc.getElementsByTagName('g')).filter(e=>e.getAttribute('data-line')&&!e.getAttribute('data-ref')&&shapes(e).length===3&&shapes(e)[2]!.tagName==='text');
@@ -132,8 +161,8 @@ test('Dark shadow and rim',()=>{
  expect(svg).toContain('fill="#4C5CB8"');expect(svg).toContain('stroke="#EEF1FF"');expect(svg).not.toMatch(/transform|filter/);
  // Ink stays the outline and casing; apart from the title band no shape is filled with it.
  for(const e of Array.from(doc.getElementsByTagName('*')))if(e.tagName!=='rect'||num(e,'height')!==64)expect(e.getAttribute('fill'),e.tagName).not.toBe(INK);
- const rects=shapes(groupOf(doc,'component:slack')).filter(e=>e.tagName==='rect');
- expect(rects.map(e=>e.getAttribute('fill'))).toEqual(['#4C5CB8','#EEF1FF','#FFFFFF']);
+ const marker=shapes(groupOf(doc,'component:slack')).filter(e=>e.tagName!=='text');
+ expect(marker.map(e=>e.getAttribute('fill'))).toEqual(['#4C5CB8','#EEF1FF','#FFFFFF']);
 });
 
 test('Light theme',()=>{
@@ -158,6 +187,21 @@ test('Larger ink pushes a label out',()=>{
  // layoutMap grows marker obstacles by the ink it is given.
  const inked=layoutMap(buildMapModel(viewOf(interchangeDocs()),'2027-06-01'),7,ink);
  for(const label of inked.labels)for(const s of inked.stations)expect(overlapArea(label.box,inkBox(s.marker.box,ink)),label.ref+' '+s.ref).toBe(0);
+});
+
+test('Larger ink pushes a label out in the layout',()=>{
+ // The same catalogue laid out with and without a deep shadow: the shadow alone moves a's label.
+ const docs3=[set(component('a'),'metadata.title','ab'),set(component('b'),'metadata.title','ab'),component('c'),component('d'),journey('one',['a','c']),journey('two',['b','d']),positions({a:[0,0],c:[0,6],b:[1,1],d:[7,1]})];
+ const model=buildMapModel(viewOf(docs3),'2027-06-01');
+ const flat={casing:6,outline:3,shadow:[0,0] as [number,number]},deep={casing:6,outline:3,shadow:[9,9] as [number,number]};
+ const plain=layoutMap(model,12,flat).labels.find(l=>l.ref==='component:a')!.box;
+ const g=layoutMap(model,12,deep),inked=g.labels.find(l=>l.ref==='component:a')!.box;
+ const a=g.stations.find(s=>s.name==='a')!;
+ // Without growth the plain spot would be kept: it clears the marker but not its shadow.
+ expect(overlapArea(plain,a.marker.box)).toBe(0);
+ expect(overlapArea(plain,inkBox(a.marker.box,deep))).toBeGreaterThan(0);
+ expect(inked).not.toEqual(plain);
+ for(const s of g.stations)expect(overlapArea(inked,inkBox(s.marker.box,deep)),s.ref).toBe(0);
 });
 
 test('No embedded font',()=>{

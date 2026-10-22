@@ -4,9 +4,9 @@ Levels: U unit, I integration (built files or CLI), B browser (Playwright). Ever
 
 | Spec | Scenarios | File | Level |
 | --- | --- | --- | --- |
-| metro-map | Pipe line; Bundled pipes fit side by side; Stations are circles; One-character badge; Interchange (`test/unit/map-layout.test.ts`); Shadow under an interchange; Dark shadow and rim; Light theme; Dark theme; Larger ink pushes a label out; Allowed names only; No embedded font | `test/unit/map-svg.test.ts` | U |
+| metro-map | Pipe line; Bundled pipes fit side by side; Stations are circles; One-character badge; Interchange (`test/unit/map-layout.test.ts`); Shadow under an interchange; Dark shadow and rim; Light theme; Dark theme; Diagonal interchange contains every contact; Larger ink pushes a label out (tests "Larger ink pushes a label out" and "… in the layout", which fails when layout stops growing marker obstacles); Allowed names only; No embedded font | `test/unit/map-svg.test.ts` | U |
 | metro-map | Labels do not collide in the example | `test/integration/map-example.test.ts` | I |
-| catalogue-site | Neighbourhood boxes; Strip line and stops; Resource without a shadow | `test/unit/map-diagrams.test.ts` | U |
+| catalogue-site | Neighbourhood boxes; Strip line and stops; Terminal badge over an end interchange ("Strip terminal badges clear an interchange at the end"); Resource without a shadow | `test/unit/map-diagrams.test.ts` | U |
 | catalogue-site | Accent override; Broken settings (unchanged tests) | `test/integration/site.test.ts` | I |
 | catalogue-site | Lato shipped locally | `test/integration/site.test.ts` | I |
 

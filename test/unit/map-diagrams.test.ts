@@ -210,6 +210,21 @@ test('Resource without a shadow', () => {
   }
 });
 
+test('Strip terminal badges clear an interchange at the end', () => {
+  // slack ends ship and is also on design, so its marker is the larger interchange with a rim in dark.
+  const model = buildMapModel(interchangeView(), '');
+  for (const theme of Object.values(themes)) {
+    const all = groups(renderStrip(strip(model, model.lines.find(line => line.name === 'ship')!), theme));
+    const stop = all.find(group => group.getAttribute('data-ref') === 'component:slack')!;
+    const top = Math.min(...shapesOf(stop).filter(item => item.tagName === 'circle')
+      .map(item => Number(item.getAttribute('cy')) - Number(item.getAttribute('r')) - Number(item.getAttribute('stroke-width') ?? 0) / 2));
+    const terminal = shapesOf(all.find(group => group.getAttribute('data-line') === 'line:ship' && !group.getAttribute('data-ref'))!)
+      .filter(item => item.tagName === 'rect');
+    const lowest = Math.max(...terminal.map(item => Number(item.getAttribute('y')) + Number(item.getAttribute('height')) + Number(item.getAttribute('stroke-width') ?? 0) / 2));
+    expect(lowest, theme.background).toBeLessThan(top);
+  }
+});
+
 test('Strip labels clear the stop markers, shadows and badges', () => {
   const model = buildMapModel(interchangeView(), '');
   for (const theme of Object.values(themes)) {

@@ -11,6 +11,10 @@ The neighbourhood and strip diagrams SHALL use the map's theme: its background, 
 - **WHEN** the strip of line `ship` in `#FF0000` is drawn in the `dark` theme
 - **THEN** the line is a `#FF0000` stroke over a wider `#0A1033` casing, and each stop marker has a shadow filled `#4C5CB8`
 
+#### Scenario: Terminal badge over an end interchange
+- **WHEN** line `ship` ends at `slack`, which is also a stop of `design`
+- **THEN** in both themes the terminal badge above `slack`, with its outline and shadow, ends above the top of `slack`'s marker and rim
+
 #### Scenario: Resource without a shadow
 - **WHEN** `forge` depends on resource `orders-db`, which is not a licence
 - **THEN** the `orders-db` box has a dashed outline and no shadow shape
