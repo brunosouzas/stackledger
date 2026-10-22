@@ -28,6 +28,7 @@ import type { Catalogue } from '../validate.js';
 import { licenceFields, type Licence, type LicenceField, type SiteColorName } from '../schema.js';
 import { calendarNamespace, renderCalendar } from '../ics.js';
 import { formatAmount, type Amount } from '../money.js';
+import type { SkillsData } from './skills-data.js';
 import { buildReport, type Group, type LicenceLink, type OneOffRow, type RenewalEntry, type Report, type TotalRow } from '../reports.js';
 
 export const DEFAULT_TITLE = 'Software map';
@@ -66,6 +67,8 @@ interface SiteBase {
   map: Themed & { lines: LineSummary[]; zones: { name: string; title: string }[]; symbols: (Themed & { label: string })[] };
   rows: SoftwareRow[]; filters: { kind: string[]; zone: string[]; state: string[]; owner: string[] };
   components: ComponentPage[]; licences: LicencePage[]; journeys: JourneyPage[];
+  /** The Skills section (src/site/skills-data.ts), the same object in every view; absent without a skill set. */
+  skills?: SkillsData;
 }
 export interface StaffSiteData extends SiteBase { view: 'staff' }
 export interface FullSiteData extends SiteBase { view: 'full'; report: ReportPage }

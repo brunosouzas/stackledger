@@ -35,6 +35,9 @@ import { ownerNames } from './owners.js';
 import { HEADERS, MARKER, MARKER_NAME, POLICY, redirects, ROBOTS } from './policy.js';
 import { FULL_ONLY } from './staging.js';
 import { listFiles, relativise, scan } from './relative.js';
+import { buildSkillsData } from './skills-data.js';
+import { skillsReport } from './skills-build.js';
+import type { SkillSet } from '../skills/source.js';
 
 const require = createRequire(import.meta.url);
 const thisFile = fileURLToPath(import.meta.url);
@@ -173,7 +176,7 @@ async function buildView(staging: string, view: ViewName, data: SiteData, calend
 }
 
 /** Build both sites and the root files into `staging`, which must exist and be empty. */
-export async function prepareBuild(folder: string | Loaded, stagingPath: string, date: string, version = packageVersion()): Promise<PreparedBuild> {
+export async function prepareBuild(folder: string | Loaded, stagingPath: string, date: string, version = packageVersion(), skillSet?: SkillSet): Promise<PreparedBuild> {
   // Astro compares module paths with process.cwd(), which is always the real path (on macOS the
   // temporary folder /var is a link to /private/var), so the working copies use the real path too.
   const staging = realpathSync(stagingPath);
@@ -182,15 +185,19 @@ export async function prepareBuild(folder: string | Loaded, stagingPath: string,
   // The staff site is built first, before the full data exists anywhere (site-security, One view per site).
   const owners = ownerNames(loaded.sources);
   const sites = resolveSites(catalogue);
-  const staff = sites.includes('staff') ? await buildView(staging, 'staff', buildSiteData(catalogue, 'staff', version, undefined, owners).data) : undefined;
+  // One Skills section for every site (skills-site, Same skills in every site): built once, copied into each.
+  const skills = skillSet ? buildSkillsData(skillSet) : undefined;
+  const withSkills = <T extends SiteData>(data: T): T => (skills ? { ...data, skills: skills.data } : data);
+  const staff = sites.includes('staff') ? await buildView(staging, 'staff', withSkills(buildSiteData(catalogue, 'staff', version, undefined, owners).data)) : undefined;
   if (!staff) writeFileSync(join(staging, FULL_ONLY), '');
   const fullData = buildSiteData(catalogue, 'full', version, date, owners);
-  const full = await buildView(staging, 'full', fullData.data, fullData.calendar);
+  const full = await buildView(staging, 'full', withSkills(fullData.data), fullData.calendar);
   const root = join(staging, 'root');
   mkdirSync(root);
   writeFileSync(join(root, '_headers'), HEADERS);
   writeFileSync(join(root, 'robots.txt'), ROBOTS);
   writeFileSync(join(root, '_redirects'), redirects(sites));
   writeFileSync(join(root, MARKER_NAME), MARKER);
-  return { ...(staff ? { staff } : {}), catalogue, full, root, notes: mapNotes(loaded, catalogue, fullData.geometry) };
+  const notes = [...mapNotes(loaded, catalogue, fullData.geometry), ...(skills && skillSet ? skillsReport(skillSet, skills.geometry) : [])];
+  return { ...(staff ? { staff } : {}), catalogue, full, root, notes };
 }

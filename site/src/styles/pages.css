@@ -226,3 +226,30 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* Skills section: the sub-navigation shared by the list, the skill map and the rules index. */
+.sub-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.sub-nav a {
+  color: var(--color-text-light);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.sub-nav a:hover,
+.sub-nav a[aria-current="page"] {
+  color: var(--color-text-dark);
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+}
+
+.line-chips a.btn {
+  text-decoration: none;
+}

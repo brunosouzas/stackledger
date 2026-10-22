@@ -1,0 +1,28 @@
+---
+// Sub-navigation of the Skills section (skills-site, Skills sub-navigation): the list, the skills
+// map and the rules index, the current page marked with aria-current.
+import { href } from '../lib/site';
+
+interface Props {
+  root: string;
+  current: 'skills' | 'skill-map' | 'rules';
+}
+const { root, current } = Astro.props;
+const links = [
+  { key: 'skills', title: 'Skills', path: 'skills/' },
+  { key: 'skill-map', title: 'Skill map', path: 'skill-map/' },
+  { key: 'rules', title: 'Rules', path: 'rules/' },
+];
+---
+
+<nav class="sub-nav" aria-label="Skills">
+  <ul>
+    {
+      links.map((link) => (
+        <li>
+          <a href={href(root, link.path)} aria-current={link.key === current ? 'page' : undefined}>{link.title}</a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>

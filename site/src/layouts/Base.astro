@@ -13,7 +13,7 @@ import { href, policy, rootFor, site } from '../lib/site';
 
 interface Props {
   title: string;
-  current?: 'map' | 'software' | 'journeys' | 'reports';
+  current?: 'map' | 'software' | 'journeys' | 'reports' | 'skills';
 }
 const { title, current } = Astro.props;
 const root = rootFor(Astro.url.pathname);

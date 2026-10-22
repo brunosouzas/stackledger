@@ -31,7 +31,9 @@ import { REPORT_DAYS } from './data.js';
 import { loadFolder } from '../source.js';
 import { internal } from '../errors.js';
 import { problemCounts } from '../map/command.js';
-import { prepareBuild, type PreparedBuild } from './build.js';
+import { prepareBuild, packageVersion, type PreparedBuild } from './build.js';
+import { validateLoaded } from '../validate.js';
+import { refuseSkillsOutput, skillsInUse, skillsStops } from './skills-build.js';
 import { NODE_FS, type FsOps } from './fs-ops.js';
 import { MARKER, MARKER_NAME } from './policy.js';
 import { assertSameFolder, FolderChanged, folderIdentity, lstatOrUndefined, within, type FolderIdentity } from './paths.js';
@@ -157,21 +159,23 @@ function report(prepared: PreparedBuild, out: string, warnings: string[]): strin
 }
 
 /** Parse the command's arguments; throws a usage error for anything the spec refuses. */
-function parseBuildArgs(args: string[]): { folder: string; out: string; date: string } {
+function parseBuildArgs(args: string[]): { folder: string; out: string; date: string; skills: string[] } {
   const { values, positionals } = parseArgs({
     args,
     strict: true,
     allowPositionals: true,
-    options: { out: { type: 'string' }, date: { type: 'string' } },
+    options: { out: { type: 'string' }, date: { type: 'string' }, skills: { type: 'string', multiple: true } },
   });
   const [, folder, ...extra] = positionals;
   if (!folder) throw new Error('A catalogue folder is required');
   if (extra.length) throw new Error('Only one folder is accepted');
   if (values.out === undefined || values.out === '') throw new Error('--out is required');
+  const skills = values.skills ?? [];
+  if (skills.some(value => value === '')) throw new Error('--skills needs a folder');
   const date = values.date ?? localDate();
   if (!isDate(date)) throw new Error('Map date must be a real YYYY-MM-DD date');
   if (!windowFits(date, REPORT_DAYS)) throw new Error(`--date plus the ${REPORT_DAYS}-day report window must be no later than ${LAST_WINDOW_DATE}`);
-  return { folder, out: values.out, date };
+  return { folder, out: values.out, date, skills };
 }
 
 export async function buildCommand(args: string[], ops: FsOps = NODE_FS): Promise<void> {
@@ -180,8 +184,14 @@ export async function buildCommand(args: string[], ops: FsOps = NODE_FS): Promis
   const loaded = await loadFolder(resolve(options.folder));
   const catalogue = ops.realpath(resolve(options.folder));
   const out = resolve(options.out);
+  // The skill set (exit 2 for a folder that cannot be read), then the output folder against both inputs.
+  const validated = validateLoaded(loaded);
+  const skills = await skillsInUse(options.skills, loaded, validated, catalogue, ops);
   const checked = checkOutput(out, catalogue, ops);
   const { target } = checked;
+  refuseSkillsOutput(target, skills, ops);
+  // Exit-1 stops come after every exit-2 check and before anything is created.
+  skillsStops(skills);
 
   // From here on, every change first checks that the output folder is still the validated one.
   const identity = checked.identity ?? createOutput(target, ops);
@@ -191,7 +201,7 @@ export async function buildCommand(args: string[], ops: FsOps = NODE_FS): Promis
   ops.mkdir(staging);
   let prepared: PreparedBuild;
   try {
-    prepared = await prepareBuild(loaded, staging, options.date);
+    prepared = await prepareBuild(loaded, staging, options.date, packageVersion(), skills.set);
     publish(target, staging, identity, ops);
   } catch (error) {
     throw failedBuild(error, staging, identity, ops);
@@ -199,5 +209,5 @@ export async function buildCommand(args: string[], ops: FsOps = NODE_FS): Promis
 
   // Committed: the new sites are in place. Removing the replaced entries is best effort.
   const warnings = cleanUp(staging, identity, ops);
-  process.stderr.write(report(prepared, out, warnings));
+  process.stderr.write(report(prepared, out, [...skills.notes, ...warnings]));
 }

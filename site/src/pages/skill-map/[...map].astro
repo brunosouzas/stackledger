@@ -1,0 +1,103 @@
+---
+// Skills map page (skills-site, Skills map page): the skills metro map in both themes, with the
+// software map page's zoom, pan, line highlight and, when zones are drawn, the zone filter. The frame
+// is marked data-zone-mode="list" because playbook zones overlap (scripts/map.ts). The lines and their
+// stops follow the map as links: the map's text alternative.
+import Base from '../../layouts/Base.astro';
+import SkillsNav from '../../components/SkillsNav.astro';
+import Themed from '../../components/Themed.astro';
+import { href, rootFor, site } from '../../lib/site';
+
+export function getStaticPaths() {
+  return site.skills ? [{ params: { map: undefined }, props: { skills: site.skills } }] : [];
+}
+
+const { skills } = Astro.props;
+const root = rootFor(Astro.url.pathname);
+const { lines, zones, symbols } = skills.map;
+---
+
+<Base title="Skill map" current="skills">
+  <section class="container section">
+    <SkillsNav root={root} current="skill-map" />
+    <h1>Skill map</h1>
+    {
+      skills.map.empty ? (
+        <p class="lead">No skill lines yet. Add a Line to <code>stackledger-skills.yaml</code> at the top of a skills folder to draw one.</p>
+      ) : (
+        <p class="lead">Each line is a way of working through the skills; each station opens its page.</p>
+      )
+    }
+    <div class="map-tools" data-map-tools hidden>
+      <div class="map-zoom" role="group" aria-label="Zoom">
+        <button type="button" class="btn" data-zoom="in" aria-label="Zoom in">+</button>
+        <button type="button" class="btn" data-zoom="out" aria-label="Zoom out">−</button>
+        <button type="button" class="btn" data-zoom="reset">Reset</button>
+      </div>
+      {
+        zones.length > 0 && (
+          <label class="field map-zone">
+            Playbook
+            <select data-zone-filter>
+              <option value="">All playbooks</option>
+              {zones.map((zone: { name: string; title: string }) => <option value={zone.name}>{zone.title}</option>)}
+            </select>
+          </label>
+        )
+      }
+    </div>
+    <div class="map-frame" data-map data-zone-mode="list">
+      <Themed light={skills.map.light} dark={skills.map.dark} class="map-canvas" />
+    </div>
+    {
+      lines.length > 0 && (
+        <div class="map-lines" data-map-lines>
+          <h2 class="visually-hidden">Skill lines</h2>
+          <ul class="line-chips">
+            {lines.map((line: { ref: string; title: string; badgeSvg: string }) => (
+              <li>
+                <button type="button" class="btn" data-line={line.ref} aria-pressed="false">
+                  <span class="badge" set:html={line.badgeSvg} />
+                  {line.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )
+    }
+    <h2 class="visually-hidden">Symbols</h2>
+    <ul class="map-symbols">
+      {
+        symbols.map((symbol: { light: string; dark: string; label: string }) => (
+          <li>
+            <div class="map-symbol" aria-hidden="true">
+              <Themed light={symbol.light} dark={symbol.dark} class="symbol" />
+            </div>
+            {symbol.label}
+          </li>
+        ))
+      }
+    </ul>
+    {
+      lines.length > 0 && (
+        <section aria-labelledby="stops">
+          <h2 id="stops">Lines and their stops</h2>
+          {lines.map((line: { title: string; stops: { href: string; name: string; kind: string }[] }) => (
+            <>
+              <h3>{line.title}</h3>
+              <ol class="plain-list">
+                {line.stops.map((stop) => (
+                  <li><a href={href(root, stop.href)}>{stop.name}</a> <span class="muted">({stop.kind})</span></li>
+                ))}
+              </ol>
+            </>
+          ))}
+        </section>
+      )
+    }
+  </section>
+  <script>
+    import '../../scripts/map.ts';
+  </script>
+</Base>

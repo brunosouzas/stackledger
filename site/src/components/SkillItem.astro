@@ -1,0 +1,141 @@
+---
+// One skill, playbook or agent page (skills-site, Skill and playbook pages, Agent pages): kind,
+// description, the relation diagram (or the number of relations over the budget), the declared
+// relations as links (the diagram's text alternative), "Reached through", the skill lines that stop
+// at it, its rules and its source files (paths below the skills folder, never links).
+import Base from '../layouts/Base.astro';
+import Themed from './Themed.astro';
+import { href, rootFor } from '../lib/site';
+
+interface Props {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  page: any;
+}
+const { page } = Astro.props;
+const root = rootFor(Astro.url.pathname);
+const kinds: Record<string, string> = { skill: 'Skill', playbook: 'Playbook', agent: 'Agent' };
+---
+
+<Base title={page.name} current="skills">
+  <article class="container section">
+    <p class="kicker"><a href={href(root, 'skills/')}>Skills</a> · {kinds[page.kind]}</p>
+    <h1>{page.name}</h1>
+    <p class="lead">{page.description}</p>
+
+    <section aria-labelledby="relations">
+      <h2 id="relations">Relations</h2>
+      {
+        page.diagram ? (
+          <div data-diagram>
+            <Themed light={page.diagram.light} dark={page.diagram.dark} class="diagram diagram-wide" />
+          </div>
+        ) : (
+          <p>This item has {page.relationCount} relations, too many to draw; the lists below hold every one.</p>
+        )
+      }
+      <div class="columns">
+        <div>
+          <h3>Brought in by</h3>
+          {
+            page.broughtInBy.length === 0 ? (
+              <p>Nothing brings it in.</p>
+            ) : (
+              <ul class="plain-list" data-brought-in-by>
+                {page.broughtInBy.map((item: { href: string; name: string; relation: string }) => (
+                  <li><a href={href(root, item.href)}>{item.name}</a> <span class="muted">({item.relation})</span></li>
+                ))}
+              </ul>
+            )
+          }
+        </div>
+        <div>
+          <h3>Brings in</h3>
+          {
+            page.bringsIn.length === 0 ? (
+              <p>It brings nothing in.</p>
+            ) : (
+              <ul class="plain-list" data-brings-in>
+                {page.bringsIn.map((item: { href: string; name: string; relation: string }) => (
+                  <li><a href={href(root, item.href)}>{item.name}</a> <span class="muted">({item.relation})</span></li>
+                ))}
+              </ul>
+            )
+          }
+        </div>
+      </div>
+      <h3>Reached through</h3>
+      {
+        page.reachedThrough.length === 0 ? (
+          <p>Nothing else brings it in.</p>
+        ) : (
+          <ul class="plain-list" data-reached-through>
+            {page.reachedThrough.map((item: { href: string; name: string; kind: string }) => (
+              <li><a href={href(root, item.href)}>{item.name}</a> <span class="muted">({item.kind})</span></li>
+            ))}
+          </ul>
+        )
+      }
+    </section>
+
+    <section aria-labelledby="lines">
+      <h2 id="lines">Skill lines</h2>
+      {
+        page.lines.length === 0 ? (
+          <p>No skill line stops here.</p>
+        ) : (
+          <ul class="line-chips" data-lines>
+            {page.lines.map((line: { badgeSvg: string; title: string }) => (
+              <li><a class="btn" href={href(root, 'skill-map/')}><span class="badge" set:html={line.badgeSvg} />{line.title}</a></li>
+            ))}
+          </ul>
+        )
+      }
+    </section>
+
+    {
+      page.kind !== 'agent' && (
+        <section aria-labelledby="rules">
+          <h2 id="rules">Rules</h2>
+          {page.rules.length === 0 ? (
+            <p>No rules.</p>
+          ) : (
+            <div class="table-wrap">
+              <table data-rules>
+                <thead>
+                  <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Group</th>
+                    <th scope="col">Rule</th>
+                    <th scope="col">Why</th>
+                    <th scope="col">Check</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {page.rules.map((rule: { id: string; group: string; text: string; why: string; check: string }) => (
+                    <tr>
+                      <td><code>{rule.id}</code></td>
+                      <td>{rule.group}</td>
+                      <td>{rule.text}</td>
+                      <td>{rule.why}</td>
+                      <td>{rule.check}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )
+    }
+
+    <section aria-labelledby="files">
+      <h2 id="files">Source files</h2>
+      <ul class="plain-list" data-files>
+        {page.files.map((file: string) => <li><code>{file}</code></li>)}
+      </ul>
+    </section>
+  </article>
+  <script>
+    import '../scripts/diagram.ts';
+  </script>
+</Base>
