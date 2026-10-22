@@ -1,9 +1,11 @@
 /** `stackledger skills map` on the built CLI (skills-map-command spec: input, usage, the folders it
  * refuses, the owned entries, writing without following links, the identity re-check, determinism,
  * `--check` and exit codes). Run npm run build && npm test. Fictitious Northwind skill sets only, in
- * temporary folders; the Folder swapped and Kind folder appears as a link tests run
- * test/integration/skills-map-with-faults.mjs. Stray spelling on a case-insensitive disk runs only on
- * such a disk (the macOS default), and Page that cannot be read only when not run as root.
+ * temporary folders; the Folder swapped, Kind folder appears as a link and Page that cannot be read
+ * tests run test/integration/skills-map-with-faults.mjs. Stray spelling on a case-insensitive disk runs
+ * only on such a disk (the macOS default); the case-sensitive part of Hard-linked page only on a
+ * case-sensitive one (Linux; set TMPDIR to a case-sensitive volume to run it on macOS); the unreadable
+ * page of Page that cannot be read only when not run as root.
  */
 import { test, expect } from 'vitest';
 import { spawnSync } from 'node:child_process';
@@ -162,14 +164,21 @@ test('Output in a tool folder', () => {
 });
 
 test('Output holds a linked source file', () => {
-  const root = skillSet({ 'map/.stackledger-skills-map': MARKER[1], 'map/skills/input.md': skill('writer'), 'repo/skills/writer/SKILL.md': link('map/skills/input.md') });
-  const before = snapshot(root);
-  const result = run(['skills', 'map', 'repo', '--out', 'map'], root);
-  expect(result.status).toBe(2);
-  expect(result.stdout).toBe('');
-  expect(result.stderr).toContain('must not hold a skill folder or agent file of the set, or a file read from one');
-  expect(snapshot(root)).toEqual(before);
-  expect(readFileSync(join(root, 'map', 'skills', 'input.md'), 'utf8')).toBe(skill('writer'));
+  // A SKILL.md, then a .stackledgerignore, that links to a file the map folder owns (a stale page).
+  const sources = [
+    { 'map/skills/input.md': skill('writer'), 'repo/skills/writer/SKILL.md': link('map/skills/input.md') },
+    { 'map/skills/input.md': 'templates/\n', 'repo/.stackledgerignore': link('map/skills/input.md'), 'repo/skills/writer/SKILL.md': skill('writer') },
+  ];
+  for (const files of sources) {
+    const root = skillSet({ 'map/.stackledger-skills-map': MARKER[1], ...files });
+    const before = snapshot(root);
+    const result = run(['skills', 'map', 'repo', '--out', 'map'], root);
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toContain('must not hold a skill folder or agent file of the set, or a file the set was read from');
+    expect(snapshot(root)).toEqual(before);
+    expect(readFileSync(join(root, 'map', 'skills', 'input.md'), 'utf8')).toBe(files['map/skills/input.md']);
+  }
 });
 
 test('Output inside the given folder', () => {
@@ -297,6 +306,16 @@ test('Hard-linked page', () => {
   expect(result.status).toBe(0);
   expect(readFileSync(page, 'utf8')).toContain('Writes Northwind release notes.');
   expect(readFileSync(outside, 'utf8')).toBe(before);
+  // On a case-sensitive disk, skills/Writer.md hard-linked to the page is a separate entry, so it is
+  // removed and the page kept. A case-insensitive disk (the macOS default) cannot hold both names.
+  if (caseInsensitive) return;
+  linkSync(page, join(map, 'skills', 'Writer.md'));
+  const check = run(['skills', 'map', 'repo', '--out', 'map', '--check'], root);
+  expect(check.stderr).toBe('remove skills/Writer.md\nThe skills map in map is out of date: run stackledger skills map without --check\n');
+  expect(run(['skills', 'map', 'repo', '--out', 'map'], root).status).toBe(0);
+  expect(readdirSync(join(map, 'skills')).sort()).toEqual(['editor.md', 'writer.md']);
+  expect(readFileSync(page, 'utf8')).toContain('Writes Northwind release notes.');
+  expect(run(['skills', 'map', 'repo', '--out', 'map', '--check'], root).status).toBe(0);
 });
 
 test('Writes stay in the map folder', () => {
@@ -336,7 +355,34 @@ test('Folder swapped', () => {
   expect(vanished.status).toBe(1);
   expect(vanished.stderr).toBe(`stackledger skills map: the output folder ${moved} changed (.stackledger-skills-map vanished) during the run; stopped before changing anything more\n`);
   expect(snapshot(moved, true)).toEqual(mapBefore);
-});
+
+  // A swap later than the first check: right after the page was inspected, and right after its
+  // temporary file was created. The replacement holds a page at the same path, which a write through
+  // the swap would change.
+  for (const after of [{ op: 'lstat', path: 'skills/editor.md', nth: 2 }, { op: 'writeNew', nth: 1 }]) {
+    const base = realpathSync(skillSet({ ...repository(), 'other/skills/editor.md': 'Northwind other page.\n' }));
+    const out = writtenMap(base);
+    writeFileSync(join(base, 'repo/skills/editor/SKILL.md'), skill('editor', { description: 'Edits Northwind drafts.' }));
+    const replacement = snapshot(join(base, 'other'), true);
+    const swap = { to: join(base, 'other'), kind: 'folder', after: { ...after, ...(after.path ? { path: join(out, after.path) } : {}) } };
+    const late = withFaults({ out, swap }, ['skills', 'map', 'repo', '--out', 'map'], base);
+    expect(late.status).toBe(1);
+    expect(late.stderr).toBe(`stackledger skills map: the output folder ${out} was moved or replaced during the run; stopped before changing anything more\n`);
+    expect(snapshot(out, true)).toEqual(replacement);
+  }
+
+  // A folder that vanishes after the writes started is the folder changing too: the map folder just
+  // created (its identity read), and a kind folder listed for the cleanup.
+  // (lstat calls on a new map folder: resolving it, the check, the re-check before mkdir, the identity.)
+  const fresh = join(root, 'fresh');
+  const created = withFaults({ out: fresh, fail: [{ op: 'lstat', path: fresh, nth: 4, code: 'ENOENT' }] }, ['skills', 'map', 'repo', '--out', 'fresh'], root);
+  expect(created.status).toBe(1);
+  expect(created.stderr).toBe(`stackledger skills map: the output folder ${fresh} changed (. vanished) during the run; stopped before changing anything more\n`);
+  // (readdir calls on skills/: the comparison, then the cleanup.)
+  const cleanup = withFaults({ out: moved, fail: [{ op: 'readdir', path: join(moved, 'skills'), nth: 2, code: 'ENOENT' }] }, ['skills', 'map', 'repo', '--out', 'map-moved'], root);
+  expect(cleanup.status).toBe(1);
+  expect(cleanup.stderr).toBe(`stackledger skills map: the folder skills of the output folder ${join(moved, 'skills')} changed (skills/ vanished) during the run; stopped before changing anything more\n`);
+}, 60_000);
 
 test('Kind folder appears as a link', () => {
   const root = realpathSync(skillSet({ ...repository(), 'elsewhere/notes.md': 'Northwind elsewhere.\n' }));
@@ -352,19 +398,30 @@ test('Kind folder appears as a link', () => {
   expect(snapshot(join(root, 'elsewhere'), true)).toEqual(elsewhereBefore);
 });
 
-test.skipIf(asRoot)('Page that cannot be read', () => {
-  const root = skillSet(repository());
+test('Page that cannot be read', () => {
+  const root = realpathSync(skillSet(repository()));
   const map = writtenMap(root);
   const page = join(map, 'skills', 'writer.md');
-  chmodSync(page, 0o000);
   writeFileSync(join(root, 'repo/skills/writer/SKILL.md'), skill('writer', { description: 'Writes Northwind release notes.' }));
-  const check = run(['skills', 'map', 'repo', '--out', 'map', '--check'], root);
-  expect(check.status).toBe(1);
-  expect(check.stderr).toContain('update skills/writer.md\n');
-  const result = run(['skills', 'map', 'repo', '--out', 'map'], root);
-  expect(result).toEqual({ status: 0, stdout: '', stderr: 'Wrote the skills map in map: 0 created, 1 updated, 0 removed\n' });
-  expect(readFileSync(page, 'utf8')).toContain('Writes Northwind release notes.');
-});
+  // Root ignores file modes, so an unreadable page cannot be made there.
+  if (!asRoot) {
+    chmodSync(page, 0o000);
+    const check = run(['skills', 'map', 'repo', '--out', 'map', '--check'], root);
+    expect(check.status).toBe(1);
+    expect(check.stderr).toContain('update skills/writer.md\n');
+    const result = run(['skills', 'map', 'repo', '--out', 'map'], root);
+    expect(result).toEqual({ status: 0, stdout: '', stderr: 'Wrote the skills map in map: 0 created, 1 updated, 0 removed\n' });
+    expect(readFileSync(page, 'utf8')).toContain('Writes Northwind release notes.');
+    writeFileSync(join(root, 'repo/skills/writer/SKILL.md'), skill('writer', { description: 'Writes Northwind notes.' }));
+  }
+  // A read that fails once the writes started (the cleanup's listing of skills/, the identity of a
+  // folder just created) is exit 1 naming the path, never a usage error.
+  const cleanup = withFaults({ out: map, fail: [{ op: 'readdir', path: join(map, 'skills'), nth: 2 }] }, ['skills', 'map', 'repo', '--out', 'map'], root);
+  expect(cleanup).toMatchObject({ status: 1, stdout: '', stderr: 'stackledger skills map: cannot read skills/ in the output folder (EIO)\n' });
+  const fresh = join(root, 'fresh');
+  const created = withFaults({ out: fresh, fail: [{ op: 'lstat', path: fresh, nth: 4 }] }, ['skills', 'map', 'repo', '--out', 'fresh'], root);
+  expect(created).toMatchObject({ status: 1, stdout: '', stderr: 'stackledger skills map: cannot read . in the output folder (EIO)\n' });
+}, 60_000);
 
 test('Two runs', () => {
   const root = skillSet(repository());

@@ -48,9 +48,9 @@ const ID_PREFIX: Record<NodeKind, string> = { skill: 's_', playbook: 'p_', agent
 /** Control characters (C0, DEL, C1) and format characters (zero-width, bidirectional, tag characters…). */
 const UNSAFE_CHARACTERS = /[\p{Cc}\p{Cf}]/gu;
 const MARKDOWN_SPECIAL = /[\\`*_[\]<>|#&~]/g;
-/** A `-` or `+` that would start a list item, and the `.` of a number that would start an ordered one. */
+/** A `-` or `+` that would start a list item, and the `.` or `)` of a number that would start an ordered one. */
 const LEADING_MARKER = /^[-+]/;
-const LEADING_NUMBER = /^(\d+)\./;
+const LEADING_NUMBER = /^(\d+)([.)])/;
 /** The `:` that GitHub's autolinks need: after a scheme followed by `//`, or after `mailto` and `xmpp`. */
 const SCHEME_COLON = /(?<=[A-Za-z][A-Za-z0-9+.-]*):(?=\/\/)|(?<=\b(?:mailto|xmpp)):/gi;
 /** The `.` after `www`, which GitHub links without a scheme. */
@@ -95,7 +95,7 @@ const cut = (text: string, limit: number, keep: number) => {
 function escapeMarkdown(line: string): string {
   return line.replace(MARKDOWN_SPECIAL, '\\$&')
     .replace(LEADING_MARKER, '\\$&')
-    .replace(LEADING_NUMBER, '$1\\.')
+    .replace(LEADING_NUMBER, '$1\\$2')
     .replace(SCHEME_COLON, '\\:')
     .replace(WWW_DOT, '\\.')
     .replace(DOLLAR, () => DOLLAR_HTML);

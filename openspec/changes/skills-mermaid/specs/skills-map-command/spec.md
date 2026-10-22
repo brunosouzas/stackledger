@@ -233,7 +233,7 @@ A label SHALL show at most 64 code points of the name, then `…`. A diagram SHA
 - **THEN** `README.md` gives 1 error and the validate hint
 
 ### Requirement: Text from the files
-Descriptions SHALL have whitespace runs made one space, control and format characters (Unicode `Cf`, tag characters included) removed, and be cut to 1,023 code points and `…` when over 1,024. In Markdown, `\`, `` ` ``, `*`, `_`, `[`, `]`, `<`, `>`, `|`, `#`, `&`, `~`, a leading `-` or `+`, the `.` of a leading number, `:` after a URL scheme and `.` after `www` SHALL be escaped with `\`, and `$` written as `<span>$</span>`.
+Descriptions SHALL have whitespace runs made one space, control and format characters (Unicode `Cf`, tag characters included) removed, and be cut to 1,023 code points and `…` when over 1,024. In Markdown, `\`, `` ` ``, `*`, `_`, `[`, `]`, `<`, `>`, `|`, `#`, `&`, `~`, a leading `-` or `+`, the `.` or `)` of a leading number, `:` after a URL scheme and `.` after `www` SHALL be escaped with `\`, and `$` written as `<span>$</span>`.
 
 #### Scenario: Description with HTML
 - **WHEN** a description holds `<img src=x onerror=alert(1)>`

@@ -9,8 +9,9 @@
  * 1. Options (exit 2): `--out` is required; unknown options are refused by parseArgs.
  * 2. The skill set; a given folder that is missing, not a folder or cannot be listed is exit 2.
  * 3. The map folder, after resolving links (exit 2): not, and not holding, a given folder or the real
- *    path of any skill folder, agent file, SKILL.md or rules.md the walk found (rejected ones
- *    included: a tool folder's link can point into the map, and cleaning would delete the source);
+ *    path of any skill folder, agent file, SKILL.md, rules.md or `.stackledgerignore` the walk found
+ *    or read (rejected ones included: a link can point into the map, and cleaning would delete the
+ *    source);
  *    not inside such a skill folder; not the top-level `agents/` of a given folder nor inside it (its
  *    README.md would be read as an agent); no segment below the current folder, nor from a given
  *    folder that holds it down (the given folder's own name included, so `~/.claude` given is a tool
@@ -29,15 +30,22 @@
  *    written. CRLF is read as LF there, for checkouts made before `.gitattributes` existed. An entry
  *    that vanishes while it is compared is exit 1 (the folder changed); a page that cannot be read is
  *    an update, which replaces it by rename.
- * 6. Writes: before each change, the identity of the map folder and of each kind folder is compared
- *    with the one recorded in step 3; a difference, a folder that appeared where there was none (a
- *    link to elsewhere, say) or one that vanished is exit 1, naming the folder. Each file is written
- *    to a new temporary file in its own folder and renamed into place, so a symbolic or hard link at a
- *    page path is replaced, never written through, and a page is never half-written; a page written
- *    over a stray spelling is renamed to its own spelling. Stale entries below a kind folder are
- *    removed without following links, after the writes, and one that is the page just written under
- *    another spelling is kept. The marker goes first, so an interrupted first run leaves a folder the
- *    next run accepts; there is no atomic swap of the whole folder (run the command again).
+ * 6. Writes: immediately before each filesystem change (mkdir, rm, creating a temporary file, rename,
+ *    the rename that fixes a spelling, removing a temporary file), the identity of the map folder and
+ *    of each kind folder is compared with the one recorded in step 3; a difference, a folder that
+ *    appeared where there was none (a link to elsewhere, say) or one that vanished is exit 1, naming
+ *    the folder. A swap between that check and the change itself remains possible: Node has no
+ *    directory handles (openat), so the folder must not be changed by another process during a run.
+ *    Each file is written to a new temporary file in its own folder and renamed into place, so a
+ *    symbolic or hard link at a page path is replaced, never written through, and a page is never
+ *    half-written; a page written over a stray spelling is renamed to its own spelling. Stale entries
+ *    below a kind folder are removed without following links, after the writes. Whether a stale name
+ *    is a separate entry is decided from the exact listing: listed next to the page's own name, it is
+ *    one (a hard link on a case-sensitive disk) and is removed; not listed, or listed while the page's
+ *    own name is not, it is only another spelling of the page (a case-insensitive disk) and is kept.
+ *    A read of the map folder after the writes start that fails is exit 1 too. The marker goes first,
+ *    so an interrupted first run leaves a folder the next run accepts; there is no atomic swap of the
+ *    whole folder (run the command again).
  *
  * stdout stays empty. stderr gives the pages created, updated and removed and, with problems, their
  * counts and the `skills validate` hint. A write failure is exit 1 naming the file. No network.
@@ -164,7 +172,7 @@ function checkOutput(out: string, given: string[], set: SkillSet, current: strin
     if (segments) toolFolder([basename(folder), ...segments].filter(Boolean));
   }
   for (const found of set.found) {
-    if (within(found, target)) throw new Error(`Output folder must not hold a skill folder or agent file of the set, or a file read from one: ${found}`);
+    if (within(found, target)) throw new Error(`Output folder must not hold a skill folder or agent file of the set, or a file the set was read from: ${found}`);
     if (within(target, found)) throw new Error(`Output folder must not be inside a skill folder of the set: ${found}`);
   }
   toolFolder(segmentsBelow(current, target) ?? []);
@@ -308,10 +316,21 @@ function assertSame(identities: Identity[], ops: MapFsOps): void {
     if (!now?.isDirectory() || now.dev !== identity.dev || now.ino !== identity.ino) throw folderChanged(identity.label, identity.path, 'was moved or replaced');
   }
 }
-/** Record that the folder at `path` now exists, as created by this run. */
-function recordCreated(identities: Identity[], path: string, ops: MapFsOps): void {
-  const stats = ops.lstat(path);
+
+/** A read of the map folder while it is written: an entry that vanished means the folder changed
+ * (exit 1 naming `folder`); any other failure is exit 1 naming the path. Never a usage error. */
+function reading<T>(folder: Identity, path: string, read: () => T): T {
+  try { return read(); } catch (error) {
+    if (error instanceof InternalError) throw error;
+    if (isMissing(error)) throw folderChanged(folder.label, folder.path, `changed (${path} vanished)`);
+    throw new InternalError(`${COMMAND}: cannot read ${path} in the output folder (${errorCode(error)})`);
+  }
+}
+
+/** Record that the folder at `path` now exists, as created by this run (`display`: its name in messages). */
+function recordCreated(identities: Identity[], path: string, display: string, ops: MapFsOps): void {
   const identity = identities.find(known => known.path === path)!;
+  const stats = reading(identity, display, () => ops.lstat(path));
   identity.dev = stats.dev; identity.ino = stats.ino;
 }
 
@@ -327,29 +346,36 @@ function attempt(path: string, verb: string, action: () => void): void {
 const sameEntry = (left: Stats, right: Stats) => left.dev === right.dev && left.ino === right.ino;
 
 /** After a page was renamed into place over another spelling of its name, give the entry its own
- * spelling (a case-insensitive disk keeps the old one on rename). */
-function respell(change: Change, ops: MapFsOps): void {
+ * spelling (a case-insensitive disk keeps the old one on rename). `guard` runs right before the rename. */
+function respell(change: Change, guard: () => void, ops: MapFsOps): void {
   const folder = dirname(change.absolute), name = basename(change.absolute);
   const names = ops.readdir(folder);
   if (names.includes(name)) return;
   const written = ops.lstat(change.absolute);
   const alias = names.find(other => { const stats = lstatOrUndefined(join(folder, other), ops); return stats !== undefined && sameEntry(stats, written); });
-  if (alias !== undefined) ops.rename(join(folder, alias), change.absolute);
+  if (alias === undefined) return;
+  guard();
+  ops.rename(join(folder, alias), change.absolute);
 }
 
-/** True when a stale entry is, under another spelling, a page this run wants: removing it would remove
- * the page. One directory entry for the inode (or a name equal ignoring case) tells it from a hard link.
- * A stale entry that vanished means the folder changed (exit 1). */
+/** True when a stale entry is only another spelling of a page this run wants (a case-insensitive
+ * disk), so removing it would remove the page. Decided from the exact listing of its folder: a stale
+ * name no longer listed is only an alias now; a stale name listed next to the page's own name is a
+ * separate entry (a hard link on a case-sensitive disk) and is removed. A stale entry that vanished
+ * means the folder changed (exit 1). */
 function isWantedPage(change: Change, wanted: Set<string>, folder: Identity, ops: MapFsOps): boolean {
   const stale = lstatOrUndefined(change.absolute, ops);
   if (!stale) throw folderChanged(folder.label, folder.path, `changed (${change.path} vanished)`);
   if (!stale.isFile()) return false;
+  const names = new Set(reading(folder, `${basename(folder.path)}/`, () => ops.readdir(folder.path)));
+  if (!names.has(basename(change.absolute))) return true;
   const slash = change.path.lastIndexOf('/');
-  const kind = change.path.slice(0, slash + 1), name = change.path.slice(slash + 1).toLowerCase();
+  const kind = change.path.slice(0, slash + 1);
   return [...wanted].some(path => {
-    if (!path.startsWith(kind) || path.slice(kind.length).includes('/')) return false;
-    const page = lstatOrUndefined(absoluteIn(dirname(change.absolute), path.slice(kind.length)), ops);
-    return page !== undefined && sameEntry(page, stale) && (stale.nlink === 1 || path.slice(kind.length).toLowerCase() === name);
+    const name = path.slice(kind.length);
+    if (!path.startsWith(kind) || name.includes('/') || names.has(name)) return false;
+    const page = lstatOrUndefined(join(folder.path, name), ops);
+    return page !== undefined && sameEntry(page, stale);
   });
 }
 
@@ -357,56 +383,61 @@ function isWantedPage(change: Change, wanted: Set<string>, folder: Identity, ops
 function apply(checked: CheckedOutput, changes: Change[], wanted: Set<string>, ops: MapFsOps): void {
   const { target } = checked;
   const identities = checked.identities.map(identity => ({ ...identity }));
-  assertSame(identities, ops);
+  /** Runs right before every change, so a swap after any earlier read stops the run. */
+  const guard = () => assertSame(identities, ops);
+  const output = identities.find(identity => identity.path === target)!;
   if (!checked.exists) {
     // The parents may be created; the map folder itself must be new (mkdir fails if anything appeared there).
     attempt('.', 'create', () => {
-      if (!lstatOrUndefined(dirname(target), ops)) ops.mkdir(dirname(target), { recursive: true });
+      if (!lstatOrUndefined(dirname(target), ops)) { guard(); ops.mkdir(dirname(target), { recursive: true }); }
+      guard();
       ops.mkdir(target);
     });
-    recordCreated(identities, target, ops);
+    recordCreated(identities, target, '.', ops);
   }
   // The marker first: an interrupted first run then leaves a folder the next run accepts.
   const ordered = [...changes.filter(change => change.path === MARKER_NAME), ...changes.filter(change => change.path !== MARKER_NAME && change.action !== 'remove'),
     ...changes.filter(change => change.action === 'remove')];
   for (const change of ordered) {
-    assertSame(identities, ops);
-    if (change.action === 'remove') {
-      const folder = identities.find(identity => identity.path === dirname(change.absolute))!;
-      attempt(change.path, 'remove', () => { if (!isWantedPage(change, wanted, folder, ops)) ops.rm(change.absolute); });
-      continue;
-    }
+    guard();
     const folder = dirname(change.absolute);
     const parent = identities.find(identity => identity.path === folder)!;
+    if (change.action === 'remove') {
+      attempt(change.path, 'remove', () => { if (!isWantedPage(change, wanted, parent, ops)) { guard(); ops.rm(change.absolute); } });
+      continue;
+    }
     if (parent.dev === undefined) {
       // Recorded as absent and checked just above: create it (mkdir fails if anything appeared since).
       attempt(relative(target, folder), 'create', () => ops.mkdir(folder));
-      recordCreated(identities, folder, ops);
+      recordCreated(identities, folder, `${basename(folder)}/`, ops);
     }
     attempt(change.path, 'write', () => {
       const existing = lstatOrUndefined(change.absolute, ops);
       // rename() cannot replace a folder: a folder at a page path is removed first (without following links).
-      if (existing?.isDirectory()) ops.rm(change.absolute);
+      if (existing?.isDirectory()) { guard(); ops.rm(change.absolute); }
       const temporary = join(folder, `${TEMPORARY_PREFIX}${randomBytes(8).toString('hex')}.tmp`);
       try {
+        guard();
         ops.writeNew(temporary, change.text!);
+        guard();
         ops.rename(temporary, change.absolute);
       } catch (error) {
-        try { ops.rm(temporary); } catch { /* The write failure below is what the person needs to see. */ }
+        // Removed only from the folder it was written in; in a changed folder it stays, an owned leftover.
+        try { guard(); ops.rm(temporary); } catch { /* The failure below is what the person needs to see. */ }
         throw error;
       }
-      if (change.respell) respell(change, ops);
+      if (change.respell) respell(change, guard, ops);
     });
   }
   // A kind folder left empty is removed, as Git would not keep it either.
   for (const kind of KIND_NAMES) {
     const folder = join(target, kind);
-    const stats = lstatOrUndefined(folder, ops);
-    if (!stats?.isDirectory() || ops.readdir(folder).length) continue;
-    assertSame(identities, ops);
+    const identity = identities.find(known => known.path === folder)!;
+    const stats = reading(output, `${kind}/`, () => lstatOrUndefined(folder, ops));
+    if (!stats?.isDirectory() || reading(identity, `${kind}/`, () => ops.readdir(folder)).length) continue;
+    guard();
     attempt(`${kind}/`, 'remove', () => ops.rm(folder));
     // The removed folder is now recorded as absent.
-    const identity = identities.find(known => known.path === folder)!;
     delete identity.dev; delete identity.ino;
   }
 }

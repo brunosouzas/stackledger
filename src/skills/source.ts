@@ -17,7 +17,8 @@
  * Each item also keeps what `stackledger skills map` (src/skills/map-command.ts) needs and validate
  * does not print: its description, its given folder and its source files, and the set records the real
  * paths of every skill folder, agent file, SKILL.md and rules.md the walk found, rejected ones
- * included, so the map can refuse an output folder that would hold an input. These fields change neither the output nor the set.
+ * included, and of every `.stackledgerignore` it read, so the map can refuse an output folder that
+ * would hold an input. These fields change neither the output nor the set.
  *
  * What can go wrong: a given folder that is missing, not a folder or cannot be listed throws
  * SkillsFolderError (src/skills/walk.ts); every other failure is a problem on its path.
@@ -78,7 +79,7 @@ export interface SkillSet {
   ignored: string[];
   summary: SkillsSummary;
   /** Real paths of every skill folder and agent file the walk found, and of the SKILL.md and rules.md
-   * in each skill folder, rejected ones included, each once, in walk order. */
+   * in each skill folder, rejected ones included, then of every ignore file read, each once. */
   found: string[];
 }
 
@@ -235,6 +236,8 @@ export async function readSkillSet(folders: string[], options: WalkOptions = {})
     foundPaths.add(await realOrAbsolute(join(item.absolute, SKILL_FILE)));
     if (item.hasRules) foundPaths.add(await realOrAbsolute(join(item.absolute, RULES_FILE)));
   }
+  // An ignore file can be a link into the map folder too; cleaning would delete its target.
+  for (const file of walked.ignoreFiles) foundPaths.add(await realOrAbsolute(file));
   const count = (severity: Problem['severity']) => problems.filter(problem => problem.severity === severity).length;
   return { skills, agents, problems, ignored: [...walked.ignored].sort(compareText), summary: {
     skills: skills.filter(skill => skill.kind === 'skill').length,

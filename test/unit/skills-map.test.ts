@@ -4,7 +4,8 @@
  * Each test reads a fictitious Northwind skill set from a temporary folder with readSkillSet, then
  * calls the pure graph and page functions (src/skills/graph.ts, src/skills/mermaid.ts) with the real
  * paths the command would compute; nothing is written. The fixtures in test/skills-map-fixtures.ts are
- * also rendered by Mermaid in the browser test (test/browser/skills-map.spec.ts). Colliding page names
+ * also rendered by Mermaid in the browser test (test/browser/skills-map.spec.ts); escaped descriptions are
+ * rendered with marked (a dependency of the pinned mermaid). Colliding page names
  * also runs the command in process, with filesystem calls that record any write.
  */
 import { test, expect } from 'vitest';
@@ -16,6 +17,7 @@ import { buildGraph } from '../../src/skills/graph.js';
 import { NODE_MAP_FS, skillsMapCommand, type MapFsOps } from '../../src/skills/map-command.js';
 import { pagePath, renderMap } from '../../src/skills/mermaid.js';
 import { type ListFolder } from '../../src/skills/walk.js';
+import { marked } from 'marked';
 import { agent, playbook, rules, skill, skillSet } from '../skills-helpers.js';
 import { HOSTILE_NAME, MERMAID_FIXTURES } from '../skills-map-fixtures.js';
 
@@ -257,12 +259,21 @@ test('Description that would link or render math', async () => {
     // Format characters (a word joiner, tag characters) are removed; a leading number or `+` is not a list.
     'skills/editor/SKILL.md': skill('editor', { description: '1. Edits\u2060 drafts\u{E0041}\u{E007F}.' }),
     'skills/linter/SKILL.md': skill('linter', { description: '+ Lints mailto:team@northwind.example' }),
+    'skills/tester/SKILL.md': skill('tester', { description: '2) Tests drafts.' }),
   }));
   const writer = page(pages, 'skills/writer.md');
   expect(writer.split('\n')).toContain('\\- see https\\://evil.example and www\\.evil.example for <span>$</span>\\\\color{red}{FAKE}<span>$</span>');
   for (const text of pages.values()) expect(text.replaceAll('<span>$</span>', '')).not.toContain('$');
   expect(page(pages, 'skills/editor.md').split('\n')).toContain('1\\. Edits drafts.');
   expect(page(pages, 'skills/linter.md').split('\n')).toContain('\\+ Lints mailto\\:team@northwind.example');
+  expect(page(pages, 'skills/tester.md').split('\n')).toContain('2\\) Tests drafts.');
+  // Rendered by a CommonMark renderer (marked, which pinned mermaid depends on), no escaped line
+  // starts a list, while the raw `1.` and `2)` do.
+  for (const raw of ['1. Edits drafts.', '2) Tests drafts.']) expect(marked.parse(raw, { async: false })).toContain('<ol');
+  for (const path of ['skills/editor.md', 'skills/tester.md', 'skills/linter.md', 'skills/writer.md']) {
+    const html = marked.parse(page(pages, path), { async: false });
+    expect(html).not.toMatch(/<ol|<a href="https?:/);
+  }
 });
 
 test('Description at the limit', async () => {

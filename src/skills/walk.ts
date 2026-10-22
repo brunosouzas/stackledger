@@ -77,6 +77,8 @@ export interface Walked {
   /** Per given folder, in argument order: its display name, how many items were found in it, counting
    * those already found through an earlier folder, and how many entries its ignore file skipped. */
   folders: { path: string; found: number; ignored: number }[];
+  /** Absolute paths of the `.stackledgerignore` files read (a link included), in argument order. */
+  ignoreFiles: string[];
 }
 export interface WalkOptions {
   cwd?: string;
@@ -107,7 +109,7 @@ function hidden(name: string): boolean {
 export async function walkSkillFolders(folders: string[], options: WalkOptions = {}): Promise<Walked> {
   const cwd = options.cwd ?? process.cwd();
   const list = options.list ?? listFolder;
-  const walked: Walked = { items: [], problems: [], ignored: [], folders: [] };
+  const walked: Walked = { items: [], problems: [], ignored: [], folders: [], ignoreFiles: [] };
   const seenItems = new Set<string>();
   const seenProblems = new Set<string>();
   const seenIgnored = new Set<string>();
@@ -236,6 +238,7 @@ export async function walkSkillFolders(folders: string[], options: WalkOptions =
     if (await holdsSkill(absolute, names)) await addSkill(absolute, prefix, basename(absolute), names, '');
     else {
       if (names.includes(IGNORE_FILE)) {
+        walked.ignoreFiles.push(join(absolute, IGNORE_FILE));
         const file = await readIgnoreFile(absolute, below(prefix, IGNORE_FILE), createMatcher);
         // A file with a problem gives no patterns: the folder is read whole, and the problem shows why.
         if (file.status === 'read') matcher = file.matcher;
