@@ -21,7 +21,7 @@ Each site SHALL have a map page at `/`, a software list at `/software/`, one pag
 - **THEN** the `full` site has `/reports/` and `/renewals.ics` and the `staff` site has neither
 
 ### Requirement: Layout
-Every page SHALL share one layout: a header with the site title (from `spec.site.title`, default `Software map`) and links to Map, Software and Journeys, plus Reports in the `full` site; a footer with the view name and the stackledger version; and a theme switch that follows `prefers-color-scheme` until the reader chooses light or dark, then remembers the choice in the browser.
+Every page SHALL share one layout: a header with the site title (from `spec.site.title`, default `Software map`) and the divisions Software (`/`) and, with a skill set, Skills (`/skills/`); under it the division's sub-navigation, for Software: Map, List (`/software/`), Journeys, and Reports in the `full` site; a footer with the view name and stackledger version; and a theme switch following `prefers-color-scheme` until the reader picks light or dark, then remembering that choice.
 
 #### Scenario: Theme remembered
 - **WHEN** the reader chooses dark on one page and opens another page
@@ -36,8 +36,16 @@ Every page SHALL share one layout: a header with the site title (from `spec.site
 - **THEN** its footer says `staff view`
 
 #### Scenario: Reports link
-- **WHEN** any page is opened
-- **THEN** its header links Reports in the `full` site and not in the `staff` site
+- **WHEN** any Software page is opened
+- **THEN** its sub-navigation links Reports in the `full` site and not in the `staff` site
+
+#### Scenario: Software sub-navigation
+- **WHEN** the reader opens `/journeys/`, then the page of the journey `ship`
+- **THEN** the header marks Software, the sub-navigation links Map, List and Journeys, and only on `/journeys/` is Journeys marked with `aria-current="page"`
+
+#### Scenario: Skills link
+- **WHEN** both sites are built with a skill set, and again without one
+- **THEN** every page's header links Skills (`/skills/`) in both sites of the first build and in neither site of the second
 
 ### Requirement: Look and theme
 The default look SHALL follow brunosouzas.com: its colour tokens for light and dark, the Heebo and Signika fonts for pages and Lato for the map and diagrams, all shipped with the package, and its type scale. `spec.site.colors` SHALL override the matching light-theme tokens only. When the `Settings` in use has an error, the site uses the default title and colours. All colours and fonts come from one stylesheet of variables.
@@ -71,6 +79,10 @@ Choosing a line in the legend SHALL dim every other line's strokes and badges an
 #### Scenario: Highlight a line
 - **WHEN** the reader chooses line `ship` in the legend
 - **THEN** every other line is dimmed, and choosing `ship` again restores them
+
+#### Scenario: Zone with a space in its name
+- **WHEN** a component is in the zone `Team tools` and the reader chooses `Team tools` in the zone filter
+- **THEN** that component's station stays lit and stations in other zones are dimmed
 
 ### Requirement: Software list
 The software list SHALL be a table of every served component and licence with its title or name, kind, type, lifecycle or status, owner and zone, sorted by reference, each row linking to its page. A search box SHALL hide rows that do not contain the typed text, ignoring case, in their shown cells; filters SHALL restrict by kind, zone, lifecycle and owner. Filtering works on the table rows themselves.
