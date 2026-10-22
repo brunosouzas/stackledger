@@ -15,6 +15,20 @@ The first version (v1) is split into OpenSpec changes, delivered in this order. 
 | 7 | `catalogue-deployment` | Publishable npm package, owner-approved release workflow with provenance and SBOM, a catalogue repository pipeline template, and protected hosting recipes ([ADR 6](adr/0006-authentication-at-an-identity-aware-proxy.md)) | Delivered, 0.1.0 not yet released ([#9](https://github.com/brunosouzas/stackledger/pull/9)) |
 | 8 | `map-theme-ink` | The map and the page diagrams in the illustrated style of brunosouzas.com: ink outline `#0A1033`, pipe lines with an ink casing, hard offset shadows (indigo with a light rim on dark), the tinted panel and navy backgrounds, and the Lato font shipped with the site; it replaces the look of the `light` and `dark` themes | Delivered ([#10](https://github.com/brunosouzas/stackledger/pull/10)) |
 
+## v2: agent skills
+
+The skills, agents, playbooks and rules that AI coding agents use, as a second ledger next to the software ([ADR 10](adr/0010-agent-skills-are-a-second-ledger-read-from-their-folders.md)). Every change works for a person with no skills repository (local only), a person with one, and a team on any Git host and CI.
+
+| # | Change | Delivers | Status |
+|---|---|---|---|
+| 1 | `skills-source` | Reading skill folders (the [Agent Skills](https://agentskills.io/specification) format), agent files, playbooks and rules files from one or more folders, with relations declared in each skill; `stackledger skills validate` for a person or a pipeline | Planned |
+| 2 | `skills-mermaid` | `stackledger skills map`: one Markdown page per skill with a Mermaid diagram of who brings it in and what it names, written into the skills repository for offline reading and pull-request diffs | Planned |
+| 3 | `skills-site` | The Skills section of `stackledger build`: the skills map (`Line` and `MapLayout` with skill stops), one page per skill with its diagram, the rules index, agents and playbooks; the map engine's title, legend and station symbols become data | Planned |
+| 4 | `skills-drift` | `stackledger skills drift`, on the person's machine only: what each tool (Claude Code, Codex, Copilot, Cursor, Hermes…) has installed compared with the source, or with each other when there is no source | Planned |
+| 5 | `skills-software-links` | Skills that declare the software they need: links both ways between skill and software pages, and what breaks when software is removed | Planned |
+| 6 | `local-preview` | `stackledger preview`, serving a build on `127.0.0.1` only, and a "use it locally" guide | Planned |
+| 7 | `pipeline-recipes` | The three steps any CI runs (fetch the repositories, `validate`, `build`) and examples for GitLab CI, Jenkins and Azure Pipelines next to the GitHub Actions template | Planned |
+
 ## Later
 
 - `map-backgrounds`: a city backdrop behind the map (`neutral`, `london`, `sao-paulo` to start), chosen in `Settings` or with `--background`. Drawn from OpenStreetMap data (rivers, coastline, parks), simplified and attributed, never from official metro maps, which are copyrighted. The map engine already draws an empty background layer for it.
