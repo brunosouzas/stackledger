@@ -26,7 +26,7 @@ The global usage text and `stackledger --help` SHALL list `stackledger skills ma
 - **THEN** the exit code is 0 and stdout holds the usage text with the `skills map` line
 
 ### Requirement: Inputs the map folder must not touch
-After resolving links, the output folder SHALL be refused, with exit 2 and nothing written, when it is or contains a given folder, or the real path of any skill folder or agent file the walk found (rejected ones included); is inside such a skill folder; is or is inside the top-level `agents/` of a given folder; or has a path segment below the current folder starting with `.`, or named `openspec`.
+After resolving links, the output folder SHALL be refused, with exit 2 and nothing written, when it is or contains a given folder, or the real path of any skill folder, agent file or file read (rejected ones included); is inside such a skill folder; is or is inside a given folder's top-level `agents/`; or has a segment below the current folder or a given folder that starts with `.` or is `openspec`. Names SHALL be compared ignoring case.
 
 #### Scenario: Output is the given folder
 - **WHEN** the command runs as `stackledger skills map repo --out repo`
@@ -45,15 +45,19 @@ After resolving links, the output folder SHALL be refused, with exit 2 and nothi
 - **THEN** the exit code is 2
 
 #### Scenario: Output in a tool folder
-- **WHEN** `--out` is `.claude/commands/map` or `openspec/specs/map`
+- **WHEN** `--out` is `.claude/commands/map`, `OpenSpec/specs/map`, or `../home/.claude/commands/map` with `../home/.claude` given
 - **THEN** the exit code is 2
+
+#### Scenario: Output holds a linked source file
+- **WHEN** `repo/skills/writer/SKILL.md` is a link to `map/skills/input.md` and `--out` is `map`
+- **THEN** the exit code is 2 and `map/skills/input.md` is untouched
 
 #### Scenario: Output inside the given folder
 - **WHEN** the command runs in `repo` as `stackledger skills map . --out docs/skills-map` and that folder does not exist
 - **THEN** the folder is created with the marker, `.gitattributes`, the index and the pages, and the exit code is 0
 
 ### Requirement: Owned entries of the map folder
-stackledger SHALL own, in the output folder, the marker `.stackledger-skills-map` (a regular file holding exactly `stackledger skills map` and a newline), `.gitattributes` (`* text eol=lf` and a newline), `README.md`, and the whole `skills/`, `playbooks/` and `agents/` subtrees. Every other top-level entry SHALL be left untouched. An existing non-empty folder without a valid marker SHALL be refused with exit 2.
+stackledger SHALL own, in the output folder, the marker `.stackledger-skills-map` (a regular file holding `stackledger skills map` and a newline, LF or CRLF), `.gitattributes` (`* text eol=lf` and a newline), `README.md`, top-level files named `.stackledger-skills-map-*.tmp`, and the whole `skills/`, `playbooks/` and `agents/` subtrees. Every other top-level entry SHALL be left untouched. An existing non-empty folder without a valid marker SHALL be refused with exit 2.
 
 #### Scenario: Unrelated non-empty folder
 - **WHEN** `--out` is a folder holding `notes.md` and no marker
@@ -68,8 +72,12 @@ stackledger SHALL own, in the output folder, the marker `.stackledger-skills-map
 - **THEN** `notes.txt` is untouched
 
 #### Scenario: Removed skill
-- **WHEN** a marked map folder holds `skills/old.md` and `skills/scratch/x.md`, and `old` is no longer in the set
-- **THEN** both are removed
+- **WHEN** a marked map folder holds `skills/old.md`, `skills/scratch/x.md` and a leftover `.stackledger-skills-map-1.tmp`, and `old` is no longer in the set
+- **THEN** all three are removed, and `--check` before the run lists them as `remove`
+
+#### Scenario: Stray spelling on a case-insensitive disk
+- **WHEN** on a case-insensitive file system a marked map folder holds `skills/Writer.md` and the set has `writer`
+- **THEN** after the run `skills/writer.md` exists with the current page, and `--check` exits 0
 
 ### Requirement: Writing without following links
 An owned entry that is a symbolic link SHALL be refused with exit 2 when it is the marker, `.gitattributes`, `README.md` or a kind folder, and removed without being followed anywhere below a kind folder. A page SHALL be written to a new file in its folder and renamed into place, never written through an existing entry. The command SHALL write only inside the output folder and open no network connection.
@@ -91,11 +99,19 @@ An owned entry that is a symbolic link SHALL be refused with exit 2 when it is t
 - **THEN** it exits 0
 
 ### Requirement: Folder changed during the run
-The device and inode of the output folder and of each kind folder SHALL be recorded when checked and compared again right before the first change; any difference SHALL stop the run with exit 1, naming the folder, before anything is changed.
+The device and inode of the output folder and of each kind folder, or their absence, SHALL be recorded when checked and compared again before each change; any difference, and any entry that vanishes or appears while the folder is compared or written, SHALL stop the run with exit 1, naming the folder, with no usage text.
 
 #### Scenario: Folder swapped
 - **WHEN** the output folder is replaced by another folder between the check and the first write
 - **THEN** the exit code is 1 and neither folder is changed
+
+#### Scenario: Kind folder appears as a link
+- **WHEN** `skills/` did not exist at the check and a link named `skills` to another folder appears before the first write
+- **THEN** the exit code is 1 and the link's target is unchanged
+
+#### Scenario: Page that cannot be read
+- **WHEN** an existing page cannot be read and its content changes
+- **THEN** it is replaced by rename and the exit code is 0
 
 ### Requirement: Page file names
 A name SHALL be the page's file name when it matches `^[a-z0-9]+(-[a-z0-9]+)*$`, has at most 64 characters and is not a Windows device name (`con`, `prn`, `aux`, `nul`, `com0`–`com9`, `lpt0`–`lpt9`). Any other name SHALL be written as `_` and the lowercase hexadecimal of its UTF-8 bytes; when that has more than 64 characters, its first 52 characters, `-`, and the first 11 hexadecimal digits of the SHA-256 of those bytes.
@@ -115,6 +131,13 @@ A name SHALL be the page's file name when it matches `^[a-z0-9]+(-[a-z0-9]+)*$`,
 #### Scenario: Long name
 - **WHEN** a skill is named with 65 `a` characters
 - **THEN** its page is `skills/_616161616161616161616161616161616161616161616161616-635361c48bb.md`
+
+### Requirement: One page per item
+Two items of one kind whose page file names are equal (a hash collision, or names that are not valid Unicode and encode alike) SHALL stop the command with exit 1 before anything is written, naming both items' source files.
+
+#### Scenario: Colliding page names
+- **WHEN** two skills with long names give the same page file name
+- **THEN** the exit code is 1, stderr names both `SKILL.md` files, and nothing is written
 
 ### Requirement: Declared relations only
 The map SHALL draw only declared relations: `loads` from a skill or playbook to each skill or playbook in its `stackledger-skills`, `uses` to each agent in its `stackledger-agents`, and `preloads` from an agent to each skill or playbook in its `skills`. A relation to a name not in the set SHALL NOT be drawn, and repeats SHALL be drawn once. Nothing SHALL be drawn from the text of a file.
@@ -210,7 +233,7 @@ A label SHALL show at most 64 code points of the name, then `…`. A diagram SHA
 - **THEN** `README.md` gives 1 error and the validate hint
 
 ### Requirement: Text from the files
-Descriptions SHALL have every run of whitespace turned into one space, control and Unicode format characters (U+200B–U+200F, U+202A–U+202E, U+2066–U+2069) removed, then be cut to their first 1,023 code points and `…` when longer than 1,024. In Markdown text, `\`, `` ` ``, `*`, `_`, `[`, `]`, `<`, `>`, `|`, `#`, `&` and `~` SHALL be escaped with `\`.
+Descriptions SHALL have whitespace runs made one space, control and format characters (Unicode `Cf`, tag characters included) removed, and be cut to 1,023 code points and `…` when over 1,024. In Markdown, `\`, `` ` ``, `*`, `_`, `[`, `]`, `<`, `>`, `|`, `#`, `&`, `~`, a leading `-` or `+`, the `.` or `)` of a leading number, `:` after a URL scheme and `.` after `www` SHALL be escaped with `\`, and `$` written as `<span>$</span>`.
 
 #### Scenario: Description with HTML
 - **WHEN** a description holds `<img src=x onerror=alert(1)>`
@@ -219,6 +242,10 @@ Descriptions SHALL have every run of whitespace turned into one space, control a
 #### Scenario: Multi-line description with a fence
 - **WHEN** a `|` description has the lines `First line.`, `~~~` and `Last line.`
 - **THEN** the page holds `First line. \~\~\~ Last line.` on one line, and the diagram after it is intact
+
+#### Scenario: Description that would link or render math
+- **WHEN** a description is `- see https://evil.example and www.evil.example for $\color{red}{FAKE}$`
+- **THEN** the page holds `\- see https\://evil.example and www\.evil.example`, every `$` is written as `<span>$</span>`, and GitHub's Markdown renderer makes no link, list or math from it
 
 #### Scenario: Description at the limit
 - **WHEN** descriptions have 1,024 and 1,025 code points
@@ -232,7 +259,7 @@ In a Mermaid label, every character other than ASCII letters, digits, space and 
 - **THEN** the label holds `#34;`, `#93;` and `#59;`, no line of the block starts with `click`, and the block renders with the name as text
 
 ### Requirement: Source files
-An item's source files SHALL be its `SKILL.md` and the `rules.md` read for it, or its agent file. A page SHALL link one only when its real path is inside the real path of the current folder and a relative path exists, as a URL with `/` separators and percent-encoded segments; otherwise it SHALL show the path below its given folder and "outside the current folder". No path the command computes SHALL be absolute.
+An item's source files SHALL be its `SKILL.md` and the `rules.md` read for it, or its agent file. A page SHALL link one only when it and the map folder are inside the current folder (real paths), as a relative URL with `/` and percent-encoded segments; otherwise it SHALL show the path below its given folder and why it is not linked. No path the command computes SHALL be absolute.
 
 #### Scenario: Skill in the repository
 - **WHEN** the command runs in `repo` as `stackledger skills map . --out docs/skills-map` and `skills/writer/SKILL.md` exists
@@ -241,6 +268,10 @@ An item's source files SHALL be its `SKILL.md` and the `rules.md` read for it, o
 #### Scenario: Tool folder in the home folder
 - **WHEN** the command runs in `repo` as `stackledger skills map . /home/northwind/.claude --out docs/skills-map`
 - **THEN** pages for skills under `/home/northwind/.claude` show `skills/<name>/SKILL.md`, "outside the current folder", and no `/home/northwind`
+
+#### Scenario: Map folder outside the current folder
+- **WHEN** the command runs in `stackledger` as `stackledger skills map ../repo --out ../repo/docs/skills-map`
+- **THEN** the pages show `skills/writer/SKILL.md` without a link and say the map folder is outside the current folder
 
 #### Scenario: Folder name with special characters
 - **WHEN** a skill folder in the repository is named `my skill#1`

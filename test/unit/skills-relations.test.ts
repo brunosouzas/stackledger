@@ -2,6 +2,8 @@
  * Fixtures are fictitious Northwind skills and agents in temporary folders.
  */
 import { test, expect } from 'vitest';
+import { realpathSync } from 'node:fs';
+import { join } from 'node:path';
 import { readSkillSet } from '../../src/skills/source.js';
 import { agent, link, playbook, skill, skillSet } from '../skills-helpers.js';
 
@@ -70,9 +72,14 @@ test('Missing name repeated', async () => {
 });
 
 test('Claude Code subagent', async () => {
-  const set = await read(skillSet({ 'agents/reviewer.md': agent('reviewer') }));
+  const root = skillSet({ 'agents/reviewer.md': agent('reviewer') });
+  const set = await read(root);
   expect(set.problems).toEqual([]);
-  expect(set.agents).toEqual([{ name: 'reviewer', path: 'agents/reviewer.md', preloads: [] }]);
+  // The description, given folder and source file are kept for stackledger skills map.
+  const real = realpathSync(join(root, 'agents/reviewer.md'));
+  expect(set.agents).toEqual([{ name: 'reviewer', path: 'agents/reviewer.md', description: 'Northwind reviewer agent.', given: root,
+    files: [{ path: 'agents/reviewer.md', below: 'agents/reviewer.md', real }], preloads: [] }]);
+  expect(set.found).toEqual([real]);
 });
 
 test('Linked agent file', async () => {

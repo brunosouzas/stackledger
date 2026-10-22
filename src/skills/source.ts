@@ -14,11 +14,17 @@
  * another item's message. Problems are sorted with the catalogue's sortProblems. Entries skipped by a
  * `.stackledgerignore` file never reach phase 1; they are only counted and listed (src/skills/walk.ts).
  *
+ * Each item also keeps what `stackledger skills map` (src/skills/map-command.ts) needs and validate
+ * does not print: its description, its given folder and its source files, and the set records the real
+ * paths of every skill folder, agent file, SKILL.md and rules.md the walk found, rejected ones
+ * included, and of every `.stackledgerignore` it read, so the map can refuse an output folder that
+ * would hold an input. These fields change neither the output nor the set.
+ *
  * What can go wrong: a given folder that is missing, not a folder or cannot be listed throws
  * SkillsFolderError (src/skills/walk.ts); every other failure is a problem on its path.
  */
-import { stat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { realpath, stat } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { compareText } from '../identity.js';
 import { fileProblem, MAX_FILE_BYTES, type Problem } from '../source.js';
 import { sortProblems } from '../validate.js';
@@ -29,11 +35,25 @@ import { AGENTS_KEY, SKILLS_KEY, at, checkAgentFields, checkNameAndDescription, 
 import { parseRules, type Rule } from './rules.js';
 import { RULES_FILE, SKILL_FILE, walkSkillFolders, type FoundAgent, type FoundSkill, type WalkOptions } from './walk.js';
 
+/** A file an item was read from. */
+export interface SourceFile {
+  /** Display path, as problems show it. */
+  path: string;
+  /** Path below the given folder, `/`-separated. */
+  below: string;
+  /** Real path (links resolved), or the absolute path when it can no longer be resolved. */
+  real: string;
+}
 export interface Skill {
   name: string;
   kind: SkillKind;
   /** Display path of the SKILL.md. */
   path: string;
+  description: string;
+  /** Absolute path of the given folder the skill was found in. */
+  given: string;
+  /** Its SKILL.md, then the rules.md read for it. */
+  files: SourceFile[];
   /** Declared relations, in the order written, repeats removed. */
   skills: string[];
   agents: string[];
@@ -42,6 +62,11 @@ export interface Skill {
 export interface Agent {
   name: string;
   path: string;
+  description: string;
+  /** Absolute path of the given folder the agent file was found in. */
+  given: string;
+  /** The agent file. */
+  files: SourceFile[];
   /** Preloaded skills, as listed. */
   preloads: string[];
 }
@@ -53,7 +78,13 @@ export interface SkillSet {
   /** Display paths of the entries skipped by ignore files, each once, sorted by code point. */
   ignored: string[];
   summary: SkillsSummary;
+  /** Real paths of every skill folder and agent file the walk found, and of the SKILL.md and rules.md
+   * in each skill folder, rejected ones included, then of every ignore file read, each once. */
+  found: string[];
 }
+
+/** The error of a given folder in which nothing was found (`skills map` refuses to change the map then). */
+export const NOTHING_FOUND = 'No skill folder or agent file found in this folder';
 
 interface SkillCandidate { found: FoundSkill; frontmatter: Frontmatter; kind: SkillKind }
 interface AgentCandidate { found: FoundAgent; frontmatter: Frontmatter; preloads: string[] }
@@ -103,6 +134,15 @@ async function ownFrontmatter(absolute: string, path: string, agent: boolean): P
   if (decoded.length) return { problems: decoded };
   return { frontmatter: parsed.frontmatter, problems: [] };
 }
+/** The real path of an entry; one that vanished since the walk keeps its absolute path. */
+async function realOrAbsolute(path: string): Promise<string> {
+  try { return await realpath(path); } catch { return resolve(path); }
+}
+/** A source file of an item: display path, path below the given folder (`/`-separated) and real path. */
+async function sourceFile(path: string, absolute: string, below: string): Promise<SourceFile> {
+  return { path, below, real: await realOrAbsolute(absolute) };
+}
+const belowJoin = (relative: string, file: string) => relative ? `${relative}/${file}` : file;
 const hasError = (problems: Problem[]) => problems.some(problem => problem.severity === 'error');
 const distinct = (names: string[]) => [...new Set(names)];
 
@@ -115,7 +155,7 @@ export async function readSkillSet(folders: string[], options: WalkOptions = {})
     // Skipped entries are not found, so a pattern that hides everything fails; the message says it was the ignore file.
     const skipped = folder.ignored === 1 ? '; 1 entry was skipped by ' + IGNORE_FILE
       : folder.ignored ? `; ${folder.ignored} entries were skipped by ${IGNORE_FILE}` : '';
-    problems.push(fileProblem(folder.path, `No skill folder or agent file found in this folder${skipped}`));
+    problems.push(fileProblem(folder.path, `${NOTHING_FOUND}${skipped}`));
   }
 
   // Phase 1: own checks; phase 2: unique names among candidates, in walk order.
@@ -158,7 +198,9 @@ export async function readSkillSet(folders: string[], options: WalkOptions = {})
   for (const candidate of skillCandidates) {
     const { frontmatter, found } = candidate;
     const name = frontmatter.value.name as string;
-    const skill: Skill = { name, kind: candidate.kind, path: frontmatter.path, skills: [], agents: [], rules: [] };
+    const files = [await sourceFile(frontmatter.path, join(found.absolute, SKILL_FILE), belowJoin(found.relative, SKILL_FILE))];
+    const skill: Skill = { name, kind: candidate.kind, path: frontmatter.path, description: frontmatter.value.description as string,
+      given: found.given, files, skills: [], agents: [], rules: [] };
     for (const [key, known, noun] of [[SKILLS_KEY, skillPaths, 'Skill'], [AGENTS_KEY, agentPaths, 'Agent']] as const) {
       const declared = (frontmatter.value.metadata as Record<string, unknown> | undefined)?.[key];
       if (typeof declared !== 'string') continue;
@@ -172,18 +214,30 @@ export async function readSkillSet(folders: string[], options: WalkOptions = {})
       if (key === SKILLS_KEY && names.includes(name)) problems.push(at(frontmatter, ['metadata', key], `${name} lists itself`, 'warning'));
       skill[key === SKILLS_KEY ? 'skills' : 'agents'] = distinct(names);
     }
-    if (found.hasRules) skill.rules = await readRules(found, name, ruleOwners, problems);
+    if (found.hasRules) skill.rules = await readRules(found, name, ruleOwners, problems, files);
     skills.push(skill);
   }
   for (const candidate of agentCandidates) {
-    const { frontmatter } = candidate;
+    const { frontmatter, found } = candidate;
     candidate.preloads.forEach((preload, index) => {
       if (!skillPaths.has(preload)) problems.push(at(frontmatter, ['skills', index], `Skill ${preload} is not in the set; the tool skips it`, 'warning'));
     });
-    agents.push({ name: frontmatter.value.name as string, path: frontmatter.path, preloads: candidate.preloads });
+    agents.push({ name: frontmatter.value.name as string, path: frontmatter.path, description: frontmatter.value.description as string,
+      given: found.given, files: [await sourceFile(found.path, found.absolute, found.relative)], preloads: candidate.preloads });
   }
 
   sortProblems(problems);
+  // Every skill folder and agent file, and every SKILL.md and rules.md in a skill folder, by real path:
+  // a file can be a link into the map folder, which cleaning would delete (rejected items included).
+  const foundPaths = new Set<string>();
+  for (const item of walked.items) {
+    foundPaths.add(await realOrAbsolute(item.absolute));
+    if (item.type !== 'skill') continue;
+    foundPaths.add(await realOrAbsolute(join(item.absolute, SKILL_FILE)));
+    if (item.hasRules) foundPaths.add(await realOrAbsolute(join(item.absolute, RULES_FILE)));
+  }
+  // An ignore file can be a link into the map folder too; cleaning would delete its target.
+  for (const file of walked.ignoreFiles) foundPaths.add(await realOrAbsolute(file));
   const count = (severity: Problem['severity']) => problems.filter(problem => problem.severity === severity).length;
   return { skills, agents, problems, ignored: [...walked.ignored].sort(compareText), summary: {
     skills: skills.filter(skill => skill.kind === 'skill').length,
@@ -192,17 +246,18 @@ export async function readSkillSet(folders: string[], options: WalkOptions = {})
     rules: skills.reduce((sum, skill) => sum + skill.rules.length, 0),
     ignored: walked.ignored.length,
     errors: count('error'), warnings: count('warning'),
-  } };
+  }, found: [...foundPaths] };
 }
 
-/** The rules of a skill in the set. A rules file that is too large, unreadable or breaks a secret rule
+/** The rules of a skill in the set; a rules file that was read is added to `files`. A rules file that is too large, unreadable or breaks a secret rule
  * gives no rules; a rule ID repeated in the file drops that rule; one used by an earlier skill is a warning. */
-async function readRules(found: FoundSkill, skill: string, owners: Map<string, string>, problems: Problem[]): Promise<Rule[]> {
+async function readRules(found: FoundSkill, skill: string, owners: Map<string, string>, problems: Problem[], files: SourceFile[]): Promise<Rule[]> {
   const path = displayJoin(found.folder, RULES_FILE);
   const absolute = join(found.absolute, RULES_FILE);
   try { if (!(await stat(absolute)).isFile()) return []; } catch { /* A broken link or a vanished file: readText reports it. */ }
   const read = await readText(absolute, path);
   if ('problem' in read) { problems.push(read.problem); return []; }
+  files.push(await sourceFile(path, absolute, belowJoin(found.relative, RULES_FILE)));
   const secrets = secretProblems(path, [read.text]);
   if (secrets.length) { problems.push(...secrets); return []; }
   const parsed = parseRules(read.text);

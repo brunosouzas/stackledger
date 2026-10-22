@@ -1,4 +1,5 @@
-/** `stackledger skills validate [folder...] [--json]` (skills-validate-command spec). Called by
+/** `stackledger skills validate [folder...] [--json]` (skills-validate-command spec), and the dispatch
+ * of `stackledger skills map` to src/skills/map-command.ts (skills-map-command spec). Called by
  * src/cli.ts; run `node dist/cli.js skills validate /path/to/skills`.
  *
  * Reads the given folders (none: the current folder) as one skill set through src/skills/source.ts and
@@ -19,7 +20,7 @@ import { writeStdout } from '../stdout.js';
 import { readSkillSet, type SkillSet } from './source.js';
 import { SkillsFolderError } from './walk.js';
 
-const SUBCOMMANDS = ['validate'];
+const SUBCOMMANDS = ['validate', 'map'];
 
 /** The default output: one line per problem, then the counts. */
 export function formatText(set: Pick<SkillSet, 'problems' | 'summary'>): string {
@@ -36,6 +37,14 @@ export function formatJson(set: Pick<SkillSet, 'problems' | 'ignored' | 'summary
 
 /** Run `stackledger skills …` with the whole argument list (`skills` first). */
 export async function skillsCommand(args: string[]): Promise<void> {
+  // `skills map` parses its own options strictly; the non-strict parse only finds the subcommand, so
+  // validate keeps its exact checks and messages below.
+  const found = parseArgs({ args, strict: false, allowPositionals: true, options: { json: { type: 'boolean' }, out: { type: 'string' }, check: { type: 'boolean' } } });
+  if (found.positionals[1] === 'map') {
+    const { skillsMapCommand } = await import('./map-command.js');
+    await skillsMapCommand(args);
+    return;
+  }
   // An unknown option (named in parseArgs' message) is a usage error, thrown before anything is read.
   const { values, positionals } = parseArgs({ args, strict: true, allowPositionals: true, options: { json: { type: 'boolean' } } });
   const [, subcommand, ...folders] = positionals;

@@ -50,6 +50,10 @@ export interface FoundSkill {
   folderName: string;
   /** Absolute path of the skill folder, at the path where it was found (through a link if any). */
   absolute: string;
+  /** Absolute path of the given folder the skill was found in. */
+  given: string;
+  /** Path of the skill folder below its given folder, `/`-separated; empty when the given folder is the skill folder. */
+  relative: string;
   /** Whether the folder holds an entry named exactly `rules.md`. */
   hasRules: boolean;
 }
@@ -58,6 +62,10 @@ export interface FoundAgent {
   /** Display path of the agent file. */
   path: string;
   absolute: string;
+  /** Absolute path of the given folder the agent file was found in. */
+  given: string;
+  /** Path of the agent file below its given folder, `/`-separated (`agents/<file>.md`). */
+  relative: string;
 }
 export type Found = FoundSkill | FoundAgent;
 export interface Walked {
@@ -69,6 +77,8 @@ export interface Walked {
   /** Per given folder, in argument order: its display name, how many items were found in it, counting
    * those already found through an earlier folder, and how many entries its ignore file skipped. */
   folders: { path: string; found: number; ignored: number }[];
+  /** Absolute paths of the `.stackledgerignore` files read (a link included), in argument order. */
+  ignoreFiles: string[];
 }
 export interface WalkOptions {
   cwd?: string;
@@ -99,7 +109,7 @@ function hidden(name: string): boolean {
 export async function walkSkillFolders(folders: string[], options: WalkOptions = {}): Promise<Walked> {
   const cwd = options.cwd ?? process.cwd();
   const list = options.list ?? listFolder;
-  const walked: Walked = { items: [], problems: [], ignored: [], folders: [] };
+  const walked: Walked = { items: [], problems: [], ignored: [], folders: [], ignoreFiles: [] };
   const seenItems = new Set<string>();
   const seenProblems = new Set<string>();
   const seenIgnored = new Set<string>();
@@ -107,6 +117,8 @@ export async function walkSkillFolders(folders: string[], options: WalkOptions =
   // The ignore file of the given folder being walked (none: nothing is skipped), and how many entries it skipped.
   let matcher: Matcher | undefined;
   let skipped = 0;
+  // The absolute path of the given folder being walked, recorded on each item it gives.
+  let given = '';
 
   function problemOnce(key: string, problem: Problem): void {
     if (seenProblems.has(key)) return;
@@ -129,13 +141,13 @@ export async function walkSkillFolders(folders: string[], options: WalkOptions =
       problemOnce(`entry:${absolute}`, fileProblem(display, 'Entry cannot be read')); return undefined;
     }
   }
-  async function addSkill(absolute: string, folder: string, folderName: string, names: string[]): Promise<void> {
+  async function addSkill(absolute: string, folder: string, folderName: string, names: string[], relative: string): Promise<void> {
     const key = await itemKey(absolute, folder || '.');
-    if (key) addItem(`skill:${key}`, { type: 'skill', folder, folderName, absolute, hasRules: names.includes(RULES_FILE) });
+    if (key) addItem(`skill:${key}`, { type: 'skill', folder, folderName, absolute, given, relative, hasRules: names.includes(RULES_FILE) });
   }
-  async function addAgent(absolute: string, path: string): Promise<void> {
+  async function addAgent(absolute: string, path: string, relative: string): Promise<void> {
     const key = await itemKey(absolute, path);
-    if (key) addItem(`agent:${key}`, { type: 'agent', path, absolute });
+    if (key) addItem(`agent:${key}`, { type: 'agent', path, absolute, given, relative });
   }
   async function holdsSkill(absolute: string, names: string[]): Promise<boolean> {
     return names.includes(SKILL_FILE) && await isRegularFile(join(absolute, SKILL_FILE));
@@ -178,7 +190,7 @@ export async function walkSkillFolders(folders: string[], options: WalkOptions =
         }
         if (target.isFile()) {
           // A file link is read where a file is expected (an agent file); elsewhere it is ignored like any file.
-          if (agents && name.endsWith('.md') && !skip(childRelative, entryKey, display)) await addAgent(childAbsolute, display);
+          if (agents && name.endsWith('.md') && !skip(childRelative, entryKey, display)) await addAgent(childAbsolute, display, childRelative);
           continue;
         }
         if (skip(childRelative, entryKey, display)) continue;
@@ -188,7 +200,7 @@ export async function walkSkillFolders(folders: string[], options: WalkOptions =
         const linkedNames = await listOrProblem(childAbsolute, display, entryKey, 'Linked folder cannot be read');
         if (!linkedNames) continue;
         // A linked folder is read only as a skill folder and never walked into, so the walk cannot loop.
-        if (await holdsSkill(childAbsolute, linkedNames)) await addSkill(childAbsolute, display, name, linkedNames);
+        if (await holdsSkill(childAbsolute, linkedNames)) await addSkill(childAbsolute, display, name, linkedNames, childRelative);
         else problemOnce(`link:${entryKey}`, fileProblem(display, 'Symbolic link does not lead to a skill folder; not followed', 'warning'));
         continue;
       }
@@ -199,12 +211,12 @@ export async function walkSkillFolders(folders: string[], options: WalkOptions =
         if (!childNames) continue;
         if (await holdsSkill(childAbsolute, childNames)) {
           // `fixtures/*/SKILL.md` hides the skill, as it would hide the file from Git; the folder is what is counted.
-          if (!skip(`${childRelative}/${SKILL_FILE}`, entryKey, display)) await addSkill(childAbsolute, display, name, childNames);
+          if (!skip(`${childRelative}/${SKILL_FILE}`, entryKey, display)) await addSkill(childAbsolute, display, name, childNames, childRelative);
         } else await walkEntries(childAbsolute, childRelative, depth + 1, childNames, prefix);
         continue;
       }
       // Only agent files are tested among files: no other file can add to the set, nor to the count.
-      if (entry.isFile() && agents && name.endsWith('.md') && !skip(childRelative, entryKey, display)) await addAgent(childAbsolute, display);
+      if (entry.isFile() && agents && name.endsWith('.md') && !skip(childRelative, entryKey, display)) await addAgent(childAbsolute, display, childRelative);
     }
   }
 
@@ -221,11 +233,12 @@ export async function walkSkillFolders(folders: string[], options: WalkOptions =
     if (!info.isDirectory()) throw new SkillsFolderError(`Skills path is not a folder: ${self}`);
     let names;
     try { names = await list(absolute); } catch { throw new SkillsFolderError(`Skills folder cannot be read: ${self}`); }
-    found = 0; skipped = 0; matcher = undefined;
+    found = 0; skipped = 0; matcher = undefined; given = absolute;
     // A given folder that is a skill folder gives that one skill, and no agents; its ignore file has no effect.
-    if (await holdsSkill(absolute, names)) await addSkill(absolute, prefix, basename(absolute), names);
+    if (await holdsSkill(absolute, names)) await addSkill(absolute, prefix, basename(absolute), names, '');
     else {
       if (names.includes(IGNORE_FILE)) {
+        walked.ignoreFiles.push(join(absolute, IGNORE_FILE));
         const file = await readIgnoreFile(absolute, below(prefix, IGNORE_FILE), createMatcher);
         // A file with a problem gives no patterns: the folder is read whole, and the problem shows why.
         if (file.status === 'read') matcher = file.matcher;
