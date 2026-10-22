@@ -329,3 +329,12 @@ test.concurrent('Sandboxed build', async context => {
   expect(existsSync(home)).toBe(false); expect(snapshot(kit)).toEqual(before);
   expect(snapshot(out)).toEqual(snapshot(withSkills.out));
 }, 180_000);
+
+// Skill folder errors: every exit-2 check before any exit-1 check. A staging folder left with old/ is
+// exit 1, so an output inside a skill folder that holds one must still be refused with exit 2.
+test.concurrent('Output inside a skill folder, with a staging folder left behind', async () => {
+  const top = fresh('order');
+  writeFolder(join(top, 'skills'), { ...kitFiles(), 'writer/site/.stackledger-tmp-0123456789abcdef/old/full/index.html': 'old\n' });
+  const result = await build([catalogue, '--out', './skills/writer/site', '--date', DATE, '--skills', './skills'], { cwd: top });
+  expect(result.status, result.stderr).toBe(2);
+}, 60_000);

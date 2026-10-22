@@ -62,8 +62,10 @@ test('Map file that is a folder', async () => {
   expect(errorsOf(set)).toEqual([expect.objectContaining({ path: MAP, message: 'File cannot be read' })]);
 });
 test('Secret in the map file', async () => {
-  const set = await read(skillSet({ ...team, [MAP]: line('publish', ['skill:writer', 'skill:editor'], '  title: "4111111111111111"\n') }));
-  expect(errorsOf(set)).toEqual([expect.objectContaining({ path: MAP, message: 'Payment-card number is not allowed' })]);
+  // The secret is in a title and in a stop; another line of the same file is valid: the file gives nothing.
+  const set = await read(skillSet({ ...team, [MAP]: docs(line('publish', ['skill:writer', 'skill:editor'], '  title: "4111111111111111"\n'),
+    line('review', ['skill:editor', 'agent:4111111111111111']), line('valid', ['skill:editor', 'skill:writer'])) }));
+  expect(errorsOf(set).map(problem => problem.message)).toEqual(['Payment-card number is not allowed', 'Payment-card number is not allowed']);
   expect(JSON.stringify(set.problems)).not.toContain('4111111111111111'); expect(set.map.lines).toEqual([]);
 });
 test('Relation error keeps the item', async () => {

@@ -92,7 +92,7 @@ export function buildSkillsData(set: SkillSet): { data: SkillsData; geometry: Ma
       reachedThrough: reachedThrough(graph, node).map(link),
       lines: model.lines.filter(line => line.stops.includes(ref)).map(chip),
       rules: rules.map(rule => ({ id: cleanText(rule.id), group: cleanText(rule.group ?? ''), text: cleanText(rule.text), why: cleanText(rule.why ?? ''), check: cleanText(rule.check ?? '') })),
-      files: source.files.map(file => file.below),
+      files: source.files.map(file => cleanText(file.below)),
     };
   });
   const rules: RuleIndexRow[] = items.flatMap(item => item.rules.map(rule => ({ id: rule.id, text: rule.text, group: rule.group,

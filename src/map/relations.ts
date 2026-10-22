@@ -114,7 +114,9 @@ export function renderRelations(input: Relations, theme: Theme): string {
   const centreY = centreTop + BOX_HEIGHT / 2;
   const centreWidth = columnWidth([input.centre]);
   const leftWidth = columnWidth(input.left), rightWidth = columnWidth(input.right);
-  const width = Math.max(DIAGRAM_WIDTH, PADDING * 2 + leftWidth + centreWidth + rightWidth + MIN_COLUMN_GAP * 2);
+  // The centre is centred, so each side reserves the wider side's width: a long name on one side never runs under the centre.
+  const side = Math.max(leftWidth, rightWidth);
+  const width = Math.max(DIAGRAM_WIDTH, PADDING * 2 + side * 2 + centreWidth + MIN_COLUMN_GAP * 2);
   const centreX = Math.round((width - centreWidth) / 2);
   const stackTop = (count: number) => top + (stackHeight(rows) - stackHeight(Math.max(count, 1))) / 2;
   const left: Column = { nodes: input.left, x: PADDING, width: leftWidth, top: stackTop(input.left.length) };

@@ -49,6 +49,7 @@ beforeAll(async () => {
     'developer/SKILL.md': skill('developer'), 'developer/rules.md': '# Rules\n\n## Docs (DOC)\n\n- **DOC-1** Code docs.\n',
     'documentation/SKILL.md': skill('documentation'), 'documentation/rules.md': '# Rules\n\n## Docs (DOC)\n\n- **DOC-1** Docs.\n',
     'reviewer/SKILL.md': skill('reviewer'), 'agents/reviewer.md': agent('reviewer'),
+    [`w${RLO}r/SKILL.md`]: skill(`w${RLO}r`),
     'release/SKILL.md': playbook('release', 'writer ghost', 'reviewer'), 'release/rules.md': '# Rules\n\n## Release (REL)\n\n- **REL-1** Review first.\n',
     'stackledger-skills.yaml': `apiVersion: stackledger/v1alpha1\nkind: Line\nmetadata:\n  name: publish\n  title: "Pub${RLO}lish"\nspec:\n  color: "#E4002B"\n  stops: ["playbook:release", "skill:writer", "agent:reviewer"]\n`,
   });
@@ -130,6 +131,8 @@ test('Hostile script text', () => {
 test('Bidirectional override', () => {
   for (const site of ['full', 'staff']) for (const file of files(join(out, site))) expect(readFileSync(join(out, site, file), 'utf8'), file).not.toContain(RLO);
   expect(existsSync(join(out, 'full', 'skills', 'writer', 'index.html'))).toBe(true);
+  // The skill named with U+202E has its page at its page file name, and its name and source path lose the character.
+  expect(html(out, 'full', `skills/_${Buffer.from(`w${RLO}r`).toString('hex')}`)).toContain('<h1>wr</h1>');
 });
 test('Tool folder in the home folder', () => {
   expect(html(out, 'full', 'skills/writer')).toContain('<code>writer/SKILL.md</code>');

@@ -67,6 +67,12 @@ test('Relation error keeps the page', async () => {
   const data = await dataOf({ 'writer/SKILL.md': skill('writer'), 'release/SKILL.md': playbook('release', 'ghost') });
   expect(data.rows.map(row => row.name)).toContain('release'); expect(page(data, 'playbook', 'release').href).toBe('playbooks/release/');
 });
+test('Over the budget', async () => {
+  const names = Array.from({ length: 101 }, (_, i) => `s${String(i).padStart(3, '0')}`);
+  const data = await dataOf({ 'release/SKILL.md': playbook('release', names.join(' ')), ...Object.fromEntries(names.map(name => [`${name}/SKILL.md`, skill(name)])) });
+  const release = page(data, 'playbook', 'release');
+  expect(release.diagram).toBeUndefined(); expect(release.relationCount).toBe(101); expect(release.bringsIn).toHaveLength(101);
+});
 test('Rules rows', async () => {
   const data = await dataOf({ 'documentation/SKILL.md': skill('documentation'), 'documentation/rules.md': rules('- **DOC-1** Docs.'),
     'developer/SKILL.md': skill('developer'), 'developer/rules.md': rules('- **DOC-1** Code docs.') });

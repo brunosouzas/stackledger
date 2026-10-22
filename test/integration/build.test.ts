@@ -271,7 +271,7 @@ describe('Usage errors', () => {
     for (const args of [['build', '--help'], ['build', catalogue, '--out', out, '--date', 'never', '--help']]) {
       const result = await build(args);
       expect(result.status).toBe(0);
-      expect(result.stdout).toContain('stackledger build <folder> --out <dir> [--date YYYY-MM-DD]');
+      expect(result.stdout).toContain('stackledger build <folder> --out <dir> [--date YYYY-MM-DD] [--skills <folder>]...');
       expect(result.stderr).toBe('');
     }
     expect(existsSync(out)).toBe(false);

@@ -322,3 +322,12 @@ test('Example map',async()=>{
   expect(svg+'\n',`${view}-${name}${chrome?'':'-site'}`).toBe(readFileSync(join(fixtures,`${view}-${name}${chrome?'':'-site'}.svg`),'utf8'));
  }
 });
+// metro-map "Software lines in a skills map file name": a catalogue file with that name is not read, so its lines are not drawn.
+test('Software lines in a skills map file name',async()=>{
+ const { folder } = await import('../helpers.js'); const { loadFolder } = await import('../../src/source.js'); const { validateLoaded } = await import('../../src/validate.js');
+ const { stringify } = await import('yaml');
+ const docs=[component('a'),component('b'),journey('ship',['a','b'])].map(d=>stringify(d));
+ const read=async(name:string)=>{const c=validateLoaded(await loadFolder(folder({'items.yaml':docs.slice(0,2).join('---\n'),[name]:docs[2]!})));return layoutMap(buildMapModel(applyView(c.served,'full',resolveHidden(c)),'2027-06-01')).lines.map(l=>l.ref);};
+ expect(await read('stackledger-skills.yaml')).toEqual([]);
+ expect(await read('lines.yaml')).toEqual(['line:ship']);
+});

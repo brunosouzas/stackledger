@@ -60,7 +60,7 @@ export function buildSkillsMapModel(set: Pick<SkillSet, 'skills' | 'agents' | 'm
     if (!members.length) continue;
     const key = pageFileName(zone.name);
     if (zones.some(earlier => earlier.name === key)) continue;
-    zones.push({ name: key, title: cleanText(zone.title) || zone.name, color: zone.color });
+    zones.push({ name: key, title: cleanText(zone.title) || cleanText(zone.name) || key, color: zone.color });
     for (const member of members) {
       const ref = resolve(member);
       if (ref) zoneOf.set(ref, [...(zoneOf.get(ref) ?? []), key]);

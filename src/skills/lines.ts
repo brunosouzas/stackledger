@@ -60,6 +60,8 @@ export async function readSkillsMap(files: { path: string; absolute: string }[],
 /** The catalogue's document checks for Line and MapLayout, then the cross-document checks. */
 export function checkSkillsMap(sources: Source[], items: ItemKinds, problems: Problem[]): SkillsMap {
   const documents: Document[] = [];
+  // A file with a secret gives no line and no layout, and its values never reach another message.
+  const secretFiles = new Set<string>();
   for (const source of sources) {
     const value = source.value, kind = value.kind;
     if (typeof kind !== 'string' || !kind) { problems.push(problem(source, ['kind'], 'kind is required')); continue; }
@@ -75,12 +77,13 @@ export function checkSkillsMap(sources: Source[], items: ItemKinds, problems: Pr
     if (!parsed.success) { problems.push(...schemaProblems(source, parsed.error.issues)); continue; }
     const secrets = scanSecrets(source);
     problems.push(...secrets);
-    if (!secrets.some(found => found.severity === 'error')) document.served = parsed.data;
+    if (secrets.some(found => found.severity === 'error')) secretFiles.add(source.path);
+    else document.served = parsed.data;
   }
   // Duplicate names first, as in the catalogue: a later document with a used name is not served.
   const first = new Map<string, Document>();
   const unique: Document[] = [];
-  for (const document of documents) {
+  for (const document of documents.filter(item => !secretFiles.has(item.source.path))) {
     const key = `${document.kind}:${document.name.toLowerCase()}`, earlier = first.get(key);
     if (earlier) problems.push(problem(document.source, ['metadata', 'name'], `Duplicate name; earlier document is in ${earlier.source.path}`));
     else { first.set(key, document); unique.push(document); }

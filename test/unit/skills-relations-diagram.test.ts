@@ -48,6 +48,14 @@ test('Hostile name', () => {
   const doc = safe(svg);
   expect(doc.getElementsByTagName('script')).toHaveLength(0); expect(doc.documentElement!.textContent).toContain(name);
 });
+test('Long name on one side', () => {
+  // A long neighbour on the left only: its box must end before the centre box starts.
+  const long = 'W'.repeat(64);
+  const doc = safe(svgOf(diagram(setOf([[long, 'playbook', ['writer']], ['writer', 'skill']]), 'skill', 'writer')!));
+  const face = (prefix: string) => { const g = Array.from(doc.getElementsByTagName('g')).find(item => item.getAttribute('data-ref')?.startsWith(prefix))!; return Array.from(g.children).filter(e => e.tagName === 'rect').at(-1)!; };
+  const left = face('playbook:'), centre = face('skill:writer');
+  expect(Number(left.getAttribute('x')) + Number(left.getAttribute('width'))).toBeLessThan(Number(centre.getAttribute('x')));
+});
 test('Long name', () => {
   const name = 'n'.repeat(70);
   const svg = svgOf(diagram(setOf([['release', 'playbook', [name]], [name, 'skill']]), 'playbook', 'release')!);
