@@ -14,9 +14,9 @@
  * Configured folders are read with the catalogue folder as the current folder, so problems and messages
  * show the paths as written in the Settings; pages show only paths below each folder.
  */
-import { join, resolve } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
 import { withoutControls } from '../control.js';
-import { InternalError } from '../errors.js';
+import { CommandStop } from '../errors.js';
 import type { MapGeometry } from '../map/layout.js';
 import type { Loaded } from '../source.js';
 import type { Catalogue } from '../validate.js';
@@ -75,7 +75,9 @@ export function refuseSkillsOutput(target: string, skills: SkillsInUse, ops: FsO
     if (within(folder, target)) throw new Error('Output folder must not be a skills folder or contain one');
     let agents = join(folder, AGENTS_FOLDER);
     try { agents = ops.realpath(agents); } catch { /* No agents folder: its plain path is checked. */ }
-    if (within(target, agents)) throw new Error('Output folder must not be the agents folder of a skills folder or inside it');
+    // As `skills map`: the first folder below the skills folder, in any case (APFS and NTFS ignore case).
+    const first = within(target, folder) ? relative(folder, target).split(sep)[0] : undefined;
+    if (within(target, agents) || first?.toLowerCase() === AGENTS_FOLDER) throw new Error('Output folder must not be the agents folder of a skills folder or inside it');
   }
   for (const found of skills.set.found) {
     if (within(found, target)) throw new Error(`Output folder must not hold a skill folder, agent file or file of the skill set: ${found}`);
@@ -86,16 +88,16 @@ export function refuseSkillsOutput(target: string, skills: SkillsInUse, ops: FsO
 /** The exit-1 stops, after every exit-2 check and before anything is written. */
 export function skillsStops(skills: SkillsInUse): void {
   if (skills.brokenSettings) {
-    throw new InternalError(`${COMMAND}: the Settings has an error and sets spec.skills; run stackledger validate. The published sites are not changed`);
+    throw new CommandStop(`${COMMAND}: the Settings has an error and sets spec.skills; run stackledger validate. The published sites are not changed`);
   }
   if (!skills.set) return;
   const empty = skills.set.problems.find(problem => problem.message.startsWith(NOTHING_FOUND));
-  if (empty) throw new InternalError(`${COMMAND}: ${withoutControls(empty.path)}: ${NOTHING_FOUND}; the published sites are not changed`);
+  if (empty) throw new CommandStop(`${COMMAND}: ${withoutControls(empty.path)}: ${NOTHING_FOUND}; the published sites are not changed`);
   const pages = new Map<string, string>();
   const items = [...skills.set.skills.map(skill => [skill.kind, skill.name, skill.path] as const), ...skills.set.agents.map(agent => ['agent', agent.name, agent.path] as const)];
   for (const [kind, name, path] of items) {
     const key = `${kind}:${pageFileName(name)}`, earlier = pages.get(key);
-    if (earlier !== undefined) throw new InternalError(`${COMMAND}: ${withoutControls(earlier)} and ${withoutControls(path)} give the same page name; rename one. The published sites are not changed`);
+    if (earlier !== undefined) throw new CommandStop(`${COMMAND}: ${withoutControls(earlier)} and ${withoutControls(path)} give the same page name; rename one. The published sites are not changed`);
     pages.set(key, path);
   }
 }

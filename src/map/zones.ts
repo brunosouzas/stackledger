@@ -2,8 +2,8 @@
  * Widening is a 32-unit round stroke around the convex hull, including one/two-point hulls.
  * Zone title boxes are layout obstacles; zones without drawn members are omitted.
  * Software zones are matched by their lower-cased name and never share a station; skills zones are
- * playbook page file names and may share stations, so their corner titles are moved up until clear
- * (layout.ts later moves the title of a zone whose playbook is drawn next to that station).
+ * playbook page file names and may share stations: layout.ts moves the title of a zone whose playbook
+ * is drawn next to that station, then stackCornerTitles moves the other titles up until clear.
  */
 import type { MapModel, Point, MapZone } from './model.js';
 import { overlapArea, textWidth, type Box } from './labels.js';
@@ -43,12 +43,15 @@ export function zoneGeometry(model: MapModel, points: Map<string, Point>): ZoneG
     const titleBox: Box = { x: left, y: top, w: textWidth(zone.title), h: 17 };
     return [{ ...zone, hull: convexHull(members), padding: PADDING, titleBox }];
   });
-  if (model.kind !== 'skills') return zones;
-  // Overlapping zones can share a top-left member: each corner title moves up until it is clear.
-  const placed: Box[] = [];
-  for (const zone of zones) {
-    while (placed.some(box => overlapArea(box, zone.titleBox) > 0)) zone.titleBox = { ...zone.titleBox, y: zone.titleBox.y - zone.titleBox.h - 4 };
-    placed.push(zone.titleBox);
-  }
   return zones;
+}
+
+/** Skills maps: a corner title (its playbook is not drawn) moves up by its height plus 4 while it
+ * overlaps an earlier zone's title, wherever that one was placed (layout.ts places the others first). */
+export function stackCornerTitles(zones: ZoneGeometry[], corner: ReadonlySet<ZoneGeometry>): void {
+  zones.forEach((zone, index) => {
+    if (!corner.has(zone)) return;
+    const earlier = zones.slice(0, index).map(other => other.titleBox);
+    while (earlier.some(box => overlapArea(box, zone.titleBox) > 0)) zone.titleBox = { ...zone.titleBox, y: zone.titleBox.y - zone.titleBox.h - 4 };
+  });
 }

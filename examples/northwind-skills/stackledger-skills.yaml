@@ -1,4 +1,4 @@
-# Fictitious Northwind skills map for stackledger: two skill lines, one ship line, and the two
+# Fictitious Northwind skills map for stackledger: three skill lines (publish, change, build) and the two
 # playbooks as zones. editor and the reviewer agent belong to both playbooks, so the zones overlap;
 # they sit in the middle row, between the playbooks.
 apiVersion: stackledger/v1alpha1

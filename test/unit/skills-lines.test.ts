@@ -148,3 +148,20 @@ test('One line name in two files', async () => {
   const set = await read(root, ['repo', 'tool']);
   expect(errorsOf(set)).toEqual([expect.objectContaining({ path: `tool/${MAP}`, field: 'metadata.name' })]); expect(set.map.lines).toHaveLength(1);
 });
+// The catalogue's line and layout rules are copied in src/skills/lines.ts: the same documents must give
+// the same problems (field, severity, line) in both, so the copies cannot drift unnoticed.
+test('Same rules as the catalogue', async () => {
+  const { checkFiles } = await import('./helpers.js');
+  const documents = (kind: 'component' | 'skill') => [
+    `apiVersion: stackledger/v1alpha1\nkind: MapLayout\nmetadata:\n  name: map\nspec:\n  stations:\n    "${kind}:a": [0, 0]\n    "${kind}:b": [0, 0]\n    "${kind}:c": [4, 4]\n`,
+    `apiVersion: stackledger/v1alpha1\nkind: Line\nmetadata:\n  name: one\nspec:\n  code: X\n  color: "#E4002B"\n  stops: ["${kind}:a", "${kind}:b", "${kind}:a", "${kind}:d"]\n`,
+    `apiVersion: stackledger/v1alpha1\nkind: Line\nmetadata:\n  name: two\nspec:\n  code: x\n  color: "#e4002b"\n  stops: ["${kind}:b", "${kind}:e"]\n`,
+  ].join('---\n');
+  const component = (name: string) => `apiVersion: backstage.io/v1alpha1\nkind: Component\nmetadata:\n  name: ${name}\nspec:\n  type: service\n  lifecycle: production\n  owner: team\n`;
+  const catalogue = checkFiles({ 'a.yaml': [component('a'), component('b'), component('c'), component('e')], [MAP]: [documents('component')] });
+  const set = await read(skillSet({ 'a/SKILL.md': skill('a'), 'b/SKILL.md': skill('b'), 'c/SKILL.md': skill('c'), 'e/SKILL.md': skill('e'), [MAP]: documents('skill') }));
+  const shape = (problems: { path: string; field: string | null; severity: string; line: number }[]) =>
+    problems.filter(problem => problem.path === MAP).map(problem => `${problem.line} ${(problem.field ?? "").replace(/(component|skill):/, "")} ${problem.severity}`).sort();
+  expect(shape(set.problems)).toEqual(shape(catalogue.problems));
+  expect(shape(set.problems).length).toBeGreaterThanOrEqual(6);
+});

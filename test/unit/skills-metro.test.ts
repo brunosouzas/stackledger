@@ -139,3 +139,10 @@ test('Two zones with one corner', () => {
   const [release, review] = geometry.zones;
   expect(overlapArea(release!.titleBox, review!.titleBox)).toBe(0); expect(review!.titleBox.y).toBeLessThan(release!.titleBox.y);
 });
+test('Corner title next to a placed title', () => {
+  // review's playbook is drawn, so its title moves next to it; release's is not, so its corner title stays where it was.
+  const { geometry } = draw({ skills: [['release', 'playbook', ['writer', 'editor']], ['review', 'playbook', ['writer', 'editor']], ['writer', 'skill'], ['editor', 'skill']],
+    lines: [['publish', ['playbook:review', 'skill:writer', 'skill:editor']]], stations: { 'playbook:review': [0, 3], 'skill:writer': [0, 0], 'skill:editor': [2, 0] }, zones: ['release', 'review'] });
+  const release = geometry.zones.find(zone => zone.name === 'release')!;
+  expect(release.titleBox.y).toBe(-56);
+});

@@ -338,3 +338,11 @@ test.concurrent('Output inside a skill folder, with a staging folder left behind
   const result = await build([catalogue, '--out', './skills/writer/site', '--date', DATE, '--skills', './skills'], { cwd: top });
   expect(result.status, result.stderr).toBe(2);
 }, 60_000);
+
+test.concurrent('Output in the agents folder, in another case', async () => {
+  // No agents folder yet: `Agents/site` is still refused, as `skills map` refuses it (APFS and NTFS ignore case).
+  const top = fresh('agents-case');
+  writeFolder(join(top, 'skills'), { 'writer/SKILL.md': skill('writer') });
+  const result = await build([catalogue, '--out', './skills/Agents/site', '--date', DATE, '--skills', './skills'], { cwd: top });
+  expect(result.status).toBe(2); expect(existsSync(join(top, 'skills', 'Agents'))).toBe(false);
+}, 60_000);

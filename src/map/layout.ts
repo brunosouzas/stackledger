@@ -8,7 +8,7 @@ import { suggestPositions, type Suggestion } from './suggest.js';
 import { routeMap, type RoutedHop } from './route.js';
 import { parallelLines, GRID, type Stroke } from './parallel.js';
 import { chooseLabel, labelCandidates, placeLabels, segmentObstacle, textWidth, type Box, type Label, type Obstacle } from './labels.js';
-import { zoneGeometry, type ZoneGeometry } from './zones.js';
+import { stackCornerTitles, zoneGeometry, type ZoneGeometry } from './zones.js';
 import { badgeWidth, placeBadges, type Badge } from './badges.js';
 import { inkBox, inkOf, themes, type Ink } from './themes.js';
 
@@ -114,9 +114,10 @@ function capsuleAxis(contacts: Point[]): [[Point, Point], number] {
  * candidates are the station labels' own; `taken` holds every obstacle a label avoids plus the station
  * labels, and grows with each title. A zone whose playbook is not drawn keeps its corner title. */
 function placeZoneTitles(zones: ZoneGeometry[], stations: StationGeometry[], taken: Obstacle[]): void {
+  const corner = new Set<ZoneGeometry>();
   for (const zone of zones) {
     const station = stations.find(item => item.ref === `playbook:${zone.name}`);
-    if (!station) continue;
+    if (!station) { corner.add(zone); continue; }
     const marker = station.marker.box;
     const gap = Math.max(marker.w, marker.h) / 2 + 10;
     const centre: Point = [marker.x + marker.w / 2, marker.y + marker.h / 2];
@@ -125,6 +126,7 @@ function placeZoneTitles(zones: ZoneGeometry[], stations: StationGeometry[], tak
     zone.titleBox = chooseLabel(labelCandidates(centre, zone.titleBox.w, zone.titleBox.h, gap), others);
     taken.push(zone.titleBox);
   }
+  stackCornerTitles(zones, corner);
 }
 
 export function layoutMap(model: MapModel, lineWidth = themes.light.lineWidth, ink: Ink = inkOf(themes.light)): MapGeometry {

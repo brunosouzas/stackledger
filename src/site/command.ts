@@ -186,7 +186,8 @@ export async function buildCommand(args: string[], ops: FsOps = NODE_FS): Promis
   const out = resolve(options.out);
   // The skill set (exit 2 for a folder that cannot be read), then the output folder against both inputs.
   const validated = validateLoaded(loaded);
-  const skills = await skillsInUse(options.skills, loaded, validated, catalogue, ops);
+  // Configured folders are relative to the catalogue folder as given, links in it not followed first.
+  const skills = await skillsInUse(options.skills, loaded, validated, resolve(options.folder), ops);
   // The skill-set refusals (exit 2) come first: checkOutput can stop with exit 1 on a staging folder left with old/.
   refuseSkillsOutput(realTarget(out, ops), skills, ops);
   const checked = checkOutput(out, catalogue, ops);
