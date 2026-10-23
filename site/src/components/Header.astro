@@ -18,7 +18,7 @@ const links = [
 
 <header class="header">
   <nav class="navbar container" aria-label="Main">
-    <a class="navbar-brand" href={href(root, '')}><img class="brand-mark" src={href(root, 'favicon.svg')} alt="" width="28" height="28" />{site.title}</a>
+    <a class="navbar-brand" href={href(root, '')}><img class="brand-mark themed-light" src={href(root, 'favicon.svg')} alt="" width="28" height="28" /><img class="brand-mark themed-dark" src={href(root, 'brand-mark-dark.svg')} alt="" width="28" height="28" />{site.title}</a>
     <ul class="navbar-nav">
       {
         links.map((link) => (

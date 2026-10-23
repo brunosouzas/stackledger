@@ -3,6 +3,7 @@
  * built once per fixture in beforeAll (in parallel child processes) and then only read.
  * Fixtures are fictitious; hidden values are distinctive so that any leak shows.
  */
+import { existsSync } from 'node:fs';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { join } from 'node:path';
 import { component, licence, line, set, settings } from '../unit/helpers.js';
@@ -55,7 +56,7 @@ const brokenCatalogue = {
   'catalogue.yaml': yaml(depends(component('editor'), ['resource:licence-editor']), component('forge'), licenceWith('licence-editor', DEFAULT_HIDDEN)),
   // Valid home links next to the colour error: the error drops them too (Broken settings, no links).
   'stackledger.yaml': settingsFile({ site: { title: 'Northwind software', colors: { primary: 'red', accent: '#E4002B' },
-    home: { links: [{ title: 'Articles', url: 'https://example.org/articles/' }] } } }),
+    home: { links: [{ title: 'Articles', url: 'https://example.org/articles/', icon: 'github' }] } } }),
 };
 
 const hostileComponent = '<img src=x onerror=alert(1)>';
@@ -76,16 +77,23 @@ const HOME_SETTINGS = `  site:
         - { title: Team wiki, url: "http://wiki.example.org/" }
         - { title: "${HOSTILE_LINK}", url: "https://example.org/?a=1&b=2" }
 `;
+// catalogue-site "Home links": one link with an icon, one without.
+const ICON_SETTINGS = `  site:
+    home:
+      links:
+        - { title: Source, url: "https://github.example.com/northwind/", icon: github }
+        - { title: Blog, url: "https://blog.example.com/" }
+`;
 const emptyCatalogue = { 'stackledger.yaml': settingsFile({}) };
 
 // catalogue-site "Diagram box titles": a title of spaces is valid in the catalogue.
 const blankCatalogue = { 'catalogue.yaml': yaml(set(depends(component('forge'), ['component:vault']), 'metadata.title', ' '), component('vault'), depends(component('editor'), ['component:forge'])) };
 
-let main: Built, other: Built, customA: Built, customB: Built, broken: Built, hostile: Built, example: Built, linked: Built, empty: Built, blank: Built;
+let main: Built, other: Built, customA: Built, customB: Built, broken: Built, hostile: Built, example: Built, linked: Built, empty: Built, blank: Built, iconed: Built;
 
 beforeAll(async () => {
   const exampleFiles = Object.fromEntries(['catalog-info.yaml', 'stackledger.yaml'].map(file => [file, read(join(root, 'examples/northwind'), file)]));
-  [main, other, customA, customB, broken, hostile, example, linked, empty, blank] = await Promise.all([
+  [main, other, customA, customB, broken, hostile, example, linked, empty, blank, iconed] = await Promise.all([
     buildSites(mainCatalogue(DEFAULT_HIDDEN), '2027-06-01'),
     buildSites(mainCatalogue(OTHER_HIDDEN), '2031-01-01'),
     buildSites(customHidden('Northwind Studio', 'to-confirm'), '2027-06-01'),
@@ -96,10 +104,11 @@ beforeAll(async () => {
     buildSites({ ...exampleFiles, 'stackledger.yaml': exampleFiles['stackledger.yaml']! + HOME_SETTINGS }),
     buildSites(emptyCatalogue),
     buildSites(blankCatalogue),
+    buildSites({ ...exampleFiles, 'stackledger.yaml': exampleFiles['stackledger.yaml']! + ICON_SETTINGS }),
   ]);
 }, 180_000);
 
-// Removing ten built sites can take more than the default 10 s while other test files run.
+// Removing eleven built sites can take more than the default 10 s while other test files run.
 afterAll(cleanup, 60_000);
 
 const tagsOf = (html: string) => [...html.matchAll(/<([A-Za-z][A-Za-z0-9:-]*)((?:\s[^<>]*?)?)\/?>/g)].map(match => ({ name: match[1]!.toLowerCase(), attrs: match[2] ?? '' }));
@@ -128,7 +137,7 @@ test('Site title', () => {
       const html = read(site, page);
       // The home's title is the site title alone (catalogue-site, Home page chrome).
       expect(html, page).toMatch(page === 'index.html' ? /<title>Northwind software<\/title>/ : /<title>[^<]* \| Northwind software<\/title>/);
-      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark" src="(?:\.\.\/)*favicon\.svg" alt="" width="28" height="28">Northwind software<\/a>/);
+      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark themed-light" src="(?:\.\.\/)*favicon\.svg" alt="" width="28" height="28"><img class="brand-mark themed-dark" src="(?:\.\.\/)*brand-mark-dark\.svg" alt="" width="28" height="28">Northwind software<\/a>/);
     }
   }
 });
@@ -192,8 +201,9 @@ test('Header mark with a custom title', () => {
   for (const site of [main.full, main.staff]) {
     for (const page of ['index.html', 'map/index.html', 'software/editor/index.html']) {
       const html = read(site, page);
-      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark" src="(?:\.\.\/)*favicon\.svg" alt="" width="28" height="28">Northwind software<\/a>/);
-      expect([...html.matchAll(/<img\b/g)], page).toHaveLength(1);
+      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark themed-light" src="(?:\.\.\/)*favicon\.svg" alt="" width="28" height="28"><img class="brand-mark themed-dark" src="(?:\.\.\/)*brand-mark-dark\.svg" alt="" width="28" height="28">Northwind software<\/a>/);
+      // The two header marks; the home adds the banner (Home banner art).
+      expect([...html.matchAll(/<img\b/g)], page).toHaveLength(page === 'index.html' ? 3 : 2);
     }
   }
 });
@@ -337,7 +347,7 @@ test('Default title', () => {
     for (const page of pages(site)) {
       const html = read(site, page);
       expect(html, page).toMatch(page === 'index.html' ? /<title>stackledger<\/title>/ : /<title>[^<]* \| stackledger<\/title>/);
-      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark" src="(?:\.\.\/)*favicon\.svg" alt="" width="28" height="28">stackledger<\/a>/);
+      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark themed-light" src="(?:\.\.\/)*favicon\.svg" alt="" width="28" height="28"><img class="brand-mark themed-dark" src="(?:\.\.\/)*brand-mark-dark\.svg" alt="" width="28" height="28">stackledger<\/a>/);
     }
   }
 });
@@ -378,6 +388,29 @@ test('Two links', () => {
     expect(html.indexOf('What I write')).toBeLessThan(html.indexOf('>Team wiki<'));
   }
   expect(homeMain(read(example.full, 'index.html'))).not.toContain('<h2>Links</h2>');
+});
+
+// catalogue-site "Home banner art": after the h1 and the text, a decorative image from the site's folder.
+test('Banner on the home', () => {
+  for (const site of [example.full, example.staff, linked.full]) {
+    const banner = /<section class="home-banner">([\s\S]*?)<\/section>/.exec(read(site, 'index.html'))![1]!;
+    expect(banner).toMatch(/<h1>[^<]+<\/h1>\s*<p class="lead">[^<]+<\/p>\s*<img class="home-banner-art" src="home-banner\.svg" alt="" width="1200" height="420">/);
+    expect(existsSync(join(site, 'home-banner.svg'))).toBe(true);
+  }
+});
+
+test('Link with an icon', () => {
+  for (const site of [iconed.full, iconed.staff]) {
+    const html = homeMain(read(site, 'index.html'));
+    const anchor = (title: string) => new RegExp(`<a href="[^"]*" rel="noopener noreferrer">((?:<img [^>]*>)*)${title}</a>`).exec(html)![1]!;
+    expect(anchor('Source')).toBe('<img class="link-icon themed-light" src="link-icons/github-light.svg" alt="" width="24" height="24"><img class="link-icon themed-dark" src="link-icons/github-dark.svg" alt="" width="24" height="24">');
+    expect(anchor('Blog')).toBe('');
+    for (const file of ['github-light.svg', 'github-dark.svg']) expect(existsSync(join(site, 'link-icons', file))).toBe(true);
+  }
+});
+
+test('Icon with broken settings', () => {
+  for (const site of [broken.full, broken.staff]) expect(homeMain(read(site, 'index.html'))).not.toContain('link-icon');
 });
 
 test('Broken settings, no links', () => {

@@ -250,6 +250,56 @@ const frameOf = (page: Page, selector: string) => page.locator(selector).first()
   return { width: style.borderTopWidth, style: style.borderTopStyle, color: style.borderTopColor, shadow: style.boxShadow };
 });
 
+// catalogue-site "Home banner art", "Home links" and "Brand mark": images that follow the width and the theme.
+test('Banner keeps its ratio', async ({ page }) => {
+  for (const width of [375, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/full/');
+    const sizes = await page.locator('.home-banner-art').evaluate(image => {
+      const box = image.getBoundingClientRect(), container = image.parentElement!;
+      const style = getComputedStyle(container);
+      return { width: box.width, height: box.height, content: container.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) };
+    });
+    expect(sizes.width, `${width}`).toBeCloseTo(sizes.content, 0);
+    expect(sizes.height / sizes.width, `${width}`).toBeCloseTo(420 / 1200, 2);
+  }
+});
+
+/** Which of the light and dark images of `selector` are shown, and whether each shown one is inline. */
+const shownImages = (page: Page, selector: string) => page.locator(selector).evaluateAll(images => images
+  .filter(image => getComputedStyle(image).display !== 'none')
+  .map(image => [image.getAttribute('src')!.split('/').pop(), getComputedStyle(image).display]));
+
+for (const [how, set] of [
+  ['system preference', async (page: Page, scheme: 'light' | 'dark') => { await page.emulateMedia({ colorScheme: scheme }); }],
+  ['theme switch', async (page: Page, scheme: 'light' | 'dark') => {
+    await page.emulateMedia({ colorScheme: scheme === 'light' ? 'dark' : 'light' });
+    const toggle = page.locator('[data-theme-switch]');
+    await toggle.click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', scheme);
+  }],
+] as const) {
+  test(`Mark follows the theme (${how})`, async ({ page }) => {
+    for (const scheme of ['light', 'dark'] as const) {
+      await page.goto('/full/map/');
+      await set(page, scheme);
+      // The brand link is a flex box, so its shown mark is a flex item (computed display block).
+      expect((await shownImages(page, '.navbar-brand img')).map(([src]) => src), scheme).toEqual([scheme === 'light' ? 'favicon.svg' : 'brand-mark-dark.svg']);
+      // The map canvas and a legend symbol are still blocks after display: revert.
+      expect(await page.locator(`.map-canvas.themed-${scheme}`).evaluate(element => getComputedStyle(element).display), scheme).toBe('block');
+      expect(await page.locator(`.symbol.themed-${scheme}`).first().evaluate(element => getComputedStyle(element).display), scheme).toBe('block');
+    }
+  });
+
+  test(`Link icon follows the theme (${how})`, async ({ page }) => {
+    for (const scheme of ['light', 'dark'] as const) {
+      await page.goto('/extra/');
+      await set(page, scheme);
+      expect(await shownImages(page, '.home-external img'), scheme).toEqual([[`github-${scheme}.svg`, 'inline']]);
+    }
+  });
+}
+
 test('Card frame in light', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('/full/');

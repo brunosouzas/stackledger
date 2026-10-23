@@ -62,12 +62,16 @@ const homeUrl = z.string().max(2048, 'Must have maximum 2048 characters').superR
   // must read the page tag by tag; a real URL percent-encodes them anyway.
   else if (/[<>"'`]/.test(value)) context.addIssue({ code: 'custom', message: 'Must not hold <, >, quotes or backticks (percent-encode them)' });
 });
+/** Icons a home link may show (catalogue, Home settings): the link icon names of @brunosouzas/design-system.
+ * A copy, so validate does not load the design system; test/unit/site-brand.test.ts keeps it equal. */
+export const HOME_LINK_ICONS = ['github', 'website', 'linkedin', 'email'] as const;
 const home = z.strictObject({
   text: text.max(200, 'Must have maximum 200 characters').optional(),
   links: z.array(z.strictObject({
     title: text.max(60, 'Must have maximum 60 characters'),
     url: homeUrl,
     description: text.max(200, 'Must have maximum 200 characters').optional(),
+    icon: z.enum(HOME_LINK_ICONS).optional(),
   })).min(1, 'Must list at least one link').max(20, 'Must list at most 20 links').optional(),
 });
 const site = z.strictObject({

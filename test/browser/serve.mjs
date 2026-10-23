@@ -34,6 +34,8 @@ write(join(extra, 'catalogue', 'catalog-info.yaml'), [
   doc('Line', 'work', '  color: "#0072CE"\n  stops: ["component:wiki", "component:chat", "component:ledger"]\n'),
   doc('MapLayout', 'layout', '  stations:\n    "component:wiki": [0, 0]\n    "component:chat": [2, 0]\n    "component:ledger": [4, 0]\n  zones:\n    - { name: Team tools, title: Team tools, color: "#F5A623" }\n'),
 ].join('---\n'));
+// A home link with an icon (catalogue-site, Home links).
+write(join(extra, 'catalogue', 'stackledger.yaml'), doc('Settings', 'settings', '  site:\n    home:\n      links:\n        - { title: Source, url: "https://github.example.com/northwind/", icon: github }\n'));
 write(join(extra, 'kit', 'notes', 'SKILL.md'), '---\nname: notes\ndescription: Takes Northwind notes.\n---\n');
 write(join(extra, 'kit', 'summary', 'SKILL.md'), '---\nname: summary\ndescription: Summarises Northwind notes.\n---\n');
 write(join(extra, 'kit', 'stackledger-skills.yaml'), doc('Line', 'notes', '  color: "#E4002B"\n  stops: ["skill:notes", "skill:summary"]\n'));

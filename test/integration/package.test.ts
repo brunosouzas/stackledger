@@ -39,7 +39,10 @@ describe('package contents from a clean checkout', () => {
     // prepack prints the build's output before the JSON array.
     const [listed] = JSON.parse(result.stdout.slice(result.stdout.indexOf('[\n'))) as [{ files: { path: string }[] }];
     const paths = listed.files.map(file => file.path);
-    for (const path of ['dist/cli.js', 'skills/stackledger/SKILL.md', 'README.md', 'LICENSE', 'package.json', 'npm-shrinkwrap.json']) {
+    // The site's art ships; its sources (scripts/home-banner.json, scripts/site-art.mjs) do not (catalogue-site, Home banner art).
+    for (const path of ['dist/cli.js', 'skills/stackledger/SKILL.md', 'README.md', 'LICENSE', 'package.json', 'npm-shrinkwrap.json',
+      'site/public/home-banner.svg', 'site/public/brand-mark-dark.svg',
+      ...['github', 'website', 'linkedin', 'email'].flatMap(icon => [`site/public/link-icons/${icon}-light.svg`, `site/public/link-icons/${icon}-dark.svg`])]) {
       expect(paths).toContain(path);
     }
     expect(paths.some(path => path.startsWith('site/'))).toBe(true);
