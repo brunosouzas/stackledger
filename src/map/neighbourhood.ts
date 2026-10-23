@@ -86,7 +86,7 @@ function box(node: DiagramNode, x: number, y: number, width: number, theme: Them
   // A resource without a page is a placeholder (dashed, muted, no shadow), so it does not look clickable.
   const face = node.linked
     ? nodeBlock({ ...common, subtitle: node.kind, state: centre ? 'focus' : 'normal', radius: BOX_RADIUS, inkScale: INK_SCALE })
-    : nodeBlock({ ...common, state: 'placeholder', radius: BOX_RADIUS });
+    : nodeBlock({ ...common, subtitle: node.kind, state: 'placeholder', radius: BOX_RADIUS });
   const content = tag('title', {}, escapeXml(`${node.title} (${node.ref})`)) + writePiece(face);
   return tag('g', node.linked ? { 'data-ref': node.ref } : {}, content);
 }

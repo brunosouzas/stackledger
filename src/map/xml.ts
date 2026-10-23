@@ -40,15 +40,6 @@ export function color(value: string): string {
   return value;
 }
 
-/** Mix a #RRGGBB colour with white; amount 0 returns it unchanged, 1 returns white. */
-export function tint(value: string, amount: number): string {
-  if (!HEX_COLOUR.test(value)) throw new Error('SVG colour must be #RRGGBB or none');
-  if (!(amount >= 0 && amount <= 1)) throw new Error('Tint amount must be between 0 and 1');
-  if (amount === 0) return value;
-  const channels = [1, 3, 5].map(start => Math.round(parseInt(value.slice(start, start + 2), 16) * (1 - amount) + 255 * amount));
-  return '#' + channels.map(channel => channel.toString(16).padStart(2, '0').toUpperCase()).join('');
-}
-
 export type Attributes = Record<string, string | number>;
 
 export function tag(name: string, attrs: Attributes = {}, children?: string): string {
