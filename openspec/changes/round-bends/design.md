@@ -2,34 +2,43 @@
 
 `parallelLines` (`src/map/parallel.ts`) turns each line's grid path into offset edges (`OffsetEdge`: `a`, `b`, `offset`, `normal`, `gridA`, `gridB`) and joins consecutive edges with `joint()`: nothing on a straight run, a 45-degree connector where the slot changes, the intersection of the two offset lines at a 45- or 90-degree bend (the mitre), and a diagonal plus the remaining axis for a sharper turn, which only happens at stations. The result is `Stroke.points`, a polyline. The layout uses it for label obstacles (`layout.ts`, one rectangle per segment as wide as the casing) and the map extent; `svg.ts` writes it as `M … L …` through the `pipe` piece.
 
+`OffsetEdge.offset` and `normal` belong to the undirected grid edge (`normal` is the left normal of the edge's canonical direction), not to the line's direction of travel: two lines crossing the same bend in opposite directions see opposite signs.
+
 The spike (`~/.hermes/spikes/design-system/round-bends/spike.diff`) drew arcs in `svg.ts` only, for every 45- and 90-degree bend. In the Northwind example, 18 bends turn at a grid node, and 12 of them at a station.
 
 ## Decisions
 
+All coordinates are map units (grid node `[x, y]` is at `[64x, 64y]`); SVG `y` grows downwards.
+
 ### 1. One centre per bundle bend
 
-At a bend node `N` with incoming direction `u` and outgoing `v` (unit vectors, deflection `φ` of 45 or 90 degrees), the centre is `C = N + w · R / cos(φ/2)`, where `w` is the unit vector of `v − u` (towards the inside of the turn) and `R` is `map.bendRadius`. Each line of the bundle turns around `C`: its tangent points are the feet of the perpendiculars from `C` on its two offset lines, and its radius is the distance from `C` to them. Lines on the outside of the turn get a larger radius, lines on the inside a smaller one, and the gap between neighbours stays `lineWidth + 1.5`. This is why a fixed radius per line would not do: the bundle would pinch in the curve.
+At a bend node `N`, take the line's direction of travel: incoming unit vector `u`, outgoing `v`, deflection `φ` (45 or 90 degrees), `cross = u.x·v.y − u.y·v.x`. The centre is `C = N + w · R / cos(φ/2)`, with `w` the unit vector of `v − u` (towards the inside of the turn) and `R = map.bendRadius`. `C` does not depend on the direction of travel: reversing it swaps `u` and `−v`, and `v − u` keeps its direction. Every line of the bundle turns around `C`.
 
-Rejected: a quadratic curve (`Q`) with the mitre as control point, as the banner draws. It is not concentric for offset lines, so a bundle's gap changes through the curve.
+For one line:
 
-### 2. Corners that stay mitred
+- **Signed radius** `r = R − s`, where `s` is the line's offset towards the inside of the turn: `s = (offset · normal) · n`, with `offset · normal` the line's displacement from the bundle's centre line on the incoming edge (the same vector whichever way the edge is stored) and `n` the unit normal of the incoming edge that points to the inside of the turn (the side of `C`). Lines on the outside get a larger radius, lines on the inside a smaller one, and the gap between neighbours stays `lineWidth + 1.5`.
+- **Tangent points** `T1 = N1 − u · t` and `T2 = N2 + v · t`, where `N1` and `N2` are the line's mitre-free points on its two offset lines nearest `N` (the feet of the perpendiculars from `N`), and the setback is `t = r · tan(φ/2)`. For the centre line, `t` is 32 at 90 degrees and about 13.2548 at 45 degrees.
+- **Arc** `A r,r 0 0 sweep T2`, with `sweep = 1` when `cross > 0` (clockwise on screen) and `0` otherwise; large-arc is always 0, since the arc spans the deflection, at most 90 degrees.
 
-A bend keeps today's joint when:
+Rejected: a quadratic curve (`Q`) with the mitre as control point, as the banner draws. It is not concentric for offset lines, so a bundle's gap changes through the curve. Rejected: one radius per line, measured as a distance: a distance is never negative, so it hides a line that crossed the centre (see §2).
 
-1. `N` is the position of a station. The line must pass through the centre of the stop it serves, and the marker covers the corner. With an arc of radius 32, a 90-degree turn would pass about 13 units from the centre.
-2. The line's incoming and outgoing offsets differ (the bundle splits or merges at `N`): the two tangent distances from `C` differ, so no circle joins them.
-3. The arc does not fit: a tangent point falls before the start of the incoming offset edge's straight part or after the end of the outgoing one. The straight part of an edge is what is left after the arcs at its two ends; when the arcs at both ends of one edge would overlap, both bends on that edge stay mitred.
-4. The turn is sharper than 90 degrees (only at stations; already case 1).
+### 2. Which bends turn round
 
-The decision is per bend of a bundle: the lines that share both the incoming and the outgoing edge at `N` either all get arcs or all keep the mitre, so the bundle never mixes the two. Rule 3 is applied until nothing changes, so the result does not depend on line order.
+Three steps, each over all bends at once, so the result does not depend on the order of lines or bends:
+
+1. **Candidates.** A bend at `N` between grid edges `E1` and `E2` is a candidate when `N` is not a station position; `E1` and `E2` hold the same lines and each of them runs from one to the other at `N` (so a middle line going straight on, or a line joining or leaving, makes it no candidate); and every line's signed radius is at least half its outer width, `(lineWidth + casing) / 2` = 9. With `R` 32 and a gap of 13.5, bundles of up to four lines pass; a five-line bundle has an inner offset of 27 and a signed radius of 5, so it stays mitred.
+2. **Room.** For each line at each candidate, its setback must fit on the two straight segments of its mitred polyline (`points`) that meet at `N`. A segment's budget for one end is half its length when its other end is also a candidate, and its whole length otherwise (a mitre, a slot-change connector or the line's end take no length from it).
+3. **Eligible.** A candidate is eligible when every line of its bundle has room. Eligible bends turn round; the others keep the mitre for every line of the bundle. A candidate that loses at step 3 does not give its half back to its neighbours: budgets come from step 1 only.
+
+Rejected: removing conflicts one at a time until nothing changes. With a chain A–B–C, the result depends on which conflict goes first.
 
 ### 3. Where the arc lives
 
-`Stroke` gains `path: PathPart[]`, the drawn line: straight parts (`{ to }`) and arcs (`{ to, radius, sweep }`), starting at `points[0]`. `points` stays the polyline with mitres, unchanged, for the code that reads ends and directions (`badges.ts`, the map extent) and for the tests of routing and slots. `svg.ts` writes `path` as `M … L … A r,r 0 0 sweep x,y …`; the `pipe` piece and the map's path check already accept `A`.
+`Stroke` gains `path: PathPart[]`, the drawn line: straight parts (`{ to }`) and arcs (`{ to, radius, sweep }`), starting at `points[0]`. `points` stays the polyline with mitres, unchanged, for the code that reads ends and directions (`badges.ts`, the map extent) and for the routing and slot tests. `svg.ts` writes `path` as `M … L … A r,r 0 0 sweep x,y …` through `number()` of `src/map/xml.ts`, which throws on a non-finite value, so a bad arc never reaches a page. The `pipe` piece checks only the characters of `d` (its pattern allows `A`); the map's writer escapes `d` as text and has no path grammar of its own.
 
 ### 4. Labels avoid the arcs
 
-The layout builds line obstacles from `path`: straight parts as today, and each arc as chords of at most 15 degrees, each a rectangle as wide as the casing. With a radius up to about 60, a 15-degree chord strays at most 0.5 units from the arc, under the 9-unit half-width of the obstacle. Whether any label of the example moves is not known yet: the spike kept the mitre obstacles. "Example map" answers it, and the scenario "Label clears a round bend" covers a label that would touch the inside of a curve.
+The layout builds line obstacles from `path`: straight parts as today, and each arc as chords of at most 15 degrees. A chord cuts inside the arc by its sagitta, `r · (1 − cos(7.5°))` at most, so each chord rectangle is as wide as the casing plus twice that sagitta: the painted curve, outer edge included, stays inside the rectangles. Whether any label of the example moves is not known yet: the spike kept the mitre obstacles. "Example map" answers it; "Label clears a round bend" and "Label clears the outside of a curve" cover the two sides of a curve.
 
 ### 5. Radius from the design system
 
@@ -37,17 +46,19 @@ The layout builds line obstacles from `path`: straight parts as today, and each 
 
 ### 6. Example map
 
-"Software map unchanged" keeps station marker centres and label positions equal to the 0.2.0 fixtures. Line paths equal the fixtures except at bends away from stations; the test checks that each line path, read as points, equals the fixture's polyline with each arc replaced by its mitre corner: the arc's two tangent points lie on the fixture's two segments, and nothing else differs.
+"Software map unchanged" keeps station marker centres equal to the 0.2.0 fixtures, and line paths equal to them once each arc is read back to its corner: the arc's two tangent points lie on the fixture's two segments, and nothing else differs. Labels are expected at their 0.2.0 positions in the example; the requirement allows a label to move only when a round bend's obstacle covers its candidate, and the pull request names any that does.
 
 ## Risks
 
-- **A catalogue with stations in long straight runs and many bends between them** gets many arcs; drawing cost is one `A` command each. The 200-station performance test ("Large catalogue") must stay under its limit; it runs in the task list.
-- **Labels may move in other catalogues** because arcs change the obstacles near curves. That is the purpose of decision 4; positions of stations never move.
+- **Many arcs.** Drawing cost is one `A` command per line per bend. The 200-station performance test ("Large catalogue") must stay under its limit; it runs in the task list.
+- **Labels may move in other catalogues** because arcs change the obstacles near curves. That is the purpose of decision 4; stations never move.
+- **Far coordinates.** Arcs are computed from the same finite offsets as today; "Far-away typo" and "Far station drawn by the piece" run unchanged.
 
 ## Test changes
 
 | Test | File | Change |
 | --- | --- | --- |
-| Bundle keeps its sides through a bend: bends are mitred | `test/unit/map-layout.test.ts` | renamed "Bundle keeps its sides through a bend"; the bend in it is not a station, so it now expects concentric arcs; `points` still has three points |
+| Bundle keeps its sides through a bend: bends are mitred | `test/unit/map-layout.test.ts` | renamed "Bundle keeps its sides through a bend"; the bend in it is not a station, so it now expects concentric arcs in `path`; `points` still has three points |
+| Angles | `test/unit/map-layout.test.ts` | also reads `path`: straight parts octilinear, the rest arcs |
 | Example map | `test/unit/map-svg.test.ts` | line paths compared as in decision 6 |
 | SVG heroes are generated by stackledger map at the documented date | `test/integration/map-example.test.ts` | not edited; `docs/images/map-*.svg` regenerated |

@@ -5,7 +5,7 @@ The lines of the metro map turn with a mitred corner (`src/map/parallel.ts`, "Bu
 ## What Changes
 
 - **Round bends.** Where a line turns 45 or 90 degrees at a grid node that is not a station, its corner becomes a circular arc. The radius of a bundle's centre line is the design system token `map.bendRadius` (32); each line of the bundle turns around the same centre, so the lines stay parallel and in order through the curve.
-- **Corners that stay mitred.** A bend at a station (the marker covers it, and the line must pass through the marker's centre), a bend where the bundle splits or merges, a bend whose arc would run past the straight part of an edge it shares with another bend, and the sharper turns at stations keep today's drawing. A bend that stays mitred for one line of a bundle stays mitred for every line of it.
+- **Corners that stay mitred.** A bend at a station (the marker covers it, and the line must pass through the marker's centre), a bend where the bundle splits or merges, a bundle so wide that its inner line would turn too tight, a bend whose arc has no room on its straight segments, and the sharper turns at stations keep today's drawing. The decision is per bundle, over all bends at once, so it does not depend on line order.
 - **Labels follow the drawn line.** The label obstacles of a line follow its arcs, so no label covers the inside of a curve.
 - **Both maps.** The software map and the skills map share the engine, so both get round bends. Station positions, routes, line order, terminal badges and interchanges do not change.
 - **Dependency.** The design system version that adds `map.bendRadius` (0.3.1 or 0.4.0, published by the owner), pinned exactly as today.
@@ -24,7 +24,7 @@ None.
 
 ### Modified Capabilities
 
-- `metro-map`: "Round bends" added; "Bundles through bends" (arcs instead of mitres, and when a corner stays mitred), "Label placement" (obstacles follow arcs), "Design system tokens" and "Theme ink comes from the design system" (`map.bendRadius`), and "Software map unchanged" (line paths may differ at bends away from stations) modified.
+- `metro-map`: "Round bends" and "Room for an arc" added; "Octilinear routing" (arcs are not octilinear segments), "Bundles through bends" (arcs instead of mitres, and when a corner stays mitred), "Label placement" (obstacles follow arcs), "Design system tokens" and "Theme ink comes from the design system" (`map.bendRadius`), and "Software map unchanged" (line paths may differ at bends away from stations) modified.
 
 ## Impact
 
@@ -35,11 +35,11 @@ None.
 
 ## Implicit requirements
 
-- **Errors and invalid input:** none new. The arc is computed from validated geometry; non-finite numbers are already refused by the SVG writer.
+- **Errors and invalid input:** none new. Arcs are computed from validated geometry and written through `number()`, which throws on a non-finite value; the `pipe` piece checks the characters of `d`.
 - **Limits:** the map has no coordinate limit (design system 0.1.1); arcs keep it.
 - **Repetition and idempotency:** output stays byte-identical for the same input.
 - **Concurrency:** n/a, pure functions.
-- **Security:** the `A` command is already allowed by the `pipe` piece and by the map's path check; no new element or attribute.
+- **Security:** no new element or attribute; `A` is a character the `pipe` piece already allows, and the map's writer escapes `d` as text.
 - **Logs and observability:** n/a.
 
 ## Documentation
