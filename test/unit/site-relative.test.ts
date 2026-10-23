@@ -12,6 +12,21 @@ import { folder } from '../helpers.js';
 const csp = `<meta http-equiv="Content-Security-Policy" content="${POLICY.replaceAll("'", '&#39;')}">`;
 const page = (body: string, head = csp) => `<!DOCTYPE html><html lang="en"><head>${head}</head><body>${body}</body></html>`;
 
+// site-security, No external requests: a home link's URL passes only as an a href of the root index.html.
+test('Link URL outside the home', () => {
+  const url = 'https://example.org/articles/?a=1&b=2';
+  const escaped = url.replaceAll('&', '&amp;');
+  const site = folder({
+    'index.html': page(`<a href="${escaped}" rel="noopener noreferrer">Articles</a><img src="${escaped}" alt="">`),
+    'software/index.html': page(`<a href="${escaped}">Articles</a>`),
+  });
+  const problems = scan(site, [], [url]);
+  expect(problems).toEqual([`index.html: src="${url}"`, `software/index.html: href="${url}"`]);
+  // Without the list, the home anchor is refused too; an unlisted URL on the home is still refused.
+  expect(scan(site)).toContain(`index.html: href="${url}"`);
+  const other = folder({ 'index.html': page('<a href="https://other.example/">x</a>') });
+  expect(scan(other, [], [url])).toEqual(['index.html: href="https://other.example/"']);
+});
 test('Astro asset URLs become relative to the file that holds them', () => {
   const site = folder({
     'index.html': page('<link rel="stylesheet" href="/_astro/site.css"><script type="module" src="/_astro/map.js"></script>'),

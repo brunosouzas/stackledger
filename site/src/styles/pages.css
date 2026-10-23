@@ -253,3 +253,47 @@
 .line-chips a.btn {
   text-decoration: none;
 }
+
+/* Home page (catalogue-site, Home page): a tinted banner as on brunosouzas.com, then the division cards. */
+.home-banner {
+  padding: 3.5rem 0 3rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-light);
+}
+
+.home-banner h1 {
+  margin: 0 0 0.75rem;
+}
+
+.home-banner .lead {
+  margin: 0;
+  max-width: 40rem;
+}
+
+.home-cards {
+  margin-top: 0;
+  margin-bottom: 2.5rem;
+}
+
+.home-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-links a,
+.home-external a {
+  font-weight: 600;
+}
+
+.home-external {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.home-external li {
+  margin: 0.4rem 0;
+}

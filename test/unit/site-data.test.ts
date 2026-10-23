@@ -48,7 +48,8 @@ test('Site settings and their fallback', () => {
   expect(data.colors).toEqual({ accent: '#E4002B' });
   const broken = settings('settings', { site: { title: 'Northwind software', colors: { accent: 'red' } } });
   const fallback = buildSiteData(catalogue(hiddenValues, [broken]), 'staff', '0.1.0').data;
-  expect(fallback.title).toBe('Software map');
+  expect(fallback.title).toBe('stackledger');
+  expect(fallback.home).toEqual({ text: 'Your software and skills, mapped.', links: [] });
   expect(fallback.colors).toEqual({});
   // Broken settings: the staff view hides every licence field.
   expect(fallback.licences[0]!.fields).toEqual([]);

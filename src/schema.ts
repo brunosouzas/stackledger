@@ -49,8 +49,27 @@ const hide = z.array(z.enum(licenceFields)).superRefine((list, context) => list.
 /** Site tokens spec.site.colors may replace in the light theme; each maps to a --color-<name> variable. */
 export const siteColorNames = ['primary', 'accent', 'body', 'text'] as const;
 export type SiteColorName = typeof siteColorNames[number];
+/** A home link's URL (catalogue, Home settings): http(s) with a host and no user name or password,
+ * so it can be an anchor's href without running code or carrying a credential (site-security). */
+const homeUrl = z.string().max(2048, 'Must have maximum 2048 characters').superRefine((value, context) => {
+  let url: URL | undefined;
+  try { url = new URL(value); } catch { /* reported below */ }
+  if (!url || !/^https?:$/.test(url.protocol) || !/^https?:\/\//i.test(value)) context.addIssue({ code: 'custom', message: 'Must be an http:// or https:// URL' });
+  else if (!url.hostname) context.addIssue({ code: 'custom', message: 'Must have a host' });
+  else if (url.username || url.password || /@/.test(value.slice(value.indexOf('//') + 2).split(/[/?#]/)[0]!)) context.addIssue({ code: 'custom', message: 'Must not hold a user name or password' });
+  else if (/[\s\p{Cc}]/u.test(value)) context.addIssue({ code: 'custom', message: 'Must not hold a space or control character' });
+});
+const home = z.strictObject({
+  text: text.max(200, 'Must have maximum 200 characters').optional(),
+  links: z.array(z.strictObject({
+    title: text.max(60, 'Must have maximum 60 characters'),
+    url: homeUrl,
+    description: text.max(200, 'Must have maximum 200 characters').optional(),
+  })).min(1, 'Must list at least one link').max(20, 'Must list at most 20 links').optional(),
+});
 const site = z.strictObject({
   title: text.max(60, 'Must have maximum 60 characters').optional(),
+  home: home.optional(),
   colors: z.strictObject(Object.fromEntries(siteColorNames.map(key => [key, color.optional()])) as Record<SiteColorName, z.ZodOptional<typeof color>>).optional(),
 });
 /** Sites stackledger build writes: [full] is the personal mode, [full, staff] (the default) the corporate one. */

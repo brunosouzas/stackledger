@@ -80,11 +80,12 @@ After step 3, `<out>` holds the previous build byte for byte; the build tests fo
 
 ## Pages
 
-Each site has the same pages, filled from its own view; the `full` site also has the Reports page and the calendar file. The header links two divisions: **Software** (the pages below) and, with a skill set, **Skills** ([its pages](skills.md#what-the-site-shows), the same in both sites). Each division has its own menu under the header: Map, List, Journeys and Reports for Software; List, Map and Rules for Skills.
+Each site has the same pages, filled from its own view; the `full` site also has the Reports page and the calendar file. The site title in the header (`spec.site.title`, default `stackledger`) opens the home page. The header links two divisions: **Software** (the pages below) and, with a skill set, **Skills** ([its pages](skills.md#what-the-site-shows), the same in both sites). Each division has its own menu under the header: Map, List, Journeys and Reports for Software; List, Map and Rules for Skills.
 
 | Page | Path | Shows |
 | --- | --- | --- |
-| Map | `/` | The metro map in the page's theme, with zoom in, zoom out, reset and drag to pan; a zone filter; the lines as buttons under the map (choose one to dim the others, choose it again to restore); the map symbols. Each station opens its item page by click, or by focus and Enter. |
+| Home | `/` | A banner with the site title and `spec.site.home.text` (default "Your software and skills, mapped."); a Software card with the view's numbers of components, licences and journeys and links to Map, List, Journeys and, in `full`, Reports; with a skill set, a Skills card with its counts and links; then, when `spec.site.home.links` is set, a **Links** list (title, description, URL). The home has no sub-menu. Up to 0.3.0 the map was at `/`. |
+| Map | `/map/` | The metro map in the page's theme, with zoom in, zoom out, reset and drag to pan; a zone filter; the lines as buttons under the map (choose one to dim the others, choose it again to restore); the map symbols. Each station opens its item page by click, or by focus and Enter. |
 | Software list | `/software/` | Every component and licence in one table: name, kind, type, lifecycle or status, owner and zone, sorted by reference. Search (any shown cell, ignoring case) and filters work on the table itself. |
 | Component | `/software/<name>/` | Title, name, description, type, lifecycle, owner, zone and tags; its licences with the licence fields of the view; the journeys that stop at it; a neighbourhood diagram (what it depends on, what depends on it) with the same items as text links; the impact of removing it; references that match nothing. |
 | Licence | `/licences/<name>/` | Title, name, owner and the licence fields of the view; the components that use it; the impact of removing it. |
@@ -105,7 +106,7 @@ The look follows brunosouzas.com (based on the Astroplate theme, MIT), with the 
 
 ## Security
 
-- One fixed Content Security Policy on every page, in a `meta` element and in `_headers`: `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'` (plus `frame-ancestors 'none'` in `_headers`). Pages have no inline script or style, no `style` attribute and no event-handler attribute.
+- One fixed Content Security Policy on every page, in a `meta` element and in `_headers`: `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'` (plus `frame-ancestors 'none'` in `_headers`). Pages have no inline script or style, no `style` attribute and no event-handler attribute. No page links another site except the home's **Links**: their URLs are checked by `stackledger validate` (`http://` or `https://`, a host, no user name or password), each anchor has `rel="noopener noreferrer"`, and `Referrer-Policy: no-referrer` keeps the site's address out of the other site's logs. The build fails if such a URL shows up anywhere else.
 - Every URL is relative and stays inside its site, so the same files work under any path prefix. No font, script or image comes from another site; there are no analytics.
 - `noindex, nofollow` on every page, `X-Robots-Tag` in `_headers`, and a `robots.txt` that disallows everything, at the root of the output and in each site.
 - The `staff` site is built first, from the staff view only: no file of it contains a hidden field's value. It has no Reports page, no calendar file and no link to either.

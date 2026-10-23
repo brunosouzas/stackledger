@@ -193,12 +193,14 @@ spec:
 | `metadata.title` | Optional non-empty string |
 | `spec` | Required mapping; may be empty (`spec: {}`) |
 | `spec.views.staff.hide` | Optional list of licence field names without repeats, each one of `vendor`, `status`, `cycle`, `cost`, `currency`, `renewsOn`, `seats`, `paidBy`, `vaultItem` and `note` |
-| `spec.site.title` | Optional title of both [sites](site.md), a non-empty string of at most 60 characters; default `Software map` |
+| `spec.site.title` | Optional title of both [sites](site.md), a non-empty string of at most 60 characters; default `stackledger` (up to 0.3.0, `Software map`) |
+| `spec.site.home.text` | Optional text of the home page's banner, a non-empty string of at most 200 characters |
+| `spec.site.home.links` | Optional list of 1 to 20 links for the home page, each with `title` (at most 60 characters), `url` (`http://` or `https://`, with a host, no user name or password, at most 2,048 characters) and optionally `description` (at most 200 characters). The only links from the site to other sites |
 | `spec.site.colors` | Optional mapping with any of `primary`, `accent`, `body` and `text`, each `#` and six hexadecimal digits (quote it: `#` starts a YAML comment). They replace the matching colours of the light theme only; the dark theme keeps its own |
 | `spec.skills.folders` | Optional list of 1 to 20 skills folders for `stackledger build`, without repeats, each relative to the catalogue folder (`..` allowed; no leading `/`, `\\` or `~`, and no drive letter such as `C:`). `--skills` replaces it. From 0.3.0; 0.2.0 reads it as an error: pin one version everywhere. See [Skills on the site](../README.md#skills-on-the-site) |
 | `spec.sites` | Optional list of the sites `stackledger build` writes: `[full]` (personal mode) or `[full, staff]` (corporate mode, the default), in any order, without repeats. `[staff]` alone, an empty list or any other value is an error |
 
-Unlisted fields anywhere in a Settings document are errors, so `spec.view` instead of `spec.views` is reported, and so is `spec.site.logo`. While the Settings document has an error, the sites use the default title and colours. When `hide` is given it replaces the default list entirely: `[cost]` hides only the cost, and `[]` hides nothing. Without `hide`, the default list applies.
+Unlisted fields anywhere in a Settings document are errors, so `spec.view` instead of `spec.views` is reported, and so is `spec.site.logo`. While the Settings document has an error, the sites use the default title and colours, and the home page shows the default text and no links. When `hide` is given it replaces the default list entirely: `[cost]` hides only the cost, and `[]` hides nothing. Without `hide`, the default list applies.
 
 **Personal or corporate.** Without `spec.sites`, `stackledger build` writes both sites: the corporate mode, where finance reads `full` and everyone else `staff`. When you are the only reader, `sites: [full]` is the personal mode: only the `full` site is built and published, and `/` leads to it. While the Settings document has an error, the build uses the default and writes both sites. See [docs/hosting.md](hosting.md) for the access setup of each mode.
 

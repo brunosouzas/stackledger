@@ -1,6 +1,7 @@
 ---
 // Footer from brunosouzas.com (Astroplate theme, MIT): brand and links, then the view, the
-// stackledger version and the theme credit. No links to other sites (site-security).
+// stackledger version and the theme credit. No links to other sites (site-security): only the home
+// page's configured links leave the site.
 import { href, site } from '../lib/site';
 
 interface Props {
@@ -13,7 +14,7 @@ const { root } = Astro.props;
   <div class="container footer-main">
     <a class="navbar-brand" href={href(root, '')}>{site.title}</a>
     <ul class="footer-links">
-      <li><a href={href(root, '')}>Map</a></li>
+      <li><a href={href(root, 'map/')}>Map</a></li>
       <li><a href={href(root, 'software/')}>Software</a></li>
       <li><a href={href(root, 'journeys/')}>Journeys</a></li>
     </ul>

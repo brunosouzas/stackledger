@@ -129,8 +129,10 @@ cd /path/to/skills && node /path/to/stackledger/dist/cli.js skills map . --out d
 
 | | |
 |---|---|
-| ![Map page with the metro map, line buttons and map symbols](docs/images/site-map-light.png) | ![The same map page in the dark theme](docs/images/site-map-dark.png) |
-| **Map**: zoom, pan, zone filter; the line buttons highlight a journey | **Dark theme**, remembered across pages |
+| ![Home page with the banner, the Software and Skills cards and the configured links](docs/images/site-home.png) | ![Map page with the metro map, line buttons and map symbols](docs/images/site-map-light.png) |
+| **Home**: the site title opens it; counts, links to each division and your own links from `spec.site.home` | **Map** (`/map/`): zoom, pan, zone filter; the line buttons highlight a journey |
+| ![The same map page in the dark theme](docs/images/site-map-dark.png) | |
+| **Dark theme**, remembered across pages | |
 | ![Software list with search and filters](docs/images/site-software.png) | ![Component page for GitHub with its licence and neighbourhood diagram](docs/images/site-component.png) |
 | **Software**: every component and licence, with search and filters | **Component**: licence, journeys, what it depends on and what depends on it, removal impact |
 | ![Licence page in the full site with cost and renewal](docs/images/site-licence-full.png) | ![The same licence page in the staff site without cost or renewal](docs/images/site-licence-staff.png) |

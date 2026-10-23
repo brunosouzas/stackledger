@@ -11,7 +11,7 @@ interface Props {
 }
 const { root, current, exact } = Astro.props;
 const software = [
-  { key: 'map', title: 'Map', path: '' },
+  { key: 'map', title: 'Map', path: 'map/' },
   { key: 'software', title: 'List', path: 'software/' },
   { key: 'journeys', title: 'Journeys', path: 'journeys/' },
   ...('report' in site ? [{ key: 'reports', title: 'Reports', path: 'reports/' }] : []),

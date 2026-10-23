@@ -53,7 +53,9 @@ function customHidden(vendor: string, status: string): Record<string, string> {
 
 const brokenCatalogue = {
   'catalogue.yaml': yaml(depends(component('editor'), ['resource:licence-editor']), component('forge'), licenceWith('licence-editor', DEFAULT_HIDDEN)),
-  'stackledger.yaml': settingsFile({ site: { title: 'Northwind software', colors: { primary: 'red', accent: '#E4002B' } } }),
+  // Valid home links next to the colour error: the error drops them too (Broken settings, no links).
+  'stackledger.yaml': settingsFile({ site: { title: 'Northwind software', colors: { primary: 'red', accent: '#E4002B' },
+    home: { links: [{ title: 'Articles', url: 'https://example.org/articles/' }] } } }),
 };
 
 const hostileComponent = '<img src=x onerror=alert(1)>';
@@ -63,11 +65,23 @@ const hostileCatalogue = {
     set(stops('ship', ['editor', 'forge']), 'metadata.title', hostileLine)),
 };
 
-let main: Built, other: Built, customA: Built, customB: Built, broken: Built, hostile: Built, example: Built;
+// catalogue-site, Home page and Home links: a catalogue with home text and links, and one with nothing in it.
+const HOSTILE_LINK = '<script>alert(1)</script>';
+const linkedCatalogue = {
+  'catalogue.yaml': yaml(component('editor'), component('forge'), stops('ship', ['editor', 'forge'])),
+  'stackledger.yaml': settingsFile({ site: { home: { text: 'Northwind tools', links: [
+    { title: 'Articles', url: 'https://example.org/articles/', description: 'What I write' },
+    { title: 'Team wiki', url: 'http://wiki.example.org/' },
+    { title: HOSTILE_LINK, url: 'https://example.org/?a=1&b=2' },
+  ] } } }),
+};
+const emptyCatalogue = { 'stackledger.yaml': settingsFile({}) };
+
+let main: Built, other: Built, customA: Built, customB: Built, broken: Built, hostile: Built, example: Built, linked: Built, empty: Built;
 
 beforeAll(async () => {
   const exampleFiles = Object.fromEntries(['catalog-info.yaml', 'stackledger.yaml'].map(file => [file, read(join(root, 'examples/northwind'), file)]));
-  [main, other, customA, customB, broken, hostile, example] = await Promise.all([
+  [main, other, customA, customB, broken, hostile, example, linked, empty] = await Promise.all([
     buildSites(mainCatalogue(DEFAULT_HIDDEN), '2027-06-01'),
     buildSites(mainCatalogue(OTHER_HIDDEN), '2031-01-01'),
     buildSites(customHidden('Northwind Studio', 'to-confirm'), '2027-06-01'),
@@ -75,10 +89,12 @@ beforeAll(async () => {
     buildSites(brokenCatalogue),
     buildSites(hostileCatalogue),
     buildSites(exampleFiles),
+    buildSites(linkedCatalogue),
+    buildSites(emptyCatalogue),
   ]);
 }, 180_000);
 
-// Removing seven built sites can take more than the default 10 s while other test files run.
+// Removing nine built sites can take more than the default 10 s while other test files run.
 afterAll(cleanup, 60_000);
 
 const tagsOf = (html: string) => [...html.matchAll(/<([A-Za-z][A-Za-z0-9:-]*)((?:\s[^<>]*?)?)\/?>/g)].map(match => ({ name: match[1]!.toLowerCase(), attrs: match[2] ?? '' }));
@@ -96,7 +112,7 @@ test('Item pages', () => {
 
 test('No journeys', () => {
   for (const site of [broken.full, broken.staff]) {
-    expect(read(site, 'index.html')).toContain('No journeys yet');
+    expect(read(site, 'map/index.html')).toContain('No journeys yet');
     expect(read(site, 'journeys/index.html')).toContain('There are no journeys yet.');
   }
 });
@@ -105,7 +121,8 @@ test('Site title', () => {
   for (const site of [main.full, main.staff]) {
     for (const page of pages(site)) {
       const html = read(site, page);
-      expect(html, page).toMatch(/<title>[^<]* \| Northwind software<\/title>/);
+      // The home's title is the site title alone (catalogue-site, Home page chrome).
+      expect(html, page).toMatch(page === 'index.html' ? /<title>Northwind software<\/title>/ : /<title>[^<]* \| Northwind software<\/title>/);
       expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*">Northwind software<\/a>/);
     }
   }
@@ -144,8 +161,8 @@ test('Accent override', () => {
 test('Broken settings', () => {
   for (const site of [broken.full, broken.staff]) {
     expect(accents(site)).toEqual({ light: '#000f9f', dark: '#9da8ff' });
-    expect(read(site, 'index.html')).toContain('<title>Map | Software map</title>');
-    expect(read(site, 'index.html')).not.toContain('Northwind software');
+    expect(read(site, 'map/index.html')).toContain('<title>Map | stackledger</title>');
+    expect(read(site, 'map/index.html')).not.toContain('Northwind software');
   }
 });
 
@@ -210,7 +227,7 @@ test('Without JavaScript (table present)', () => {
 
 test('Map page legends in HTML, not in the map', () => {
   for (const site of [example.full, example.staff]) {
-    const html = read(site, 'index.html');
+    const html = read(site, 'map/index.html');
     const svg = /<div class="map-canvas themed-light">([\s\S]*?)<\/div>/.exec(html)![1]!;
     for (const chrome of ['Lines (journeys)', '>Symbols<', 'stackledger · ']) expect(svg).not.toContain(chrome);
     expect(svg).toContain('data-ref="component:slack"');
@@ -248,10 +265,108 @@ const REPORTS_LINK = /<a class="sub-link" href="(?:\.\.\/)*reports\/"[^>]*>\s*Re
 const subNav = (html: string) => /<nav class="sub-nav[^"]*" aria-label="Software">[\s\S]*?<\/nav>/.exec(html)?.[0] ?? '';
 
 test('Reports link', () => {
-  for (const page of pages(main.full)) expect(subNav(read(main.full, page)), page).toMatch(REPORTS_LINK);
+  // The home has no sub-navigation (Home page chrome); its Software card links Reports in full only.
+  for (const page of pages(main.full).filter(page => page !== 'index.html')) expect(subNav(read(main.full, page)), page).toMatch(REPORTS_LINK);
   for (const page of pages(main.staff)) expect(read(main.staff, page), page).not.toContain('Reports');
   // Relative from a nested page too.
   expect(subNav(read(main.full, 'software/editor/index.html'))).toMatch(/href="\.\.\/\.\.\/reports\/"/);
+});
+
+const homeMain = (html: string) => /<main[\s\S]*<\/main>/.exec(html)![0];
+
+test('Map at /map/', () => {
+  for (const site of [example.full, example.staff]) {
+    expect(read(site, 'map/index.html')).toContain('data-ref="component:slack"');
+    const home = read(site, 'index.html');
+    expect(home).not.toContain('map-canvas');
+    for (const page of pages(site)) {
+      const html = read(site, page);
+      for (const [, target] of html.matchAll(/<a [^>]*href="([^"]*)"[^>]*>\s*Map\s*<\/a>/g)) {
+        // Every "Map" link to the software map targets map/ (the Skills division has its own skill-map/).
+        if (!target!.endsWith('skill-map/')) expect(target, page).toMatch(/(?:^|\/)map\/$/);
+      }
+    }
+  }
+});
+
+test('Default title', () => {
+  for (const site of [example.full, example.staff, broken.full, broken.staff]) {
+    for (const page of pages(site)) {
+      const html = read(site, page);
+      expect(html, page).toMatch(page === 'index.html' ? /<title>stackledger<\/title>/ : /<title>[^<]* \| stackledger<\/title>/);
+      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*">stackledger<\/a>/);
+    }
+  }
+});
+
+test('Home chrome', () => {
+  for (const site of [main.full, main.staff, example.full]) {
+    const html = read(site, 'index.html');
+    expect(html).not.toContain('class="sub-nav');
+    const header = /<header[\s\S]*?<\/header>/.exec(html)![0];
+    expect(header).not.toContain('aria-current');
+  }
+  expect(read(main.full, 'index.html')).toContain('<title>Northwind software</title>');
+});
+
+test('Home text', () => {
+  const html = homeMain(read(linked.full, 'index.html'));
+  expect(html).toContain('Northwind tools');
+  expect(html).not.toContain('Your software and skills, mapped.');
+  expect(homeMain(read(example.full, 'index.html'))).toContain('Your software and skills, mapped.');
+});
+
+test('Empty catalogue', () => {
+  for (const site of [empty.full, empty.staff]) {
+    const html = homeMain(read(site, 'index.html'));
+    expect(html).toMatch(/0 components, 0 licences and 0 journeys\./);
+  }
+});
+
+test('Two links', () => {
+  for (const site of [linked.full, linked.staff]) {
+    const html = homeMain(read(site, 'index.html'));
+    expect(html).toContain('<h2>Links</h2>');
+    const anchors = [...html.matchAll(/<a href="(https?:[^"]*)"([^>]*)>([^<]*)<\/a>/g)].map(match => ({ href: decode(match[1]!), attrs: match[2]!, text: match[3]! }));
+    expect(anchors.map(anchor => anchor.href)).toEqual(['https://example.org/articles/', 'http://wiki.example.org/', 'https://example.org/?a=1&b=2']);
+    expect(anchors.map(anchor => anchor.text).slice(0, 2)).toEqual(['Articles', 'Team wiki']);
+    for (const anchor of anchors) { expect(anchor.attrs).toContain('rel="noopener noreferrer"'); expect(anchor.attrs).not.toContain('target'); }
+    expect(html.indexOf('What I write')).toBeGreaterThan(html.indexOf('>Articles<'));
+    expect(html.indexOf('What I write')).toBeLessThan(html.indexOf('>Team wiki<'));
+  }
+  expect(homeMain(read(example.full, 'index.html'))).not.toContain('<h2>Links</h2>');
+});
+
+test('Broken settings, no links', () => {
+  for (const site of [broken.full, broken.staff]) {
+    const html = homeMain(read(site, 'index.html'));
+    expect(html).not.toContain('<h2>Links</h2>');
+    expect(html).not.toContain('example.org');
+    expect(html).toContain('Your software and skills, mapped.');
+  }
+});
+
+test('Hostile link text', () => {
+  const html = read(linked.full, 'index.html');
+  expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+  expect(html).not.toContain(HOSTILE_LINK);
+});
+
+// site-security, No external requests: the configured links are the only absolute URLs, on the home only.
+test('Home links are the only external URLs', () => {
+  const external = /^(?:[A-Za-z][A-Za-z0-9+.-]*:|\/\/)/;
+  for (const site of [linked.full, linked.staff]) {
+    const found: string[] = [];
+    for (const [file, content] of tree(site)) {
+      if (!file.endsWith('.html')) continue;
+      for (const tag of tagsOf(content)) {
+        for (const attr of attrsOf(tag.attrs)) {
+          if (['href', 'src', 'action', 'formaction', 'poster', 'data'].includes(attr.name) && external.test(decode(attr.value))) found.push(`${file} ${tag.name} ${attr.name} ${decode(attr.value)}`);
+        }
+      }
+    }
+    expect(found).toEqual(['index.html a href https://example.org/articles/', 'index.html a href http://wiki.example.org/', 'index.html a href https://example.org/?a=1&b=2']);
+  }
 });
 
 test('Software sub-navigation', () => {

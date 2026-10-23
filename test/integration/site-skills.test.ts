@@ -7,7 +7,7 @@ import { execFile } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { component, line, set, settings } from '../unit/helpers.js';
+import { component, licence, line, set, settings } from '../unit/helpers.js';
 import { yaml } from './mcp-helpers.js';
 import { cli, root } from './helpers.js';
 import { agent, playbook, skill } from '../skills-helpers.js';
@@ -69,6 +69,50 @@ test('Skills link', () => {
     expect(html(plain, site, '')).not.toMatch(/skills\//);
   }
 });
+// catalogue-site, Layout and Home page, with a skill set.
+test('Default title (Skills pages)', () => {
+  for (const site of ['full', 'staff']) {
+    for (const page of ['skills', 'skill-map', 'rules', 'skills/writer']) {
+      const text = html(out, site, page);
+      expect(text, `${site}/${page}`).toMatch(/<title>[^<]* \| stackledger<\/title>/);
+      expect(text, `${site}/${page}`).toMatch(/<a class="navbar-brand" href="[^"]*">stackledger<\/a>/);
+    }
+  }
+});
+test('Title opens the home', () => {
+  for (const site of ['full', 'staff']) {
+    expect(html(out, site, 'skills')).toContain('<a class="navbar-brand" href="../">');
+    expect(html(out, site, 'software/editor')).toContain('<a class="navbar-brand" href="../../">');
+    expect(html(out, site, '')).toContain('<a class="navbar-brand" href="./">');
+  }
+});
+test('Home without skills', () => {
+  for (const site of ['full', 'staff']) {
+    const home = main(html(plain, site, ''));
+    expect(home).not.toContain('>Skills<'); expect(home).not.toMatch(/skills\//);
+  }
+});
+test.concurrent('Home in full and staff', async () => {
+  const counted = writeFolder(join(base, 'home-catalogue'), { 'catalog-info.yaml': yaml(
+    set(component('editor'), 'spec.dependsOn', ['resource:licence-editor', 'resource:licence-forge']), component('forge'), component('vault'),
+    licence('licence-editor'), licence('licence-forge'), stops('ship', ['editor', 'forge'])) });
+  const kit = writeFolder(join(base, 'home-kit'), {
+    'writer/SKILL.md': skill('writer'), 'writer/rules.md': '# Rules\n\n## Writing (WR)\n\n- **WR-1** One.\n- **WR-2** Two.\n- **WR-3** Three.\n',
+    'editor/SKILL.md': skill('editor'), 'release/SKILL.md': playbook('release', 'writer editor', 'reviewer'),
+    'release/rules.md': '# Rules\n\n## Release (REL)\n\n- **REL-1** Review first.\n', 'agents/reviewer.md': agent('reviewer'),
+  });
+  const target = join(base, 'home-out');
+  const result = await run([counted, '--out', target, '--date', DATE, '--skills', kit]);
+  expect(result.status, result.stderr).toBe(0);
+  for (const site of ['full', 'staff']) {
+    const home = main(html(target, site, ''));
+    expect(home, site).toMatch(/3 components, 2 licences and 1 journey\./);
+    expect(home, site).toMatch(/2 skills, 1 playbook, 1 agent and 4 rules\./);
+    for (const path of ['map/', 'skills/', 'skill-map/', 'rules/']) expect(home, `${site} ${path}`).toContain(`href="${path}"`);
+    expect(home.includes('href="reports/"'), site).toBe(site === 'full');
+    expect(home, site).toContain('Your software and skills, mapped.');
+  }
+}, 180_000);
 test('Item pages', () => {
   for (const site of ['full', 'staff']) for (const page of ['skills/writer', 'playbooks/release', 'agents/reviewer']) expect(existsSync(join(out, site, page, 'index.html'))).toBe(true);
 });

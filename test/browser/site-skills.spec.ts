@@ -110,7 +110,7 @@ test.describe('Rules index', () => {
 });
 
 test('Zone with a space in its name', async ({ page }) => {
-  await page.goto('/extra/');
+  await page.goto('/extra/map/');
   const svg = page.locator('.map-canvas.themed-light svg');
   await page.locator('[data-zone-filter]').selectOption('team tools');
   await expect(svg.locator('g[data-ref="component:wiki"]')).not.toHaveClass(/is-dimmed/);

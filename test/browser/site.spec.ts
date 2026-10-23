@@ -100,7 +100,7 @@ async function viewBox(page: Page): Promise<number[]> {
 
 test.describe('Map page', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/full/');
+    await page.goto('/full/map/');
   });
 
   test('Zoom', async ({ page }) => {
@@ -127,7 +127,7 @@ test.describe('Map page', () => {
     const moved = await viewBox(page);
     expect(moved[0]).toBeLessThan(initial[0]!);
     expect(moved[1]).toBeGreaterThan(initial[1]!);
-    expect(page.url()).toMatch(/\/full\/$/);
+    expect(page.url()).toMatch(/\/full\/map\/$/);
   });
 
   test('Highlight a line', async ({ page }) => {
@@ -233,7 +233,7 @@ test.describe('Software list', () => {
 });
 
 test('Theme remembered', async ({ page }) => {
-  await page.goto('/full/');
+  await page.goto('/full/map/');
   await expect(page.locator('.map-canvas.themed-light')).toBeVisible();
   await page.locator('[data-theme-switch]').click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -270,7 +270,7 @@ test.describe('Without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
 
   test('The map and the full table are shown', async ({ page }) => {
-    await page.goto('/staff/');
+    await page.goto('/staff/map/');
     await expect(page.locator('.map-canvas.themed-light svg')).toBeVisible();
     await expect(page.locator('[data-map-tools]')).toBeHidden();
     await expect(page.locator('[data-map-lines]')).toBeVisible();
