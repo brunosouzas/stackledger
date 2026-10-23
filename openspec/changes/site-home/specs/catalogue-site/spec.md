@@ -17,7 +17,7 @@ Each site SHALL have a home page at `/`, a map page at `/map/`, a software list 
 
 #### Scenario: Map at /map/
 - **WHEN** a site is built
-- **THEN** `/map/` holds the map of its view and `/` holds the home page, with no map on it
+- **THEN** `/map/` holds the map of its view, `/` holds the home page with no map on it, and every link labelled `Map` to the software map, in the sub-navigation and the footer, targets `/map/`
 
 ### Requirement: Layout
 Every page SHALL share one layout: a header with the site title (from `spec.site.title`, default `stackledger`) linking the home page `/`, and the divisions Software (`/map/`) and, with a skill set, Skills (`/skills/`); under it the division's sub-navigation, for Software: Map (`/map/`), List (`/software/`), Journeys, and Reports in `full`; a footer with the view name and stackledger version; and a theme switch following `prefers-color-scheme` until the reader picks one, then remembering it.
@@ -61,7 +61,11 @@ The home page SHALL show a banner with the site title as its `h1` and `spec.site
 
 #### Scenario: Home in full and staff
 - **WHEN** both sites are built from a catalogue with 3 components, 2 licences and 1 drawn journey, and a skill set of 2 skills, 1 playbook, 1 agent and 4 rules
-- **THEN** each home shows those counts, both link `/map/`, only the `full` home links `/reports/`, and both show the default text
+- **THEN** each home shows those counts, both link `/map/`, `/skills/`, `/skill-map/` and `/rules/`, only the `full` home links `/reports/`, and both show the default text
+
+#### Scenario: Home text
+- **WHEN** `spec.site.home.text` is `Northwind tools`
+- **THEN** the home banner shows `Northwind tools` and not the default sentence
 
 #### Scenario: Home without skills
 - **WHEN** a site is built without a skill set
@@ -72,14 +76,14 @@ The home page SHALL show a banner with the site title as its `h1` and `spec.site
 - **THEN** the home shows the Software card with three zero counts
 
 ### Requirement: Home page chrome
-The home page SHALL have no sub-navigation, its header SHALL mark no division, and its `title` element SHALL be the site title alone.
+The home page SHALL have no sub-navigation (overriding "Layout" for this page), its header SHALL mark no division, and its `title` element SHALL be the site title alone.
 
 #### Scenario: Home chrome
 - **WHEN** the home page of either site is opened
 - **THEN** it has no sub-navigation, no header link has `aria-current`, and its `title` element is the site title, without a page name before it
 
 ### Requirement: Home links
-When `spec.site.home.links` is set, the home page SHALL show a `Links` list after the cards, in the order given, each item an anchor to its `url` with its `title` as text and its `description`, when set, after it; every anchor SHALL carry `rel="noopener noreferrer"` and no `target`. Without links, or when the `Settings` in use has an error, there is no `Links` heading, and the banner shows the default text.
+When `spec.site.home.links` is set, the home page SHALL show a `Links` list after the cards, in the order given, each item an anchor to its `url` with its `title` as text and its `description`, when set, after it; every anchor SHALL carry `rel="noopener noreferrer"` and no `target`. Without links there is no `Links` heading. When the `Settings` in use has an error, there is no `Links` heading and the banner shows the default text.
 
 #### Scenario: Two links
 - **WHEN** `spec.site.home.links` lists `Articles` (`https://example.org/articles/`, description `What I write`) then `Team wiki` (`http://wiki.example.org/`)

@@ -22,7 +22,7 @@
 ## ADDED Requirements
 
 ### Requirement: Home settings
-`spec.site.home` MAY have `text`, a non-empty string of at most 200 characters, and `links`, a list of 1 to 20 mappings, each with `title` (non-empty, at most 60 characters), `url` (at most 2,048 characters, starting with `https://` or `http://`, matched ignoring case, with no space or control character) and optionally `description` (non-empty, at most 200 characters). Any other field SHALL be an error on its path.
+`spec.site.home` MAY have `text`, a non-empty string of at most 200 characters, and `links`, a list of 1 to 20 mappings, each with `title` (non-empty, at most 60 characters), `url` (at most 2,048 characters; a WHATWG URL with protocol `https:` or `http:`, a non-empty host, no user name or password, and no space or control character) and optionally `description` (non-empty, at most 200 characters). Any other field under `spec.site.home` or in a link SHALL be an error on its path.
 
 #### Scenario: Home text and links
 - **WHEN** `spec.site.home` has `text: Northwind tools` and `links` with `{ title: Articles, url: "https://example.org/articles/", description: What we write }`
@@ -31,6 +31,10 @@
 #### Scenario: Script URL
 - **WHEN** a link's `url` is `javascript:alert(1)`, and in a second document `data:text/html,x`
 - **THEN** each gets an error on `spec.site.home.links[0].url`
+
+#### Scenario: Bad link
+- **WHEN** `links[0]` has no `url`, `links[1]` has `url: "https://user:secret@example.org/"`, `links[2]` has `url: "https://"`, and `links[3]` has `target: _blank`
+- **THEN** there are errors on `spec.site.home.links[0].url`, `spec.site.home.links[1].url`, `spec.site.home.links[2].url` and `spec.site.home.links[3].target`
 
 #### Scenario: Too many links
 - **WHEN** `spec.site.home.links` lists 21 links

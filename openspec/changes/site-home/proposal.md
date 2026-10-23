@@ -38,10 +38,11 @@ None.
 
 ## Impact
 
-- `site/src/pages/index.astro` becomes the home page; the map page moves to `site/src/pages/map/index.astro`. Also changes: `Header.astro`, `SubNav.astro`, `Footer.astro`, `site/src/lib/site.ts`, `src/site/data.ts` (`DEFAULT_TITLE`, home data), `src/schema.ts` (`spec.site.home`), and styles in `site/src/styles/pages.css`.
+- `site/src/pages/index.astro` becomes the home page; the map page moves to `site/src/pages/map/index.astro`. Also changes: `Header.astro`, `SubNav.astro`, `Footer.astro` (its Map link), `src/site/relative.ts` (the build's URL scan), `site/src/lib/site.ts`, `src/site/data.ts` (`DEFAULT_TITLE`, home data), `src/schema.ts` (`spec.site.home`), and styles in `site/src/styles/pages.css`.
 - Browser and integration tests that open the map at `/` move to `/map/`, and the README screenshots of the map page are regenerated.
 - A bookmark of `/` now opens the home, which links the map.
 - The default title is also the calendar name of `renewals.ics` and of `stackledger report --format ics`, so that name becomes `stackledger` too when no title is set.
+- The calendar name is covered by the updated `test/unit/site-data.test.ts`, which reads the default title through `siteTitle`.
 - `site-security`: its rule against links to other sites gets one exemption, the home's `Links` anchors. The risk stays low: URLs are limited to `http(s)`, the site already sends `Referrer-Policy: no-referrer` (so a click does not reveal the private site's address), and anchors carry `rel="noopener noreferrer"`.
 
 ## Implicit requirements
@@ -58,7 +59,8 @@ None.
   - Every text is escaped by the template engine.
   - Links carry `rel="noopener noreferrer"`.
   - The CSP is unchanged: links are navigation, not loaded resources.
-  - The secret scan of `Settings` already covers the new fields.
+  - A link URL may not carry a user name or password, so a credential cannot reach both sites through it.
+  - The build's URL scan accepts a link's URL only where it belongs, in an anchor of the root `index.html`; anywhere else, it still fails the build.
 - **Logs and observability:** n/a. The build reports nothing new.
 
 ## Documentation
