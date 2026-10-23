@@ -8,7 +8,10 @@ const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.ur
 
 test('Metadata: public package linked to github.com/brunosouzas/stackledger', () => {
   expect(pkg).not.toHaveProperty('private');
-  expect(pkg.name).toBe('stackledger');
+  expect(pkg.name).toBe('@brunosouzas/stackledger');
+  // The shrinkwrap npm ships carries the same scoped name, at its top and for the root package.
+  const lock = JSON.parse(readFileSync(new URL('../../npm-shrinkwrap.json', import.meta.url), 'utf8')) as { name: string; packages: Record<string, { name?: string }> };
+  expect([lock.name, lock.packages['']?.name]).toEqual(['@brunosouzas/stackledger', '@brunosouzas/stackledger']);
   expect(pkg.license).toBe('Apache-2.0');
   expect(pkg.bin).toEqual({ stackledger: 'dist/cli.js' });
   expect(pkg.engines).toEqual({ node: '>=22.12' });

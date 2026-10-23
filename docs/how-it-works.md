@@ -15,7 +15,7 @@ flowchart TB
     pr["Pull request<br/>gitleaks, validate, build<br/>never deploys"]
     main["Push to main<br/>gitleaks, validate, build"]
   end
-  npm["npm registry<br/>stackledger"]
+  npm["npm registry<br/>@brunosouzas/stackledger"]
   subgraph cloudflare["Cloudflare"]
     access["Cloudflare Access<br/>sign-in first"]
     pages["Cloudflare Pages<br/>the whole static site<br/>never reads GitHub"]
@@ -25,7 +25,7 @@ flowchart TB
   edit -->|git push| repo
   repo --> pr
   repo --> main
-  npm -->|npx stackledger| main
+  npm -->|npx @brunosouzas/stackledger| main
   main -->|wrangler pages deploy| pages
   reader --> access --> pages
 ```

@@ -1,7 +1,7 @@
 /** The packed package installs and runs, with exactly the production dependency versions of
  * npm-shrinkwrap.json (package-release spec, Package contents and Locked dependencies).
  * Run npm run build && npm test. It packs a clean checkout, installs that tarball into two empty
- * temporary folders as `stackledger@<version>` from a local stand-in registry (registry-stand-in.ts
+ * temporary folders as `@brunosouzas/stackledger@<version>` from a local stand-in registry (registry-stand-in.ts
  * says why a plain `npm install ./file.tgz` would not do), and compares `npm ls --all --json` of
  * both with the shrinkwrap. The other packages come from the npm registry, so it needs the network:
  * it is skipped only when STACKLEDGER_OFFLINE=1. Every npm call uses a temporary cache and an
@@ -36,7 +36,7 @@ const versions = (entries: string[]) => new Set(entries.map(entry => entry.repla
 /** npm install without blocking this process, which serves the stand-in registry meanwhile. */
 function install(target: string, registry: string, cache: string, version: string) {
   const args = ['install', '--prefix', target, '--no-audit', '--no-fund', '--cache', cache,
-    '--registry', registry, '--replace-registry-host', 'never', `stackledger@${version}`];
+    '--registry', registry, '--replace-registry-host', 'never', `@brunosouzas/stackledger@${version}`];
   return new Promise<{ status: number | null; stderr: string }>(resolve => {
     const child = spawn('npm', args, { cwd: target, env: npmEnv, stdio: ['ignore', 'ignore', 'pipe'] });
     let stderr = '';
@@ -75,8 +75,8 @@ describe.skipIf(offline)('installed package', () => {
       // npm ls exits 1 when it reports extraneous packages (below), so its JSON is read whatever the status.
       const result = npm(['ls', '--prefix', target, '--all', '--json', '--cache', cache], target);
       const tree = JSON.parse(result.stdout) as Tree;
-      expect(tree.dependencies?.stackledger, result.stderr).toBeDefined();
-      return flatten(tree.dependencies!.stackledger!).sort();
+      expect(tree.dependencies?.['@brunosouzas/stackledger'], result.stderr).toBeDefined();
+      return flatten(tree.dependencies!['@brunosouzas/stackledger']!).sort();
     });
     expect(listed[0]!.length).toBeGreaterThan(0);
     expect(listed[1]).toEqual(listed[0]);

@@ -102,7 +102,7 @@ def diagram():
     s += node(170, 254, 260, 56, WHITE, "Catalogue repository")
     s += node(48, 360, 252, 76, ORANGE, "Pull request", ["gitleaks, validate, build", "never deploys"])
     s += node(320, 360, 262, 76, GREEN, "Push to main", ["gitleaks, validate, build"])
-    s += node(612, 254, 158, 66, NPM, "npm registry", ["stackledger"], text=WHITE)
+    s += node(612, 254, 158, 66, NPM, "npm registry", ["@brunosouzas/", "stackledger"], text=WHITE)
     s += node(30, 542, 160, 76, PERSON, "Reader", ["a browser"], text=WHITE)
     s += node(252, 538, 216, 84, YELLOW, "Cloudflare Access", ["sign-in first"])
     s += node(518, 530, 236, 100, CLOUDFLARE, "Cloudflare Pages", ["the whole static site", "never reads GitHub"])

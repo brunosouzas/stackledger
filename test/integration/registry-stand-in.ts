@@ -2,7 +2,7 @@
  * package install test. Why: npm reads a package's npm-shrinkwrap.json only when the registry says
  * the version has one (`_hasShrinkwrap`); `npm install ./file.tgz` ignores it and resolves every
  * dependency afresh. Serving the tarball the way the registry would makes the install follow the
- * path `npx stackledger@<version>` takes for users. Every other package document is fetched from
+ * path `npx @brunosouzas/stackledger@<version>` takes for users. Every other package document is fetched from
  * registry.npmjs.org; npm downloads their tarballs from there directly (--replace-registry-host never).
  * Used by test/integration/package-install.test.ts; it needs the network.
  */
@@ -24,12 +24,14 @@ export async function serveTarball(tarball: string): Promise<StandIn> {
   const hasShrinkwrap = spawnSync('tar', ['-tzf', tarball], { encoding: 'utf8' }).stdout.split('\n').includes('package/npm-shrinkwrap.json');
   const integrity = `sha512-${createHash('sha512').update(bytes).digest('base64')}`;
   const server: Server = createServer((request, response) => {
+    // npm asks for a scoped package as /@scope%2fname.
+    const path = decodeURIComponent(request.url ?? '');
     const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-    if (request.url === `/${manifest.name}`) {
+    if (path === `/${manifest.name}`) {
       const version = { ...manifest, _hasShrinkwrap: hasShrinkwrap, dist: { tarball: `${base}/${manifest.name}.tgz`, integrity } };
       response.setHeader('content-type', 'application/json');
       response.end(JSON.stringify({ name: manifest.name, 'dist-tags': { latest: manifest.version }, versions: { [manifest.version]: version } }));
-    } else if (request.url === `/${manifest.name}.tgz`) {
+    } else if (path === `/${manifest.name}.tgz`) {
       response.end(bytes);
     } else {
       // Any other package document comes from the real registry; a failure is passed on to npm.

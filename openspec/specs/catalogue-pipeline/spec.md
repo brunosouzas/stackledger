@@ -17,11 +17,15 @@ Defines the template a separate catalogue repository copies to check its catalog
 - **THEN** every command exits 0, though the folder also holds the workflow's YAML
 
 ### Requirement: Pinned tools
-The workflow SHALL run stackledger as `npx --yes stackledger@<version>` with one exact version set once in the file, pin every action by full commit SHA, install `wrangler` at one exact version, and download gitleaks as one pinned release whose SHA-256 checksum it verifies before use.
+The workflow SHALL run stackledger as `npx --yes "$STACKLEDGER"`, with `STACKLEDGER` set once in the file to `"@brunosouzas/stackledger@<version>"` (quoted: a YAML plain value cannot start with `@`) at one exact version, pin every action by full commit SHA, install `wrangler` at one exact version, and download gitleaks as one pinned release whose SHA-256 checksum it verifies before use.
 
 #### Scenario: Exact versions
 - **WHEN** the template workflow is read
-- **THEN** every `uses` names a 40-character SHA, stackledger and wrangler have exact `x.y.z` versions, and the gitleaks download is followed by a checksum check that fails on a mismatch
+- **THEN** every `uses` names a 40-character SHA, `STACKLEDGER` is `@brunosouzas/stackledger@x.y.z`, wrangler has an exact `x.y.z` version, and the gitleaks download is followed by a checksum check that fails on a mismatch
+
+#### Scenario: Scoped value parses
+- **WHEN** the template workflow is parsed as YAML
+- **THEN** parsing succeeds and `env.STACKLEDGER` is the string `@brunosouzas/stackledger@x.y.z`
 
 ### Requirement: Checks before the build
 The `site` job SHALL scan the repository and its history with gitleaks and then run `stackledger validate catalog`; a finding or a catalogue error SHALL fail the job before the build. Catalogue warnings SHALL NOT fail it.

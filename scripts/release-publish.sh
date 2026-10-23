@@ -38,9 +38,11 @@ fail() {
   exit 1
 }
 
+package='@brunosouzas/stackledger'
+
 # 1. npm. stdout holds JSON both on success and on error (npm --json); stderr only the log.
 lookup_status=0
-lookup=$(npm view "stackledger@$version" dist --json 2>/dev/null) || lookup_status=$?
+lookup=$(npm view "$package@$version" dist --json 2>/dev/null) || lookup_status=$?
 
 if [ "$lookup_status" -ne 0 ]; then
   # Absent only when npm says E404; a network or authentication error must not look like "absent".
@@ -48,8 +50,8 @@ if [ "$lookup_status" -ne 0 ]; then
     let text = ""; process.stdin.on("data", c => text += c).on("end", () => {
       try { process.stdout.write(String(JSON.parse(text).error.code)); } catch { process.stdout.write("unknown"); }
     });')
-  [ "$code" = "E404" ] || fail "npm view stackledger@$version failed ($code); nothing was published"
-  echo "stackledger@$version is not on npm: publishing $tarball"
+  [ "$code" = "E404" ] || fail "npm view $package@$version failed ($code); nothing was published"
+  echo "$package@$version is not on npm: publishing $tarball"
   npm publish "$tarball" --provenance --access public --ignore-scripts
 else
   # Prints "<integrity> <yes|no>", or exits 1 when the answer has no integrity.
@@ -59,12 +61,12 @@ else
       let dist; try { dist = JSON.parse(text); } catch { process.exit(1); }
       if (!dist || typeof dist.integrity !== "string" || dist.integrity === "") process.exit(1);
       process.stdout.write(`${dist.integrity} ${dist.attestations?.provenance ? "yes" : "no"}`);
-    });') || fail "npm view stackledger@$version gave no integrity; nothing was published"
+    });') || fail "npm view $package@$version gave no integrity; nothing was published"
   published=${answer% *}
   provenance=${answer##* }
-  [ "$published" = "$expected" ] || fail "stackledger@$version is on npm with integrity $published, not the checked $expected"
-  [ "$provenance" = "yes" ] || fail "stackledger@$version is on npm without provenance; deprecate it and release a new version"
-  echo "stackledger@$version is already on npm with these bytes and provenance: not publishing again"
+  [ "$published" = "$expected" ] || fail "$package@$version is on npm with integrity $published, not the checked $expected"
+  [ "$provenance" = "yes" ] || fail "$package@$version is on npm without provenance; deprecate it and release a new version"
+  echo "$package@$version is already on npm with these bytes and provenance: not publishing again"
 fi
 
 # 2. The GitHub release.

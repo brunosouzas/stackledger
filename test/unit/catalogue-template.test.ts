@@ -31,7 +31,9 @@ test('Exact versions: actions by SHA, stackledger and wrangler x.y.z, gitleaks c
   const uses = steps.filter(step => step.uses !== undefined).map(step => step.uses!);
   expect(uses.length).toBeGreaterThan(0);
   expect(uses.filter(use => !/^[\w.-]+\/[\w.-]+@[0-9a-f]{40}$/.test(use))).toEqual([]);
-  expect(workflow.env.STACKLEDGER).toMatch(/^stackledger@\d+\.\d+\.\d+$/);
+  // Scoped value parses: a YAML string, quoted in the file because a plain value cannot start with @.
+  expect(typeof workflow.env.STACKLEDGER).toBe('string');
+  expect(workflow.env.STACKLEDGER).toMatch(/^@brunosouzas\/stackledger@\d+\.\d+\.\d+$/);
   expect(workflow.env.WRANGLER).toMatch(/^wrangler@\d+\.\d+\.\d+$/);
   expect(workflow.env.GITLEAKS_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
   expect(workflow.env.GITLEAKS_SHA256).toMatch(/^[0-9a-f]{64}$/);
