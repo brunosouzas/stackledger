@@ -66,7 +66,7 @@ If the publishing job later fails with 403, or with `E404 Not Found - PUT`, the 
 
 ### 2. The GitHub environment `npm`
 
-In the repository: Settings → Environments → New environment, named `npm` ([GitHub docs](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)).
+For 0.4.1 the environment and the tag ruleset (step 3) already exist from 0.1.0: only the `NPM_TOKEN` environment secret is added again. For a new repository: Settings → Environments → New environment, named `npm` ([GitHub docs](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)).
 
 - **Required reviewers:** the owner. Leave "Prevent self-review" off: the owner pushes the tag and approves his own run.
 - **Deployment branches and tags:** "Selected branches and tags", with the tag rule `v*`.
