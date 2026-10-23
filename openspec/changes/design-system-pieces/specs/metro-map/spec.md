@@ -22,6 +22,13 @@ The `light` and `dark` themes SHALL hold the values the pieces paint: licence co
 - **WHEN** the `light` theme is read
 - **THEN** its zone title tint is 0 and its zone opacity `surface.light.zoneOpacity`
 
+### Requirement: Blank zone title
+A zone whose title is only whitespace (JavaScript `trim()` gives an empty string), which the catalogue accepts and the `zone` piece refuses, SHALL be drawn as its area alone, by `zone` without a title, with its title box still an obstacle.
+
+#### Scenario: Blank zone title
+- **WHEN** zone `finance` has the title `" "`, which the catalogue accepts
+- **THEN** the map is drawn, with the area of `finance` equal to `zone` without a title and no text for that zone
+
 ## MODIFIED Requirements
 
 ### Requirement: Suggestion without neighbours

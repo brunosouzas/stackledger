@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Interface icons
-The zoom in, zoom out and reset buttons of `/map/` and `/skill-map/`, and the link to `renewals.ics` on `/reports/`, SHALL start with the design system's `uiIcon` `zoomIn`, `zoomOut`, `reset` and `download` in `currentColor`, so each follows its button's text colour, also on hover and when pressed. The theme switch SHALL show `uiIcon` `sun` in `color.white` in the light theme and `moon` in `color.ink` in the dark theme.
+The zoom in, zoom out and reset buttons of `/map/` and `/skill-map/`, and the link to `renewals.ics` on `/reports/`, SHALL start with the design system's `uiIcon` `zoomIn`, `zoomOut`, `reset` and `download` in `currentColor`, so each follows its button's text colour, also on hover. The theme switch SHALL show `uiIcon` `sun` in `color.white` in the light theme and `moon` in `color.ink` in the dark theme.
 
 #### Scenario: Zoom buttons with icons
 - **WHEN** `/map/` and `/skill-map/` of the example are built
@@ -13,7 +13,7 @@ The zoom in, zoom out and reset buttons of `/map/` and `/skill-map/`, and the li
 
 #### Scenario: Icon follows the button colour
 - **WHEN** the reader hovers the zoom in button, in the light theme and in the dark theme
-- **THEN** the icon's computed `fill` and `stroke` equal the button's computed text colour, before and during the hover
+- **THEN** before and during the hover, the computed `stroke` of the icon's magnifier `path` equals the button's computed text colour and its computed `fill` stays `none`
 
 #### Scenario: Theme switch icons
 - **WHEN** any page is shown in the light theme, then in the dark theme, with JavaScript
@@ -29,10 +29,6 @@ Each interface icon SHALL be an `svg` element inline in the page's HTML, written
 #### Scenario: Interface icons are inert
 - **WHEN** every inline `svg` of every built page that is not a map, a diagram or a line badge is read
 - **THEN** none holds a `script`, `foreignObject` or `style` element, a `style` attribute, an attribute starting with `on`, or an `href` or `url(…)`
-
-#### Scenario: No icon from catalogue text
-- **WHEN** the catalogue's site title, line titles and item titles hold `<svg onload=alert(1)>`
-- **THEN** the built pages show that text literally, and the only inline icons are the six of the site
 
 ### Requirement: Neighbourhood placeholder box
 A box without a page in the neighbourhood diagram SHALL be the design system's `nodeBlock` with `state` `placeholder` and the item's kind as `subtitle`: dashed, muted, without shadow, the title above the muted kind.
@@ -50,14 +46,25 @@ The map page SHALL show the map of its view, in the light or dark theme followin
 - **WHEN** the reader presses zoom in twice and then reset
 - **THEN** the map scales up twice and returns to its initial size
 
-### Requirement: Neighbourhood diagram
-The neighbourhood diagram SHALL be a safe SVG drawn by stackledger: the item in the centre, its resolved direct dependencies on the left and direct dependants on the right. Next to it, a text list SHALL hold the same items: components and licences link to their pages, other resources are plain text. The page script opens a linked item's page when its box is clicked, or focused and Enter is pressed.
+### Requirement: Diagram style
+The neighbourhood and strip diagrams SHALL use the map's theme and the design system's pieces: boxes are `nodeBlock`, the centre item in its `focus` state; edges are `messageArrow` curves with a head at their right-hand end; the strip's line is a `pipe`, its stops `stationMarker` and its badges `lineBadge`. A box without a page, and an empty column's "Nothing", SHALL be a `placeholder`: dashed, muted, without a shadow.
 
-#### Scenario: Dependencies and dependants
-- **WHEN** `forge` depends on `vault` and `editor` depends on `forge`
-- **THEN** the diagram on `forge`'s page shows `vault` on the left and `editor` on the right, and the text list links both
+#### Scenario: Neighbourhood boxes
+- **WHEN** `forge`'s neighbourhood diagram is drawn in the `light` theme
+- **THEN** each linked box has an outline stroked `#0A1033` and, before it, a shadow shape filled `#0A1033` moved right and down
 
-#### Scenario: Resource without a page
+#### Scenario: Edges point right
+- **WHEN** `forge` depends on `vault` and `editor` depends on `forge`, and `forge`'s diagram is drawn
+- **THEN** it has two edges, each ending in a filled head whose tip touches the left side of the box to its right: `forge`'s box for the edge from `vault`, `editor`'s box for the edge from `forge`
+
+#### Scenario: Strip line and stops
+- **WHEN** the strip of line `ship` in `#FF0000` is drawn in the `dark` theme
+- **THEN** the line is a `#FF0000` path over a wider `#0A1033` casing path, and each stop marker has a shadow filled `#4C5CB8`
+
+#### Scenario: Terminal badge over an end interchange
+- **WHEN** line `ship` ends at `slack`, which is also a stop of `design`
+- **THEN** in both themes the terminal badge above `slack`, with its outline and shadow, ends above the top of `slack`'s capsule with its outline and rim
+
+#### Scenario: Resource without a shadow
 - **WHEN** `forge` depends on resource `orders-db`, which is not a licence
-- **THEN** `orders-db` is in the diagram and in the text list as plain text, without a link, and its box is dashed, has no shadow and shows `orders-db` with `resource` under it, both in the muted colour
-
+- **THEN** the `orders-db` box has a dashed outline and no shadow shape, and shows `orders-db` at the box's left inset with `resource` under it, both in the muted colour ("Neighbourhood placeholder box")
