@@ -42,7 +42,7 @@
     "test:perf": "vitest run --config vitest.perf.config.ts"
   },
   "dependencies": {
-    "@brunosouzas/design-system": "0.3.0",
+    "@brunosouzas/design-system": "0.3.1",
     "@fontsource/heebo": "5.3.0",
     "@fontsource/lato": "5.3.0",
     "@fontsource/signika": "5.3.0",
