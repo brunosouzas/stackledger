@@ -5,6 +5,7 @@ import { test, expect } from 'vitest';
 import { buildGraph } from '../../src/skills/graph.js';
 import { relations, renderRelations } from '../../src/map/relations.js';
 import { themes } from '../../src/map/themes.js';
+import { textWidth } from '../../src/map/labels.js';
 import { safe } from './svg-helpers.js';
 
 type Kind = 'skill' | 'playbook';
@@ -26,6 +27,27 @@ test('Diagram of a skill', () => {
   const release = svg.indexOf('data-ref="playbook:release"'), writer = svg.indexOf('data-ref="skill:writer"');
   expect(release).toBeGreaterThan(-1); expect(writer).toBeGreaterThan(release);
   expect(svg.slice(release, writer)).toContain('>loads</text>');
+  // The edge from release ends in a head whose tip touches writer's box, on its left side.
+  const doc = safe(svg);
+  const writerFace = Array.from(Array.from(doc.getElementsByTagName('g')).find(g => g.getAttribute('data-ref') === 'skill:writer')!.getElementsByTagName('rect')).at(-1)!;
+  const tips = Array.from(doc.getElementsByTagName('polygon')).filter(p => p.getAttribute('fill') === themes.light.text).map(p => p.getAttribute('points')!.split(' ')[0]!.split(',').map(Number));
+  expect(tips).toEqual([[Number(writerFace.getAttribute('x')), Number(writerFace.getAttribute('y')) + Number(writerFace.getAttribute('height')) / 2]]);
+});
+// skills-site "Relation box text room".
+test('Long playbook name fits', () => {
+  const long = 'W'.repeat(64);
+  const doc = safe(svgOf(diagram(setOf([[long, 'playbook', ['writer']], ['writer', 'skill']]), 'skill', 'writer')!));
+  const g = Array.from(doc.getElementsByTagName('g')).find(item => item.getAttribute('data-ref')?.startsWith('playbook:'))!;
+  const face = Array.from(g.getElementsByTagName('rect')).at(-1)!, name = g.getElementsByTagName('text')[0]!;
+  const height = Number(face.getAttribute('height'));
+  expect(Number(name.getAttribute('x')) + textWidth(name.textContent!) * 1.1).toBeLessThanOrEqual(Number(face.getAttribute('x')) + Number(face.getAttribute('width')) - height / 2);
+});
+test('Name with only control characters', () => {
+  const name = '\u0001\u0002';
+  const input = diagram(setOf([['release', 'playbook', [name]], [name, 'skill']]), 'playbook', 'release')!;
+  const doc = safe(svgOf(input));
+  const g = Array.from(doc.getElementsByTagName('g')).find(item => item.getAttribute('data-ref')?.startsWith('skill:'))!;
+  expect(g.getElementsByTagName('text')[0]!.textContent).toBe(g.getAttribute('data-ref'));
 });
 test('Two playbooks that load each other', () => {
   const input = diagram(setOf([['a', 'playbook', ['b']], ['b', 'playbook', ['a']]]), 'playbook', 'a')!;

@@ -60,6 +60,7 @@ The diagram as Mermaid, and the personal and corporate modes: [docs/how-it-works
 4. **The website is static.** No server, no database, nothing to patch. Why: [ADR 5](docs/adr/0005-static-site-no-server.md).
 5. **It is written in TypeScript**, so the same map engine runs at build time and in the browser. Why: [ADR 9](docs/adr/0009-typescript-end-to-end.md).
 6. **Agent skills are a second ledger in the same tool.** The skills, agents, playbooks and rules your AI agents use are read from their own folders, never copied into YAML. `stackledger skills validate` checks them, `stackledger skills map` draws them in the skills repository, and since 0.3.0 the site has a Skills section next to Software; linking each skill to the software it needs is planned. Why: [ADR 10](docs/adr/0010-agent-skills-are-a-second-ledger-read-from-their-folders.md).
+7. **It looks like brunosouzas.com.** The map, the diagrams, the favicon and the site's colours and fonts come from [`@brunosouzas/design-system`](https://www.npmjs.com/package/@brunosouzas/design-system), a dependency of the published package with no dependencies of its own; stackledger keeps the layout and writes every piece through its own SVG writer. See [the map](docs/map.md#routes-and-themes) and [the site](docs/site.md).
 
 [How it works, end to end](docs/how-it-works.md) draws the publication path: a push to `main` of the private catalogue repository, GitHub Actions, Cloudflare Pages behind Cloudflare Access, and the personal (one site, one reader) and corporate (two sites) modes.
 

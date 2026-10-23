@@ -78,11 +78,14 @@ const HOME_SETTINGS = `  site:
 `;
 const emptyCatalogue = { 'stackledger.yaml': settingsFile({}) };
 
-let main: Built, other: Built, customA: Built, customB: Built, broken: Built, hostile: Built, example: Built, linked: Built, empty: Built;
+// catalogue-site "Diagram box titles": a title of spaces is valid in the catalogue.
+const blankCatalogue = { 'catalogue.yaml': yaml(set(depends(component('forge'), ['component:vault']), 'metadata.title', ' '), component('vault'), depends(component('editor'), ['component:forge'])) };
+
+let main: Built, other: Built, customA: Built, customB: Built, broken: Built, hostile: Built, example: Built, linked: Built, empty: Built, blank: Built;
 
 beforeAll(async () => {
   const exampleFiles = Object.fromEntries(['catalog-info.yaml', 'stackledger.yaml'].map(file => [file, read(join(root, 'examples/northwind'), file)]));
-  [main, other, customA, customB, broken, hostile, example, linked, empty] = await Promise.all([
+  [main, other, customA, customB, broken, hostile, example, linked, empty, blank] = await Promise.all([
     buildSites(mainCatalogue(DEFAULT_HIDDEN), '2027-06-01'),
     buildSites(mainCatalogue(OTHER_HIDDEN), '2031-01-01'),
     buildSites(customHidden('Northwind Studio', 'to-confirm'), '2027-06-01'),
@@ -92,10 +95,11 @@ beforeAll(async () => {
     buildSites(exampleFiles),
     buildSites({ ...exampleFiles, 'stackledger.yaml': exampleFiles['stackledger.yaml']! + HOME_SETTINGS }),
     buildSites(emptyCatalogue),
+    buildSites(blankCatalogue),
   ]);
 }, 180_000);
 
-// Removing nine built sites can take more than the default 10 s while other test files run.
+// Removing ten built sites can take more than the default 10 s while other test files run.
 afterAll(cleanup, 60_000);
 
 const tagsOf = (html: string) => [...html.matchAll(/<([A-Za-z][A-Za-z0-9:-]*)((?:\s[^<>]*?)?)\/?>/g)].map(match => ({ name: match[1]!.toLowerCase(), attrs: match[2] ?? '' }));
@@ -124,7 +128,7 @@ test('Site title', () => {
       const html = read(site, page);
       // The home's title is the site title alone (catalogue-site, Home page chrome).
       expect(html, page).toMatch(page === 'index.html' ? /<title>Northwind software<\/title>/ : /<title>[^<]* \| Northwind software<\/title>/);
-      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*">Northwind software<\/a>/);
+      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark" src="(?:\.\.\/)*favicon\.svg" alt="" width="28" height="28">Northwind software<\/a>/);
     }
   }
 });
@@ -134,8 +138,8 @@ test('View in the footer', () => {
   expect(read(main.full, 'index.html')).toMatch(/<footer[\s\S]*full view · stackledger/);
 });
 
-/** --color-accent of the light theme (top-level :root rules, last wins) and of the chosen dark theme. */
-function accents(site: string): { light: string | undefined; dark: string | undefined } {
+/** A custom property of the light theme (top-level :root rules, last wins) and of the chosen dark theme. */
+function themeVar(site: string, name: string): { light: string | undefined; dark: string | undefined } {
   const css = [...tree(site)].filter(([file]) => file.endsWith('.css')).map(([, text]) => text).join('\n');
   let light: string | undefined, dark: string | undefined, depth = 0, selector = '';
   for (const match of css.matchAll(/([^{}]*)([{}])/g)) {
@@ -145,7 +149,7 @@ function accents(site: string): { light: string | undefined; dark: string | unde
       continue;
     }
     if (depth === 1) {
-      const value = /--color-accent:\s*([^;}]+)/.exec(match[1]!)?.[1]?.trim().toLowerCase();
+      const value = new RegExp(`${name}:\\s*([^;}]+)`).exec(match[1]!)?.[1]?.trim().toLowerCase();
       if (value && selector === ':root') light = value;
       if (value && /^:root\[data-theme=("?)dark\1\]$/.test(selector)) dark = value;
     }
@@ -153,6 +157,7 @@ function accents(site: string): { light: string | undefined; dark: string | unde
   }
   return { light, dark };
 }
+const accents = (site: string) => themeVar(site, '--color-accent');
 
 test('Accent override', () => {
   expect(accents(main.full)).toEqual({ light: '#e4002b', dark: '#9da8ff' });
@@ -164,6 +169,43 @@ test('Broken settings', () => {
     expect(accents(site)).toEqual({ light: '#000f9f', dark: '#9da8ff' });
     expect(read(site, 'map/index.html')).toContain('<title>Map | stackledger</title>');
     expect(read(site, 'map/index.html')).not.toContain('Northwind software');
+  }
+});
+
+// catalogue-site "Site tokens from the design system".
+test('Palette from the design system', () => {
+  for (const site of [example.full, example.staff]) {
+    expect(themeVar(site, '--ds-site-light-body').light).toMatch(/^#fff(?:fff)?$/);
+    expect(themeVar(site, '--ds-site-dark-body').light).toBe('#1c1c1c');
+    expect(themeVar(site, '--color-body')).toEqual({ light: 'var(--ds-site-light-body)', dark: 'var(--ds-site-dark-body)' });
+    expect(themeVar(site, '--font-primary').light).toBe('var(--ds-site-font-primary)');
+    expect(themeVar(site, '--font-secondary').light).toBe('var(--ds-site-font-secondary)');
+  }
+});
+
+test("Accent stays stackledger's", () => {
+  for (const site of [example.full, example.staff]) expect(accents(site)).toEqual({ light: '#000f9f', dark: '#9da8ff' });
+});
+
+// catalogue-site "Brand mark": the header shows the mark before a custom title.
+test('Header mark with a custom title', () => {
+  for (const site of [main.full, main.staff]) {
+    for (const page of ['index.html', 'map/index.html', 'software/editor/index.html']) {
+      const html = read(site, page);
+      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark" src="(?:\.\.\/)*favicon\.svg" alt="" width="28" height="28">Northwind software<\/a>/);
+      expect([...html.matchAll(/<img\b/g)], page).toHaveLength(1);
+    }
+  }
+});
+
+// catalogue-site "Diagram box titles": the build succeeds and every neighbourhood diagram shows the reference.
+test('Blank title', () => {
+  for (const site of [blank.full, blank.staff]) {
+    for (const page of ['software/forge/index.html', 'software/vault/index.html', 'software/editor/index.html']) {
+      const html = read(site, page);
+      const box = /<g data-ref="component:forge">[\s\S]*?<\/g>/.exec(html)![0];
+      expect(box, page).toContain('>component:forge</text>');
+    }
   }
 });
 
@@ -295,7 +337,7 @@ test('Default title', () => {
     for (const page of pages(site)) {
       const html = read(site, page);
       expect(html, page).toMatch(page === 'index.html' ? /<title>stackledger<\/title>/ : /<title>[^<]* \| stackledger<\/title>/);
-      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*">stackledger<\/a>/);
+      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark" src="(?:\.\.\/)*favicon\.svg" alt="" width="28" height="28">stackledger<\/a>/);
     }
   }
 });

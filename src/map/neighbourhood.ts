@@ -16,9 +16,10 @@
  */
 import { compareRefs } from '../identity.js';
 import { dependantsOf, type Graph, type Item } from '../graph.js';
-import { sticker, type Shape } from './ink.js';
+import { messageArrow, nodeBlock } from '@brunosouzas/design-system';
 import { textWidth } from './labels.js';
-import type { Theme } from './themes.js';
+import { writePiece } from './pieces.js';
+import { checkInk, type Theme } from './themes.js';
 import { escapeXml, SVG_NAMESPACE, tag, type Attributes } from './xml.js';
 
 export interface DiagramNode { ref: string; title: string; kind: 'component' | 'licence' | 'resource'; linked: boolean }
@@ -43,7 +44,9 @@ const INK_SCALE = 1.6;
 /** The diagram node of an item: components and licences have pages, other resources do not. */
 export function diagramNode(item: Item): DiagramNode {
   const kind = item.kind === 'line' ? 'resource' : item.kind;
-  const title = item.kind === 'component' || item.kind === 'licence' ? item.entity.metadata.title ?? item.name : item.name;
+  const given = item.kind === 'component' || item.kind === 'licence' ? item.entity.metadata.title ?? item.name : item.name;
+  // A title of spaces is valid in the catalogue but empty to the pieces: show the reference (Diagram box titles).
+  const title = given.trim() ? given : item.ref;
   return { ref: item.ref, title, kind, linked: kind !== 'resource' };
 }
 
@@ -79,24 +82,18 @@ function columnWidth(nodes: DiagramNode[]): number {
 const stackHeight = (count: number) => count * (BOX_HEIGHT + ROW_GAP) - ROW_GAP;
 
 function box(node: DiagramNode, x: number, y: number, width: number, theme: Theme, centre: boolean): string {
-  // The centre item sits on the accent fill, so its text is in the ink on both themes.
-  const ink = centre ? theme.outline : theme.text;
-  const shape: Shape = (by, attrs) => tag('rect', { x: x + by[0], y: y + by[1], width, height: BOX_HEIGHT, rx: BOX_RADIUS, ...attrs });
-  // A resource without a page is drawn dashed and muted, without a shadow, so it does not look clickable.
+  const common = { x, y, width, height: BOX_HEIGHT, title: fit(node.title, width), surface: theme.surface };
+  // A resource without a page is a placeholder (dashed, muted, no shadow), so it does not look clickable.
   const face = node.linked
-    ? sticker(theme, shape, centre ? theme.accent : theme.panel, INK_SCALE)
-    : shape([0, 0], { fill: 'none', stroke: theme.muted, 'stroke-width': 1.5, 'stroke-dasharray': '5 4' });
-  const content = tag('title', {}, escapeXml(`${node.title} (${node.ref})`))
-    + face
-    + tag('text', { x: x + TEXT_INSET, y: y + 20, fill: node.linked ? ink : theme.muted, 'font-size': 13, 'font-weight': 700 }, escapeXml(fit(node.title, width)))
-    + tag('text', { x: x + TEXT_INSET, y: y + 37, fill: centre ? theme.outline : theme.muted, 'font-size': 11 }, escapeXml(node.kind));
+    ? nodeBlock({ ...common, subtitle: node.kind, state: centre ? 'focus' : 'normal', radius: BOX_RADIUS, inkScale: INK_SCALE })
+    : nodeBlock({ ...common, state: 'placeholder', radius: BOX_RADIUS });
+  const content = tag('title', {}, escapeXml(`${node.title} (${node.ref})`)) + writePiece(face);
   return tag('g', node.linked ? { 'data-ref': node.ref } : {}, content);
 }
 
 /** An empty column: a dashed placeholder level with the centre box, so the diagram stays balanced. */
 function nothing(x: number, y: number, width: number, theme: Theme): string {
-  return tag('rect', { x, y, width, height: BOX_HEIGHT, rx: 6, fill: 'none', stroke: theme.muted, 'stroke-width': 1, 'stroke-dasharray': '5 4' })
-    + tag('text', { x: x + width / 2, y: y + 28, fill: theme.muted, 'font-size': 13, 'text-anchor': 'middle' }, 'Nothing');
+  return writePiece(nodeBlock({ x, y, width, height: BOX_HEIGHT, title: 'Nothing', state: 'placeholder', radius: BOX_RADIUS, surface: theme.surface }));
 }
 
 interface Column { nodes: DiagramNode[]; x: number; width: number; top: number }
@@ -107,17 +104,18 @@ function column(input: Column, centreTop: number, theme: Theme): string {
   return input.nodes.map((node, i) => box(node, input.x, input.top + i * (BOX_HEIGHT + ROW_GAP), input.width, theme, false)).join('');
 }
 
-/** Curved edges from the inner side of each box of a column to the centre box. */
-function edges(input: Column, fromX: number, toX: number, centreY: number, theme: Theme): string {
-  const middle = (fromX + toX) / 2;
+/** Curved arrows between the inner side of each box of a column and the centre box, pointing right:
+ * from a left box to the centre, or from the centre to a right box. */
+function edges(input: Column, side: 'left' | 'right', columnX: number, centreX: number, centreY: number, theme: Theme): string {
   return input.nodes.map((_, i) => {
     const y = input.top + i * (BOX_HEIGHT + ROW_GAP) + BOX_HEIGHT / 2;
-    const d = `M${fromX},${y} C${middle},${y} ${middle},${centreY} ${toX},${centreY}`;
-    return tag('path', { d, fill: 'none', stroke: theme.text, 'stroke-width': 2.5 });
+    const [from, to]: [[number, number], [number, number]] = side === 'left' ? [[columnX, y], [centreX, centreY]] : [[centreX, centreY], [columnX, y]];
+    return writePiece(messageArrow({ from, to, surface: theme.surface }));
   }).join('');
 }
 
 export function renderNeighbourhood(input: Neighbourhood, theme: Theme): string {
+  checkInk(theme);
   const rows = Math.max(input.dependencies.length, input.dependants.length, 1);
   const top = PADDING + HEADING_HEIGHT;
   const height = top + stackHeight(rows) + PADDING;
@@ -138,8 +136,8 @@ export function renderNeighbourhood(input: Neighbourhood, theme: Theme): string 
     heading('Depends on', left.x),
     heading('This item', centreX),
     heading('Used by', right.x),
-    edges(left, left.x + left.width, centreX, centreY, theme),
-    edges(right, right.x, centreX + centreWidth, centreY, theme),
+    edges(left, 'left', left.x + left.width, centreX, centreY, theme),
+    edges(right, 'right', right.x, centreX + centreWidth, centreY, theme),
     column(left, centreTop, theme),
     box(input.centre, centreX, centreTop, centreWidth, theme, true),
     column(right, centreTop, theme),

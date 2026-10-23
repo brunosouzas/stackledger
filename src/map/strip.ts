@@ -11,11 +11,15 @@
  * data-ref, which the page script turns into links; the page also lists them as text links.
  */
 import { badgeWidth } from './badges.js';
-import { sticker, type Shape } from './ink.js';
+import { lineBadge, pipe as pipePiece, stationMarker } from '@brunosouzas/design-system';
 import { textWidth } from './labels.js';
 import type { MapLine, MapModel } from './model.js';
-import { themes, type Theme } from './themes.js';
-import { escapeXml, SVG_NAMESPACE, tag, type Attributes } from './xml.js';
+import { writePiece } from './pieces.js';
+import { checkInk, themes, type Theme } from './themes.js';
+import { escapeXml, number, SVG_NAMESPACE, tag, type Attributes } from './xml.js';
+
+/** Half the length of an interchange capsule on the strip (its ends are the interchange radius away). */
+const INTERCHANGE_HALF = 4;
 
 export interface StripBadge { ref: string; badge: string; color: string; title: string }
 export interface StripStop { ref: string; title: string; interchanges: StripBadge[] }
@@ -59,11 +63,7 @@ function fit(title: string): string {
 /** A badge as an ink-style sticker; `flat` leaves out the shadow and rim and keeps the outline inside the box. */
 function badgeShape(item: { badge: string; color: string }, x: number, y: number, theme: Theme, flat = false): string {
   const width = badgeWidth(item.badge);
-  const inset = flat ? theme.outlineWidth / 2 : 0;
-  const shape: Shape = (by, attrs) => tag('rect', { x: x + inset + by[0], y: y + inset + by[1], width: width - inset * 2, height: BADGE_HEIGHT - inset * 2, rx: BADGE_HEIGHT / 2 - inset, ...attrs });
-  const face = flat ? shape([0, 0], { fill: item.color, stroke: theme.outline, 'stroke-width': theme.outlineWidth }) : sticker(theme, shape, item.color);
-  return face
-    + tag('text', { x: x + width / 2, y: y + 14.5, fill: theme.badgeText, 'font-size': 12, 'font-weight': 700, 'text-anchor': 'middle' }, escapeXml(item.badge));
+  return writePiece(lineBadge({ x: x + width / 2, y: y + BADGE_HEIGHT / 2, text: item.badge, fill: item.color, width, height: BADGE_HEIGHT, flat, surface: theme.surface }));
 }
 
 /** One row of interchange badges centred under a stop; each badge links to its journey. */
@@ -79,11 +79,10 @@ function interchangeRow(stop: StripStop, centre: number, y: number, theme: Theme
 
 function stopGroup(input: Strip, stop: StripStop, x: number, theme: Theme): string {
   const interchange = stop.interchanges.length > 0;
-  const disc = (r: number): Shape => (by, attrs) => tag('circle', { cx: x + by[0], cy: LINE_Y + by[1], r, ...attrs });
-  // Every stop is a white circle sticker on the pipe, as on the map; an interchange is larger.
-  const marker = interchange
-    ? sticker(theme, disc(stopRadius(theme) + 3), theme.station)
-    : sticker(theme, disc(stopRadius(theme)), theme.station);
+  // Every stop is a white circle on the pipe, as on the map; an interchange a short vertical capsule.
+  const marker = writePiece(interchange
+    ? stationMarker({ cx: x, cy: LINE_Y - INTERCHANGE_HALF, to: [x, LINE_Y + INTERCHANGE_HALF], surface: theme.surface })
+    : stationMarker({ cx: x, cy: LINE_Y, r: stopRadius(theme), surface: theme.surface }));
   const title = fit(stop.title);
   const label = tag('text', { x, y: LINE_Y + 36, fill: theme.text, 'font-size': 13, 'font-weight': interchange ? 900 : 700, 'text-anchor': 'middle' }, escapeXml(title));
   // An invisible area over the marker and its label, so a click between them still opens the stop.
@@ -98,11 +97,11 @@ const stopRadius = (theme: Theme): number => (theme.lineWidth + (theme.casing.en
 
 /** The journey's line as a pipe: the ink casing, then the line's colour. */
 function pipe(from: number, to: number, color: string, theme: Theme): string {
-  const stroke = (paint: string, width: number) => tag('line', { x1: from, y1: LINE_Y, x2: to, y2: LINE_Y, stroke: paint, 'stroke-width': width, 'stroke-linecap': 'round' });
-  return (theme.casing.enabled ? stroke(theme.casing.color, theme.lineWidth + theme.casing.extraWidth) : '') + stroke(color, theme.lineWidth);
+  return writePiece(pipePiece({ d: `M${number(from)},${LINE_Y} L${number(to)},${LINE_Y}`, fill: color, width: theme.lineWidth, casing: theme.casing.enabled ? theme.casing.extraWidth : 0 }));
 }
 
 export function renderStrip(input: Strip, theme: Theme): string {
+  checkInk(theme);
   const widest = input.stops.reduce((most, stop) => Math.max(most, textWidth(fit(stop.title))), 0);
   const spacing = Math.max(MIN_SPACING, widest + 28);
   const first = PADDING + spacing / 2;
