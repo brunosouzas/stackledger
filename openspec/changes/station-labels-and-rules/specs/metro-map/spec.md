@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Label text
-Every station SHALL have one label with the component's `metadata.title`, or its name when there is no title, in as many rows as it needs, each at most 18 Unicode code points, wrapped at spaces; a word longer than a row breaks as "Label word breaks" says. No label SHALL be cut or end with an added `…`. The station element SHALL have a `title` child with the full text.
+Every station SHALL have one label with the component's `metadata.title`, or its name when there is no title, in as many rows as it needs, each at most 18 Unicode code points, wrapped at spaces, each row taking as many words as fit; a word longer than a row breaks as "Label word breaks" says. No label SHALL be cut or end with an added `…`. The station element SHALL have a `title` child with the full text.
 
 #### Scenario: Long title
 - **WHEN** a title is `Northwind Customer Relationship Manager`
@@ -71,6 +71,10 @@ A word longer than 18 code points SHALL start a new row and break, again and aga
 
 ### Requirement: Rule count is an obstacle
 A rule count SHALL be one of the station markers for placement: labels, terminal badges and zone titles avoid it grown by its outline and shadow, and the map frame contains it.
+
+#### Scenario: Terminal badge clear of a rule count
+- **WHEN** a skill line ends at a station with a rule count and its terminal badge's first position would cover the count
+- **THEN** the badge is placed where it does not cover the rule count grown by its outline and shadow
 
 #### Scenario: Rule count inside the frame
 - **WHEN** a station with a rule count is the top-right station of a skills map

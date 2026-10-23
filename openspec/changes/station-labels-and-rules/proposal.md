@@ -34,7 +34,7 @@ None.
 ## Implicit requirements
 
 - Errors and invalid input: n/a. Labels come from text already cleaned (control and format characters removed), and rule counts from rules already read; nothing new can fail.
-- Limits: no row limit; a 60-code-point `metadata.title` can take 6 rows (six 9-letter words), a 64-code-point skill name with no space 4. The count shows `99+` above 99 so the sticker stays small. The timing test of the map keeps its limit.
+- Limits: a component's `metadata.title` has no length limit, and a skill name over 64 code points is only a warning, so the number of rows has no limit either: the owner asked that every name stay whole. The map's timing test is the guard against slow layouts. Open question for gate 1: cap the rows (for example at 6, cutting the rest with `…`) or keep no cap (recommended, as the card asks). The count shows `99+` above 99 so the sticker stays small. The timing test of the map keeps its limit.
 - Repetition and idempotency: the same input gives byte-identical SVG (Determinism, unchanged).
 - Concurrency: n/a, pure functions.
 - Security: the count is a number written by the renderer; the label text stays escaped as today. No new element or attribute names.
