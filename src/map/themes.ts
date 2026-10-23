@@ -1,12 +1,17 @@
-/** All visual constants for the two supported themes. The renderers consume only Theme data.
- * Both themes follow the illustrated diagrams of brunosouzas.com: ink outlines, pipe lines with an
- * ink casing, hard offset shadows (indigo with a light rim on the dark navy) and the Lato font stack.
- * Extend data for later styles; no name-based renderer branches. No fonts or other assets are
- * fetched at render time: the stack names Lato, which the site ships, then system fonts.
+/** The two themes, built from the tokens of @brunosouzas/design-system (metro-map: Design system
+ * tokens): each `surface.<theme>`, the `map` measures and the `color` meanings of brunosouzas.com.
+ * Ink outlines, pipe lines with an ink casing, hard offset shadows (indigo with a light rim on the
+ * dark navy) and the Lato font stack. The pieces paint a surface's ink from the same tokens, so the
+ * renderers refuse a theme whose ink differs (checkInk); zone opacity and tint have no token and stay
+ * here. No fonts or other assets are fetched at render time: the stack names Lato, which the site
+ * ships, then system fonts (unquoted, so no quote character reaches an SVG attribute).
  */
+import { tokens } from '@brunosouzas/design-system/tokens';
 import type { Box } from './labels.js';
 
 export interface Theme {
+  /** The design system surface the pieces draw on. */
+  surface: 'light' | 'dark';
   background: string;
   text: string;
   muted: string;
@@ -35,58 +40,55 @@ export interface Theme {
   rim: { enabled: boolean; color: string; width: number };
 }
 
-// Unquoted family names are valid CSS and keep quote characters out of SVG attributes.
+const M = tokens.map;
+const C = tokens.color;
+// The families of the design system's font.sans, without quotes.
 const FONT = 'Lato, Helvetica Neue, Helvetica, Arial, sans-serif';
-const INK = '#0A1033';
+
+function fromTokens(surface: 'light' | 'dark', zoneOpacity: number, zoneTitleTint: number): Theme {
+  const s = tokens.surface[surface];
+  return {
+    surface,
+    background: s.background,
+    text: s.text,
+    muted: s.muted,
+    grid: s.grid,
+    header: C.ink,
+    headerText: C.white,
+    station: C.white,
+    outline: C.ink,
+    outlineWidth: M.outline,
+    licence: C.transitional,
+    renewal: C.blocked,
+    badgeText: C.white,
+    panel: s.panel,
+    accent: C.caller,
+    font: FONT,
+    lineWidth: M.lineWidth,
+    zoneOpacity,
+    zoneTitleTint,
+    casing: { enabled: M.casing > 0, color: C.ink, extraWidth: M.casing },
+    shadow: { enabled: true, color: s.shadow, dx: M.shadow, dy: M.shadow },
+    rim: { enabled: s.rimWidth > 0, color: s.rim, width: s.rimWidth },
+  };
+}
 
 export const themes: Readonly<Record<'light' | 'dark', Theme>> = {
-  light: {
-    background: '#EEF2FF',
-    text: INK,
-    muted: '#5B6694',
-    grid: '#E0E7FB',
-    header: INK,
-    headerText: '#FFFFFF',
-    station: '#FFFFFF',
-    outline: INK,
-    outlineWidth: 3,
-    licence: '#FFD25A',
-    renewal: '#FF8A3D',
-    badgeText: '#FFFFFF',
-    panel: '#FFFFFF',
-    accent: '#8FB2FF',
-    font: FONT,
-    lineWidth: 12,
-    zoneOpacity: 0.12,
-    zoneTitleTint: 0,
-    casing: { enabled: true, color: INK, extraWidth: 6 },
-    shadow: { enabled: true, color: INK, dx: 3.5, dy: 3.5 },
-    rim: { enabled: false, color: '#EEF1FF', width: 1 },
-  },
-  dark: {
-    background: '#14215A',
-    text: '#EEF1FF',
-    muted: '#8F9BD0',
-    grid: '#1C2D74',
-    header: INK,
-    headerText: '#FFFFFF',
-    station: '#FFFFFF',
-    outline: INK,
-    outlineWidth: 3,
-    licence: '#FFD25A',
-    renewal: '#FF8A3D',
-    badgeText: '#FFFFFF',
-    panel: '#1C2D74',
-    accent: '#8FB2FF',
-    font: FONT,
-    lineWidth: 12,
-    zoneOpacity: 0.22,
-    zoneTitleTint: 0.6,
-    casing: { enabled: true, color: INK, extraWidth: 6 },
-    shadow: { enabled: true, color: '#4C5CB8', dx: 3.5, dy: 3.5 },
-    rim: { enabled: true, color: '#EEF1FF', width: 1 },
-  },
+  light: fromTokens('light', 0.12, 0),
+  dark: fromTokens('dark', 0.22, 0.6),
 };
+
+/** Throws, naming the first field that differs, when a theme's ink is not its surface's (metro-map:
+ * Theme ink comes from the design system). The pieces paint outline, rim and shadow from the tokens,
+ * and the layout counts the theme's values, so the two must agree. */
+export function checkInk(theme: Theme): void {
+  if (theme.surface !== 'light' && theme.surface !== 'dark') throw new Error(`Theme surface must be light or dark, found ${String(theme.surface)}`);
+  const own = fromTokens(theme.surface, theme.zoneOpacity, theme.zoneTitleTint);
+  const fields = ['outline', 'outlineWidth', 'shadow', 'rim', 'casing', 'lineWidth'] as const;
+  for (const field of fields) {
+    if (JSON.stringify(theme[field]) !== JSON.stringify(own[field])) throw new Error(`Theme ${field} must be the design system's for the ${theme.surface} surface`);
+  }
+}
 
 /** How far a theme's ink reaches beyond plain geometry: the extra width of a line's casing, the
  * full width of an outline with its rim, and the shadow offset. Layout grows obstacles by it. */

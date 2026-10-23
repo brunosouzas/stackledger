@@ -75,7 +75,7 @@ test('Default title (Skills pages)', () => {
     for (const page of ['skills', 'skill-map', 'rules', 'skills/writer']) {
       const text = html(out, site, page);
       expect(text, `${site}/${page}`).toMatch(/<title>[^<]* \| stackledger<\/title>/);
-      expect(text, `${site}/${page}`).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark" src="(?:\.\/|(?:\.\.\/)+)favicon\.svg" alt="" width="28" height="28">stackledger<\/a>/);
+      expect(text, `${site}/${page}`).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark" src="(?:\.\.\/)*favicon\.svg" alt="" width="28" height="28">stackledger<\/a>/);
     }
   }
 });

@@ -17,9 +17,10 @@
  */
 import { incoming, outgoing, type MapNode, type NodeKind, type RelationKind, type SkillGraph } from '../skills/graph.js';
 import { cleanText, stationRef } from '../skills/metro.js';
-import { sticker, type Shape } from './ink.js';
+import { hexNode, messageArrow, nodeBlock, pillNode } from '@brunosouzas/design-system';
 import { textWidth } from './labels.js';
-import type { Theme } from './themes.js';
+import { writePiece } from './pieces.js';
+import { checkInk, type Theme } from './themes.js';
 import { escapeXml, number, SVG_NAMESPACE, tag, type Attributes } from './xml.js';
 
 export interface RelationNode { ref: string; name: string; kind: NodeKind; relation?: RelationKind }
@@ -35,7 +36,8 @@ const ROW_GAP = 14;
 const MIN_COLUMN_GAP = 96;
 const PADDING = 24;
 const HEADING_HEIGHT = 34;
-const TEXT_INSET = 16;
+/** Where nodeBlock starts its text; pills and hexagons start it at half the height. */
+const TEXT_INSET = 12;
 const MIN_BOX_WIDTH = 160;
 const BOLD_FACTOR = 1.1;
 const SKILL_RADIUS = 6;
@@ -58,39 +60,30 @@ export function shownName(name: string): string {
   return points.length > MAX_NAME_CODE_POINTS ? points.slice(0, MAX_NAME_CODE_POINTS).join('') + '…' : points.join('');
 }
 
+/** The name a box shows, or its station reference when cleaning leaves nothing (Relation box text room). */
+const boxName = (item: RelationNode): string => (shownName(item.name).trim() ? shownName(item.name) : item.ref);
+
+/** Where the pieces start the text: 12 in a box, half the height in a pill or a hexagon. */
+const insetOf = (kind: NodeKind): number => (kind === 'skill' ? TEXT_INSET : BOX_HEIGHT / 2);
+
 function columnWidth(nodes: RelationNode[]): number {
-  const widest = nodes.reduce((most, item) => Math.max(most, textWidth(shownName(item.name)) * BOLD_FACTOR + TEXT_INSET * 2), 0);
+  const widest = nodes.reduce((most, item) => Math.max(most, textWidth(boxName(item)) * BOLD_FACTOR + insetOf(item.kind) * 2), 0);
   return Math.ceil(Math.max(MIN_BOX_WIDTH, widest));
 }
 const stackHeight = (count: number) => count * (BOX_HEIGHT + ROW_GAP) - ROW_GAP;
 
-/** The outline of a box of `kind` at (x, y), moved by `by`. */
-function shapeOf(kind: NodeKind, x: number, y: number, width: number): Shape {
-  if (kind === 'agent') {
-    const cut = BOX_HEIGHT / 2;
-    return (by, attrs) => {
-      const [left, top] = [x + by[0], y + by[1]];
-      const points: [number, number][] = [[left + cut, top], [left + width - cut, top], [left + width, top + cut], [left + width - cut, top + BOX_HEIGHT], [left + cut, top + BOX_HEIGHT], [left, top + cut]];
-      return tag('polygon', { points: points.map(point => point.map(number).join(',')).join(' '), ...attrs });
-    };
-  }
-  const rx = kind === 'playbook' ? BOX_HEIGHT / 2 : SKILL_RADIUS;
-  return (by, attrs) => tag('rect', { x: x + by[0], y: y + by[1], width, height: BOX_HEIGHT, rx, ...attrs });
-}
-
+/** Skill a box with a small radius, playbook a pill, agent a hexagon: the design system's node pieces. */
 function box(item: RelationNode, x: number, y: number, width: number, theme: Theme, centre: boolean): string {
-  const ink = centre ? theme.outline : theme.text;
-  const name = cleanText(item.name);
-  const content = tag('title', {}, escapeXml(name))
-    + sticker(theme, shapeOf(item.kind, x, y, width), centre ? theme.accent : theme.panel, INK_SCALE)
-    + tag('text', { x: x + TEXT_INSET, y: y + 20, fill: ink, 'font-size': 13, 'font-weight': 700 }, escapeXml(shownName(item.name)))
-    + tag('text', { x: x + TEXT_INSET, y: y + 37, fill: centre ? theme.outline : theme.muted, 'font-size': 11 }, centre ? item.kind : item.relation ?? item.kind);
-  return tag('g', { 'data-ref': item.ref }, content);
+  const params = {
+    x, y, width, height: BOX_HEIGHT, title: boxName(item), subtitle: centre ? item.kind : item.relation ?? item.kind,
+    state: centre ? 'focus' as const : 'normal' as const, inkScale: INK_SCALE, surface: theme.surface,
+  };
+  const drawn = item.kind === 'agent' ? hexNode(params) : item.kind === 'playbook' ? pillNode(params) : nodeBlock({ ...params, radius: SKILL_RADIUS });
+  return tag('g', { 'data-ref': item.ref }, tag('title', {}, escapeXml(cleanText(item.name))) + writePiece(drawn));
 }
 
 function nothing(x: number, y: number, width: number, theme: Theme): string {
-  return tag('rect', { x, y, width, height: BOX_HEIGHT, rx: 6, fill: 'none', stroke: theme.muted, 'stroke-width': 1, 'stroke-dasharray': '5 4' })
-    + tag('text', { x: x + width / 2, y: y + 28, fill: theme.muted, 'font-size': 13, 'text-anchor': 'middle' }, 'Nothing');
+  return writePiece(nodeBlock({ x, y, width, height: BOX_HEIGHT, title: 'Nothing', state: 'placeholder', radius: SKILL_RADIUS, surface: theme.surface }));
 }
 
 interface Column { nodes: RelationNode[]; x: number; width: number; top: number }
@@ -98,15 +91,17 @@ function column(input: Column, centreTop: number, theme: Theme): string {
   if (!input.nodes.length) return nothing(input.x, centreTop, input.width, theme);
   return input.nodes.map((item, i) => box(item, input.x, input.top + i * (BOX_HEIGHT + ROW_GAP), input.width, theme, false)).join('');
 }
-function edges(input: Column, fromX: number, toX: number, centreY: number, theme: Theme): string {
-  const middle = (fromX + toX) / 2;
+/** Arrows pointing right: from a left box to the centre, or from the centre to a right box. */
+function edges(input: Column, side: 'left' | 'right', columnX: number, centreX: number, centreY: number, theme: Theme): string {
   return input.nodes.map((_, i) => {
     const y = input.top + i * (BOX_HEIGHT + ROW_GAP) + BOX_HEIGHT / 2;
-    return tag('path', { d: `M${number(fromX)},${number(y)} C${number(middle)},${number(y)} ${number(middle)},${number(centreY)} ${number(toX)},${number(centreY)}`, fill: 'none', stroke: theme.text, 'stroke-width': 2.5 });
+    const [from, to]: [[number, number], [number, number]] = side === 'left' ? [[columnX, y], [centreX, centreY]] : [[centreX, centreY], [columnX, y]];
+    return writePiece(messageArrow({ from, to, surface: theme.surface }));
   }).join('');
 }
 
 export function renderRelations(input: Relations, theme: Theme): string {
+  checkInk(theme);
   const rows = Math.max(input.left.length, input.right.length, 1);
   const top = PADDING + HEADING_HEIGHT;
   const height = top + stackHeight(rows) + PADDING;
@@ -127,8 +122,8 @@ export function renderRelations(input: Relations, theme: Theme): string {
     heading('Brought in by', left.x),
     heading('This item', centreX),
     heading('Brings in', right.x),
-    edges(left, left.x + left.width, centreX, centreY, theme),
-    edges(right, right.x, centreX + centreWidth, centreY, theme),
+    edges(left, 'left', left.x + left.width, centreX, centreY, theme),
+    edges(right, 'right', right.x, centreX + centreWidth, centreY, theme),
     column(left, centreTop, theme),
     box(input.centre, centreX, centreTop, centreWidth, theme, true),
     column(right, centreTop, theme),

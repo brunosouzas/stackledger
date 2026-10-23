@@ -1,38 +1,33 @@
 /** Render plain geometry as a self-contained, safe SVG. Call renderSvg(geometry, themes.light).
  * Text has one escaping path; geometry has no external resources, IDs, links or CSS.
  * Every visual choice comes from Theme data. Invalid colours/nonfinite geometry throw.
- * Ink style (theme casing, outline, shadow, rim): lines are pipes, an ink casing under the line
- * colour; interchanges, badges, licence markers, renewal rings and the legend panel get an ink
- * outline, and their hard shadow is a copy moved by the theme offset, drawn first in the same group.
+ * Ink style: stations, interchanges, lines, terminal and legend badges and rule counts are drawn by
+ * the design system's pieces (stationMarker, pipe, lineBadge, countBadge) through src/map/pieces.ts,
+ * so the allow-lists and escaping of src/map/xml.ts apply to them; licence markers, renewal rings,
+ * the suggested halo, zones and the legend panel keep this file's drawing with the same token values.
+ * A theme whose ink differs from its surface's tokens is refused (checkInk).
  * Strokes, stations, labels, terminal badges and legend entries carry data-line (and stations
  * and labels data-zone) for the site's map script; those values are escaped like text.
  * renderSvg(geometry, theme, { chrome: false }) leaves out the title band and the legend panel and
  * crops to the map frame: the site's map page shows the title, the line legend and the symbols in
  * HTML (renderSymbol draws one symbol). The default output is what `stackledger map` writes.
  */
-import { RULE_COUNT_FONT_SIZE, type MapGeometry, type Marker, type Badge, type RuleCount, type StationGeometry } from './layout.js';
+import { type MapGeometry, type Marker, type Badge, type RuleCount, type StationGeometry } from './layout.js';
 import type { Point } from './model.js';
-import type { Theme } from './themes.js';
+import { checkInk, type Theme } from './themes.js';
 import type { Box } from './labels.js';
 import type { ZoneGeometry } from './zones.js';
 import type { Stroke } from './parallel.js';
 import { badgeWidth } from './badges.js';
+import { countBadge, lineBadge, pipe as pipePiece, stationMarker } from '@brunosouzas/design-system';
 import { sticker } from './ink.js';
+import { writePiece } from './pieces.js';
 import { tag, escapeXml, number, color, tint, SVG_NAMESPACE, type Attributes } from './xml.js';
 
 export { escapeXml } from './xml.js';
 
 const HEADER_HEIGHT = 64;
 const FRAME_MARGIN = 16;
-
-/** A capsule (stadium) path: every point within r of the segment a-b, with half circles at both ends. */
-function capsulePath(a: Point, b: Point, r: number): string {
-  const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
-  const n: Point = [-(b[1] - a[1]) / length * r, (b[0] - a[0]) / length * r];
-  const p = (point: Point, sign: number) => `${number(point[0] + n[0] * sign)},${number(point[1] + n[1] * sign)}`;
-  const radius = number(r);
-  return `M${p(a, 1)} L${p(b, 1)} A${radius},${radius} 0 0 0 ${p(b, -1)} L${p(a, -1)} A${radius},${radius} 0 0 0 ${p(a, 1)} Z`;
-}
 
 /** Element builders bound to one theme. Catalogue text only ever passes through `text` or `title`. */
 function painter(theme: Theme) {
@@ -65,17 +60,17 @@ function painter(theme: Theme) {
     ].join('');
   };
 
-  /** Terminal badges are pill stickers, like the banner's labels. */
-  const badge = (item: Omit<Badge, 'line'>): string => boxSticker(item.box, item.box.h / 2, item.color)
-    + text(item.text, item.point[0], item.point[1] + 4.5, { fill: theme.badgeText, 'font-size': 12, 'font-weight': 700, 'text-anchor': 'middle' });
+  const surface = theme.surface;
+  /** Terminal badges: the design system's lineBadge, centred on the badge box. */
+  const badge = (item: Omit<Badge, 'line'>): string => writePiece(lineBadge({
+    x: item.box.x + item.box.w / 2, y: item.box.y + item.box.h / 2, text: item.text, fill: item.color, width: item.box.w, height: item.box.h, surface,
+  }));
 
-  /** A stop is a circle sticker on its pipe; an interchange a capsule over all its lines. */
+  /** A stop or an interchange: the design system's stationMarker (a capsule from one end to the other). */
   const marker = (item: Marker, muted: boolean): string => {
-    const fill = muted ? theme.muted : theme.station;
     const [a, b] = item.ends;
     const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    if (length < 1e-9) return discSticker(a, item.radius, fill);
-    return sticker(theme, (by, attrs) => tag('path', { d: capsulePath(add(a, by), add(b, by), item.radius), ...attrs }), fill);
+    return writePiece(stationMarker({ cx: a[0], cy: a[1], ...(length < 1e-9 ? {} : { to: b }), r: item.radius, state: muted ? 'deprecated' : 'normal', surface }));
   };
 
   const licence = (centre: Point, hollow: boolean): string => discSticker(centre, 5, hollow ? theme.station : theme.licence);
@@ -83,16 +78,18 @@ function painter(theme: Theme) {
   /** A rule count: a circle for one digit, a pill for more, in the panel colour, with the number. */
   const ruleCount = (item: RuleCount): string => {
     const { box } = item;
-    const shape = box.w === box.h ? discSticker([box.x + box.w / 2, box.y + box.h / 2], box.h / 2, theme.panel) : boxSticker(box, box.h / 2, theme.panel);
-    return shape + text(item.text, box.x + box.w / 2, box.y + box.h / 2 + 4, { 'font-size': RULE_COUNT_FONT_SIZE, 'font-weight': 700, 'text-anchor': 'middle' });
+    return writePiece(countBadge({ cx: box.x + box.w / 2, cy: box.y + box.h / 2, text: item.text, width: box.w, height: box.h, surface }));
   };
 
   /** A line sample for the legend, drawn as a pipe like the lines on the map. */
   const pipe = (a: Point, b: Point, colour: string): string =>
-    (theme.casing.enabled ? line(a, b, { stroke: theme.casing.color, 'stroke-width': theme.lineWidth + theme.casing.extraWidth, 'stroke-linecap': 'round' }) : '')
-    + line(a, b, { stroke: colour, 'stroke-width': theme.lineWidth, 'stroke-linecap': 'round' });
+    writePiece(pipePiece({ d: `M${number(a[0])},${number(a[1])} L${number(b[0])},${number(b[1])}`, fill: colour, width: theme.lineWidth, casing: theme.casing.extraWidth }));
 
-  return { text, title, rect, line, circle, boxSticker, discSticker, ring, badge, marker, licence, ruleCount, pipe };
+  /** The legend's interchange: a short vertical capsule, as interchanges on a horizontal edge. */
+  const interchangeSymbol = (centre: Point): string =>
+    writePiece(stationMarker({ cx: centre[0], cy: centre[1] - 1.5, to: [centre[0], centre[1] + 1.5], r: 6, surface }));
+
+  return { text, title, rect, line, circle, boxSticker, discSticker, ring, badge, marker, licence, ruleCount, pipe, interchangeSymbol };
 }
 
 type Painter = ReturnType<typeof painter>;
@@ -130,10 +127,8 @@ function zonesLayer(zones: ZoneGeometry[], theme: Theme, paint: Painter): string
 
 function lineGroup(stroke: Stroke, theme: Theme, paint: Painter): string {
   const d = stroke.points.map((point, i) => `${i ? 'L' : 'M'}${number(point[0])},${number(point[1])}`).join(' ');
-  const path = (paintColor: string, width: number): string =>
-    tag('path', { d, fill: 'none', stroke: paintColor, 'stroke-width': width, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
-  const casing = theme.casing.enabled ? path(theme.casing.color, theme.lineWidth + theme.casing.extraWidth) : '';
-  return tag('g', { 'data-ref': stroke.ref, 'data-line': stroke.ref }, paint.title(stroke.title) + casing + path(stroke.color, theme.lineWidth));
+  const body = writePiece(pipePiece({ d, fill: stroke.color, width: theme.lineWidth, casing: theme.casing.enabled ? theme.casing.extraWidth : 0 }));
+  return tag('g', { 'data-ref': stroke.ref, 'data-line': stroke.ref }, paint.title(stroke.title) + body);
 }
 
 /** data-line (the station's lines, in line order) and data-zone (only for a drawn zone), shared by a station and its label. */
@@ -180,7 +175,7 @@ function headerLayer(geometry: MapGeometry, theme: Theme, paint: Painter): strin
 }
 
 function legendSymbol(symbol: string, centre: Point, theme: Theme, paint: Painter): string {
-  if (symbol === 'interchange') return paint.discSticker(centre, 6, theme.station);
+  if (symbol === 'interchange') return paint.interchangeSymbol(centre);
   if (symbol === 'licence' || symbol === 'licence to buy') return paint.licence(centre, symbol === 'licence to buy');
   // A little smaller than on the map, so the dark theme's rim and shadow stay inside the 24 x 24 symbol.
   if (symbol === 'number of rules') return paint.ruleCount({ text: '3', box: { x: centre[0] - 7.5, y: centre[1] - 7.5, w: 15, h: 15 } });
@@ -229,6 +224,7 @@ function frameView(geometry: MapGeometry): Box {
 
 /** One legend symbol on its own (24 x 24), for the HTML legend under the site's map. */
 export function renderSymbol(symbol: string, theme: Theme): string {
+  checkInk(theme);
   const size = 24;
   const attrs: Attributes = { xmlns: SVG_NAMESPACE, role: 'img', viewBox: `0 0 ${size} ${size}`, width: size, height: size };
   // Up and left of the centre, so the shadow down and to the right stays inside the square.
@@ -236,6 +232,7 @@ export function renderSymbol(symbol: string, theme: Theme): string {
 }
 
 export function renderSvg(geometry: MapGeometry, theme: Theme, options: RenderOptions = {}): string {
+  checkInk(theme);
   const chrome = options.chrome ?? true;
   const viewBox = chrome ? geometry.viewBox : frameView(geometry);
   const paint = painter(theme);

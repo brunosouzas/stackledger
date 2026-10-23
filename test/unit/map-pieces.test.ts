@@ -36,7 +36,7 @@ test('Piece node outside the allow-list', () => {
 
 test('Piece text has no font of its own', () => {
   const graph = buildGraph(viewOf([set(component('forge'), 'spec.dependsOn', ['component:vault']), component('vault')], 'full'));
-  const model = buildMapModel(viewOf([component('a'), component('b'), journey('ship', ['a', 'b'])], 'full'), '');
+  const model = buildMapModel(viewOf([component('a'), component('b'), journey('ship', ['a', 'b'])], 'staff'), '');
   for (const theme of Object.values(themes)) {
     const svgs = [renderSvg(geometry(), theme), renderNeighbourhood(neighbourhood(graph, graph.items.get('component:forge')!), theme), renderStrip(strip(model, model.lines[0]!), theme)];
     for (const svg of svgs) {

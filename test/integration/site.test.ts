@@ -128,7 +128,7 @@ test('Site title', () => {
       const html = read(site, page);
       // The home's title is the site title alone (catalogue-site, Home page chrome).
       expect(html, page).toMatch(page === 'index.html' ? /<title>Northwind software<\/title>/ : /<title>[^<]* \| Northwind software<\/title>/);
-      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark" src="(?:\.\/|(?:\.\.\/)+)favicon\.svg" alt="" width="28" height="28">Northwind software<\/a>/);
+      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark" src="(?:\.\.\/)*favicon\.svg" alt="" width="28" height="28">Northwind software<\/a>/);
     }
   }
 });
@@ -190,7 +190,7 @@ test('Header mark with a custom title', () => {
   for (const site of [main.full, main.staff]) {
     for (const page of ['index.html', 'map/index.html', 'software/editor/index.html']) {
       const html = read(site, page);
-      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark" src="(?:\.\/|(?:\.\.\/)+)favicon\.svg" alt="" width="28" height="28">Northwind software<\/a>/);
+      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark" src="(?:\.\.\/)*favicon\.svg" alt="" width="28" height="28">Northwind software<\/a>/);
       expect([...html.matchAll(/<img\b/g)], page).toHaveLength(1);
     }
   }
@@ -335,7 +335,7 @@ test('Default title', () => {
     for (const page of pages(site)) {
       const html = read(site, page);
       expect(html, page).toMatch(page === 'index.html' ? /<title>stackledger<\/title>/ : /<title>[^<]* \| stackledger<\/title>/);
-      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark" src="(?:\.\/|(?:\.\.\/)+)favicon\.svg" alt="" width="28" height="28">stackledger<\/a>/);
+      expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark" src="(?:\.\.\/)*favicon\.svg" alt="" width="28" height="28">stackledger<\/a>/);
     }
   }
 });

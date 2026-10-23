@@ -106,6 +106,8 @@ function prepareWorkingCopy(staging: string, view: ViewName, data: SiteData): st
   writeFileSync(join(work, '.astro', 'settings.json'), JSON.stringify(ASTRO_PREFERENCES) + '\n');
   mkdirSync(join(work, 'src', 'fonts'), { recursive: true });
   for (const [pkg, file] of FONT_FILES) cpSync(require.resolve(`${pkg}/files/${file}`), join(work, 'src', 'fonts', file));
+  // The design system's variables (--ds-*), read by tokens.css.
+  cpSync(require.resolve('@brunosouzas/design-system/tokens.css'), join(work, 'src', 'styles', 'ds-tokens.css'));
   return work;
 }
 

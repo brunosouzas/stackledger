@@ -105,12 +105,13 @@
 }
 
 .line-chips .btn {
-  border-color: var(--color-border);
   font-weight: 400;
 }
 
+/* A pressed chip sits down on its shadow. */
 .line-chips .btn[aria-pressed="true"] {
-  border-color: var(--color-primary);
+  box-shadow: none;
+  transform: translate(var(--ds-shadow-small), var(--ds-shadow-small));
 }
 
 .map-symbols {

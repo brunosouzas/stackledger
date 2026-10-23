@@ -1,71 +1,83 @@
 /* Design tokens: every colour, font and size of the site (catalogue-site, Look and theme).
-   Colours, fonts and type scale come from brunosouzas.com (src/config/theme.json there, on the
-   Astroplate theme, MIT); the accent and the focus colour are stackledger's own additions.
+   Colours, fonts and type scale come from @brunosouzas/design-system (the site tokens of
+   brunosouzas.com), copied by the build next to this file as ds-tokens.css; the accent and the
+   focus colour are stackledger's own additions.
    Light is the default. Dark applies when the reader chose it (data-theme="dark" on <html>), or
    when the system prefers dark and the reader made no choice. Those dark rules are more specific
    than :root, so override.css (spec.site.colors, also :root) changes the light theme only. */
 
+@import "./ds-tokens.css";
+
 :root {
   color-scheme: light;
 
-  --color-primary: #121212;
+  --color-primary: var(--ds-site-light-primary);
   --color-accent: #000f9f;
-  --color-body: #ffffff;
-  --color-border: #eaeaea;
-  --color-light: #f6f6f6;
-  --color-dark: #040404;
-  --color-text: #444444;
-  --color-text-dark: #040404;
-  --color-text-light: #717171;
+  --color-body: var(--ds-site-light-body);
+  --color-border: var(--ds-site-light-border);
+  --color-light: var(--ds-site-light-light);
+  --color-dark: var(--ds-site-light-dark);
+  --color-text: var(--ds-site-light-text);
+  --color-text-dark: var(--ds-site-light-text-dark);
+  --color-text-light: var(--ds-site-light-text-light);
   --color-on-primary: #ffffff;
 
   --font-primary: "Heebo", system-ui, sans-serif;
   --font-secondary: "Signika", system-ui, sans-serif;
 
-  --text-base: 16px;
-  --text-base-sm: 12.8px;
-  --text-h6: 1.2rem;
-  --text-h5: 1.44rem;
-  --text-h4: 1.728rem;
-  --text-h3: 2.0736rem;
-  --text-h3-sm: 1.86624rem;
-  --text-h2: 2.48832rem;
-  --text-h2-sm: 2.239488rem;
-  --text-h1: 2.986rem;
-  --text-h1-sm: 2.6874rem;
+  --text-base: var(--ds-site-font-size-base);
+  --text-base-sm: var(--ds-site-font-size-base-small);
+  --text-h6: calc(var(--ds-site-heading-h6) * 1rem);
+  --text-h5: calc(var(--ds-site-heading-h5) * 1rem);
+  --text-h4: calc(var(--ds-site-heading-h4) * 1rem);
+  --text-h3: calc(var(--ds-site-heading-h3) * 1rem);
+  --text-h3-sm: calc(var(--ds-site-heading-h3-small) * 1rem);
+  --text-h2: calc(var(--ds-site-heading-h2) * 1rem);
+  --text-h2-sm: calc(var(--ds-site-heading-h2-small) * 1rem);
+  --text-h1: calc(var(--ds-site-heading-h1) * 1rem);
+  --text-h1-sm: calc(var(--ds-site-heading-h1-small) * 1rem);
 
   --radius: 0.5rem;
   --container: 1320px;
+
+  /* The identity's ink frame (cards, buttons, chips): ink outline and hard shadow. */
+  --frame-outline: var(--ds-outline-small) solid var(--ds-color-ink);
+  --frame-shadow: var(--ds-shadow-small) var(--ds-shadow-small) 0 var(--ds-surface-light-shadow);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --color-primary: #ffffff;
+  --color-primary: var(--ds-site-dark-primary);
   --color-accent: #9da8ff;
-  --color-body: #1c1c1c;
-  --color-border: #3e3e3e;
-  --color-light: #222222;
-  --color-dark: #ffffff;
-  --color-text: #b4afb6;
-  --color-text-dark: #ffffff;
-  --color-text-light: #b4afb6;
+  --color-body: var(--ds-site-dark-body);
+  --color-border: var(--ds-site-dark-border);
+  --color-light: var(--ds-site-dark-light);
+  --color-dark: var(--ds-site-dark-dark);
+  --color-text: var(--ds-site-dark-text);
+  --color-text-dark: var(--ds-site-dark-text-dark);
+  --color-text-light: var(--ds-site-dark-text-light);
   --color-on-primary: #040404;
+
+  /* On a dark page the ink outline gets a light rim and the shadow turns indigo, as on the map. */
+  --frame-shadow: 0 0 0 var(--ds-surface-dark-rim-width) var(--ds-surface-dark-rim), var(--ds-shadow-small) var(--ds-shadow-small) 0 var(--ds-surface-dark-shadow);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
 
-    --color-primary: #ffffff;
+    --color-primary: var(--ds-site-dark-primary);
     --color-accent: #9da8ff;
-    --color-body: #1c1c1c;
-    --color-border: #3e3e3e;
-    --color-light: #222222;
-    --color-dark: #ffffff;
-    --color-text: #b4afb6;
-    --color-text-dark: #ffffff;
-    --color-text-light: #b4afb6;
+    --color-body: var(--ds-site-dark-body);
+    --color-border: var(--ds-site-dark-border);
+    --color-light: var(--ds-site-dark-light);
+    --color-dark: var(--ds-site-dark-dark);
+    --color-text: var(--ds-site-dark-text);
+    --color-text-dark: var(--ds-site-dark-text-dark);
+    --color-text-light: var(--ds-site-dark-text-light);
     --color-on-primary: #040404;
+
+    --frame-shadow: 0 0 0 var(--ds-surface-dark-rim-width) var(--ds-surface-dark-rim), var(--ds-shadow-small) var(--ds-shadow-small) 0 var(--ds-surface-dark-shadow);
   }
 }
