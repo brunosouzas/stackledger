@@ -20,22 +20,22 @@ Levels: U unit, I integration (built site), B browser (Playwright). Every scenar
 
 ## 1. Dependency and art
 
-- [ ] 1.1 Pin `@brunosouzas/design-system` 0.3.0, exact, production; refresh `npm-shrinkwrap.json`. Verify: `npm ls @brunosouzas/design-system`.
-- [ ] 1.2 Tests first: "Banner file is the design system's banner", "Link icon files are the design system's", "Dark mark is the dark ledgerMark", "Site art is inert", "Icon names match the design system". Verify: they fail.
-- [ ] 1.3 `scripts/home-banner.json` and `scripts/site-art.mjs` (design §1, §2); run it; `favicon.svg` unchanged. Verify: `npm test`, including the package test; `git diff --stat site/public/favicon.svg` empty.
+- [x] 1.1 Pin `@brunosouzas/design-system` 0.3.0, exact, production; refresh `npm-shrinkwrap.json`. Verify: `npm ls @brunosouzas/design-system`.
+- [x] 1.2 Tests first: "Banner file is the design system's banner", "Link icon files are the design system's", "Dark mark is the dark ledgerMark", "Site art is inert", "Icon names match the design system". Verify: they fail.
+- [x] 1.3 `scripts/home-banner.json` and `scripts/site-art.mjs` (design §1, §2); run it; `favicon.svg` unchanged. Verify: `npm test`, including the package test; `git diff --stat site/public/favicon.svg` empty.
 
 ## 2. Settings
 
-- [ ] 2.1 Tests first: "Link icon", "Unknown link icon" (with `../favicon`). Verify: they fail.
-- [ ] 2.2 `src/schema.ts`: optional `icon` on a home link; `src/site/data.ts`: `HomeLink.icon`, copied by `siteSettings()`. Verify: `npm test`.
+- [x] 2.1 Tests first: "Link icon", "Unknown link icon" (with `../favicon`). Verify: they fail.
+- [x] 2.2 `src/schema.ts`: optional `icon` on a home link; `src/site/data.ts`: `HomeLink.icon`, copied by `siteSettings()`. Verify: `npm test`.
 
 ## 3. Site
 
-- [ ] 3.1 Tests first: "Banner on the home", "Link with an icon", "Icon with broken settings", "Header mark with a custom title" (two marks), "Banner keeps its ratio", "Link icon follows the theme", "Mark follows the theme"; update "Site title", "Default title", "Default title (Skills pages)" and "Description with HTML" (design "Test changes"). Verify: the new ones fail.
-- [ ] 3.2 `index.astro` (banner art, link icons), `Header.astro` (two marks), `pages.css` (banner art, icon size), `base.css` (`display: revert`) (design §3 to §6). Verify: `npm run build && npm test`, `npm run test:browser`.
+- [x] 3.1 Tests first: "Banner on the home", "Link with an icon", "Icon with broken settings", "Header mark with a custom title" (two marks), "Banner keeps its ratio", "Link icon follows the theme", "Mark follows the theme"; update "Site title", "Default title", "Default title (Skills pages)" and "Description with HTML" (design "Test changes"). Verify: the new ones fail.
+- [x] 3.2 `index.astro` (banner art, link icons), `Header.astro` (two marks), `pages.css` (banner art, icon size), `base.css` (`display: revert`) (design §3 to §6). Verify: `npm run build && npm test`, `npm run test:browser`.
 
 ## 4. Example, images and docs
 
 - [x] 4.1 The example stays unchanged (design §7, changed during implementation); the README screenshot uses a throwaway copy with fictitious links. Verify: the example tests pass.
-- [ ] 4.2 Build the example, take the home and a page with the header in light and dark at 1440 and 375 pixels, look at each, regenerate the README images that changed, and show the owner before the pull request is ready. Verify: images opened and checked.
-- [ ] 4.3 `docs/catalogue-format.md`, `docs/site.md`, `docs/roadmap.md`, `README.md`. Verify: `test/integration/docs.test.ts`, `openspec validate --all --strict --no-interactive`, `git diff --check`.
+- [x] 4.2 Build the example, take the home and a page with the header in light and dark at 1440 and 375 pixels, look at each, regenerate the README images that changed, and show the owner before the pull request is ready. Verify: images opened and checked.
+- [x] 4.3 `docs/catalogue-format.md`, `docs/site.md`, `docs/roadmap.md`, `README.md`. Verify: `test/integration/docs.test.ts`, `openspec validate --all --strict --no-interactive`, `git diff --check`.
