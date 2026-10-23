@@ -10,7 +10,7 @@ catalog/                            the catalogue: every YAML file below it is r
 README.md                           this file; replace it with your own
 ```
 
-The catalogue lives in `catalog/` so that stackledger never reads the workflow's own YAML. `catalog/catalog-info.yaml` holds one fictitious component, so the copy validates and builds as it is; replace it with yours ([catalogue format](https://github.com/brunosouzas/stackledger/blob/main/docs/catalogue-format.md)).
+The catalogue lives in `catalog/` so that stackledger never reads the workflow's own YAML (needed up to 0.3.0, which this template pins; later releases skip hidden folders such as `.github/`). `catalog/catalog-info.yaml` holds one fictitious component, so the copy validates and builds as it is; replace it with yours ([catalogue format](https://github.com/brunosouzas/stackledger/blob/main/docs/catalogue-format.md)).
 
 ## Personal or corporate
 

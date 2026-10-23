@@ -144,7 +144,8 @@ export async function loadFolder(folder: string): Promise<Loaded> {
         const stat = await lstat(absolute);
         if (stat.isSymbolicLink()) { loaded.problems.push(fileProblem(path, 'Symbolic link is not followed', 'warning')); continue; }
         if (stat.isDirectory()) {
-          if (['.git', 'node_modules'].includes(entry.name)) continue;
+          // Hidden folders (.git, .github, .vscode…) hold tool files, never catalogue data (catalogue, Skipped folders).
+          if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
           if (!(stat.mode & 0o444)) { loaded.problems.push(fileProblem(path, 'Folder cannot be read')); continue; }
           await walk(path); continue;
         }

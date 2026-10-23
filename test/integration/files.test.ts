@@ -12,6 +12,26 @@ test('Skipped folders and other files', async () => {
  const result = await loadFolder(folder({ '.git/x.yaml': 'bad', 'node_modules/y.yaml': 'bad', 'notes.md': 'bad' }));
  expect(result).toEqual({ files: 0, sources: [], problems: [] });
 });
+// catalogue, Skipped folders.
+test('Pipeline folder in a catalogue repository', async () => {
+ const workflow = 'name: stackledger\non:\n  push:\njobs:\n  site:\n    runs-on: ubuntu-latest\n';
+ const result = await loadFolder(folder({ '.github/workflows/stackledger.yml': workflow, 'team/.config/z.yaml': 'bad', 'a.yaml': component('a') }));
+ expect(result.files).toBe(1); expect(result.sources.map(s => s.path)).toEqual(['a.yaml']); expect(result.problems).toEqual([]);
+});
+test('Hidden file and hidden given folder', async () => {
+ const root = join(folder({ '.catalogue/.extra.yaml': component('extra') }), '.catalogue');
+ const result = await loadFolder(root); expect(result.sources.map(s => s.path)).toEqual(['.extra.yaml']); expect(result.problems).toEqual([]);
+});
+test('Unreadable hidden folder', async () => {
+ const root = folder({ '.private/x.yaml': 'bad', 'a.yaml': component('a') }); chmodSync(join(root, '.private'), 0);
+ try {
+  const result = await loadFolder(root); expect(result.sources.map(s => s.path)).toEqual(['a.yaml']); expect(result.problems).toEqual([]);
+ } finally { chmodSync(join(root, '.private'), 0o755); }
+});
+test('Hidden link', async () => {
+ const shared = folder({ 'b.yaml': component('b') }); const root = folder({ 'a.yaml': component('a') }); symlinkSync(shared, join(root, '.shared'));
+ const result = await loadFolder(root); expect(result.sources.map(s => s.path)).toEqual(['a.yaml']); expect(result.problems).toMatchObject([{ path: '.shared', severity: 'warning' }]);
+});
 test('Link that leaves the folder', async () => {
  const outside = folder({ 'secret.yaml': component() }); const root = folder(); symlinkSync(join(outside, 'secret.yaml'), join(root, 'outside.yaml'));
  const result = await loadFolder(root); expect(result.files).toBe(0); expect(result.sources).toEqual([]); expect(result.problems).toMatchObject([{ path: 'outside.yaml', severity: 'warning' }]);
