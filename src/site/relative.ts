@@ -25,7 +25,8 @@ import { join, posix, relative, sep } from 'node:path';
 import { POLICY } from './policy.js';
 
 const URL_ATTRIBUTES = new Set(['href', 'src', 'action', 'formaction', 'poster', 'data', 'xlink:href']);
-const TAG = /<([A-Za-z][A-Za-z0-9:-]*)((?:\s[^<>]*?)?)(\/?)>/g;
+// Quoted attribute values may hold `>` (Astro escapes only `&` and `"`), so they are matched whole.
+const TAG = /<([A-Za-z][A-Za-z0-9:-]*)((?:\s(?:"[^"]*"|'[^']*'|[^<>"'])*?)?)(\/?)>/g;
 const ATTRIBUTE = /([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
 const SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*:/;
 const ASTRO_ASSET = /^\/_astro\//;
@@ -152,7 +153,9 @@ export function relativise(siteDir: string): void {
   }
 }
 
-function scanHtml(file: string, html: string): string[] {
+/** `homeLinks`: the validated URLs of spec.site.home.links, allowed only as the href of an `a` element
+ * in the site's root index.html (site-security, No external requests). */
+function scanHtml(file: string, html: string, homeLinks: readonly string[] = []): string[] {
   const problems: string[] = [];
   const policies: string[] = [];
   for (const [, rawName, attrText] of html.matchAll(TAG)) {
@@ -164,6 +167,7 @@ function scanHtml(file: string, html: string): string[] {
     for (const attr of attrs) {
       if (attr.name === 'style') problems.push(`${file}: style attribute`);
       if (attr.name.startsWith('on')) problems.push(`${file}: event-handler attribute ${attr.name}`);
+      if (name === 'a' && attr.name === 'href' && file === 'index.html' && isHomeLink(attr, homeLinks)) continue;
       if (URL_ATTRIBUTES.has(attr.name) || attr.name === 'srcset') problems.push(...urlAttributeProblems(file, attr));
     }
     const equiv = attrs.find(attr => attr.name === 'http-equiv')?.value;
@@ -173,6 +177,13 @@ function scanHtml(file: string, html: string): string[] {
   }
   if (policies.length !== 1 || policies[0] !== POLICY) problems.push(`${file}: CSP meta ${JSON.stringify(policies)}`);
   return problems;
+}
+
+/** An anchor's href that is exactly one of the home links once decoded (no unknown references). */
+function isHomeLink(attr: Attribute, homeLinks: readonly string[]): boolean {
+  if (!homeLinks.length) return false;
+  const { text, unknown } = decodeAttribute(attr.value ?? '');
+  return !unknown.length && homeLinks.includes(text);
 }
 
 /** The problems of one URL attribute (or each URL of a srcset), its value decoded first. */
@@ -228,11 +239,11 @@ function scanJs(file: string, js: string): string[] {
 /** Every problem in a built site; an empty list means it may be published. `buildPaths` are the
  * build's own paths (the staging folder, the working copy): none may appear in an output file.
  * Only these exact paths count, so catalogue text that mentions `.stackledger-tmp-*` is fine. */
-export function scan(siteDir: string, buildPaths: readonly string[] = []): string[] {
+export function scan(siteDir: string, buildPaths: readonly string[] = [], homeLinks: readonly string[] = []): string[] {
   const problems: string[] = [];
   for (const file of listFiles(siteDir)) {
     const text = readFileSync(join(siteDir, file), 'utf8');
-    if (file.endsWith('.html')) problems.push(...scanHtml(file, text));
+    if (file.endsWith('.html')) problems.push(...scanHtml(file, text, homeLinks));
     else if (file.endsWith('.css')) problems.push(...scanCss(file, text));
     else if (file.endsWith('.js') || file.endsWith('.mjs')) problems.push(...scanJs(file, text));
     if (buildPaths.some(path => text.includes(path))) problems.push(`${file}: staging path in the output`);

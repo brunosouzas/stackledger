@@ -1,78 +1,71 @@
 ---
-// Map page (catalogue-site, Map page and Map interaction): the view's map in both themes, zoom,
-// pan, line highlight and zone filter. The map SVG has no title band or legend: the line chips are
-// the legend (buttons that highlight a line) and the symbols are listed under them. Without
-// JavaScript the whole map and both legends are shown; only the zoom and zone tools stay hidden.
+// Home page (catalogue-site, Home page, Home page chrome and Home links): a banner with the site title
+// and text, a card per division with the view's counts and links, then the configured links.
+// The links are the only URLs to other sites (site-security, No external requests): validated http(s)
+// URLs from spec.site.home.links, opened in the same tab, with rel="noopener noreferrer".
 import Base from '../layouts/Base.astro';
-import Themed from '../components/Themed.astro';
-import { site } from '../lib/site';
+import { href, rootFor, site } from '../lib/site';
 
-const { lines, zones, symbols } = site.map;
+const root = rootFor(Astro.url.pathname);
+const plural = (count: number, word: string) => `${count} ${count === 1 ? word : `${word}s`}`;
+const skills = site.skills;
 ---
 
-<Base title="Map" current="map">
-  <section class="container section">
-    <h1>Map</h1>
-    {
-      lines.length === 0 ? (
-        <p class="lead">No journeys yet. Add a Line to the catalogue to draw one.</p>
-      ) : (
-        <p class="lead">Each line is a journey through the software; each station opens its page.</p>
-      )
-    }
-    <div class="map-tools" data-map-tools hidden>
-      <div class="map-zoom" role="group" aria-label="Zoom">
-        <button type="button" class="btn" data-zoom="in" aria-label="Zoom in">+</button>
-        <button type="button" class="btn" data-zoom="out" aria-label="Zoom out">−</button>
-        <button type="button" class="btn" data-zoom="reset">Reset</button>
-      </div>
+<Base title={site.title} current="home">
+  <section class="home-banner">
+    <div class="container">
+      <h1>{site.title}</h1>
+      <p class="lead">{site.home.text}</p>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container">
+    <div class="item-grid home-cards">
+      <article class="card">
+        <h2 class="card-title">Software</h2>
+        <p>
+          {plural(site.components.length, 'component')}, {plural(site.licences.length, 'licence')} and{' '}
+          {plural(site.journeys.length, 'journey')}.
+        </p>
+        <ul class="home-links">
+          <li><a href={href(root, 'map/')}>Map</a></li>
+          <li><a href={href(root, 'software/')}>List</a></li>
+          <li><a href={href(root, 'journeys/')}>Journeys</a></li>
+          {'report' in site && <li><a href={href(root, 'reports/')}>Reports</a></li>}
+        </ul>
+      </article>
       {
-        zones.length > 0 && (
-          <label class="field map-zone">
-            Zone
-            <select data-zone-filter>
-              <option value="">All zones</option>
-              {zones.map((zone) => <option value={zone.name}>{zone.title}</option>)}
-            </select>
-          </label>
+        skills && (
+          <article class="card">
+            <h2 class="card-title">Skills</h2>
+            <p>
+              {plural(skills.counts.skills, 'skill')}, {plural(skills.counts.playbooks, 'playbook')}, {plural(skills.counts.agents, 'agent')} and{' '}
+              {plural(skills.counts.rules, 'rule')}.
+            </p>
+            <ul class="home-links">
+              <li><a href={href(root, 'skills/')}>List</a></li>
+              <li><a href={href(root, 'skill-map/')}>Map</a></li>
+              <li><a href={href(root, 'rules/')}>Rules</a></li>
+            </ul>
+          </article>
         )
       }
     </div>
-    <div class="map-frame" data-map>
-      <Themed light={site.map.light} dark={site.map.dark} class="map-canvas" />
-    </div>
     {
-      lines.length > 0 && (
-        <div class="map-lines" data-map-lines>
-          <h2 class="visually-hidden">Lines (journeys)</h2>
-          <ul class="line-chips">
-            {lines.map((line) => (
+      site.home.links.length > 0 && (
+        <>
+          <h2>Links</h2>
+          <ul class="home-external">
+            {site.home.links.map((link: { title: string; url: string; description?: string }) => (
               <li>
-                <button type="button" class="btn" data-line={line.ref} aria-pressed="false">
-                  <span class="badge" set:html={line.badgeSvg} />
-                  {line.title}
-                </button>
+                <a href={link.url} rel="noopener noreferrer">{link.title}</a>
+                {link.description && <span class="muted"> · {link.description}</span>}
               </li>
             ))}
           </ul>
-        </div>
+        </>
       )
     }
-    <h2 class="visually-hidden">Symbols</h2>
-    <ul class="map-symbols">
-      {
-        symbols.map((symbol) => (
-          <li>
-            <div class="map-symbol" aria-hidden="true">
-              <Themed light={symbol.light} dark={symbol.dark} class="symbol" />
-            </div>
-            {symbol.label}
-          </li>
-        ))
-      }
-    </ul>
+    </div>
   </section>
-  <script>
-    import '../scripts/map.ts';
-  </script>
 </Base>

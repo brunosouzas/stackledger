@@ -33,7 +33,8 @@ The skills, agents, playbooks and rules that AI coding agents use, as a second l
 
 ## Later
 
-- `map-backgrounds`: a city backdrop behind the map (`neutral`, `london`, `sao-paulo` to start), chosen in `Settings` or with `--background`. Drawn from OpenStreetMap data (rivers, coastline, parks), simplified and attributed, never from official metro maps, which are copyrighted. The map engine already draws an empty background layer for it.
+- `site-home` (AB#137, in review): the site title `stackledger` opens a home page at `/` with a banner, the division cards and links set in `Settings`; the software map moves to `/map/`.
+- `map-backgrounds` (AB#134, next): a city backdrop behind the software map (`neutral` and `london` to start; `sao-paulo` later; the skills map keeps a plain background), chosen in `Settings` or with `--background`. Drawn from OpenStreetMap data (rivers, coastline, parks), simplified and attributed, never from official metro maps, which are copyrighted. The map engine already draws an empty background layer for it.
 
 - Icons and line badges drawn with the designer style of brunosouzas.com.
 

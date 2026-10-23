@@ -31,6 +31,32 @@ const site = (value: unknown) => settings('settings', { site: value });
 test('Title and accent', () => { expect(check(site({ title: 'Northwind software', colors: { accent: '#e4002b' } })).problems).toEqual([]); });
 test('Title too long', () => { expect(errors(site({ title: 'N'.repeat(61) }))).toMatchObject([{ field: 'spec.site.title' }]); expect(check(site({ title: 'N'.repeat(60) })).problems).toEqual([]); });
 test('Colour name', () => { expect(errors(site({ colors: { primary: 'red' } }))).toMatchObject([{ field: 'spec.site.colors.primary' }]); });
+// catalogue, Home settings.
+const link = (fields: Record<string, unknown>) => ({ title: 'Articles', url: 'https://example.org/articles/', ...fields });
+test('Home text and links', () => {
+  expect(check(site({ home: { text: 'Northwind tools', links: [link({ description: 'What we write' })] } })).problems).toEqual([]);
+  expect(errors(site({ home: { text: 'N'.repeat(201) } }))).toMatchObject([{ field: 'spec.site.home.text' }]);
+  expect(errors(site({ home: { links: [] } }))).toMatchObject([{ field: 'spec.site.home.links' }]);
+});
+test('Script URL', () => {
+  for (const url of ['javascript:alert(1)', 'data:text/html,x', 'ftp://example.org/', '//example.org/', '/articles/']) {
+    expect(errors(site({ home: { links: [link({ url })] } })), url).toMatchObject([{ field: 'spec.site.home.links[0].url' }]);
+  }
+  expect(check(site({ home: { links: [link({ url: 'HTTPS://Example.org/' }), link({ url: 'http://wiki.example.org/' })] } })).problems).toEqual([]);
+});
+test('Bad link', () => {
+  const result = errors(site({ home: { links: [{ title: 'No URL' }, link({ url: 'https://user:secret@example.org/' }), link({ url: 'https://' }), link({ target: '_blank' }), link({ url: 'https://example.org/a b' }),
+    link({ url: 'https://x.example/"><script>alert(1)</script>' }), link({ url: 'https://x.example/a>b' }), link({ url: "https://x.example/a'b" })] } }));
+  expect(result.map(problem => problem.field)).toEqual(['spec.site.home.links[0].url', 'spec.site.home.links[1].url', 'spec.site.home.links[2].url', 'spec.site.home.links[3].target', 'spec.site.home.links[4].url',
+    'spec.site.home.links[5].url', 'spec.site.home.links[6].url', 'spec.site.home.links[7].url']);
+});
+test('Too many links', () => {
+  expect(errors(site({ home: { links: Array.from({ length: 21 }, () => link({})) } }))).toMatchObject([{ field: 'spec.site.home.links' }]);
+  expect(check(site({ home: { links: Array.from({ length: 20 }, () => link({})) } })).problems).toEqual([]);
+});
+test('Unknown home field', () => {
+  expect(errors(site({ home: { image: 'banner.png' } }))).toMatchObject([{ field: 'spec.site.home.image', message: 'Unlisted field' }]);
+});
 test('Logo not supported', () => {
  expect(errors(site({ logo: 'logo.png' }))).toMatchObject([{ field: 'spec.site.logo', message: 'Unlisted field' }]);
  expect(errors(site({ colors: { border: '#FFFFFF' } }))).toMatchObject([{ field: 'spec.site.colors.border', message: 'Unlisted field' }]);

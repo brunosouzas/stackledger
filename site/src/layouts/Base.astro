@@ -19,7 +19,10 @@ interface Props {
   exact?: boolean;
 }
 const { title, current, exact = true } = Astro.props;
-const division = ['skills', 'skill-map', 'rules'].includes(current) ? 'skills' : 'software';
+// The home page belongs to no division: no sub-navigation, nothing marked in the header, and its
+// title is the site title alone (catalogue-site, Home page chrome).
+const home = current === 'home';
+const division = home ? undefined : ['skills', 'skill-map', 'rules'].includes(current) ? 'skills' : 'software';
 const root = rootFor(Astro.url.pathname);
 ---
 
@@ -31,7 +34,7 @@ const root = rootFor(Astro.url.pathname);
     <meta name="robots" content="noindex, nofollow" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <title>{title} | {site.title}</title>
+    <title>{home ? site.title : `${title} | ${site.title}`}</title>
     <link rel="icon" type="image/svg+xml" href={href(root, 'favicon.svg')} />
     <script>
       import '../scripts/theme.ts';
@@ -40,7 +43,7 @@ const root = rootFor(Astro.url.pathname);
   <body data-root={root}>
     <a class="skip-link" href="#main">Skip to content</a>
     <Header root={root} current={division} />
-    <SubNav root={root} current={current} exact={exact} />
+    {!home && <SubNav root={root} current={current} exact={exact} />}
     <main id="main">
       <slot />
     </main>

@@ -1,17 +1,17 @@
 ---
 // Sticky header from brunosouzas.com (Astroplate theme, MIT): brand, the divisions, theme switch.
-// The divisions are Software (the map, its home) and, only when the build was given a skill set,
+// The brand opens the home page; the divisions are Software (the map) and, only when the build was given a skill set,
 // Skills (skills-site, Skills pages); each division's pages are in its sub-navigation (SubNav.astro).
 import ThemeSwitch from './ThemeSwitch.astro';
 import { href, site } from '../lib/site';
 
 interface Props {
   root: string;
-  current: 'software' | 'skills';
+  current?: 'software' | 'skills';
 }
 const { root, current } = Astro.props;
 const links = [
-  { key: 'software', title: 'Software', path: '' },
+  { key: 'software', title: 'Software', path: 'map/' },
   ...('skills' in site && site.skills ? [{ key: 'skills', title: 'Skills', path: 'skills/' }] : []),
 ];
 ---

@@ -31,7 +31,9 @@ import { formatAmount, type Amount } from '../money.js';
 import type { SkillsData } from './skills-data.js';
 import { buildReport, type Group, type LicenceLink, type OneOffRow, type RenewalEntry, type Report, type TotalRow } from '../reports.js';
 
-export const DEFAULT_TITLE = 'Software map';
+export const DEFAULT_TITLE = 'stackledger';
+/** The home banner's text when `spec.site.home.text` is not set (catalogue-site, Home page). */
+export const DEFAULT_HOME_TEXT = 'Your software and skills, mapped.';
 /** The renewal window of the site's Reports page and calendar (licence-reports, Source and date). */
 export const REPORT_DAYS = 90;
 export const CALENDAR_FILE = 'renewals.ics';
@@ -62,8 +64,11 @@ export interface ReportPage {
   planned: { items: (Link & { cycle: string; cost: string; monthly: string; yearly: string })[]; recurring: MoneyRow[]; oneOff: OneOffMoneyRow[] };
   incomplete: (Link & { status: string; unknown: string })[];
 }
+export interface HomeLink { title: string; url: string; description?: string }
 interface SiteBase {
   version: string; title: string; colors: Partial<Record<SiteColorName, string>>;
+  /** The home page's banner text and links (catalogue-site, Home page and Home links). */
+  home: { text: string; links: HomeLink[] };
   map: Themed & { lines: LineSummary[]; zones: { name: string; title: string }[]; symbols: (Themed & { label: string })[] };
   rows: SoftwareRow[]; filters: { kind: string[]; zone: string[]; state: string[]; owner: string[] };
   components: ComponentPage[]; licences: LicencePage[]; journeys: JourneyPage[];
@@ -96,12 +101,13 @@ function fields(licence: Licence): Field[] {
   return licenceFields.filter(field => details[field] !== undefined).map(field => ({ label: fieldLabels[field], value: String(details[field]) }));
 }
 
-/** Title and colours from spec.site; the defaults when the Settings in use has an error. */
-function siteSettings(catalogue: Catalogue): { title: string; colors: Partial<Record<SiteColorName, string>> } {
+/** Title, colours and home from spec.site; the defaults, and no links, when the Settings in use has an error. */
+function siteSettings(catalogue: Catalogue): { title: string; colors: Partial<Record<SiteColorName, string>>; home: { text: string; links: HomeLink[] } } {
   const site = settingsInError(catalogue) ? undefined : catalogue.served.settings[0]?.spec.site;
   const colors: Partial<Record<SiteColorName, string>> = {};
   for (const [key, value] of Object.entries(site?.colors ?? {})) if (value !== undefined) colors[key as SiteColorName] = value;
-  return { title: site?.title ?? DEFAULT_TITLE, colors };
+  const links = (site?.home?.links ?? []).map(link => ({ title: link.title, url: link.url, ...(link.description === undefined ? {} : { description: link.description }) }));
+  return { title: site?.title ?? DEFAULT_TITLE, colors, home: { text: site?.home?.text ?? DEFAULT_HOME_TEXT, links } };
 }
 
 /** The site title, as the header shows it; also the calendar name of `stackledger report --format ics`. */

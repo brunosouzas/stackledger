@@ -121,7 +121,7 @@ ref,title,vendor,status,cycle,cost,currency,monthly,yearly,renewsOn,owner,paidBy
 - Summary `Renewal: <title>`; description with the vendor, the cost and currency, and the cycle.
 - A yearly or monthly repeat rule for `yearly` and `monthly` licences; none for other cycles, so a one-off renewal appears once.
 - A display alarm 14 days before, whose text is the summary.
-- The calendar name is the site title (`spec.site.title`, default `Software map`).
+- The calendar name is the site title (`spec.site.title`, default `stackledger`; up to 0.3.0, `Software map`).
 
 **Repeats on days that do not exist.** The repeat rules follow RFC 5545, which skips a date that does not exist instead of moving it: a monthly renewal on the 29th, 30th or 31st does not appear in months without that day (a renewal on 31 January appears again on 31 March), and a yearly renewal on 29 February appears only in leap years. Check those dates against the contract; if the vendor bills on the last day of the month, record a date that exists every month or year.
 

@@ -125,12 +125,14 @@ cd /path/to/skills && node /path/to/stackledger/dist/cli.js skills map . --out d
 
 ## The website
 
-`stackledger build` makes two static sites from one catalogue, each with a **Software** division (map, list, journeys and, in `full`, reports) and, when given a skill set, a **Skills** division: `full` for owners and finance, `staff` for everyone else, without costs, renewal dates, payers, seats, password-manager references or notes. Serve them behind an identity-aware proxy, publishing only `full/`, `staff/`, `_headers`, `robots.txt` and `_redirects`; with `spec.sites: [full]` (the personal mode) only `full` is built; [docs/site.md](docs/site.md) explains the pages, the hosting and the security rules. Screenshots from the fictitious [Northwind catalogue](examples/northwind/), dated 2027-06-01:
+`stackledger build` makes two static sites from one catalogue: `full` for owners and finance, `staff` for everyone else, without costs, renewal dates, payers, seats, password-manager references or notes. Each has a **Software** division (the map at `/map/`, list, journeys and, in `full`, reports) and, when given a skill set, a **Skills** division. The site title (`stackledger` unless `spec.site.title` sets one) opens a **home page** at `/` with a card per division and, if you list them in `spec.site.home.links`, your own links. Serve them behind an identity-aware proxy, publishing only `full/`, `staff/`, `_headers`, `robots.txt` and `_redirects`; with `spec.sites: [full]` (the personal mode) only `full` is built; [docs/site.md](docs/site.md) explains the pages, the hosting and the security rules. Screenshots from the fictitious [Northwind catalogue](examples/northwind/), dated 2027-06-01:
 
 | | |
 |---|---|
-| ![Map page with the metro map, line buttons and map symbols](docs/images/site-map-light.png) | ![The same map page in the dark theme](docs/images/site-map-dark.png) |
-| **Map**: zoom, pan, zone filter; the line buttons highlight a journey | **Dark theme**, remembered across pages |
+| ![Home page with the banner, the Software and Skills cards and the configured links](docs/images/site-home.png) | ![Map page with the metro map, line buttons and map symbols](docs/images/site-map-light.png) |
+| **Home**: the site title opens it; counts, links to each division and your own links from `spec.site.home` | **Map** (`/map/`): zoom, pan, zone filter; the line buttons highlight a journey |
+| ![The same map page in the dark theme](docs/images/site-map-dark.png) | |
+| **Dark theme**, remembered across pages | |
 | ![Software list with search and filters](docs/images/site-software.png) | ![Component page for GitHub with its licence and neighbourhood diagram](docs/images/site-component.png) |
 | **Software**: every component and licence, with search and filters | **Component**: licence, journeys, what it depends on and what depends on it, removal impact |
 | ![Licence page in the full site with cost and renewal](docs/images/site-licence-full.png) | ![The same licence page in the staff site without cost or renewal](docs/images/site-licence-staff.png) |
