@@ -15,8 +15,8 @@ Levels: U unit, I integration (built site), B browser (Playwright). Every scenar
 
 ## 0. Evidence for gate 1
 
-- [ ] 0.1 Prototype outside the branch: the home of the Northwind example with the banner, link icons and the dark mark, at 1440 and 375 CSS pixels, in light and dark, in one contact sheet. Verify: sheet looked at; shown to the owner at gate 1.
-- [ ] 0.2 Gate 1: the owner approves the spec and the contact sheet.
+- [x] 0.1 Prototype outside the branch: the home of the Northwind example with the banner, link icons and the dark mark, at 1440 and 375 CSS pixels, in light and dark, in one contact sheet. Verify: sheet looked at; shown to the owner at gate 1.
+- [x] 0.2 Gate 1: the owner approves the spec and the contact sheet (2026-10-23).
 
 ## 1. Dependency and art
 
