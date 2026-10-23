@@ -5,7 +5,7 @@
 
 #### Scenario: Metadata
 - **WHEN** `package.json` is read
-- **THEN** `name` is `@brunosouzas/stackledger`, `private` is absent, `repository.url` is `git+https://github.com/brunosouzas/stackledger.git` and `bin.stackledger` is `dist/cli.js`
+- **THEN** `name` is `@brunosouzas/stackledger` in `package.json` and in `npm-shrinkwrap.json` (`name` and `packages[""].name`), `private` is absent, `repository.url` is `git+https://github.com/brunosouzas/stackledger.git` and `bin.stackledger` is `dist/cli.js`
 
 #### Scenario: Command name under the scoped package
 - **WHEN** the packed tarball is installed from a registry as `@brunosouzas/stackledger@<version>` into an empty folder

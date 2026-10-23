@@ -9,7 +9,7 @@ The package `stackledger` is published under the npm user `bruno_souza`. The own
 - The release workflow passes the tarball npm packs for a scoped name, `brunosouzas-stackledger-<version>.tgz`, from the check job to the publish job. The SBOM is generated in a folder named `@brunosouzas/stackledger`, because `npm sbom` names the product after the folder. The SBOM asset keeps its name, `stackledger-<version>.cdx.json`.
 - `scripts/release-publish.sh` looks up and publishes `@brunosouzas/stackledger@<version>`.
 - Every `npx`/`npm` command in the docs, the catalogue-repository template and its README uses the new name. In the template's YAML the value is quoted, because a YAML plain value cannot start with `@`.
-- `docs/release.md` gets a section on the move: the first version of the scoped package with a short-lived token, then the trusted publisher, then the old package deprecated.
+- `docs/release.md`: the first-version setup becomes the setup of the scoped package, with a note on the unscoped versions, and covers the move: the first version of the scoped package with a short-lived token, then the trusted publisher, then the old package deprecated.
 
 **BREAKING (for users):** `npx stackledger` keeps resolving to the old, deprecated package (at most 0.4.0). New versions come only as `@brunosouzas/stackledger`.
 
@@ -41,4 +41,4 @@ None.
 
 ## Documentation
 
-`README.md` (install lines, what 0.4.1 changes), `docs/how-it-works.md` and `scripts/how-it-works-diagram.py` (the `npx` label in the diagram, redrawn into `docs/images/how-it-works.svg`), `docs/release.md` (the move to the organisation; commands with the new name), `docs/mcp.md`, `docs/skills.md`, `docs/demo.md`, `examples/catalogue-repository/README.md`, `AGENTS.md` (released versions). Brain: the stackledger changelog and the npm runbook after the release.
+`README.md` (install lines, what 0.4.1 changes), `docs/how-it-works.md` and `scripts/how-it-works-diagram.py` (the registry box and the `npx` label in the diagram, redrawn into `docs/images/how-it-works.svg`), `docs/release.md` (the move to the organisation; commands with the new name), `docs/mcp.md`, `docs/skills.md`, `docs/demo.md`, `examples/catalogue-repository/README.md`, `AGENTS.md` (released versions). Brain: the stackledger changelog and the npm runbook after the release.
