@@ -32,7 +32,7 @@ None.
 
 ## Implicit requirements
 
-- Errors and invalid input: a token without the right permission makes `npm publish` fail with 403 before anything is published; the existing "Registry lookup fails" and "Version absent" scenarios cover the script, now under the scoped name.
+- Errors and invalid input: a token without the right permission makes `npm publish` fail (403, or 404 on the PUT) before anything is published; the existing "Registry lookup fails" and "Version absent" scenarios cover the script, now under the scoped name. "Package metadata" and "SBOM product identity" read static files with no failure path of their own, so they have no error scenario; their boundary is the scoped name itself (the encoded purl, the scoped install folder).
 - Limits: n/a, no size or count changes.
 - Repetition and idempotency: unchanged; re-running the publish job for 0.4.1 follows "Completing a partial release" under the scoped name.
 - Concurrency: n/a, one release at a time as before.
@@ -41,4 +41,4 @@ None.
 
 ## Documentation
 
-`README.md` (install lines, what 0.4.1 changes), `docs/release.md` (the move to the organisation; commands with the new name), `docs/mcp.md`, `docs/skills.md`, `docs/demo.md`, `examples/catalogue-repository/README.md`, `AGENTS.md` (released versions). Brain: the stackledger changelog and the npm runbook after the release.
+`README.md` (install lines, what 0.4.1 changes), `docs/how-it-works.md` and `scripts/how-it-works-diagram.py` (the `npx` label in the diagram, redrawn into `docs/images/how-it-works.svg`), `docs/release.md` (the move to the organisation; commands with the new name), `docs/mcp.md`, `docs/skills.md`, `docs/demo.md`, `examples/catalogue-repository/README.md`, `AGENTS.md` (released versions). Brain: the stackledger changelog and the npm runbook after the release.
