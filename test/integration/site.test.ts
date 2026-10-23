@@ -10,6 +10,7 @@ import { component, licence, line, set, settings } from '../unit/helpers.js';
 import { yaml } from './mcp-helpers.js';
 import { root } from './helpers.js';
 import { buildSites, cleanup, pages, read, tree, type Built } from './site-helpers.js';
+import { siteIcons } from '../../src/site/ui-icons.js';
 
 const POLICY = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
 const DEFAULT_HIDDEN = { cycle: 'one-off', cost: 98765, currency: 'QZX', renewsOn: '2031-07-19', seats: 97531, paidBy: 'PAYER-OMEGA', vaultItem: 'VAULT-SIGMA', note: 'ZETA-NOTE' };
@@ -86,14 +87,21 @@ const ICON_SETTINGS = `  site:
 `;
 const emptyCatalogue = { 'stackledger.yaml': settingsFile({}) };
 
+// site-security "No icon from catalogue text": catalogue text shaped like an inline SVG.
+const HOSTILE_SVG = '<svg onload=alert(1)>';
+const svgCatalogue = {
+  'catalogue.yaml': yaml(set(component('editor'), 'metadata.title', HOSTILE_SVG), component('forge'), set(stops('ship', ['editor', 'forge']), 'metadata.title', HOSTILE_SVG)),
+  'stackledger.yaml': settingsFile({ site: { title: HOSTILE_SVG } }),
+};
+
 // catalogue-site "Diagram box titles": a title of spaces is valid in the catalogue.
 const blankCatalogue = { 'catalogue.yaml': yaml(set(depends(component('forge'), ['component:vault']), 'metadata.title', ' '), component('vault'), depends(component('editor'), ['component:forge'])) };
 
-let main: Built, other: Built, customA: Built, customB: Built, broken: Built, hostile: Built, example: Built, linked: Built, empty: Built, blank: Built, iconed: Built;
+let main: Built, other: Built, customA: Built, customB: Built, broken: Built, hostile: Built, example: Built, linked: Built, empty: Built, blank: Built, iconed: Built, svgHostile: Built;
 
 beforeAll(async () => {
   const exampleFiles = Object.fromEntries(['catalog-info.yaml', 'stackledger.yaml'].map(file => [file, read(join(root, 'examples/northwind'), file)]));
-  [main, other, customA, customB, broken, hostile, example, linked, empty, blank, iconed] = await Promise.all([
+  [main, other, customA, customB, broken, hostile, example, linked, empty, blank, iconed, svgHostile] = await Promise.all([
     buildSites(mainCatalogue(DEFAULT_HIDDEN), '2027-06-01'),
     buildSites(mainCatalogue(OTHER_HIDDEN), '2031-01-01'),
     buildSites(customHidden('Northwind Studio', 'to-confirm'), '2027-06-01'),
@@ -105,10 +113,11 @@ beforeAll(async () => {
     buildSites(emptyCatalogue),
     buildSites(blankCatalogue),
     buildSites({ ...exampleFiles, 'stackledger.yaml': exampleFiles['stackledger.yaml']! + ICON_SETTINGS }),
+    buildSites(svgCatalogue),
   ]);
 }, 180_000);
 
-// Removing eleven built sites can take more than the default 10 s while other test files run.
+// Removing twelve built sites can take more than the default 10 s while other test files run.
 afterAll(cleanup, 60_000);
 
 const tagsOf = (html: string) => [...html.matchAll(/<([A-Za-z][A-Za-z0-9:-]*)((?:\s[^<>]*?)?)\/?>/g)].map(match => ({ name: match[1]!.toLowerCase(), attrs: match[2] ?? '' }));
@@ -626,5 +635,64 @@ test('Hostile title', () => {
     expect(shown).toBeGreaterThan(3);
     expect(read(site, 'software/editor/index.html')).toContain('<h1>&lt;img src=x onerror=alert(1)&gt;</h1>');
     expect(read(site, 'journeys/ship/index.html')).toContain('&lt;/script&gt;&lt;script&gt;alert(1)&lt;/script&gt;</h1>');
+  }
+});
+
+// catalogue-site "Interface icons" and "Inline icon markup"; site-security "No icon from catalogue text".
+const ICONS = siteIcons();
+/** Inline icons: every svg element of a page marked aria-hidden (maps, diagrams and badges carry role="img"). */
+const inlineIcons = (html: string) => [...html.matchAll(/<svg\b[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/svg>/g)].map(match => match[0]);
+const button = (html: string, attr: string) => new RegExp(`<button[^>]*${attr}[^>]*>([\\s\\S]*?)</button>`).exec(html)![1]!;
+
+test('Zoom buttons with icons', () => {
+  for (const site of [example.full, example.staff]) {
+    const html = read(site, 'map/index.html');
+    const zoomIn = button(html, 'data-zoom="in"'), zoomOut = button(html, 'data-zoom="out"'), reset = button(html, 'data-zoom="reset"');
+    expect(inlineIcons(zoomIn)).toEqual([ICONS.zoomIn]);expect(inlineIcons(zoomOut)).toEqual([ICONS.zoomOut]);expect(inlineIcons(reset)).toEqual([ICONS.reset]);
+    expect(html).toMatch(/<button[^>]*data-zoom="in"[^>]*aria-label="Zoom in"/);
+    expect(html).toMatch(/<button[^>]*data-zoom="out"[^>]*aria-label="Zoom out"/);
+    expect(reset.replace(/<[^>]+>/g, '').trim()).toBe('Reset');
+    expect(reset.indexOf(ICONS.reset)).toBeLessThan(reset.indexOf('Reset'));
+    // Zoom in, zoom out and reset in that order.
+    expect(html.indexOf('data-zoom="in"')).toBeLessThan(html.indexOf('data-zoom="out"'));expect(html.indexOf('data-zoom="out"')).toBeLessThan(html.indexOf('data-zoom="reset"'));
+  }
+});
+
+test('Calendar button with an icon', () => {
+  const html = read(example.full, 'reports/index.html');
+  const link = /<a class="btn"[^>]*download="renewals.ics"[^>]*>([\s\S]*?)<\/a>/.exec(html)![1]!;
+  expect(link.trimStart().startsWith('<span class="icon">' + ICONS.download)).toBe(true);
+  expect(link.replace(/<[^>]+>/g, '').trim()).toBe('Download the renewal calendar (renewals.ics)');
+});
+
+test('Interface icons are inert', () => {
+  const known = new Set(Object.values(ICONS));
+  let seen = 0;
+  for (const built of [example, main, svgHostile]) for (const site of [built.full, built.staff]) for (const page of pages(site)) {
+    for (const icon of inlineIcons(read(site, page))) {
+      seen++;
+      expect(known.has(icon), page).toBe(true);
+      expect(icon, page).not.toMatch(/<(script|foreignObject|style)\b/i);
+      for (const tag of tagsOf(icon)) for (const attr of attrsOf(tag.attrs)) {
+        expect(attr.name, page).not.toMatch(/^on|^style$|href$/);
+        expect(attr.value, page).not.toMatch(/url\s*\(/i);
+      }
+    }
+  }
+  expect(seen).toBeGreaterThan(10);
+});
+
+test('No icon from catalogue text', () => {
+  const known = new Set(Object.values(ICONS));
+  for (const site of [svgHostile.full, svgHostile.staff]) {
+    let shown = 0;
+    for (const page of pages(site)) {
+      const html = read(site, page);
+      expect(html, page).not.toContain(HOSTILE_SVG);
+      if (html.includes('&lt;svg onload=alert(1)&gt;')) shown++;
+      for (const svg of html.matchAll(/<svg\b[^>]*>/g)) expect(svg[0], page).not.toMatch(/onload/i);
+      for (const icon of inlineIcons(html)) expect(known.has(icon), page).toBe(true);
+    }
+    expect(shown).toBeGreaterThan(3);
   }
 });

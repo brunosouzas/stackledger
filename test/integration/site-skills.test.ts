@@ -11,6 +11,7 @@ import { component, licence, line, set, settings } from '../unit/helpers.js';
 import { yaml } from './mcp-helpers.js';
 import { cli, root } from './helpers.js';
 import { agent, playbook, skill } from '../skills-helpers.js';
+import { siteIcons } from '../../src/site/ui-icons.js';
 
 const DATE = '2027-06-01';
 interface Result { status: number; stderr: string }
@@ -223,3 +224,16 @@ test.concurrent('Every item rejected', async () => {
   expect(html(target, 'full', 'skills')).toContain('No skills');
   expect(html(target, 'full', 'skill-map')).toContain('No skill lines yet'); expect(html(target, 'full', 'rules')).toContain('No rules');
 }, 180_000);
+
+// catalogue-site "Interface icons": the skills map page's zoom buttons carry the same icons as the map page.
+test('Zoom buttons with icons (skills map)', () => {
+  const icons = siteIcons();
+  for (const site of ['full', 'staff']) {
+    const page = html(out, site, 'skill-map');
+    for (const [zoom, icon] of [['in', icons.zoomIn], ['out', icons.zoomOut], ['reset', icons.reset]] as const) {
+      const button = new RegExp(`<button[^>]*data-zoom="${zoom}"[^>]*>([\\s\\S]*?)</button>`).exec(page)![1]!;
+      expect(button, `${site} ${zoom}`).toContain(icon);
+    }
+    expect(page).toMatch(/<button[^>]*data-zoom="in"[^>]*aria-label="Zoom in"/);
+  }
+});
