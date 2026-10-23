@@ -205,7 +205,7 @@ Text from skill files and map files SHALL be shown only as text, escaped by the 
 
 #### Scenario: Description with HTML
 - **WHEN** a description holds `<img src=x onerror=alert(1)>`
-- **THEN** the pages show it as text and no page has an `img` element other than the header's brand mark
+- **THEN** the pages show it as text and no page has an `img` element other than the site's own images ("Brand mark")
 
 #### Scenario: Hostile script text
 - **WHEN** a description and a rule text hold `</script><script>alert(1)</script>`

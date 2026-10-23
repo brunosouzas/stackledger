@@ -7,8 +7,9 @@ Levels: U unit, I integration (built site), B browser (Playwright). Every scenar
 | catalogue | Link icon; Unknown link icon; Home text and links, Script URL, Bad link, Too many links and Unknown home field (unchanged) | `test/unit/settings.test.ts` | U |
 | catalogue | Icon names match the design system | `test/unit/site-brand.test.ts` | U |
 | catalogue-site | Banner file is the design system's banner; Link icon files are the design system's; Dark mark is the dark ledgerMark; Site art is inert; Favicon is the mark (unchanged) | `test/unit/site-brand.test.ts` | U |
-| catalogue-site | Banner on the home; Link with an icon; Icon with broken settings; Header mark with a custom title; Two links, Broken settings, no links, Hostile link text, Home in full and staff, Home text, Home without skills and Empty catalogue (unchanged) | `test/integration/site.test.ts` | I |
-| catalogue-site | The icon reaches the page data (`siteSettings()` keeps `icon`) | `test/integration/site.test.ts` ("Link with an icon" reads the built page, which only gets `icon` through `siteSettings()`) | U |
+| catalogue-site | Banner on the home; Link with an icon; Icon with broken settings; Header mark with a custom title; Two links, Broken settings, no links, Hostile link text, Home text and Empty catalogue (unchanged) | `test/integration/site.test.ts` | I |
+| catalogue-site | Home in full and staff and Home without skills (unchanged) | `test/integration/site-skills.test.ts` | I |
+| catalogue-site | The icon reaches the page data (`siteSettings()` keeps `icon`) | `test/integration/site.test.ts` ("Link with an icon" reads the built page, which only gets `icon` through `siteSettings()`) | I |
 | catalogue-site | Banner keeps its ratio; Link icon follows the theme and Mark follows the theme, each by system preference and by the theme switch; map canvas and legend symbol still block-level in both themes | `test/browser/site.spec.ts` | B |
 | package | The packed files hold `site/public/home-banner.svg`, `brand-mark-dark.svg` and `link-icons/`, and nothing from `scripts/` (design Risks) | `test/integration/package.test.ts` ("Packed files") | I |
 | skills-site | Description with HTML (allow-list of design §6); Hostile script text and Bidirectional override (unchanged) | `test/integration/site-skills.test.ts` | I |
