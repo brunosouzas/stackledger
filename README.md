@@ -32,9 +32,9 @@ stackledger is a small, local-first tool for people and small companies who want
 
 ## Status
 
-Early development. Nothing is released to npm yet. The catalogue format, the `validate`, `map`, `build` and `report` commands, the `mcp` server, Mac discovery (`stackledger discover` and `stackledger drift`) and the agent skills check and map (`stackledger skills validate` and `stackledger skills map`) work from source (see [Usage](#usage)). The order of the rest is in the [roadmap](docs/roadmap.md).
+Early development; the latest release on npm is 0.3.0. The catalogue format, the `validate`, `map`, `build` and `report` commands, the `mcp` server, Mac discovery (`stackledger discover` and `stackledger drift`), the agent skills check and map (`stackledger skills validate` and `stackledger skills map`) and the Skills section of the site (`stackledger build --skills`) work from npm or from source (see [Usage](#usage)). The order of the rest is in the [roadmap](docs/roadmap.md).
 
-For a separate catalogue repository, copy the [pipeline template](examples/catalogue-repository/). Set up [protected hosting](docs/hosting.md) before the first deploy. The fictitious Northwind catalogue runs as a demo of the corporate mode at <https://stackledger-demo.pages.dev/>; it is protected by Cloudflare Access and only the owner can sign in, so for you it shows the sign-in page, which is the point. The [release guide](docs/release.md) covers npm publication, provenance and the SBOM.
+For a separate catalogue repository, copy the [pipeline template](examples/catalogue-repository/). Set up [protected hosting](docs/hosting.md) before the first deploy. The fictitious Northwind catalogue and its skill set run as a [demo](docs/demo.md) of the corporate mode, Software and Skills, at <https://stackledger-demo.pages.dev/>; it is protected by Cloudflare Access and only the owner can sign in, so for you it shows the sign-in page, which is the point. The [release guide](docs/release.md) covers npm publication, provenance and the SBOM.
 
 ## Features
 
