@@ -1,23 +1,11 @@
 ## MODIFIED Requirements
 
 ### Requirement: Label text
-Every station SHALL have one label with the component's `metadata.title`, or its name when there is no title, in as many rows as it needs, each at most 18 Unicode code points, wrapped at spaces. A word longer than 18 code points SHALL start a new row and break, again and again, after its last `-`, `_`, `.` or `/` that keeps the row within 18, or after 18 code points when there is none; its last piece continues as a word. No label SHALL be cut or end with an added `…`. The station element SHALL have a `title` child with the full text.
+Every station SHALL have one label with the component's `metadata.title`, or its name when there is no title, in as many rows as it needs, each at most 18 Unicode code points, wrapped at spaces; a word longer than a row breaks as "Label word breaks" says. No label SHALL be cut or end with an added `…`. The station element SHALL have a `title` child with the full text.
 
 #### Scenario: Long title
 - **WHEN** a title is `Northwind Customer Relationship Manager`
 - **THEN** the label rows are `Northwind Customer`, `Relationship` and `Manager`, none ends with `…`, and the station's `title` holds the full title
-
-#### Scenario: Long hyphenated name
-- **WHEN** a label text is `openspec-archive-change`
-- **THEN** its rows are `openspec-archive-` and `change`
-
-#### Scenario: Long word after other words
-- **WHEN** a label text is `Run openspec-archive-change now`
-- **THEN** its rows are `Run`, `openspec-archive-` and `change now`
-
-#### Scenario: Long word with no break character
-- **WHEN** a title is 30 times the letter `a`, or 40 times the emoji `😀`, with no space
-- **THEN** its rows are 18 and 12 code points long (18, 18 and 4 for the emoji), and joined they give the title
 
 ### Requirement: Label placement
 Labels SHALL be placed interchanges first (more lines first), then by reference, at the first of eight candidates (right, left, above, below, then the four diagonals) with no overlap. Obstacles are other labels, station markers, licence markers, rule counts and terminal badges grown by their outline and shadow, zone titles, and each line segment as a rectangle as wide as its casing. When every candidate overlaps, the one with the least intersected area wins, ties to the earlier candidate.
@@ -65,6 +53,21 @@ For the same catalogue, view, theme and map date, the software map SHALL be byte
 - **THEN** that station's label has the three rows of "Long title", no text of the SVG ends with `…`, and the other stations keep their rows
 
 ## ADDED Requirements
+
+### Requirement: Label word breaks
+A word longer than 18 code points SHALL start a new row and break, again and again, after its last `-`, `_`, `.` or `/` that keeps the row within 18 code points, or after 18 code points when there is none. Its last piece SHALL continue the row as a word, so the next words may join it.
+
+#### Scenario: Long hyphenated name
+- **WHEN** a label text is `openspec-archive-change`
+- **THEN** its rows are `openspec-archive-` and `change`
+
+#### Scenario: Long word after other words
+- **WHEN** a label text is `Run openspec-archive-change now`
+- **THEN** its rows are `Run`, `openspec-archive-` and `change now`
+
+#### Scenario: Long word with no break character
+- **WHEN** a title is 30 times the letter `a`, or 40 times the emoji `😀`, with no space
+- **THEN** its rows are 18 and 12 code points long (18, 18 and 4 for the emoji), and joined they give the title
 
 ### Requirement: Rule count is an obstacle
 A rule count SHALL be one of the station markers for placement: labels, terminal badges and zone titles avoid it grown by its outline and shadow, and the map frame contains it.

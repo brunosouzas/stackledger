@@ -23,7 +23,7 @@ None.
 
 ### Modified Capabilities
 
-- `metro-map`: "Label text" (rows without a cut), "Label placement" (rule-count stickers are obstacles), "Skills map drawing" (legend symbols) and "Software map unchanged" (a label 0.2.0 cut now wraps) change; one requirement is added for the rule count.
+- `metro-map`: "Label text" (rows without a cut), "Label placement" (rule-count stickers are obstacles), "Skills map drawing" (legend symbols) and "Software map unchanged" (a label 0.2.0 cut now wraps) change; three requirements are added: "Label word breaks", "Rule count is an obstacle" and "Rule count on skills stations".
 
 ## Impact
 
