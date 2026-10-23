@@ -7,7 +7,7 @@ The lines of the metro map turn with a mitred corner (`src/map/parallel.ts`, "Bu
 - **Round bends.** Where a line turns 45 or 90 degrees at a grid node that is not a station, its corner becomes a circular arc. The radius of a bundle's centre line is the design system token `map.bendRadius` (32); each line of the bundle turns around the same centre, so the lines stay parallel and in order through the curve.
 - **Corners that stay mitred.** A bend at a station (the marker covers it, and the line must pass through the marker's centre), a bend where the bundle splits or merges, a bundle so wide that its inner line would turn too tight, a bend whose arc has no room on its straight segments, and the sharper turns at stations keep today's drawing. The decision is per bundle, over all bends at once, so it does not depend on line order.
 - **Labels follow the drawn line.** The label obstacles of a line follow its arcs, so no label covers the inside of a curve.
-- **Both maps.** The software map and the skills map share the engine, so both get round bends. Station positions, routes, line order, terminal badges and interchanges do not change.
+- **Both maps.** The software map and the skills map share the engine, so both get round bends. Station positions, routes, line order and interchanges do not change. A label or terminal badge may move only because of a round bend, and none is expected to in the example.
 - **Dependency.** The design system version that adds `map.bendRadius` (0.3.1 or 0.4.0, published by the owner), pinned exactly as today.
 
 Out of scope:

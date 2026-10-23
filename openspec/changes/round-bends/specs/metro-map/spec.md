@@ -11,6 +11,10 @@ An eligible bend SHALL be drawn round: every line of its bundle turns along a ci
 - **WHEN** line `ship` turns from a horizontal edge onto a diagonal edge at a node with no station
 - **THEN** its arc is centred at `map.bendRadius` / cos(22.5°) from the node, on the inside of the turn, its radius is `map.bendRadius`, and its tangent points are `map.bendRadius` × tan(22.5°) from the node
 
+#### Scenario: Offset line is tangent
+- **WHEN** two lines turn together, 90 degrees at one node and 45 degrees at another, neither a station
+- **THEN** each line's arc starts and ends on its own offset segments, at its mitre point plus or minus its setback, and both arcs at a node have the same centre
+
 #### Scenario: Mirrored turns
 - **WHEN** one line turns clockwise on screen and another, elsewhere, turns anticlockwise by the same angle
 - **THEN** the first arc has sweep flag 1 and the second sweep flag 0, both with large-arc flag 0
@@ -30,16 +34,20 @@ An eligible bend SHALL be drawn round: every line of its bundle turns along a ci
 ### Requirement: Bend candidates
 A bend SHALL be a candidate when it is a grid node, not a station position, where lines turn 45 or 90 degrees between two grid edges that hold the same lines, each running from one edge onto the other there, and every line's signed radius is at least half its outer width (line width plus casing). The bundle is every line on those two edges, whatever its direction of travel. A line's signed radius is `map.bendRadius` minus its offset towards the inside of the turn.
 
+#### Scenario: Three lines turn round
+- **WHEN** three lines laid out by `layoutMap` share an edge and turn 90 degrees together at a node with no station, with room on both sides
+- **THEN** the innermost line's signed radius is at least half its outer width, and all three turn round
+
 #### Scenario: Wide bundle stays mitred
-- **WHEN** five lines share an edge and turn 90 degrees together at a node with no station
-- **THEN** the innermost line's signed radius is less than half its outer width, and all five keep the mitred corner
+- **WHEN** four lines laid out by `layoutMap` share an edge and turn 90 degrees together at a node with no station
+- **THEN** the innermost line's signed radius is less than half its outer width, and all four keep the mitred corner
 
 #### Scenario: Middle line goes straight on
 - **WHEN** three lines share an edge into a node with no station, the outer two turn and the middle one goes straight on
 - **THEN** the node is not a candidate for the two that turn
 
 ### Requirement: Room for an arc
-A line SHALL have room for an arc when its setback, its signed radius ("Bend candidates") × tan(half the deflection), fits on both straight segments of its mitred polyline that meet at the bend. A segment whose other end is also a candidate gives each end half its length; any other segment gives the whole length. Room is decided from every bend's candidate state at once, never from another bend's outcome.
+A line SHALL have room for an arc when its setback, its signed radius ("Bend candidates") × tan(half the deflection) measured from its mitre point, fits on both straight segments of its mitred polyline that meet at the bend. A segment whose other end is also a candidate gives each end half its length; any other segment gives the whole length. Room is decided from every bend's candidate state at once, never from another bend's outcome.
 
 #### Scenario: Arcs with no room stay mitred
 - **WHEN** a bundle of three lines turns 90 degrees at two candidate nodes one grid edge apart, and the outer line's setback is more than half that edge
@@ -90,7 +98,7 @@ When every line on a grid edge continues together onto the next edge, the bundle
 - **THEN** the bend keeps the mitred corner for `ship`
 
 ### Requirement: Label placement
-Labels SHALL be placed interchanges first (more lines first), then by reference, at the first of eight candidates (right, left, above, below, then the four diagonals) with no overlap. Obstacles are other labels, station markers, licence markers, rule counts and terminal badges grown by their outline and shadow, zone titles, and each part of a line's drawn path: each straight part as a rectangle as wide as its casing, and each arc as chords of at most 15 degrees, each a rectangle as wide as the casing plus twice the chord's sagitta. When every candidate overlaps, the one with the least intersected area wins, ties to the earlier candidate.
+Labels SHALL be placed interchanges first (more lines first), then by reference, at the first of eight candidates (right, left, above, below, then the four diagonals) with no overlap. Obstacles are other labels, station markers, licence markers, rule counts and terminal badges grown by their outline and shadow, zone titles, and each part of a line's drawn path: each straight part as a rectangle as wide as its casing, and each arc as chords of at most 15 degrees, each a rectangle as wide as the casing plus twice the chord's sagitta and lengthened by half the casing width at each end. When every candidate overlaps, the one with the least intersected area wins, ties to the earlier candidate.
 
 #### Scenario: Labels do not collide in the example
 - **WHEN** the fictitious example catalogue is laid out
@@ -109,8 +117,12 @@ Labels SHALL be placed interchanges first (more lines first), then by reference,
 - **THEN** the label is placed at a later candidate clear of the arc
 
 #### Scenario: Label clears the outside of a curve
-- **WHEN** a label candidate would touch only the outer edge of an arc's casing, midway between two chord ends
+- **WHEN** a label candidate would touch only the outer edge of an arc's casing, either midway along a chord or at the joint of two chords or of a chord and a straight part
 - **THEN** that candidate counts as overlapping the line
+
+#### Scenario: Terminal badge clears a round bend
+- **WHEN** a terminal badge's first position is clear of the mitred polyline but would cover the arc of a round bend next to the line's end
+- **THEN** the badge takes a later position clear of the arc
 
 ### Requirement: Design system tokens
 The `light` and `dark` themes SHALL take their colours and ink measures from the tokens of `@brunosouzas/design-system`, pinned to one exact version: background, text, muted, grid, panel, shadow colour, rim colour and rim width from `surface.<theme>`; outline width, shadow offset, line width, casing and bend radius from `map`; ink, station, badge text, licence, renewal and accent colours from `color`. The font stack stays the one of "Themes".
@@ -139,7 +151,7 @@ The map and diagram renderers SHALL refuse, with an error naming the field, a th
 - **THEN** it draws the map with that zone opacity
 
 ### Requirement: Software map unchanged
-For the same catalogue, view, theme and map date, the software map SHALL place every station marker where stackledger 0.2.0 places it and every line along the 0.2.0 path, unless the catalogue holds a file named `stackledger-skills.yaml`, which is no longer a catalogue file. Labels stay where 0.2.0 places them, except a station label that 0.2.0 cut (one that needs more than two rows or breaks inside a word) and a label whose candidate a round bend's obstacle now covers. Only the painting may differ, and a corner that "Round bends" turns into an arc.
+For the same catalogue, view, theme and map date, the software map SHALL place every station marker where stackledger 0.2.0 places it and every line along the 0.2.0 path, unless the catalogue holds a file named `stackledger-skills.yaml`, which is no longer a catalogue file. Labels and terminal badges stay where 0.2.0 places them, except a station label that 0.2.0 cut (one that needs more than two rows or breaks inside a word), and a label or badge moved by a round bend: directly, when an arc's obstacle covers its candidate, or in turn, when another label or badge moved that way covers it. Only the painting may differ, and a corner that "Round bends" turns into an arc.
 
 #### Scenario: Example map
 - **WHEN** the example catalogue is drawn with `stackledger map` in both views and both themes

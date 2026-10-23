@@ -16,8 +16,8 @@ At a bend node `N`, take the line's direction of travel: incoming unit vector `u
 
 For one line:
 
-- **Signed radius** `r = R − s`, where `s` is the line's offset towards the inside of the turn: `s = (offset · normal) · n`, with `offset · normal` the line's displacement from the bundle's centre line on the incoming edge (the same vector whichever way the edge is stored) and `n` the unit normal of the incoming edge that points to the inside of the turn (the side of `C`). Lines on the outside get a larger radius, lines on the inside a smaller one, and the gap between neighbours stays `lineWidth + 1.5`.
-- **Tangent points** `T1 = N1 − u · t` and `T2 = N2 + v · t`, where `N1` and `N2` are the line's mitre-free points on its two offset lines nearest `N` (the feet of the perpendiculars from `N`), and the setback is `t = r · tan(φ/2)`. For the centre line, `t` is 32 at 90 degrees and about 13.2548 at 45 degrees.
+- **Signed radius** `r = R − s`, where `s` is the line's offset towards the inside of the turn: `s = (offset · normal) · n`, with `offset · normal` the line's displacement from the bundle's centre line on the incoming edge (the same vector whichever way the edge is stored) and `n` the unit normal of the incoming edge that points to the inside of the turn (the side of `C`). Lines on the outside get a larger radius, lines on the inside a smaller one, and the gap between neighbours stays what it is today: `layoutMap` passes `lineWidth + casing / 2` to `parallelLines`, which adds 1.5, so 16.5 with the current tokens.
+- **Tangent points** `T1 = M − u · t` and `T2 = M + v · t`, where `M` is the line's mitre point (the intersection of its two offset lines, the vertex of `points` today) and the setback is `t = r · tan(φ/2)`. They are also the projections of `C` on the two offset lines. Example: a clockwise 90-degree turn at `(0, 0)` from `u = (1, 0)` to `v = (0, 1)` has `C = (−32, 32)`; a line offset `s` towards the inside has `M = (−s, s)`, `r = 32 − s`, `T1 = (−32, s)` and `T2 = (−s, 32)`. For the centre line, `t` is 32 at 90 degrees and about 13.2548 at 45 degrees.
 - **Arc** `A r,r 0 0 sweep T2`, with `sweep = 1` when `cross > 0` (clockwise on screen) and `0` otherwise; large-arc is always 0, since the arc spans the deflection, at most 90 degrees.
 
 Rejected: a quadratic curve (`Q`) with the mitre as control point, as the banner draws. It is not concentric for offset lines, so a bundle's gap changes through the curve. Rejected: one radius per line, measured as a distance: a distance is never negative, so it hides a line that crossed the centre (see §2).
@@ -26,8 +26,8 @@ Rejected: a quadratic curve (`Q`) with the mitre as control point, as the banner
 
 Three steps, each over all bends at once, so the result does not depend on the order of lines or bends:
 
-1. **Candidates.** A bend at `N` between grid edges `E1` and `E2` is a candidate when `N` is not a station position; `E1` and `E2` hold the same lines and each of them runs from one to the other at `N` (so a middle line going straight on, or a line joining or leaving, makes it no candidate); and every line's signed radius is at least half its outer width, `(lineWidth + casing) / 2` = 9. With `R` 32 and a gap of 13.5, bundles of up to four lines pass; a five-line bundle has an inner offset of 27 and a signed radius of 5, so it stays mitred.
-2. **Room.** For each line at each candidate, its setback must fit on the two straight segments of its mitred polyline (`points`) that meet at `N`. A segment's budget for one end is half its length when its other end is also a candidate, and its whole length otherwise (a mitre, a slot-change connector or the line's end take no length from it).
+1. **Candidates.** A bend at `N` between grid edges `E1` and `E2` is a candidate when `N` is not a station position; `E1` and `E2` hold the same lines and each of them runs from one to the other at `N` (so a middle line going straight on, or a line joining or leaving, makes it no candidate); and every line's signed radius is at least half its outer width, `(lineWidth + casing) / 2` = 9. With `R` 32 and a gap of 16.5, bundles of up to three lines pass (inner offset 16.5, radius 15.5); a four-line bundle has an inner offset of 24.75 and a radius of 7.25, so it stays mitred, and so does any wider one.
+2. **Room.** For each line at each candidate, its setback, measured from its mitre point `M`, must fit on the two straight segments of its mitred polyline (`points`) that meet at `M`. A segment's budget for one end is half its length when its other end is also a candidate, and its whole length otherwise (a mitre, a slot-change connector or the line's end take no length from it).
 3. **Eligible.** A candidate is eligible when every line of its bundle has room. Eligible bends turn round; the others keep the mitre for every line of the bundle. A candidate that loses at step 3 does not give its half back to its neighbours: budgets come from step 1 only.
 
 Rejected: removing conflicts one at a time until nothing changes. With a chain A–B–C, the result depends on which conflict goes first.
@@ -38,7 +38,7 @@ Rejected: removing conflicts one at a time until nothing changes. With a chain A
 
 ### 4. Labels avoid the arcs
 
-The layout builds line obstacles from `path`: straight parts as today, and each arc as chords of at most 15 degrees. A chord cuts inside the arc by its sagitta, `r · (1 − cos(7.5°))` at most, so each chord rectangle is as wide as the casing plus twice that sagitta: the painted curve, outer edge included, stays inside the rectangles. Whether any label of the example moves is not known yet: the spike kept the mitre obstacles. "Example map" answers it; "Label clears a round bend" and "Label clears the outside of a curve" cover the two sides of a curve.
+The layout builds line obstacles from `path`: straight parts as today, and each arc as chords of at most 15 degrees. A chord cuts inside the arc by its sagitta, `r · (1 − cos(7.5°))` at most, so each chord rectangle is as wide as the casing plus twice that sagitta, and is lengthened by half the casing width at each end, so that consecutive chords, and a chord and the straight part next to it, overlap at their joint. The painted curve, outer edge and joints included, stays inside the rectangles. These obstacles feed label placement and terminal badge placement (`placeBadges`), as the segments do today. Whether any label of the example moves is not known yet: the spike kept the mitre obstacles. "Example map" answers it; "Label clears a round bend" and "Label clears the outside of a curve" cover the two sides of a curve.
 
 ### 5. Radius from the design system
 
@@ -46,7 +46,7 @@ The layout builds line obstacles from `path`: straight parts as today, and each 
 
 ### 6. Example map
 
-"Software map unchanged" keeps station marker centres equal to the 0.2.0 fixtures, and line paths equal to them once each arc is read back to its corner: the arc's two tangent points lie on the fixture's two segments, and nothing else differs. Labels are expected at their 0.2.0 positions in the example; the requirement allows a label to move only when a round bend's obstacle covers its candidate, and the pull request names any that does.
+"Software map unchanged" keeps station marker centres equal to the 0.2.0 fixtures, and line paths equal to them once each arc is read back to its corner: the arc's two tangent points lie on the fixture's two segments, and nothing else differs. Labels and terminal badges are expected at their 0.2.0 positions in the example. In other catalogues the requirement lets them move because of round bends: directly, when an arc's obstacle covers a candidate, or in turn, when a label or badge an arc moved now covers another's candidate. The pull request names any that moves in the example.
 
 ## Risks
 
