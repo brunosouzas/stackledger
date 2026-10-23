@@ -25,7 +25,7 @@ The skills, agents, playbooks and rules that AI coding agents use, as a second l
 | 2 | `skills-ignore` | A `.stackledgerignore` file in the skills folder, with `.gitignore` patterns, so templates, examples and test fixtures that look like skills are not read as skills | Delivered ([#14](https://github.com/brunosouzas/stackledger/pull/14)) |
 | 3 | `skills-mermaid` | `stackledger skills map`: one Markdown page per skill, playbook and agent with a Mermaid diagram of who brings it in and what it brings in, written into the skills repository for offline reading and pull-request diffs | Delivered ([#15](https://github.com/brunosouzas/stackledger/pull/15)) |
 | 4 | `skills-site` | The Skills section of `stackledger build`: the skills map (`Line` and `MapLayout` with skill stops), one page per skill with its diagram, the rules index, agents and playbooks; the map engine's title, legend and station symbols become data; playbooks as overlapping zones; the header split into Software and Skills divisions | Delivered ([#19](https://github.com/brunosouzas/stackledger/pull/19)), released as 0.3.0 |
-| 4a | `station-labels-and-rules` | Whole station names on both maps: long names wrap into more rows instead of being cut; the number of rules of a skill or playbook on its station, explained in the legend (AB#135, AB#136) | In review ([#23](https://github.com/brunosouzas/stackledger/pull/23)) |
+| 4a | `station-labels-and-rules` | Whole station names on both maps: long names wrap into more rows instead of being cut; the number of rules of a skill or playbook on its station, explained in the legend (AB#135, AB#136) | Delivered ([#23](https://github.com/brunosouzas/stackledger/pull/23)), released as 0.4.0 |
 | 5 | `skills-drift` | `stackledger skills drift`, on the person's machine only: what each tool (Claude Code, Codex, Copilot, Cursor, Hermes…) has installed compared with the source, or with each other when there is no source | Planned |
 | 6 | `skills-software-links` | Skills that declare the software they need: links both ways between skill and software pages, and what breaks when software is removed | Planned |
 | 7 | `local-preview` | `stackledger preview`, serving a build on `127.0.0.1` only, and a "use it locally" guide | Planned |
@@ -33,7 +33,7 @@ The skills, agents, playbooks and rules that AI coding agents use, as a second l
 
 ## Later
 
-- `site-home` (AB#137, in review): the site title `stackledger` opens a home page at `/` with a banner, the division cards and links set in `Settings`; the software map moves to `/map/`.
+- `site-home` (AB#137, delivered in [#25](https://github.com/brunosouzas/stackledger/pull/25), released as 0.4.0): the site title `stackledger` opens a home page at `/` with a banner, the division cards and links set in `Settings`; the software map moves to `/map/`.
 - `map-backgrounds` (AB#134, next): a city backdrop behind the software map (`neutral` and `london` to start; `sao-paulo` later; the skills map keeps a plain background), chosen in `Settings` or with `--background`. Drawn from OpenStreetMap data (rivers, coastline, parks), simplified and attributed, never from official metro maps, which are copyrighted. The map engine already draws an empty background layer for it.
 
 - Icons and line badges drawn with the designer style of brunosouzas.com.

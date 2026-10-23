@@ -160,7 +160,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-      - run: npx --yes stackledger@0.3.0 skills validate
+      - run: npx --yes stackledger@0.4.0 skills validate
 ```
 
 With no folder the repository root is checked, so problem paths are relative to it. The job fails on any error and passes with warnings. Name folders on the last line (for example `skills validate skills vendor`) to check only those, together.
@@ -169,7 +169,7 @@ A pull request can also change `.stackledgerignore` to hide a real skill. To ref
 
 ```yaml
       - run: |
-          npx --yes stackledger@0.3.0 skills validate --json > skills.json || true
+          npx --yes stackledger@0.4.0 skills validate --json > skills.json || true
           jq -e '.summary.errors == 0 and .ignored == ["skills/fixtures","templates"]' skills.json
 ```
 
@@ -236,8 +236,8 @@ stdout stays empty; stderr gives the pages created, updated and removed.
 `--check` writes nothing. It prints one line per file that would be created, updated or removed (`update skills/writer.md`) and exits 1 when there is any, so a pipeline can fail a pull request that changed skills without running the map. It reads CRLF as LF, for checkouts made before `.gitattributes` existed. Run it next to `skills validate`, which is what fails on errors:
 
 ```yaml
-      - run: npx --yes stackledger@0.3.0 skills validate
-      - run: npx --yes stackledger@0.3.0 skills map . --out docs/skills-map --check
+      - run: npx --yes stackledger@0.4.0 skills validate
+      - run: npx --yes stackledger@0.4.0 skills map . --out docs/skills-map --check
 ```
 
 ### Where the diagrams render
@@ -317,7 +317,7 @@ The catalogue pipeline needs the skills too. Check out the skills repository fro
           path: ai-kit
           token: ${{ secrets.AI_KIT_READ_TOKEN }}
           persist-credentials: false
-      - run: npx --yes stackledger@0.3.0 build catalogue --out public --skills ai-kit
+      - run: npx --yes stackledger@0.4.0 build catalogue --out public --skills ai-kit
 ```
 
 - A private skills repository needs a token that can only read it. Keep it out of pull requests from forks: build those without the skills (no `--skills` and no `spec.skills`), and never publish a pull-request build.
