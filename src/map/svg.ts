@@ -30,7 +30,8 @@ export { escapeXml } from './xml.js';
 const HEADER_HEIGHT = 64;
 const FRAME_MARGIN = 16;
 
-/** Element builders bound to one theme. Catalogue text only ever passes through `text` or `title`. */
+/** Element builders bound to one theme. Catalogue text only ever passes through `text`, `title` or a
+ * piece written by writePiece (zone titles), which escapes it the same way. */
 function painter(theme: Theme) {
   const text = (value: string, x: number, y: number, attrs: Attributes = {}): string =>
     tag('text', { x, y, fill: theme.text, 'font-size': 13, ...attrs }, escapeXml(value));
@@ -39,8 +40,6 @@ function painter(theme: Theme) {
     tag('rect', { x: box.x, y: box.y, width: box.w, height: box.h, ...attrs });
   const line = (a: Point, b: Point, attrs: Attributes): string =>
     tag('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], ...attrs });
-  const circle = (centre: Point, r: number, attrs: Attributes): string =>
-    tag('circle', { cx: centre[0], cy: centre[1], r, ...attrs });
 
   const boxSticker = (box: Box, rx: number, fill: string): string =>
     sticker(theme, (by, attrs) => rect({ ...box, x: box.x + by[0], y: box.y + by[1] }, { ...attrs, rx }), fill);
@@ -73,7 +72,7 @@ function painter(theme: Theme) {
   const interchangeSymbol = (centre: Point): string =>
     writePiece(stationMarker({ cx: centre[0], cy: centre[1] - 1.5, to: [centre[0], centre[1] + 1.5], r: 6, surface }));
 
-  return { text, title, rect, line, circle, boxSticker, badge, marker, licence, ruleCount, pipe, interchangeSymbol };
+  return { text, title, rect, line, boxSticker, badge, marker, licence, ruleCount, pipe, interchangeSymbol };
 }
 
 type Painter = ReturnType<typeof painter>;

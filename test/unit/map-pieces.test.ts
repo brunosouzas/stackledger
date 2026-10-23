@@ -167,11 +167,17 @@ test('Far symbols drawn by the pieces', () => {
   const editor = g.stations.find(item => item.ref === 'component:editor')!;
   expect(editor.suggested).toBe(true);expect(editor.renewal).toBe(true);
   expect(editor.point[0]).toBeGreaterThan(6000000);
-  for (const theme of Object.values(themes)) {
-    const doc = safe(renderSvg(g, theme));
-    expect(doc.getElementsByTagName('polygon').length + doc.getElementsByTagName('line').length + doc.getElementsByTagName('circle').length).toBeGreaterThan(0);
-    const group = groupText(renderSvg(g, theme), 'component:editor');
-    expect(group).toContain('stroke-dasharray="4 3"');expect(group).toContain('#3DDC84');expect(group).toContain('stroke="#FF8A3D"');
+  const { box, halo } = editor.marker;
+  const [cx, cy] = [box.x + box.w / 2, box.y + box.h / 2];
+  const [lx, ly] = editor.licencePoint!;
+  const zone = g.zones[0]!;
+  expect(zone.hull.some(([x]) => x > 6000000)).toBe(true);
+  for (const name of ['light', 'dark'] as const) {
+    const svg = renderSvg(g, themes[name]), group = groupText(svg, 'component:editor');
+    expect(group).toContain(writePiece(suggestedHalo({ cx, cy, r: halo + 3, surface: name })));
+    expect(group).toContain(writePiece(renewalRing({ cx, cy, r: halo, surface: name })));
+    expect(group).toContain(writePiece(licenceMark({ cx: lx, cy: ly, state: 'owned', surface: name })));
+    expect(svg).toContain(writePiece(zonePiece({ points: zone.hull, fill: zone.color, title: zone.title, titleAt: [zone.titleBox.x, zone.titleBox.y], surface: name })));
   }
 });
 

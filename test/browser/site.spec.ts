@@ -9,6 +9,7 @@
  * Data is the fictitious example in examples/northwind.
  */
 import { expect, test, type Page } from '@playwright/test';
+import { siteIcons } from '../../src/site/ui-icons.js';
 
 declare global {
   interface Window { cspViolations: string[] }
@@ -411,4 +412,8 @@ test('Theme switch icons', async ({ page }) => {
       .map(icon => icon.parentElement!.className));
     expect(shown, scheme).toEqual([scheme === 'light' ? 'icon-sun' : 'icon-moon']);
   }
+  // Each wrapper holds its own icon, as the build wrote it (not swapped).
+  const html = await (await page.request.get('/full/')).text();
+  expect(html).toContain(`<span class="icon-sun">${siteIcons().sun}</span>`);
+  expect(html).toContain(`<span class="icon-moon">${siteIcons().moon}</span>`);
 });

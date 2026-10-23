@@ -116,4 +116,3 @@ The map and diagram renderers SHALL refuse, with an error naming the field, a th
 #### Scenario: Other theme fields stay free
 - **WHEN** `renderSvg` is given a copy of `themes.light` with `background` `#FFFFFF`
 - **THEN** it draws the map with that background
-
