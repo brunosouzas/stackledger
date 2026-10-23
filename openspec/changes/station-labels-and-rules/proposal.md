@@ -9,8 +9,8 @@ Both change the station's drawing, so they are one change (owner decision, 2026-
 
 ## What Changes
 
-- **Label text, both maps.** A label has as many rows as its text needs, each at most 18 code points, wrapped at spaces. A word longer than a row breaks after its last `-`, `_`, `.` or `/` that keeps the row within 18 code points, or after 18 code points when it has none. Nothing is cut and no `…` is added. A label that fits in two rows today keeps the same rows, so a map with no cut label is byte-identical to 0.3.0.
-- **Rule count, skills map only.** A skill or playbook station whose item defines at least one rule carries a rule-count sticker on its upper right: a pill in the theme's panel colour with an ink outline and shadow, holding the number (`99+` above 99). Agents, items with no rules and software maps have none. The sticker is an obstacle for labels and zone titles, as licence markers are.
+- **Label text, both maps.** A label has as many rows as its text needs, each at most 18 code points, wrapped at spaces. A word longer than a row starts a new row and breaks after its last `-`, `_`, `.` or `/` that keeps the row within 18 code points, or after 18 code points when it has none, as often as needed; its last piece continues the row like a word. Nothing is cut and no `…` is added. A label that fits in two rows today keeps the same rows, so a map with no cut label is byte-identical to 0.3.0.
+- **Rule count, skills map only.** A skill or playbook station whose item defines at least one rule carries a rule-count sticker on its upper right, holding the number of its rules in the set, the one the `/skills/` list shows (`99+` above 99). The owner asked for a small circle: one digit is a circle, and the circle widens to a pill for `10` to `99+` so the number fits. It is drawn like a licence marker (outline, shadow, the dark theme's rim) and is a station marker for placement: labels, terminal badges and zone titles avoid it, and the frame contains it. Agents, items with no rules and software maps have none.
 - **Legend of a skills map:** the lines, then the symbols interchange, number of rules and suggested position. The site's map page shows the same symbols under the map, as it already does for the SVG legend's symbols.
 
 Out of scope: the line strip and neighbourhood diagrams of the site pages, and the boxes of the relation diagram (they cut long titles by width, and none of the cards asks for them); a per-rule station or line; the rule count on the software map, the relation diagrams or the station's `title` text; the site title and home (AB#137) and map backgrounds (AB#134).
@@ -34,7 +34,7 @@ None.
 ## Implicit requirements
 
 - Errors and invalid input: n/a. Labels come from text already cleaned (control and format characters removed), and rule counts from rules already read; nothing new can fail.
-- Limits: a label has at most 4 rows in practice (a `metadata.title` has at most 60 code points, a skill name at most 64). The count shows `99+` above 99 so the sticker stays small. The timing test of the map keeps its limit.
+- Limits: no row limit; a 60-code-point `metadata.title` can take 6 rows (six 9-letter words), a 64-code-point skill name with no space 4. The count shows `99+` above 99 so the sticker stays small. The timing test of the map keeps its limit.
 - Repetition and idempotency: the same input gives byte-identical SVG (Determinism, unchanged).
 - Concurrency: n/a, pure functions.
 - Security: the count is a number written by the renderer; the label text stays escaped as today. No new element or attribute names.

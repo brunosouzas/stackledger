@@ -1,19 +1,23 @@
 ## MODIFIED Requirements
 
 ### Requirement: Label text
-Every station SHALL have one label with the component's `metadata.title`, or its name when there is no title, in as many rows as it needs, each at most 18 Unicode code points, wrapped at spaces. A word longer than 18 code points SHALL break after its last `-`, `_`, `.` or `/` that keeps the row within 18, or after 18 code points when there is none. No label SHALL be cut or end with an added `…`. The station element SHALL have a `title` child with the full text.
+Every station SHALL have one label with the component's `metadata.title`, or its name when there is no title, in as many rows as it needs, each at most 18 Unicode code points, wrapped at spaces. A word longer than 18 code points SHALL start a new row and break, again and again, after its last `-`, `_`, `.` or `/` that keeps the row within 18, or after 18 code points when there is none; its last piece continues as a word. No label SHALL be cut or end with an added `…`. The station element SHALL have a `title` child with the full text.
 
 #### Scenario: Long title
 - **WHEN** a title is `Northwind Customer Relationship Manager`
 - **THEN** the label rows are `Northwind Customer`, `Relationship` and `Manager`, none ends with `…`, and the station's `title` holds the full title
 
 #### Scenario: Long hyphenated name
-- **WHEN** a skills map station is named `openspec-archive-change`
-- **THEN** its label rows are `openspec-archive-` and `change`
+- **WHEN** a label text is `openspec-archive-change`
+- **THEN** its rows are `openspec-archive-` and `change`
+
+#### Scenario: Long word after other words
+- **WHEN** a label text is `Run openspec-archive-change now`
+- **THEN** its rows are `Run`, `openspec-archive-` and `change now`
 
 #### Scenario: Long word with no break character
-- **WHEN** a title is 30 times the letter `a`, with no space
-- **THEN** its label rows are 18 and then 12 code points long, and joined they give the title
+- **WHEN** a title is 30 times the letter `a`, or 40 times the emoji `😀`, with no space
+- **THEN** its rows are 18 and 12 code points long (18, 18 and 4 for the emoji), and joined they give the title
 
 ### Requirement: Label placement
 Labels SHALL be placed interchanges first (more lines first), then by reference, at the first of eight candidates (right, left, above, below, then the four diagonals) with no overlap. Obstacles are other labels, station markers, licence markers, rule counts and terminal badges grown by their outline and shadow, zone titles, and each line segment as a rectangle as wide as its casing. When every candidate overlaps, the one with the least intersected area wins, ties to the earlier candidate.
@@ -62,12 +66,23 @@ For the same catalogue, view, theme and map date, the software map SHALL be byte
 
 ## ADDED Requirements
 
+### Requirement: Rule count is an obstacle
+A rule count SHALL be one of the station markers for placement: labels, terminal badges and zone titles avoid it grown by its outline and shadow, and the map frame contains it.
+
+#### Scenario: Rule count inside the frame
+- **WHEN** a station with a rule count is the top-right station of a skills map
+- **THEN** the rule count's box, grown by its ink, lies inside the map frame
+
 ### Requirement: Rule count on skills stations
-On a skills map, the station of a skill or playbook whose item defines at least one rule SHALL carry a rule count: a pill in the theme's panel colour with an ink outline and offset shadow, at the upper right of the station marker, holding the number of rules the item's `rules.md` gives, or `99+` above 99. Agents, items with no rules and every station of a software map SHALL have none.
+On a skills map, the station of a skill or playbook with at least one rule in the skill set (skill-source "Rules files", "Rule IDs"; the number the `/skills/` list shows) SHALL carry a rule count at the upper right of its marker: that number, or `99+` above 99, in a circle for one digit or a pill for more, in the panel colour, outlined and shadowed as a licence marker. Agents and software maps have none.
 
 #### Scenario: Skill with rules
 - **WHEN** skill `writer` defines 3 rules and agent `reviewer` and skill `editor` (no `rules.md`) are stations of the same skills map
 - **THEN** station `skill:writer` holds a rule count showing `3`, and `agent:reviewer` and `skill:editor` hold none
+
+#### Scenario: Duplicate rule ID
+- **WHEN** skill `writer`'s `rules.md` defines `WR-1` twice and nothing else
+- **THEN** the set holds one rule for `writer` and its station's rule count shows `1`
 
 #### Scenario: Many rules
 - **WHEN** a playbook defines 100 rules
