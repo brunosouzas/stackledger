@@ -19,7 +19,9 @@ export type { Badge } from './badges.js';
  * segment `ends`, which runs along its contacts, so it contains them whatever the lines' angle.
  * `box` bounds the shape; `halo` is the radius of renewal rings. */
 export interface Marker { kind: 'stop' | 'interchange'; box: Box; contacts: Point[]; ends: [Point, Point]; radius: number; halo: number }
-export interface StationGeometry extends MapStation { point: Point; suggested: boolean; marker: Marker; licencePoint: Point | undefined }
+/** A rule count (skills map): its text and its sticker's box, a circle for one digit, a pill for more. */
+export interface RuleCount { text: string; box: Box }
+export interface StationGeometry extends MapStation { point: Point; suggested: boolean; marker: Marker; licencePoint: Point | undefined; ruleCount: RuleCount | undefined }
 export interface MapGeometry {
   kind?: MapModel['kind'];
   view: MapModel['view'];
@@ -36,6 +38,19 @@ export interface MapGeometry {
 }
 
 const LICENCE_RADIUS = 5;
+const RULE_COUNT_HEIGHT = 16;
+/** The rule count's text size; textWidth measures 13-unit text. */
+export const RULE_COUNT_FONT_SIZE = 11;
+
+/** The rule count of a station with rules, centred where a licence marker would be (metro-map, Rule count on skills stations). */
+function ruleCount(rules: number | undefined, box: Box): RuleCount | undefined {
+  if (!rules || rules < 1) return undefined;
+  const text = rules > 99 ? '99+' : String(rules);
+  const h = RULE_COUNT_HEIGHT;
+  const w = text.length === 1 ? h : Math.max(h, textWidth(text) * RULE_COUNT_FONT_SIZE / 13 + 8);
+  const centre: Point = [box.x + box.w + 3, box.y - 3];
+  return { text, box: { x: centre[0] - h / 2, y: centre[1] - h / 2, w, h } };
+}
 /** A stop circle is a little wider than the pipe it sits on (as the banner's circles); interchanges are larger. */
 const stopRadius = (lineWidth: number, ink: Ink): number => (lineWidth + ink.casing) / 2 + 3;
 const INTERCHANGE_EXTRA = 2;
@@ -76,7 +91,7 @@ function stationGeometry(station: MapStation, point: Point, lines: Stroke[], sug
   const halo = Math.hypot(ends[1][0] - ends[0][0], ends[1][1] - ends[0][1]) / 2 + markerRadius + 6;
   // The licence marker sits on the circle's upper right, just outside its outline.
   const licencePoint: Point | undefined = station.licence === 'none' ? undefined : [box.x + box.w + 3, box.y - 3];
-  return { ...station, point, suggested, marker: { kind, box, contacts, ends, radius: markerRadius, halo }, licencePoint };
+  return { ...station, point, suggested, marker: { kind, box, contacts, ends, radius: markerRadius, halo }, licencePoint, ruleCount: ruleCount(station.rules, box) };
 }
 
 /** The capsule's axis in linear time (a station can have very many contacts): the direction from the
@@ -148,7 +163,9 @@ export function layoutMap(model: MapModel, lineWidth = themes.light.lineWidth, i
     if (!centre) return [];
     return [{ x: centre[0] - LICENCE_RADIUS, y: centre[1] - LICENCE_RADIUS, w: LICENCE_RADIUS * 2, h: LICENCE_RADIUS * 2 }];
   });
-  const markers: Box[] = [...stations.map(station => station.marker.box), ...licenceBoxes].map(box => inkBox(box, ink));
+  // A rule count is a station marker for placement: labels, badges and zone titles avoid it, and the frame holds it.
+  const ruleBoxes: Box[] = stations.flatMap(station => station.ruleCount ? [station.ruleCount.box] : []);
+  const markers: Box[] = [...stations.map(station => station.marker.box), ...licenceBoxes, ...ruleBoxes].map(box => inkBox(box, ink));
   const badges = placeBadges(lines, [...markers, ...segments], ink);
   const zones = zoneGeometry(model, pointMap);
   // Labels keep a little air from stickers, so text never touches an outline or shadow.
@@ -174,7 +191,7 @@ export function layoutMap(model: MapModel, lineWidth = themes.light.lineWidth, i
   }
   const frame = bounding(extent, 48);
 
-  const symbols = model.kind === 'skills' ? ['interchange', 'suggested position']
+  const symbols = model.kind === 'skills' ? ['interchange', 'number of rules', 'suggested position']
     : ['interchange', 'licence', 'licence to buy', 'suggested position', ...(model.view === 'full' ? ['renewal within 30 days'] : [])];
   const legendWidth = model.lines.reduce((width, line) => Math.max(width, textWidth(line.title) + badgeWidth(line.badge) + 96), 310);
   const legendBox: Box = { x: frame.x + frame.w + 28, y: frame.y + 12, w: legendWidth, h: 110 + model.lines.length * 30 + symbols.length * 32 };

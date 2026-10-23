@@ -33,9 +33,9 @@ function compareLines(one: SkillSet['map']['lines'][number], two: SkillSet['map'
 }
 
 export function buildSkillsMapModel(set: Pick<SkillSet, 'skills' | 'agents' | 'map'>): MapModel {
-  const items = new Map<string, { kind: ItemKind; name: string }>();
-  for (const skill of set.skills) items.set(`${skill.kind}:${skill.name}`, { kind: skill.kind, name: skill.name });
-  for (const agent of set.agents) items.set(`agent:${agent.name}`, { kind: 'agent', name: agent.name });
+  const items = new Map<string, { kind: ItemKind; name: string; rules: number }>();
+  for (const skill of set.skills) items.set(`${skill.kind}:${skill.name}`, { kind: skill.kind, name: skill.name, rules: skill.rules.length });
+  for (const agent of set.agents) items.set(`agent:${agent.name}`, { kind: 'agent', name: agent.name, rules: 0 });
   /** The station reference of a map-file key, or undefined when it names no item of its kind. */
   const resolve = (value: string): string | undefined => {
     const ref = splitReference(value);
@@ -73,7 +73,7 @@ export function buildSkillsMapModel(set: Pick<SkillSet, 'skills' | 'agents' | 'm
     .map(item => {
       const ref = stationRef(item.kind, item.name);
       return { ref, name: item.name, title: cleanText(item.name), lines: lines.filter(line => line.stops.includes(ref)).map(line => line.ref),
-        deprecated: false, zones: zoneOf.get(ref) ?? [], licence: 'none' as const, renewal: false };
+        deprecated: false, zones: zoneOf.get(ref) ?? [], licence: 'none' as const, renewal: false, ...(item.rules ? { rules: item.rules } : {}) };
     })
     .sort((one, two) => compareText(one.ref, two.ref));
 

@@ -10,7 +10,7 @@
  * crops to the map frame: the site's map page shows the title, the line legend and the symbols in
  * HTML (renderSymbol draws one symbol). The default output is what `stackledger map` writes.
  */
-import type { MapGeometry, Marker, Badge, StationGeometry } from './layout.js';
+import { RULE_COUNT_FONT_SIZE, type MapGeometry, type Marker, type Badge, type RuleCount, type StationGeometry } from './layout.js';
 import type { Point } from './model.js';
 import type { Theme } from './themes.js';
 import type { Box } from './labels.js';
@@ -80,12 +80,19 @@ function painter(theme: Theme) {
 
   const licence = (centre: Point, hollow: boolean): string => discSticker(centre, 5, hollow ? theme.station : theme.licence);
 
+  /** A rule count: a circle for one digit, a pill for more, in the panel colour, with the number. */
+  const ruleCount = (item: RuleCount): string => {
+    const { box } = item;
+    const shape = box.w === box.h ? discSticker([box.x + box.w / 2, box.y + box.h / 2], box.h / 2, theme.panel) : boxSticker(box, box.h / 2, theme.panel);
+    return shape + text(item.text, box.x + box.w / 2, box.y + box.h / 2 + 4, { 'font-size': RULE_COUNT_FONT_SIZE, 'font-weight': 700, 'text-anchor': 'middle' });
+  };
+
   /** A line sample for the legend, drawn as a pipe like the lines on the map. */
   const pipe = (a: Point, b: Point, colour: string): string =>
     (theme.casing.enabled ? line(a, b, { stroke: theme.casing.color, 'stroke-width': theme.lineWidth + theme.casing.extraWidth, 'stroke-linecap': 'round' }) : '')
     + line(a, b, { stroke: colour, 'stroke-width': theme.lineWidth, 'stroke-linecap': 'round' });
 
-  return { text, title, rect, line, circle, boxSticker, discSticker, ring, badge, marker, licence, pipe };
+  return { text, title, rect, line, circle, boxSticker, discSticker, ring, badge, marker, licence, ruleCount, pipe };
 }
 
 type Painter = ReturnType<typeof painter>;
@@ -146,7 +153,8 @@ function stationGroup(station: StationGeometry, data: Attributes, theme: Theme, 
     : '';
   const ring = station.renewal ? paint.ring(centre, halo, theme.renewal, 3) : '';
   const licence = station.licencePoint ? paint.licence(station.licencePoint, station.licence === 'hollow') : '';
-  return tag('g', { 'data-ref': station.ref, ...data }, paint.title(station.title) + suggested + ring + mark + licence);
+  const rules = station.ruleCount ? paint.ruleCount(station.ruleCount) : '';
+  return tag('g', { 'data-ref': station.ref, ...data }, paint.title(station.title) + suggested + ring + mark + licence + rules);
 }
 
 function labelsLayer(geometry: MapGeometry, drawnZones: ReadonlySet<string>, theme: Theme, paint: Painter): string {
@@ -174,6 +182,8 @@ function headerLayer(geometry: MapGeometry, theme: Theme, paint: Painter): strin
 function legendSymbol(symbol: string, centre: Point, theme: Theme, paint: Painter): string {
   if (symbol === 'interchange') return paint.discSticker(centre, 6, theme.station);
   if (symbol === 'licence' || symbol === 'licence to buy') return paint.licence(centre, symbol === 'licence to buy');
+  // A little smaller than on the map, so the dark theme's rim and shadow stay inside the 24 x 24 symbol.
+  if (symbol === 'number of rules') return paint.ruleCount({ text: '3', box: { x: centre[0] - 7.5, y: centre[1] - 7.5, w: 15, h: 15 } });
   if (symbol === 'suggested position') {
     return paint.circle(centre, 9, { fill: 'none', stroke: theme.muted, 'stroke-width': 1.5, 'stroke-dasharray': '4 3' });
   }
