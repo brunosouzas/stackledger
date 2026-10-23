@@ -75,7 +75,7 @@ test('Default title (Skills pages)', () => {
     for (const page of ['skills', 'skill-map', 'rules', 'skills/writer']) {
       const text = html(out, site, page);
       expect(text, `${site}/${page}`).toMatch(/<title>[^<]* \| stackledger<\/title>/);
-      expect(text, `${site}/${page}`).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark" src="(?:\.\.\/)*favicon\.svg" alt="" width="28" height="28">stackledger<\/a>/);
+      expect(text, `${site}/${page}`).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark themed-light" src="(?:\.\.\/)*favicon\.svg" alt="" width="28" height="28"><img class="brand-mark themed-dark" src="(?:\.\.\/)*brand-mark-dark\.svg" alt="" width="28" height="28">stackledger<\/a>/);
     }
   }
 });
@@ -163,8 +163,12 @@ test.concurrent('Relative skills folder', async () => {
   expect(html(target, 'full', 'skills/writer')).toContain('<code>skills/writer/SKILL.md</code>');
   for (const file of files(target)) expect(readFileSync(join(target, file), 'utf8'), file).not.toContain('northwind-kit');
 }, 180_000);
+/** The page without the site's own images (catalogue-site "Brand mark"): class, empty alt, the only allowed attributes and a site art src. */
+const SITE_IMAGE = /<img class="(?:brand-mark themed-(?:light|dark)|home-banner-art|link-icon themed-(?:light|dark))" src="(?:\.\.\/)*(?:favicon\.svg|brand-mark-dark\.svg|home-banner\.svg|link-icons\/(?:github|website|linkedin|email)-(?:light|dark)\.svg)" alt="" width="\d+" height="\d+">/g;
+const withoutSiteImages = (html: string) => html.replace(SITE_IMAGE, '');
+
 test('Description with HTML', () => {
-  for (const file of files(join(out, 'full')).filter(file => file.endsWith('.html'))) expect(readFileSync(join(out, 'full', file), 'utf8').replace(/<img class="brand-mark" [^>]*>/g, ''), file).not.toMatch(/<img\b/);
+  for (const file of files(join(out, 'full')).filter(file => file.endsWith('.html'))) expect(withoutSiteImages(readFileSync(join(out, 'full', file), 'utf8')), file).not.toMatch(/<img\b/);
   expect(html(out, 'full', 'skills/writer')).toContain('&lt;img src=x onerror=alert(1)&gt;');
 });
 test('Hostile script text', () => {

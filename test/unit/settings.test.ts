@@ -54,6 +54,15 @@ test('Too many links', () => {
   expect(errors(site({ home: { links: Array.from({ length: 21 }, () => link({})) } }))).toMatchObject([{ field: 'spec.site.home.links' }]);
   expect(check(site({ home: { links: Array.from({ length: 20 }, () => link({})) } })).problems).toEqual([]);
 });
+// catalogue "Home settings": an optional icon on a link, one of the design system's link icon names.
+test('Link icon', () => {
+  expect(check(site({ home: { links: [link({ icon: 'github' }), link({ icon: 'website' })] } })).problems).toEqual([]);
+});
+test('Unknown link icon', () => {
+  for (const icon of ['twitter', 'GitHub', '../favicon']) {
+    expect(errors(site({ home: { links: [link({ icon })] } })), icon).toMatchObject([{ field: 'spec.site.home.links[0].icon' }]);
+  }
+});
 test('Unknown home field', () => {
   expect(errors(site({ home: { image: 'banner.png' } }))).toMatchObject([{ field: 'spec.site.home.image', message: 'Unlisted field' }]);
 });
