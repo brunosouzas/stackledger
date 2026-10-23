@@ -30,6 +30,8 @@ For release candidates, run `node scripts/pack-production.mjs <destination>` aft
    ```
 
 3. Open the run in the Actions tab. When `check` has passed, the `publish` job waits for you: review it and approve.
+
+   Before the first release after the trusted publisher was set up, check its status on npmjs.com (package → Settings → Trusted Publisher). npm marks a new configuration "Pending validation" until a publish uses it, and expires it 48 hours after creation ([GitHub changelog](https://github.blog/changelog/2026-10-02-unvalidated-npm-trusted-publishing-configurations-now-expire/)). An expired configuration no longer authorises publishing, and with no token left the job fails. If it is pending or expired, delete it and add it again with the same values (step 5.1 below) just before pushing the tag: the release then validates it.
 4. Check the result (see [Checking a release](#checking-a-release)).
 
 A tag that does not match the version, or a tag on a commit that is not on `main`, fails in the first step of `check`. Delete the tag (`git push origin :refs/tags/v0.2.0`), fix, and tag again.
@@ -97,7 +99,7 @@ Approve the `publish` job when it waits. npm publishes with the token and with p
 
 Right after the version is on npm:
 
-1. On npmjs.com, open the package `@brunosouzas/stackledger` → Settings → Trusted Publisher → GitHub Actions ([npm docs](https://docs.npmjs.com/trusted-publishers)): user `brunosouzas`, repository `stackledger`, workflow filename `release.yml`, environment `npm`. Save.
+1. On npmjs.com, open the package `@brunosouzas/stackledger` → Settings → Trusted Publisher → GitHub Actions ([npm docs](https://docs.npmjs.com/trusted-publishers)): user `brunosouzas`, repository `stackledger`, workflow filename `release.yml`, environment `npm`. Save. The configuration stays "Pending validation" until a release publishes through it, and expires after 48 hours without one; the next release re-creates it if needed (see step 3 of [Releasing a version](#releasing-a-version)).
 2. In the same settings, Publishing access: choose "Require two-factor authentication and disallow tokens". From now on only the trusted workflow can publish.
 3. Revoke the token: Access Tokens → the `stackledger first release` token → Delete.
 4. Delete the environment secret `NPM_TOKEN` in Settings → Environments → `npm`.
@@ -106,9 +108,10 @@ The workflow still passes `NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}`. With the 
 
 ### 6. Deprecate the unscoped package
 
-Signed in to npm as `bruno_souza`, the owner of the unscoped package, with two-factor authentication:
+Signed in to npm as `bruno_souza`, the owner of the unscoped package, with two-factor authentication. The account `brunosouzas` became the organisation and does not own the unscoped package, so `npm whoami` must print `bruno_souza` first; otherwise npm answers 404. Type the command rather than paste it, so no stray backtick reaches the shell:
 
 ```sh
+npm whoami
 npm deprecate stackledger "Moved to @brunosouzas/stackledger"
 ```
 
