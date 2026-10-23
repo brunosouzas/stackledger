@@ -57,7 +57,7 @@ Every page SHALL share one layout: a header with the site title (from `spec.site
 ## ADDED Requirements
 
 ### Requirement: Home page
-The home page SHALL show a banner with the site title as its `h1` and `spec.site.home.text`, or `Your software and skills, mapped.` when unset; then a Software card with the view's counts of components, licences and drawn journeys, linking Map, List, Journeys and, in `full`, Reports; and, with a skill set, a Skills card with the counts of skills, playbooks, agents and rules, linking List, Map and Rules. No division's sub-navigation is marked.
+The home page SHALL show a banner with the site title as its `h1` and `spec.site.home.text`, or `Your software and skills, mapped.` when unset; then a Software card with the view's counts of components, licences and drawn journeys, linking Map, List, Journeys and, in `full`, Reports; and, with a skill set, a Skills card with the counts of skills, playbooks, agents and rules, linking List, Map and Rules.
 
 #### Scenario: Home in full and staff
 - **WHEN** both sites are built from a catalogue with 3 components, 2 licences and 1 drawn journey, and a skill set of 2 skills, 1 playbook, 1 agent and 4 rules
@@ -71,12 +71,23 @@ The home page SHALL show a banner with the site title as its `h1` and `spec.site
 - **WHEN** the catalogue has no component, licence or journey
 - **THEN** the home shows the Software card with three zero counts
 
+### Requirement: Home page chrome
+The home page SHALL have no sub-navigation, its header SHALL mark no division, and its `title` element SHALL be the site title alone.
+
+#### Scenario: Home chrome
+- **WHEN** the home page of either site is opened
+- **THEN** it has no sub-navigation, no header link has `aria-current`, and its `title` element is the site title, without a page name before it
+
 ### Requirement: Home links
-When `spec.site.home.links` is set, the home page SHALL show a `Links` list after the cards, in the order given, each item an anchor to its `url` with its `title` as text and its `description`, when set, after it; every anchor SHALL carry `rel="noopener noreferrer"` and no `target`. Without links there is no `Links` heading. Texts are escaped as all catalogue text.
+When `spec.site.home.links` is set, the home page SHALL show a `Links` list after the cards, in the order given, each item an anchor to its `url` with its `title` as text and its `description`, when set, after it; every anchor SHALL carry `rel="noopener noreferrer"` and no `target`. Without links, or when the `Settings` in use has an error, there is no `Links` heading, and the banner shows the default text.
 
 #### Scenario: Two links
 - **WHEN** `spec.site.home.links` lists `Articles` (`https://example.org/articles/`, description `What I write`) then `Team wiki` (`http://wiki.example.org/`)
 - **THEN** the home shows `Links` with `Articles` then `Team wiki`, each an anchor to its URL with `rel="noopener noreferrer"`, and `What I write` after `Articles`
+
+#### Scenario: Broken settings, no links
+- **WHEN** the `Settings` has `spec.site.home.links` with one valid link and an error in `spec.site.colors`
+- **THEN** the home has no `Links` heading and shows the default text
 
 #### Scenario: Hostile link text
 - **WHEN** a link's title is `<script>alert(1)</script>`

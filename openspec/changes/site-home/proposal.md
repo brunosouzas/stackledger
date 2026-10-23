@@ -34,16 +34,19 @@ None.
 
 - `catalogue-site`: "Pages" (home at `/`, map at `/map/`) and "Layout" (default title, links) change. A requirement is added for the home page.
 - `catalogue`: "Site settings" gains `home`.
+- `site-security`: "No external requests", "Relative URLs" and "Escaped catalogue text" exempt the home's `Links` anchors.
 
 ## Impact
 
 - `site/src/pages/index.astro` becomes the home page; the map page moves to `site/src/pages/map/index.astro`. Also changes: `Header.astro`, `SubNav.astro`, `Footer.astro`, `site/src/lib/site.ts`, `src/site/data.ts` (`DEFAULT_TITLE`, home data), `src/schema.ts` (`spec.site.home`), and styles in `site/src/styles/pages.css`.
 - Browser and integration tests that open the map at `/` move to `/map/`, and the README screenshots of the map page are regenerated.
 - A bookmark of `/` now opens the home, which links the map.
+- The default title is also the calendar name of `renewals.ics` and of `stackledger report --format ics`, so that name becomes `stackledger` too when no title is set.
+- `site-security`: its rule against links to other sites gets one exemption, the home's `Links` anchors. The risk stays low: URLs are limited to `http(s)`, the site already sends `Referrer-Policy: no-referrer` (so a click does not reveal the private site's address), and anchors carry `rel="noopener noreferrer"`.
 
 ## Implicit requirements
 
-- **Errors and invalid input:** each new field gets a validation error on its own path, as other `spec.site` fields do. As today, a `Settings` with an error makes the site use the default title and colours; it also uses no home text and no links.
+- **Errors and invalid input:** each new field gets a validation error on its own path, as other `spec.site` fields do. As today, a `Settings` with an error makes the site use the default title and colours; it also uses no home text and no links. Also as today ("Broken settings choose the corporate mode"), a typo in a link makes a personal-mode catalogue build the `staff` site too, until it is fixed.
 - **Limits:**
   - `text`: at most 200 characters.
   - `links`: at most 20 links.
@@ -63,6 +66,7 @@ None.
 - `README.md`: settings example, page list, screenshots.
 - `docs/site.md`: pages and home.
 - `docs/catalogue-format.md`: `spec.site.home`.
-- `docs/hosting.md`: check that `/map/` is behind Access, like the other paths.
+- `docs/reports.md`: the default calendar name.
+- `docs/hosting.md`: only if it lists page paths, add `map/`.
 - `docs/roadmap.md`: item 4b.
 - Vault notes, after the merge: roadmap, changelog and the `stackledger-catalog` repository note.
