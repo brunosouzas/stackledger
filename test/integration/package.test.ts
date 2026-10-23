@@ -41,7 +41,8 @@ describe('package contents from a clean checkout', () => {
     const paths = listed.files.map(file => file.path);
     // The site's art ships; its sources (scripts/home-banner.json, scripts/site-art.mjs) do not (catalogue-site, Home banner art).
     for (const path of ['dist/cli.js', 'skills/stackledger/SKILL.md', 'README.md', 'LICENSE', 'package.json', 'npm-shrinkwrap.json',
-      'site/public/home-banner.svg', 'site/public/brand-mark-dark.svg', 'site/public/link-icons/github-light.svg', 'site/public/link-icons/website-dark.svg']) {
+      'site/public/home-banner.svg', 'site/public/brand-mark-dark.svg',
+      ...['github', 'website', 'linkedin', 'email'].flatMap(icon => [`site/public/link-icons/${icon}-light.svg`, `site/public/link-icons/${icon}-dark.svg`])]) {
       expect(paths).toContain(path);
     }
     expect(paths.some(path => path.startsWith('site/'))).toBe(true);

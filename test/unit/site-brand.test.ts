@@ -51,18 +51,34 @@ test("Link icon files are the design system's", () => {
   }
 });
 
+/** Problems that make an SVG not inert: active or styling elements, event, style or link attributes, and any
+ * reference other than an internal url(#id) (any case, escapes refused). Checks the root too. */
+function activeParts(svg: string): string[] {
+  const found: string[] = [];
+  for (const element of elements(svg)) {
+    if (['script', 'foreignobject', 'style'].includes(element.tagName.toLowerCase())) found.push(element.tagName);
+    for (const attr of Array.from(element.attributes)) {
+      if (/^on|^style$|href$/i.test(attr.name)) found.push(attr.name);
+      // No backslash anywhere: CSS escapes could spell url( in a way the pattern below does not see.
+      if (attr.value.includes('\\')) found.push(`${attr.name}: escape`);
+      for (const ref of attr.value.matchAll(/url\s*\(([^)]*)\)/gi)) if (!/^#[\w-]+$/.test(ref[1]!.trim())) found.push(`${attr.name}: ${ref[0]}`);
+    }
+  }
+  return found;
+}
+
+test('Site art is inert: the check itself', () => {
+  const mark = read('site/public/brand-mark-dark.svg');
+  expect(activeParts(mark)).toEqual([]);
+  for (const bad of ['fill="URL(https://example.org/x.svg#p)"', 'fill="url( https://example.org/x )"', 'onload="alert(1)"', 'style="fill:red"', 'fill="u\\72l(x)"']) {
+    expect(activeParts(mark.replace('<svg ', `<svg ${bad} `)), bad).not.toEqual([]);
+  }
+});
+
 test('Site art is inert', () => {
   const files = ['site/public/home-banner.svg', 'site/public/brand-mark-dark.svg', 'site/public/favicon.svg',
     ...readdirSync(join(repo, 'site/public/link-icons')).map((name: string) => `site/public/link-icons/${name}`)];
-  for (const path of files) {
-    for (const element of elements(read(path))) {
-      expect(['script', 'foreignObject', 'style'], path).not.toContain(element.tagName);
-      for (const attr of Array.from(element.attributes)) {
-        expect(attr.name, path).not.toMatch(/^on|^style$|href$/i);
-        for (const ref of attr.value.matchAll(/url\(([^)]*)\)/g)) expect(ref[1], path).toMatch(/^#[\w-]+$/);
-      }
-    }
-  }
+  for (const path of files) expect(activeParts(read(path)), path).toEqual([]);
 });
 
 test('Icon names match the design system', () => {
