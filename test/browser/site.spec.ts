@@ -283,7 +283,8 @@ for (const [how, set] of [
     for (const scheme of ['light', 'dark'] as const) {
       await page.goto('/full/map/');
       await set(page, scheme);
-      expect(await shownImages(page, '.navbar-brand img'), scheme).toEqual([[scheme === 'light' ? 'favicon.svg' : 'brand-mark-dark.svg', 'inline']]);
+      // The brand link is a flex box, so its shown mark is a flex item (computed display block).
+      expect((await shownImages(page, '.navbar-brand img')).map(([src]) => src), scheme).toEqual([scheme === 'light' ? 'favicon.svg' : 'brand-mark-dark.svg']);
       // The map canvas and a legend symbol are still blocks after display: revert.
       expect(await page.locator(`.map-canvas.themed-${scheme}`).evaluate(element => getComputedStyle(element).display), scheme).toBe('block');
       expect(await page.locator(`.symbol.themed-${scheme}`).first().evaluate(element => getComputedStyle(element).display), scheme).toBe('block');

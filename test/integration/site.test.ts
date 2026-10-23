@@ -402,7 +402,7 @@ test('Banner on the home', () => {
 test('Link with an icon', () => {
   for (const site of [iconed.full, iconed.staff]) {
     const html = homeMain(read(site, 'index.html'));
-    const anchor = (title: string) => new RegExp(`<a href="[^"]*" rel="noopener noreferrer">(.*?)${title}</a>`).exec(html)![1]!;
+    const anchor = (title: string) => new RegExp(`<a href="[^"]*" rel="noopener noreferrer">((?:<img [^>]*>)*)${title}</a>`).exec(html)![1]!;
     expect(anchor('Source')).toBe('<img class="link-icon themed-light" src="link-icons/github-light.svg" alt="" width="24" height="24"><img class="link-icon themed-dark" src="link-icons/github-dark.svg" alt="" width="24" height="24">');
     expect(anchor('Blog')).toBe('');
     for (const file of ['github-light.svg', 'github-dark.svg']) expect(existsSync(join(site, 'link-icons', file))).toBe(true);

@@ -1,0 +1,25 @@
+{
+  "id": "home-banner",
+  "title": "A small metro map",
+  "description": "Illustration. Three metro lines, blue, green and yellow, cross a navy background with rings. White stations sit on the lines, one of them an interchange shared by two lines and one muted. Each line starts at a coloured badge on the left.",
+  "format": "banner",
+  "background": "navy",
+  "rings": { "cx": 860, "cy": 210, "radius": 40 },
+  "pieces": [
+    { "piece": "pipe", "d": "M150,300 H470 Q520,300 545,255 L600,160 Q625,120 680,120 H1050", "fill": "illustration.accent", "width": 24, "casing": 10 },
+    { "piece": "pipe", "d": "M150,210 H1050", "fill": "color.healthy", "width": 24, "casing": 10 },
+    { "piece": "pipe", "d": "M330,110 Q380,110 405,150 L470,260 Q495,300 545,300 H1050", "fill": "color.transitional", "width": 24, "casing": 10 },
+    { "piece": "stationMarker", "cx": 260, "cy": 300, "surface": "dark", "inkScale": 1.6, "r": 20 },
+    { "piece": "stationMarker", "cx": 260, "cy": 210, "surface": "dark", "inkScale": 1.6, "r": 20 },
+    { "piece": "stationMarker", "cx": 437, "cy": 210, "surface": "dark", "inkScale": 1.6, "r": 20 },
+    { "piece": "stationMarker", "cx": 572, "cy": 210, "surface": "dark", "inkScale": 1.6, "r": 20 },
+    { "piece": "stationMarker", "cx": 760, "cy": 120, "surface": "dark", "inkScale": 1.6, "r": 20 },
+    { "piece": "stationMarker", "cx": 760, "cy": 210, "surface": "dark", "inkScale": 1.6, "r": 20 },
+    { "piece": "stationMarker", "cx": 760, "cy": 300, "surface": "dark", "inkScale": 1.6, "r": 20 },
+    { "piece": "stationMarker", "cx": 920, "cy": 120, "to": [920, 300], "surface": "dark", "inkScale": 1.6, "r": 20 },
+    { "piece": "stationMarker", "cx": 920, "cy": 210, "surface": "dark", "inkScale": 1.6, "r": 20, "state": "deprecated" },
+    { "piece": "lineBadge", "x": 110, "y": 300, "fill": "illustration.accent", "surface": "dark", "inkScale": 1.6, "height": 34, "width": 54 },
+    { "piece": "lineBadge", "x": 110, "y": 210, "fill": "color.healthy", "surface": "dark", "inkScale": 1.6, "height": 34, "width": 54 },
+    { "piece": "lineBadge", "x": 290, "y": 110, "fill": "color.transitional", "surface": "dark", "inkScale": 1.6, "height": 34, "width": 54 }
+  ]
+}

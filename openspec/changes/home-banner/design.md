@@ -45,7 +45,7 @@ The header holds two marks: `favicon.svg` with `themed-light`, `brand-mark-dark.
 
 ### 7. Example
 
-`examples/northwind/stackledger.yaml` gets `spec.site.home` with a fictitious text and three links on `example.com` hosts, two with icons (`github`, `website`), so the README screenshot shows the feature. No real URL enters the repository.
+`examples/northwind` stays as it is. Changed during implementation: the integration tests read the example's home for the default text ("Home text") and append their own `site:` block to its `stackledger.yaml` ("Two links"), so a `site.home` in the example would break them. The README screenshot is built from a throwaway copy of the example with a fictitious text and three links on `example.com` hosts, two with icons; the icon tests use their own catalogues (`test/integration/site.test.ts`) and the extra catalogue of `test/browser/serve.mjs`. No real URL enters the repository.
 
 ## Risks
 

@@ -271,6 +271,21 @@
   max-width: 40rem;
 }
 
+/* The design system's banner (catalogue-site, Home banner art): full container width, its own ratio. */
+.home-banner-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 2rem;
+}
+
+.link-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
 .home-cards {
   margin-top: 0;
   margin-bottom: 2.5rem;

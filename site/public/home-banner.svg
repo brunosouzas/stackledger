@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="home-banner-title home-banner-desc" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <title id="home-banner-title">A small metro map</title>
+  <desc id="home-banner-desc">Illustration. Three metro lines, blue, green and yellow, cross a navy background with rings. White stations sit on the lines, one of them an interchange shared by two lines and one muted. Each line starts at a coloured badge on the left.</desc>
+  <defs>
+    <clipPath id="home-banner-frame">
+      <rect width="1200" height="420" rx="20"/>
+    </clipPath>
+  </defs>
+  <rect width="1200" height="420" rx="20" fill="#14215A"/>
+  <g clip-path="url(#home-banner-frame)">
+    <g fill="none" stroke="#1C2D74" stroke-width="2">
+      <circle cx="860" cy="210" r="40"/>
+      <circle cx="860" cy="210" r="68"/>
+      <circle cx="860" cy="210" r="96"/>
+      <circle cx="860" cy="210" r="124"/>
+      <circle cx="860" cy="210" r="152"/>
+      <circle cx="860" cy="210" r="180"/>
+      <circle cx="860" cy="210" r="208"/>
+      <circle cx="860" cy="210" r="236"/>
+      <circle cx="860" cy="210" r="264"/>
+      <circle cx="860" cy="210" r="292"/>
+      <circle cx="860" cy="210" r="320"/>
+      <circle cx="860" cy="210" r="348"/>
+      <circle cx="860" cy="210" r="376"/>
+      <circle cx="860" cy="210" r="404"/>
+      <circle cx="860" cy="210" r="432"/>
+      <circle cx="860" cy="210" r="460"/>
+      <circle cx="860" cy="210" r="488"/>
+      <circle cx="860" cy="210" r="516"/>
+      <circle cx="860" cy="210" r="544"/>
+      <circle cx="860" cy="210" r="572"/>
+      <circle cx="860" cy="210" r="600"/>
+      <circle cx="860" cy="210" r="628"/>
+      <circle cx="860" cy="210" r="656"/>
+      <circle cx="860" cy="210" r="684"/>
+      <circle cx="860" cy="210" r="712"/>
+      <circle cx="860" cy="210" r="740"/>
+      <circle cx="860" cy="210" r="768"/>
+      <circle cx="860" cy="210" r="796"/>
+      <circle cx="860" cy="210" r="824"/>
+      <circle cx="860" cy="210" r="852"/>
+      <circle cx="860" cy="210" r="880"/>
+      <circle cx="860" cy="210" r="908"/>
+    </g>
+  </g>
+  <g clip-path="url(#home-banner-frame)">
+    <g stroke="#0A1033" stroke-width="4" stroke-linejoin="round">
+      <path d="M150,300 H470 Q520,300 545,255 L600,160 Q625,120 680,120 H1050" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#0A1033" stroke-width="34"/>
+      <path d="M150,300 H470 Q520,300 545,255 L600,160 Q625,120 680,120 H1050" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#1E6FEB" stroke-width="24"/>
+      <path d="M150,210 H1050" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#0A1033" stroke-width="34"/>
+      <path d="M150,210 H1050" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#3DDC84" stroke-width="24"/>
+      <path d="M330,110 Q380,110 405,150 L470,260 Q495,300 545,300 H1050" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#0A1033" stroke-width="34"/>
+      <path d="M330,110 Q380,110 405,150 L470,260 Q495,300 545,300 H1050" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#FFD25A" stroke-width="24"/>
+      <circle cx="265.6" cy="305.6" r="20" fill="#4C5CB8" stroke="#4C5CB8" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="260" cy="300" r="20" fill="#EEF2FF" stroke="#EEF2FF" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="260" cy="300" r="20" fill="#FFFFFF" stroke="#0A1033" stroke-width="4.8" stroke-linejoin="round"/>
+      <circle cx="265.6" cy="215.6" r="20" fill="#4C5CB8" stroke="#4C5CB8" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="260" cy="210" r="20" fill="#EEF2FF" stroke="#EEF2FF" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="260" cy="210" r="20" fill="#FFFFFF" stroke="#0A1033" stroke-width="4.8" stroke-linejoin="round"/>
+      <circle cx="442.6" cy="215.6" r="20" fill="#4C5CB8" stroke="#4C5CB8" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="437" cy="210" r="20" fill="#EEF2FF" stroke="#EEF2FF" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="437" cy="210" r="20" fill="#FFFFFF" stroke="#0A1033" stroke-width="4.8" stroke-linejoin="round"/>
+      <circle cx="577.6" cy="215.6" r="20" fill="#4C5CB8" stroke="#4C5CB8" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="572" cy="210" r="20" fill="#EEF2FF" stroke="#EEF2FF" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="572" cy="210" r="20" fill="#FFFFFF" stroke="#0A1033" stroke-width="4.8" stroke-linejoin="round"/>
+      <circle cx="765.6" cy="125.6" r="20" fill="#4C5CB8" stroke="#4C5CB8" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="760" cy="120" r="20" fill="#EEF2FF" stroke="#EEF2FF" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="760" cy="120" r="20" fill="#FFFFFF" stroke="#0A1033" stroke-width="4.8" stroke-linejoin="round"/>
+      <circle cx="765.6" cy="215.6" r="20" fill="#4C5CB8" stroke="#4C5CB8" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="760" cy="210" r="20" fill="#EEF2FF" stroke="#EEF2FF" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="760" cy="210" r="20" fill="#FFFFFF" stroke="#0A1033" stroke-width="4.8" stroke-linejoin="round"/>
+      <circle cx="765.6" cy="305.6" r="20" fill="#4C5CB8" stroke="#4C5CB8" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="760" cy="300" r="20" fill="#EEF2FF" stroke="#EEF2FF" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="760" cy="300" r="20" fill="#FFFFFF" stroke="#0A1033" stroke-width="4.8" stroke-linejoin="round"/>
+      <path d="M905.6,125.6 L905.6,305.6 A20,20 0 0 0 945.6,305.6 L945.6,125.6 A20,20 0 0 0 905.6,125.6 Z" fill="#4C5CB8" stroke="#4C5CB8" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M900,120 L900,300 A20,20 0 0 0 940,300 L940,120 A20,20 0 0 0 900,120 Z" fill="#EEF2FF" stroke="#EEF2FF" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M900,120 L900,300 A20,20 0 0 0 940,300 L940,120 A20,20 0 0 0 900,120 Z" fill="#FFFFFF" stroke="#0A1033" stroke-width="4.8" stroke-linejoin="round"/>
+      <circle cx="925.6" cy="215.6" r="20" fill="#4C5CB8" stroke="#4C5CB8" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="920" cy="210" r="20" fill="#EEF2FF" stroke="#EEF2FF" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="920" cy="210" r="20" fill="#8F9BD0" stroke="#0A1033" stroke-width="4.8" stroke-linejoin="round"/>
+      <rect x="88.6" y="288.6" width="54" height="34" rx="17" fill="#4C5CB8" stroke="#4C5CB8" stroke-width="8" stroke-linejoin="round"/>
+      <rect x="83" y="283" width="54" height="34" rx="17" fill="#EEF2FF" stroke="#EEF2FF" stroke-width="8" stroke-linejoin="round"/>
+      <rect x="83" y="283" width="54" height="34" rx="17" fill="#1E6FEB" stroke="#0A1033" stroke-width="4.8" stroke-linejoin="round"/>
+      <rect x="88.6" y="198.6" width="54" height="34" rx="17" fill="#4C5CB8" stroke="#4C5CB8" stroke-width="8" stroke-linejoin="round"/>
+      <rect x="83" y="193" width="54" height="34" rx="17" fill="#EEF2FF" stroke="#EEF2FF" stroke-width="8" stroke-linejoin="round"/>
+      <rect x="83" y="193" width="54" height="34" rx="17" fill="#3DDC84" stroke="#0A1033" stroke-width="4.8" stroke-linejoin="round"/>
+      <rect x="268.6" y="98.6" width="54" height="34" rx="17" fill="#4C5CB8" stroke="#4C5CB8" stroke-width="8" stroke-linejoin="round"/>
+      <rect x="263" y="93" width="54" height="34" rx="17" fill="#EEF2FF" stroke="#EEF2FF" stroke-width="8" stroke-linejoin="round"/>
+      <rect x="263" y="93" width="54" height="34" rx="17" fill="#FFD25A" stroke="#0A1033" stroke-width="4.8" stroke-linejoin="round"/>
+    </g>
+    <g font-size="19" font-weight="800" fill="#0A1033" text-anchor="middle"/>
+  </g>
+</svg>

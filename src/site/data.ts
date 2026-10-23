@@ -25,7 +25,7 @@ import { displayOwner } from './owners.js';
 import { inkOf, themes, widestInk, type Theme } from '../map/themes.js';
 import { applyView, resolveHidden, settingsInError, type ViewName } from '../views.js';
 import type { Catalogue } from '../validate.js';
-import { licenceFields, type Licence, type LicenceField, type SiteColorName } from '../schema.js';
+import { licenceFields, HOME_LINK_ICONS, type Licence, type LicenceField, type SiteColorName } from '../schema.js';
 import { calendarNamespace, renderCalendar } from '../ics.js';
 import { formatAmount, type Amount } from '../money.js';
 import type { SkillsData } from './skills-data.js';
@@ -64,7 +64,7 @@ export interface ReportPage {
   planned: { items: (Link & { cycle: string; cost: string; monthly: string; yearly: string })[]; recurring: MoneyRow[]; oneOff: OneOffMoneyRow[] };
   incomplete: (Link & { status: string; unknown: string })[];
 }
-export interface HomeLink { title: string; url: string; description?: string }
+export interface HomeLink { title: string; url: string; description?: string; icon?: (typeof HOME_LINK_ICONS)[number] }
 interface SiteBase {
   version: string; title: string; colors: Partial<Record<SiteColorName, string>>;
   /** The home page's banner text and links (catalogue-site, Home page and Home links). */
@@ -106,7 +106,7 @@ function siteSettings(catalogue: Catalogue): { title: string; colors: Partial<Re
   const site = settingsInError(catalogue) ? undefined : catalogue.served.settings[0]?.spec.site;
   const colors: Partial<Record<SiteColorName, string>> = {};
   for (const [key, value] of Object.entries(site?.colors ?? {})) if (value !== undefined) colors[key as SiteColorName] = value;
-  const links = (site?.home?.links ?? []).map(link => ({ title: link.title, url: link.url, ...(link.description === undefined ? {} : { description: link.description }) }));
+  const links = (site?.home?.links ?? []).map(link => ({ title: link.title, url: link.url, ...(link.description === undefined ? {} : { description: link.description }), ...(link.icon === undefined ? {} : { icon: link.icon }) }));
   return { title: site?.title ?? DEFAULT_TITLE, colors, home: { text: site?.home?.text ?? DEFAULT_HOME_TEXT, links } };
 }
 

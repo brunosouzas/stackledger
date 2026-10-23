@@ -16,6 +16,7 @@ const skills = site.skills;
     <div class="container">
       <h1>{site.title}</h1>
       <p class="lead">{site.home.text}</p>
+      <img class="home-banner-art" src={href(root, 'home-banner.svg')} alt="" width="1200" height="420" />
     </div>
   </section>
   <section class="section">
@@ -56,9 +57,9 @@ const skills = site.skills;
         <>
           <h2>Links</h2>
           <ul class="home-external">
-            {site.home.links.map((link: { title: string; url: string; description?: string }) => (
+            {site.home.links.map((link: { title: string; url: string; description?: string; icon?: string }) => (
               <li>
-                <a href={link.url} rel="noopener noreferrer">{link.title}</a>
+                <a href={link.url} rel="noopener noreferrer">{link.icon && <><img class="link-icon themed-light" src={href(root, `link-icons/${link.icon}-light.svg`)} alt="" width="24" height="24" /><img class="link-icon themed-dark" src={href(root, `link-icons/${link.icon}-dark.svg`)} alt="" width="24" height="24" /></>}{link.title}</a>
                 {link.description && <span class="muted"> · {link.description}</span>}
               </li>
             ))}
