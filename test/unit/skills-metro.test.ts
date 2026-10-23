@@ -10,18 +10,19 @@ import { buildMapModel } from '../../src/map/model.js';
 import { layoutMap } from '../../src/map/layout.js';
 import { renderSvg } from '../../src/map/svg.js';
 import { overlapArea, overlapScore, segmentObstacle } from '../../src/map/labels.js';
-import { themes, inkOf } from '../../src/map/themes.js';
+import { themes, inkOf, inkBox } from '../../src/map/themes.js';
 import type { Line, MapLayout } from '../../src/schema.js';
 import { component, journey, positions, set as setField, viewOf } from './map-helpers.js';
 import { safe } from './svg-helpers.js';
-import { playbook, skill, skillSet } from '../skills-helpers.js';
+import { playbook, rules, skill, skillSet } from '../skills-helpers.js';
 
 type Kind = 'skill' | 'playbook';
-interface Fixture { skills?: [string, Kind, string[]?][]; agents?: string[]; lines?: [string, string[], string?][]; stations?: Record<string, [number, number]>; zones?: string[] }
+interface Fixture { rules?: Record<string, number>; skills?: [string, Kind, string[]?][]; agents?: string[]; lines?: [string, string[], string?][]; stations?: Record<string, [number, number]>; zones?: string[] }
 /** A skill set in memory: only what the map reads. */
 function memorySet(fixture: Fixture) {
   const skills = (fixture.skills ?? []).map(([name, kind, loads]) => ({ name, kind, skills: loads ?? [], agents: [] as string[],
-    path: '', description: '', given: '', files: [], rules: [] }));
+    path: '', description: '', given: '', files: [],
+    rules: Array.from({ length: fixture.rules?.[name] ?? 0 }, (_, i) => ({ id: `R-${i + 1}`, text: 'Northwind rule.', line: i + 1 })) }));
   const agents = (fixture.agents ?? []).map(name => ({ name, path: '', description: '', given: '', files: [], preloads: [] }));
   const lines: Line[] = (fixture.lines ?? []).map(([name, stops, title], index) => ({ apiVersion: 'stackledger/v1alpha1', kind: 'Line',
     metadata: { name, ...(title === undefined ? {} : { title }) }, spec: { color: `#E4002${index}`, stops } }));
@@ -78,9 +79,80 @@ test('No skill lines', () => {
 test('Legend of a skills map', () => {
   const { geometry, svg } = draw({ ...writerEditor, skills: [['writer', 'skill'], ['editor', 'skill'], ['linter', 'skill']],
     lines: [['publish', ['skill:writer', 'skill:editor']], ['review', ['skill:linter', 'skill:editor']]] });
-  expect(geometry.legend.lines).toHaveLength(2); expect(geometry.legend.symbols).toEqual(['interchange', 'suggested position']);
+  expect(geometry.legend.lines).toHaveLength(2); expect(geometry.legend.symbols).toEqual(['interchange', 'number of rules', 'suggested position']);
   expect(safe(svg).getElementsByTagName('title')[0]!.textContent).toBe('Skills map');
   expect(svg).not.toContain('licence'); expect(svg).not.toMatch(/(full|staff) view/);
+});
+// metro-map "Rule count on skills stations" and "Rule count is an obstacle".
+const ruleText = (svg: string, ref: string): string[] => {
+  const group = Array.from(safe(svg).getElementsByTagName('g')).find(element => element.getAttribute('data-ref') === ref)!;
+  return Array.from(group.getElementsByTagName('text')).map(element => element.textContent ?? '');
+};
+test('Skill with rules', () => {
+  const { geometry, svg } = draw({ rules: { writer: 3 }, skills: [['writer', 'skill'], ['editor', 'skill']], agents: ['reviewer'],
+    lines: [['publish', ['skill:writer', 'skill:editor', 'agent:reviewer']]] });
+  expect(geometry.stations.find(s => s.ref === 'skill:writer')!.ruleCount).toMatchObject({ text: '3' });
+  expect(ruleText(svg, 'skill:writer')).toEqual(['3']);
+  for (const ref of ['skill:editor', 'agent:reviewer']) {
+    expect(geometry.stations.find(s => s.ref === ref)!.ruleCount, ref).toBeUndefined();
+    expect(ruleText(svg, ref), ref).toEqual([]);
+  }
+  // One digit is a circle; more digits widen it to a pill.
+  const box = geometry.stations.find(s => s.ref === 'skill:writer')!.ruleCount!.box;
+  expect(box.w).toBe(box.h);
+  const wide = draw({ rules: { writer: 12 }, ...writerEditor }).geometry.stations.find(s => s.ref === 'skill:writer')!.ruleCount!.box;
+  expect(wide.w).toBeGreaterThan(wide.h);
+  for (const theme of Object.values(themes)) safe(draw({ rules: { writer: 3 }, ...writerEditor }, theme).svg);
+});
+test('Duplicate rule ID', async () => {
+  const root = skillSet({ 'writer/SKILL.md': skill('writer'), 'writer/rules.md': rules('- **WR-1** Short sentences.', '- **WR-1** Short paragraphs.'),
+    'editor/SKILL.md': skill('editor'),
+    'stackledger-skills.yaml': 'apiVersion: stackledger/v1alpha1\nkind: Line\nmetadata:\n  name: publish\nspec:\n  color: "#E4002B"\n  stops: ["skill:writer", "skill:editor"]\n' });
+  const set = await readSkillSet([], { cwd: root });
+  expect(set.skills.find(s => s.name === 'writer')!.rules).toHaveLength(1);
+  const svg = renderSvg(layoutMap(buildSkillsMapModel(set)), themes.light);
+  expect(ruleText(svg, 'skill:writer')).toEqual(['1']);
+});
+test('Many rules', () => {
+  const { geometry, svg } = draw({ rules: { release: 100 }, skills: [['release', 'playbook'], ['writer', 'skill']], lines: [['publish', ['playbook:release', 'skill:writer']]] });
+  expect(geometry.stations.find(s => s.ref === 'playbook:release')!.ruleCount!.text).toBe('99+');
+  expect(ruleText(svg, 'playbook:release')).toEqual(['99+']);
+  expect(draw({ rules: { release: 99 }, skills: [['release', 'playbook'], ['writer', 'skill']], lines: [['publish', ['playbook:release', 'skill:writer']]] })
+    .geometry.stations.find(s => s.ref === 'playbook:release')!.ruleCount!.text).toBe('99');
+});
+test('Rule count pushes a label out', () => {
+  const fixture: Fixture = { ...writerEditor, stations: { 'skill:writer': [0, 2], 'skill:editor': [0, 6] } };
+  const ink = inkOf(themes.light);
+  const plain = draw(fixture).geometry;
+  const first = (g: typeof plain) => {
+    const station = g.stations.find(s => s.ref === 'skill:writer')!, label = g.labels.find(l => l.ref === 'skill:writer')!;
+    return { station, label };
+  };
+  const without = first(plain);
+  // Without a rule count the label sits at its first candidate, to the right.
+  expect(without.label.box.x).toBeGreaterThan(without.station.marker.box.x + without.station.marker.box.w);
+  expect(without.label.box.y + without.label.box.h / 2).toBeCloseTo(without.station.point[1], 0);
+  const withRules = first(draw({ ...fixture, rules: { writer: 4 } }).geometry);
+  expect(withRules.label.box).not.toEqual(without.label.box);
+  expect(overlapArea(withRules.label.box, inkBox(withRules.station.ruleCount!.box, ink))).toBe(0);
+});
+test('Terminal badge clear of a rule count', () => {
+  const ink = inkOf(themes.light);
+  const fixture: Fixture = { ...writerEditor, stations: { 'skill:writer': [0, 0], 'skill:editor': [0, 2] } };
+  const plain = draw(fixture).geometry;
+  const g = draw({ ...fixture, rules: { writer: 4, editor: 4 } }).geometry;
+  const counts = g.stations.flatMap(s => s.ruleCount ? [inkBox(s.ruleCount.box, ink)] : []);
+  expect(counts).toHaveLength(2);
+  for (const badge of g.badges) for (const count of counts) expect(overlapArea(inkBox(badge.box, ink), count)).toBe(0);
+  // The rule count really was in the way: at least one badge moved.
+  expect(g.badges.map(b => b.box)).not.toEqual(plain.badges.map(b => b.box));
+});
+test('Rule count inside the frame', () => {
+  const ink = inkOf(themes.light);
+  const { geometry } = draw({ rules: { editor: 7 }, ...writerEditor, stations: { 'skill:writer': [0, 2], 'skill:editor': [4, 0] } });
+  const box = inkBox(geometry.stations.find(s => s.ref === 'skill:editor')!.ruleCount!.box, ink), frame = geometry.frame;
+  expect(box.x).toBeGreaterThanOrEqual(frame.x); expect(box.y).toBeGreaterThanOrEqual(frame.y);
+  expect(box.x + box.w).toBeLessThanOrEqual(frame.x + frame.w); expect(box.y + box.h).toBeLessThanOrEqual(frame.y + frame.h);
 });
 test('Same skills map everywhere', async () => {
   const files = { 'writer/SKILL.md': skill('writer'), 'editor/SKILL.md': skill('editor'), 'release/SKILL.md': playbook('release', 'writer editor'),

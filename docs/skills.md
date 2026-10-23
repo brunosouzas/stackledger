@@ -295,7 +295,7 @@ spec:
 | Page | Path | Shows |
 | --- | --- | --- |
 | Skills | `/skills/` | The counts, and every skill, playbook and agent with its kind, description and number of rules; search and a kind filter |
-| Skill map | `/skill-map/` | The skills metro map with zoom, pan, line highlight and a playbook filter (a station in two zones stays lit for both), then each line's stops as links |
+| Skill map | `/skill-map/` | The skills metro map with zoom, pan, line highlight and a playbook filter (a station in two zones stays lit for both), then each line's stops as links. A skill or playbook with rules shows their number on its station (`99+` above 99), explained in the legend as "Number of rules"; the rules themselves are on the item's page and in `/rules/` |
 | Rules | `/rules/` | Every rule with its ID, text, group and the skill or playbook that defines it; search |
 | Skill, playbook, agent | `/skills/<file>/`, `/playbooks/<file>/`, `/agents/<file>/` | Name, kind, description, a diagram of what brings it in and what it brings in, the same as lists, "Reached through", the skill lines that stop at it, its rules and its source files |
 

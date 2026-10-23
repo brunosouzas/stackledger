@@ -24,7 +24,7 @@ test('Hostile titles through the real pipeline',()=>{
  const long=`${hostile} Northwind Customer Relationship Manager`;
  const docs=[set(set(component('a'),'metadata.title',long),'metadata.labels',{'stackledger/zone':'zone'}),component('b'),set(journey('ship',['a','b']),'metadata.title',hostile),set(positions({a:[0,0],b:[4,0]}),'spec.zones',[{name:'zone',title:hostile,color:'#ABCDEF'}])];
  const g=geometry(docs);
- expect(g.lines).toHaveLength(1);expect(g.zones).toHaveLength(1);expect(g.labels.find(l=>l.ref==='component:a')!.rows).toHaveLength(2);
+ expect(g.lines).toHaveLength(1);expect(g.zones).toHaveLength(1);{const rows=g.labels.find(l=>l.ref==='component:a')!.rows;expect(rows.length).toBeGreaterThan(2);for(const row of rows)expect(row).not.toMatch(/…$/);}
  const clean=(text:string)=>text.replace(/[\u0001￾]/g,'�');
  for(const theme of Object.values(themes)){
   const doc=safe(renderSvg(g,theme)),text=doc.documentElement.textContent!;
@@ -36,7 +36,7 @@ test('Hostile titles through the real pipeline',()=>{
 test('Unknown attribute',()=>{safe(renderSvg(hostileGeometry(),themes.light));});
 test('Paint values',()=>{for(const theme of Object.values(themes))safe(renderSvg(geometry(),theme));const g=geometry();g.lines[0]!.color='url(javascript:alert(1))';expect(()=>renderSvg(g,themes.light)).toThrow(/colour/);});
 test('Hostile titles',()=>{const svg=renderSvg(hostileGeometry(),themes.light),doc=safe(svg);const clean=hostile.replace(/[\u0001\uFFFE]/g,'�');expect(doc.documentElement.textContent).toContain(clean);expect(doc.getElementsByTagName('script')).toHaveLength(0);for(const e of Array.from(doc.getElementsByTagName('*')))for(const a of Array.from(e.attributes))expect(a.value).not.toContain('javascript:');expect(escapeXml('&<>"\'\ud800')).toBe('&amp;&lt;&gt;&quot;&apos;�');});
-test('Long title keeps full station title',()=>{const full='Northwind Customer Relationship Manager';const g=geometry([set(component('a'),'metadata.title',full),...docs().slice(1)]);const doc=parseSvg(renderSvg(g,themes.light));const station=Array.from(doc.getElementsByTagName('g')).find(e=>e.getAttribute('data-ref')==='component:a')!;expect(station.getElementsByTagName('title')[0]!.textContent).toBe(full);expect(g.labels.find(l=>l.ref==='component:a')!.rows[1]).toMatch(/…$/);});
+test('Long title keeps full station title',()=>{const full='Northwind Customer Relationship Manager';const g=geometry([set(component('a'),'metadata.title',full),...docs().slice(1)]);const doc=parseSvg(renderSvg(g,themes.light));const station=Array.from(doc.getElementsByTagName('g')).find(e=>e.getAttribute('data-ref')==='component:a')!;expect(station.getElementsByTagName('title')[0]!.textContent).toBe(full);expect(g.labels.find(l=>l.ref==='component:a')!.rows).toEqual(['Northwind Customer','Relationship','Manager']);});
 test('Dark theme',()=>{const g=geometry(),svg=renderSvg(g,themes.dark);expect(themes.dark.background).toBe('#14215A');expect(svg).toContain(`fill="${themes.dark.background}"`);expect(svg).toContain('stroke="#FF0000"');expect(svg).not.toBe(renderSvg(g,themes.light));});
 test('Themes are data, with casing and offset shadows on in both themes',()=>{
  for(const t of Object.values(themes)){expect(t.casing).toMatchObject({enabled:true,color:INK});expect(t.casing.extraWidth).toBeGreaterThan(0);expect(t.shadow.enabled).toBe(true);expect(t.shadow.dx).toBeGreaterThan(0);expect(t.shadow.dy).toBeGreaterThan(0);expect(t.outline).toBe(INK);expect(t.font).toBe('Lato, Helvetica Neue, Helvetica, Arial, sans-serif');}
@@ -321,6 +321,28 @@ test('Example map',async()=>{
   const svg=renderSvg(layoutMap(buildMapModel(served,'2027-06-01'),chrome?theme.lineWidth:themes.light.lineWidth,ink),theme,{chrome});
   expect(svg+'\n',`${view}-${name}${chrome?'':'-site'}`).toBe(readFileSync(join(fixtures,`${view}-${name}${chrome?'':'-site'}.svg`),'utf8'));
  }
+});
+// metro-map "A cut label now wraps" and "Software map has no rule count", on the example catalogue.
+async function exampleGeometry(title?:string){
+ const { join } = await import('node:path');const { loadFolder } = await import('../../src/source.js'); const { validateLoaded } = await import('../../src/validate.js');
+ const catalogue=validateLoaded(await loadFolder(join(import.meta.dirname,'../../examples/northwind')));
+ let served=applyView(catalogue.served,'full',resolveHidden(catalogue));
+ const first=served.components.map(c=>c.metadata.name).sort()[0]!;
+ if(title!==undefined)served={...served,components:served.components.map(c=>c.metadata.name===first?{...c,metadata:{...c.metadata,title}}:c)};
+ return {first,geometry:layoutMap(buildMapModel(served,'2027-06-01'),themes.light.lineWidth,inkOf(themes.light))};
+}
+test('A cut label now wraps',async()=>{
+ const before=await exampleGeometry(),{first,geometry}=await exampleGeometry('Northwind Customer Relationship Manager');
+ expect(geometry.labels.find(l=>l.ref===`component:${first}`)!.rows).toEqual(['Northwind Customer','Relationship','Manager']);
+ const texts=Array.from(safe(renderSvg(geometry,themes.light)).getElementsByTagName('text')).map(e=>e.textContent??'');
+ for(const text of texts)expect(text).not.toMatch(/…$/);
+ const rows=(g:typeof geometry)=>Object.fromEntries(g.labels.filter(l=>l.ref!==`component:${first}`).map(l=>[l.ref,l.rows]));
+ expect(rows(geometry)).toEqual(rows(before.geometry));
+});
+test('Software map has no rule count',async()=>{
+ const {geometry}=await exampleGeometry();
+ for(const station of geometry.stations)expect(station.ruleCount,station.ref).toBeUndefined();
+ expect(geometry.legend.symbols).not.toContain('number of rules');
 });
 // metro-map "Software lines in a skills map file name": a catalogue file with that name is not read, so its lines are not drawn.
 test('Software lines in a skills map file name',async()=>{

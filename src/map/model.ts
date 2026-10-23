@@ -18,6 +18,8 @@ export interface MapStation {
   zones: string[];
   licence: 'none' | 'solid' | 'hollow';
   renewal: boolean;
+  /** Skills map only: the number of rules of the station's skill or playbook (none or 0: no rule count). */
+  rules?: number;
 }
 export interface MapZone { name: string; title: string; color: string }
 /** A software map comes from a catalogue view; a skills map from a skill set (src/skills/metro.ts). */

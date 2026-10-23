@@ -1,4 +1,4 @@
-/** Deterministic two-row labels using fixed character metrics and eight ordered candidates.
+/** Deterministic multi-row labels using fixed character metrics and eight ordered candidates.
  * Call placeLabels(stations, obstacles); npm test checks geometry without installed fonts.
  * Crowded maps choose the least intersected area, rather than hiding labels or adding candidates.
  */
@@ -31,38 +31,53 @@ export const textWidth = (text: string): number =>
 
 const codePoints = (text: string): number => Array.from(text).length;
 
-const cut = (text: string): string => Array.from(text).slice(0, ROW_LENGTH - 1).join('') + '…';
+/** Characters a long word may break after, as CSS breaks after a hyphen. */
+const BREAKS: ReadonlySet<string> = new Set(['-', '_', '.', '/']);
 
+/** A word longer than a row, in pieces of at most ROW_LENGTH code points: each piece ends after the
+ * last break character that keeps it within the row, or after ROW_LENGTH code points when it has none. */
+function splitWord(word: string): string[] {
+  const chars = Array.from(word);
+  const pieces: string[] = [];
+  while (chars.length > ROW_LENGTH) {
+    let end = ROW_LENGTH;
+    for (let i = ROW_LENGTH - 1; i >= 0; i--) {
+      if (BREAKS.has(chars[i]!)) {
+        end = i + 1;
+        break;
+      }
+    }
+    pieces.push(chars.splice(0, end).join(''));
+  }
+  pieces.push(chars.join(''));
+  return pieces;
+}
+
+/** Rows of at most ROW_LENGTH code points, filled greedily at spaces; nothing is cut (metro-map, Label
+ * text and Label word breaks). A long word starts a new row; its last piece continues as a word. A
+ * label that fits in two rows gets the rows 0.2.0 gave it, so maps without a cut label do not move. */
 export function wrapLabel(title: string): string[] {
   const words = title.trim().split(/\s+/u);
   const rows: string[] = [];
   let current = '';
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i]!;
-    const short = codePoints(word) > ROW_LENGTH ? cut(word) : word;
-    const combined = current ? `${current} ${short}` : short;
-    if (codePoints(combined) <= ROW_LENGTH) {
-      current = combined;
+  for (const word of words) {
+    if (codePoints(word) > ROW_LENGTH) {
+      if (current) rows.push(current);
+      const pieces = splitWord(word);
+      rows.push(...pieces.slice(0, -1));
+      current = pieces[pieces.length - 1]!;
       continue;
     }
-    rows.push(current);
-    current = short;
-    if (rows.length === 1) {
-      const remaining = [word, ...words.slice(i + 1)].join(' ');
-      if (codePoints(remaining) <= ROW_LENGTH) {
-        current = remaining;
-      } else {
-        // Keep whole words when possible; truncation always leaves an ellipsis inside the limit.
-        const prefix = Array.from(remaining).slice(0, ROW_LENGTH - 1).join('');
-        const space = prefix.lastIndexOf(' ');
-        current = (space > 0 ? prefix.slice(0, space) : prefix) + '…';
-      }
+    const combined = current ? `${current} ${word}` : word;
+    if (codePoints(combined) <= ROW_LENGTH) {
+      current = combined;
+    } else {
       rows.push(current);
-      return rows;
+      current = word;
     }
   }
   if (current || !rows.length) rows.push(current);
-  return rows.slice(0, 2);
+  return rows;
 }
 
 /** Right, left, above, below, then the four diagonals. */

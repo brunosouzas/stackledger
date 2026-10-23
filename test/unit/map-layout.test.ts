@@ -103,8 +103,19 @@ test('Collinear slot changes use one 45-degree connector',()=>{
  const ship=parallelLines(m,routes)[0]!;octilinear(ship.points);expect(ship.points).toHaveLength(4);
 });
 test('Angles',()=>{const m=model(...base(),component('c'),component('d'),journey('extra',['b','c','a','d']),positions({}));const g=layoutMap(m); for(const l of g.lines)octilinear(l.points);});
-test('Long title',()=>{const title='Northwind Customer Relationship Manager';const rows=wrapLabel(title);expect(rows).toHaveLength(2);expect(rows[1]).toMatch(/…$/);for(const r of rows)expect([...r].length).toBeLessThanOrEqual(18);expect(wrapLabel('😀'.repeat(30))[0]).toMatch(/…$/);});
-test('Labels wrap at spaces, cut each long word, and use fixed widths',()=>{expect(wrapLabel('short title')).toEqual(['short title']);expect(wrapLabel('abcdefghijklmnopqrst more')).toEqual(['abcdefghijklmnopq…','more']);expect(textWidth('WWW')).toBeGreaterThan(textWidth('iii'));expect(textWidth('😀')).toBeGreaterThan(0);});
+// metro-map "Label text" and "Label word breaks": rows of at most 18 code points, nothing cut.
+test('Long title',()=>{const rows=wrapLabel('Northwind Customer Relationship Manager');expect(rows).toEqual(['Northwind Customer','Relationship','Manager']);for(const r of rows){expect([...r].length).toBeLessThanOrEqual(18);expect(r).not.toMatch(/…$/);}});
+test('Long hyphenated name',()=>{expect(wrapLabel('openspec-archive-change')).toEqual(['openspec-archive-','change']);expect(wrapLabel('openspec-apply-change')).toEqual(['openspec-apply-','change']);});
+test('Long word after other words',()=>{expect(wrapLabel('Run openspec-archive-change now')).toEqual(['Run','openspec-archive-','change now']);});
+test('Long word with no break character',()=>{
+ const a='a'.repeat(30),emoji='😀'.repeat(40);
+ expect(wrapLabel(a).map(r=>[...r].length)).toEqual([18,12]);expect(wrapLabel(a).join('')).toBe(a);
+ expect(wrapLabel(emoji).map(r=>[...r].length)).toEqual([18,18,4]);expect(wrapLabel(emoji).join('')).toBe(emoji);
+ // Breaks repeat, each after the last break character that keeps the row within 18.
+ const chained=`a-${'b'.repeat(16)}-c-${'d'.repeat(16)}-e`;
+ expect(wrapLabel(chained)).toEqual(['a-','b'.repeat(16)+'-','c-','d'.repeat(16)+'-e']);
+});
+test('Labels wrap at spaces and use fixed widths',()=>{expect(wrapLabel('short title')).toEqual(['short title']);expect(wrapLabel('abcdefghijklmnopqrst more')).toEqual(['abcdefghijklmnopqr','st more']);expect(textWidth('WWW')).toBeGreaterThan(textWidth('iii'));expect(textWidth('😀')).toBeGreaterThan(0);});
 test('Label candidates, scoring and exact order',()=>{const candidates=labelCandidates([100,100],20,10,20);expect(candidates).toEqual([{x:120,y:95,w:20,h:10},{x:60,y:95,w:20,h:10},{x:90,y:70,w:20,h:10},{x:90,y:120,w:20,h:10},{x:120,y:70,w:20,h:10},{x:120,y:120,w:20,h:10},{x:60,y:70,w:20,h:10},{x:60,y:120,w:20,h:10}]); expect(chooseLabel(candidates,[])).toEqual(candidates[0]);expect(chooseLabel(candidates,[candidates[0]!])).toEqual(candidates[1]);expect(overlapArea({x:0,y:0,w:10,h:10},{x:5,y:5,w:10,h:10})).toBe(25); expect(chooseLabel(candidates,[{x:0,y:0,w:1000,h:1000}])).toEqual(candidates[0]);});
 test('Interchange',()=>{const g=layoutMap(model(...base(),component('slack'),journey('two',['slack','a']),journey('three',['slack','b']),journey('four',['slack','a']),positions({})));const s=g.stations.find(s=>s.name==='slack')!;expect(s.marker.kind).toBe('interchange');expect(s.lines).toHaveLength(3);for(const p of s.marker.contacts)expect(s.marker.box.x<=p[0]&&p[0]<=s.marker.box.x+s.marker.box.w&&s.marker.box.y<=p[1]&&p[1]<=s.marker.box.y+s.marker.box.h).toBe(true);});
 test('Suggested interchange',()=>{const g=layoutMap(model(component('slack'),component('a'),component('b'),journey('one',['slack','a']),journey('two',['slack','b'])));expect(g.stations.find(s=>s.name==='slack')).toMatchObject({suggested:true,marker:{kind:'interchange'}});});
