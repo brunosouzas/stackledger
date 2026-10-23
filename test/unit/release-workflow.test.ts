@@ -36,10 +36,10 @@ test('Checks job: contents: read only; tag check, npm ci, build, tests, audit, p
   expect(order.every(index => index >= 0), String(order)).toBe(true);
   expect([...order].sort((a, b) => a - b)).toEqual(order);
   const sbomStep = checks.steps[order.at(-1)!]!.run!;
-  expect(sbomStep).toMatch(/tar -xzf "\$RUNNER_TEMP\/release\/stackledger-.*\.tgz"/);
+  expect(sbomStep).toMatch(/tar -xzf "\$RUNNER_TEMP\/release\/brunosouzas-stackledger-.*\.tgz"/);
   expect(sbomStep).toContain('package/package.json package/npm-shrinkwrap.json');
-  expect(sbomStep).toContain('--strip-components=1 -C "$RUNNER_TEMP/sbom/stackledger"');
-  expect(sbomStep).toMatch(/cd "\$RUNNER_TEMP\/sbom\/stackledger"/);
+  expect(sbomStep).toContain('--strip-components=1 -C "$RUNNER_TEMP/sbom/@brunosouzas/stackledger"');
+  expect(sbomStep).toMatch(/cd "\$RUNNER_TEMP\/sbom\/@brunosouzas\/stackledger"/);
   // The tag check is the first command the job runs: nothing of the repository runs before it.
   expect(checks.steps.findIndex(step => step.run !== undefined)).toBe(order[0]);
   expect(checks.steps.some(step => step.uses?.startsWith('actions/upload-artifact@'))).toBe(true);

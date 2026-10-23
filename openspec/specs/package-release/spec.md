@@ -28,11 +28,15 @@ The repository SHALL keep its development lock file as `npm-shrinkwrap.json` for
 - **THEN** `npm ls --all --json` gives the same production dependency versions in both, equal to the repository shrinkwrap's production entries, with no development-only or untracked packages (npm may label locked optional platform packages extraneous), the tarball's shrinkwrap has no development-only entries
 
 ### Requirement: Package metadata
-`package.json` SHALL NOT be private and SHALL name the package `stackledger`, its `bin`, the Apache-2.0 licence, `engines.node` `>=22.12`, and the `repository`, `homepage` and `bugs` of `github.com/brunosouzas/stackledger`, so npm can link the provenance to this repository.
+`package.json` SHALL NOT be private and SHALL name the package `@brunosouzas/stackledger`, its `bin` `stackledger`, the Apache-2.0 licence, `engines.node` `>=22.12`, and the `repository`, `homepage` and `bugs` of `github.com/brunosouzas/stackledger`, so npm can link the provenance to this repository. The shrinkwrap SHALL carry the same name.
 
 #### Scenario: Metadata
 - **WHEN** `package.json` is read
-- **THEN** `private` is absent, `repository.url` is `git+https://github.com/brunosouzas/stackledger.git` and `bin.stackledger` is `dist/cli.js`
+- **THEN** `name` is `@brunosouzas/stackledger` in `package.json` and in `npm-shrinkwrap.json` (`name` and `packages[""].name`), `private` is absent, `repository.url` is `git+https://github.com/brunosouzas/stackledger.git` and `bin.stackledger` is `dist/cli.js`
+
+#### Scenario: Command name under the scoped package
+- **WHEN** the packed tarball is installed from a registry as `@brunosouzas/stackledger@<version>` into an empty folder
+- **THEN** it lands in `node_modules/@brunosouzas/stackledger` and `node_modules/.bin/stackledger --help` lists the seven commands
 
 ### Requirement: Release tags
 A release SHALL start only from a pushed tag `v<major>.<minor>.<patch>` of digits, without a pre-release suffix (v1 has no pre-release channel). The first step SHALL fail, before anything else runs, when the tag has another shape, differs from `v` plus `package.json` `version`, or names a commit that is not on `origin/main`.
@@ -57,11 +61,11 @@ A first job with only `contents: read` SHALL run the tag check, `npm ci`, the bu
 - **THEN** the first job has permissions exactly `contents: read` and runs tag check, `npm ci`, build, tests, `npm audit`, pack and SBOM in that order
 
 ### Requirement: SBOM product identity
-The manifest and shrinkwrap extracted from the tarball SHALL be placed in a directory named after the package before `npm sbom` runs, so the metadata component identifies `stackledger` rather than the tar entry `package`.
+The manifest and shrinkwrap extracted from the tarball SHALL be placed in a directory path named after the scoped package, `@brunosouzas/stackledger`, before `npm sbom` runs, so the metadata component identifies the package rather than the tar entry `package` or a bare `stackledger`.
 
 #### Scenario: SBOM product identity
 - **WHEN** the SBOM is generated from the packed tarball
-- **THEN** its metadata component has the package name, version and npm purl from the packed manifest
+- **THEN** its metadata component has the name `@brunosouzas/stackledger`, the version from the packed manifest and the purl `pkg:npm/%40brunosouzas/stackledger@<version>`
 
 ### Requirement: Publication of the checked tarball
 A second job SHALL run only after the first succeeds, in the GitHub environment `npm` (owner approval), with `contents: write` and `id-token: write`. It SHALL check out the tagged commit to get `scripts/release-publish.sh`, treat the downloaded artifact as data only, install and build nothing, and publish that tarball with `npm publish <tarball> --provenance --access public --ignore-scripts` through OIDC; `NPM_TOKEN` is read only for the first version.
@@ -103,3 +107,14 @@ The release workflow SHALL pin every action by full commit SHA, check out withou
 #### Scenario: Pinned
 - **WHEN** the release workflow file is read
 - **THEN** every `uses` names a 40-character commit SHA, no step enables a package cache, and `actionlint` reports nothing
+
+### Requirement: Scoped release files
+The check job SHALL hand the publish job the tarball npm packs for the scoped name, `brunosouzas-stackledger-<version>.tgz`, and the SBOM `stackledger-<version>.cdx.json`. `scripts/release-publish.sh` SHALL look up, publish and report `@brunosouzas/stackledger@<version>`, never the unscoped `stackledger`, whose versions belong to another npm account.
+
+#### Scenario: Scoped tarball in the workflow
+- **WHEN** the release workflow file is read
+- **THEN** the SBOM step extracts `brunosouzas-stackledger-<version>.tgz` and the publish step passes that file and `stackledger-<version>.cdx.json` to the script
+
+#### Scenario: Lookup under the scoped name
+- **WHEN** the publish script runs for version 0.1.0
+- **THEN** its first npm call is `npm view @brunosouzas/stackledger@0.1.0 dist --json`, and no npm call names the unscoped `stackledger@0.1.0`

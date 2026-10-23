@@ -59,7 +59,7 @@ describe('package contents from a clean checkout', () => {
 
   test('SBOM product identity and required packages match the packed production shrinkwrap', () => {
     const packed = pack(checkout, output, cache);
-    const extracted = join(output, 'sbom-extracted', 'stackledger');
+    const extracted = join(output, 'sbom-extracted', '@brunosouzas', 'stackledger');
     mkdirSync(extracted, { recursive: true });
     const untar = spawnSync('tar', ['-xzf', join(output, packed.filename), '--strip-components=1', '-C', extracted, 'package/package.json', 'package/npm-shrinkwrap.json'], { encoding: 'utf8' });
     expect(untar.status, untar.stderr).toBe(0);
@@ -68,7 +68,7 @@ describe('package contents from a clean checkout', () => {
     expect(result.status, result.stderr).toBe(0);
     const sbom = JSON.parse(result.stdout) as { metadata: { component: { name: string; version: string; purl?: string } }; components: { name: string; version: string }[] };
     const product = JSON.parse(readFileSync(join(extracted, 'package.json'), 'utf8')) as { name: string; version: string };
-    expect(sbom.metadata.component).toMatchObject({ name: product.name, version: product.version, purl: `pkg:npm/${product.name}@${product.version}` });
+    expect(sbom.metadata.component).toMatchObject({ name: product.name, version: product.version, purl: `pkg:npm/${product.name.replace('@', '%40')}@${product.version}` });
     const actual = new Set(sbom.components.map(component => `${component.name}@${component.version}`));
     const required = Object.entries(lock.packages).filter(([path, entry]) => path !== '' && !entry.optional)
       .map(([path, entry]) => `${path.slice(path.lastIndexOf('node_modules/') + 13)}@${entry.version}`);

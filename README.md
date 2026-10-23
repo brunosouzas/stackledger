@@ -32,7 +32,7 @@ stackledger is a small, local-first tool for people and small companies who want
 
 ## Status
 
-Early development; the latest release on npm is 0.4.0. The catalogue format, the `validate`, `map`, `build` and `report` commands, the `mcp` server, Mac discovery (`stackledger discover` and `stackledger drift`), the agent skills check and map (`stackledger skills validate` and `stackledger skills map`) and the Skills section of the site (`stackledger build --skills`) work from npm or from source (see [Usage](#usage)). The order of the rest is in the [roadmap](docs/roadmap.md).
+Early development; the latest release on npm is `@brunosouzas/stackledger` 0.4.1. The catalogue format, the `validate`, `map`, `build` and `report` commands, the `mcp` server, Mac discovery (`stackledger discover` and `stackledger drift`), the agent skills check and map (`stackledger skills validate` and `stackledger skills map`) and the Skills section of the site (`stackledger build --skills`) work from npm or from source (see [Usage](#usage)). The order of the rest is in the [roadmap](docs/roadmap.md).
 
 For a separate catalogue repository, copy the [pipeline template](examples/catalogue-repository/). Set up [protected hosting](docs/hosting.md) before the first deploy. The fictitious Northwind catalogue and its skill set run as a [demo](docs/demo.md) of the corporate mode, Software and Skills, at <https://stackledger-demo.pages.dev/>; it is protected by Cloudflare Access and only the owner can sign in, so for you it shows the sign-in page, which is the point. The [release guide](docs/release.md) covers npm publication, provenance and the SBOM.
 
@@ -84,11 +84,11 @@ stackledger does not call any AI model. Instead, a read-only [MCP](https://model
 
 ## Usage
 
-Use npm with Node.js 22.12 or later. Version 0.4.0 adds the home page (the map moves to `/map/`, the default title becomes `stackledger`, `spec.site.home`), whole station names on both maps and rule counts on the skills map, and skips hidden folders in a catalogue; 0.3.0 added the Skills section of `stackledger build` (`--skills`, `spec.skills.folders`, `stackledger-skills.yaml`); 0.2.0 added the agent skills commands (`skills validate`, `.stackledgerignore`, `skills map`); 0.1.0 has the catalogue commands only.
+Use npm with Node.js 22.12 or later. The package is `@brunosouzas/stackledger` from 0.4.1, the same code as 0.4.0; versions up to 0.4.0 were published as `stackledger`, now deprecated, and the command is `stackledger` in both. Version 0.4.0 adds the home page (the map moves to `/map/`, the default title becomes `stackledger`, `spec.site.home`), whole station names on both maps and rule counts on the skills map, and skips hidden folders in a catalogue; 0.3.0 added the Skills section of `stackledger build` (`--skills`, `spec.skills.folders`, `stackledger-skills.yaml`); 0.2.0 added the agent skills commands (`skills validate`, `.stackledgerignore`, `skills map`); 0.1.0 has the catalogue commands only.
 
 ```sh
-npx stackledger@0.4.0 --help
-npx stackledger@0.4.0 validate /path/to/catalogue
+npx @brunosouzas/stackledger@0.4.1 --help
+npx @brunosouzas/stackledger@0.4.1 validate /path/to/catalogue
 ```
 
 To run it from source (for development, or a change not yet on npm):
@@ -164,8 +164,8 @@ spec:
 On a laptop, with the catalogue and the skills repository side by side:
 
 ```sh
-npx stackledger build ./catalogue --out ./public              # reads ./ai-kit, from spec.skills.folders
-npx stackledger build ./catalogue --out ./public --skills ~/.claude/skills   # this folder instead
+npx @brunosouzas/stackledger build ./catalogue --out ./public              # reads ./ai-kit, from spec.skills.folders
+npx @brunosouzas/stackledger build ./catalogue --out ./public --skills ~/.claude/skills   # this folder instead
 ```
 
 In a pipeline, check out the skills repository next to the catalogue (so `../ai-kit` exists), or pass `--skills` with the path the checkout used. Pin one stackledger version everywhere, 0.3.0 or later: 0.2.0 reads `spec.skills` as an error. If the `Settings` has an error and sets `spec.skills`, the build stops with exit 1 and changes nothing published, rather than publish a site without its Skills section; fix it, or pass `--skills`.

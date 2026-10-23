@@ -1,6 +1,6 @@
 {
-  "name": "stackledger",
-  "version": "0.4.0",
+  "name": "@brunosouzas/stackledger",
+  "version": "0.4.1",
   "type": "module",
   "description": "Govern your software stack and licences, drawn as a metro map",
   "keywords": [

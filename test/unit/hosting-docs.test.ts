@@ -52,16 +52,18 @@ test('docs/release.md has each first-version bootstrap step', () => {
   const release = read('docs/release.md');
   const steps = [
     // npm account and the one-time token.
-    /two-factor authentication/i, /granular access token/i, /read and write/i, /all packages/i, /7 days/i,
+    /two-factor authentication/i, /granular access token/i, /read and write/i, /scope `@brunosouzas`/, /stage only/i, /7 days/i,
     /bypass two-factor authentication/i,
     // The environment, its reviewer and its secret.
     /environment `npm`/, /required reviewer/i, /`NPM_TOKEN`/, /environment secret/i,
     // Who may create release tags.
     /tag ruleset/i, /`v\*`/,
     // The release itself.
-    /git tag v0\.1\.0/, /git push origin v0\.1\.0/, /approve/i,
+    /git tag v0\.4\.1/, /git push origin v0\.4\.1/, /approve/i,
     // After the first version: trusted publishing only.
     /trusted publisher/i, /brunosouzas\/stackledger/, /`release\.yml`/, /disallow tokens/i, /revoke the token/i, /delete the (environment )?secret/i,
+    // The unscoped package points to the scoped one.
+    /npm deprecate stackledger "Moved to @brunosouzas\/stackledger"/,
     // What a release proves and how to check it.
     /npm audit signatures/, /provenance/i, /SBOM/, /cdx\.json/,
   ];

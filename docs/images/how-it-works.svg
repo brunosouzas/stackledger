@@ -43,8 +43,9 @@
   <text x="451.0" y="418.5" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">gitleaks, validate, build</text>
   <rect x="620" y="262" width="158" height="66" rx="14" fill="#0A1033"/>
   <rect x="612" y="254" width="158" height="66" rx="14" fill="#CB3837" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
-  <text x="691.0" y="283.5" font-size="19" font-weight="800" fill="#FFFFFF" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">npm registry</text>
-  <text x="691.0" y="307.5" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">stackledger</text>
+  <text x="691.0" y="274.0" font-size="19" font-weight="800" fill="#FFFFFF" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">npm registry</text>
+  <text x="691.0" y="298.0" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">@brunosouzas/</text>
+  <text x="691.0" y="317.0" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">stackledger</text>
   <rect x="38" y="550" width="160" height="76" rx="14" fill="#0A1033"/>
   <rect x="30" y="542" width="160" height="76" rx="14" fill="#3B4256" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
   <text x="110.0" y="576.5" font-size="19" font-weight="800" fill="#FFFFFF" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Reader</text>

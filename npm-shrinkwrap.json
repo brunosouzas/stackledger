@@ -1,12 +1,12 @@
 {
-  "name": "stackledger",
-  "version": "0.4.0",
+  "name": "@brunosouzas/stackledger",
+  "version": "0.4.1",
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
     "": {
-      "name": "stackledger",
-      "version": "0.4.0",
+      "name": "@brunosouzas/stackledger",
+      "version": "0.4.1",
       "license": "Apache-2.0",
       "dependencies": {
         "@fontsource/heebo": "5.3.0",

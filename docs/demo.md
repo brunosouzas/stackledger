@@ -13,7 +13,7 @@ The owner deploys by hand with the released package and the same handoff as the 
 
 You need Node.js 22.12 or later and a wrangler sign-in to the account that owns the `stackledger-demo` Pages project (`wrangler login`, or `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in the environment). Run the block from the top of this repository, on `main`, with no local changes.
 
-The package is installed into a temporary folder because, inside this repository, `npx stackledger@<version>` runs the local package of the same name instead of the released one.
+The package is installed into a temporary folder because, inside this repository, `npx @brunosouzas/stackledger@<version>` runs the local package of the same name instead of the released one.
 
 ```sh
 (
@@ -24,7 +24,7 @@ The package is installed into a temporary folder because, inside this repository
   [ "$commit" = "$(git rev-parse origin/main)" ] || { echo "HEAD is not origin/main" >&2; exit 1; }
   date=$(date -u +%F)
   out=$(mktemp -d)
-  npm install --prefix "$out/tool" --ignore-scripts --no-audit --no-fund stackledger@0.4.0 wrangler@4.151.3
+  npm install --prefix "$out/tool" --ignore-scripts --no-audit --no-fund @brunosouzas/stackledger@0.4.1 wrangler@4.151.3
   bin="$out/tool/node_modules/.bin"
   "$bin/stackledger" validate examples/northwind
   "$bin/stackledger" skills validate examples/northwind-skills
