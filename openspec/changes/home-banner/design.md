@@ -19,11 +19,13 @@
 
 `favicon.svg` is written by the same script with today's call, and must come out byte-identical. A unit test per file compares its shapes with the piece's, as "Favicon is the mark" does; so a package bump that changes a drawing fails until the script is run again.
 
-Rejected: drawing at build time in `src/site/build.ts`. It would add the design system's cover code to every `stackledger build` for an image that never changes between catalogues; the files are also easier to review as SVG in the pull request.
+Rejected: drawing at build time in `src/site/build.ts`. It would run the cover rendering on every `stackledger build` for an image that never changes between catalogues; the files are also easier to review as SVG in the pull request.
+
+Every written file is also checked for safety by a unit test: an `svg` root with the expected size, no `script`, `foreignObject`, `style` element or `style` attribute, no attribute starting with `on`, and no `href` or `url(…)` other than an internal `url(#id)`.
 
 ### 2. The banner spec
 
-`site/art/home-banner.json` is a cover spec with `"format": "banner"`, `"background": "navy"`, the rings of spike B (`cx` 860, `cy` 210, radius 40) and its pieces: three pipes (width 24, casing 10) in `illustration.accent`, `color.healthy` and `color.transitional`; ten `stationMarker`s (`r` 20, `inkScale` 1.6, `surface` dark, one interchange capsule and one `deprecated` stop); three `lineBadge`s (height 34, width 54, no `text`). The `ledgerMark` box at the right end of spike B is left out. `validateCoverSpec` must return no problem; the script refuses to write otherwise. Its `title` and `description` say what the picture shows, in English, since they go into the SVG's `title` and `desc`.
+`site/art/home-banner.json` is a cover spec with `"format": "banner"`, `"background": "navy"`, the rings of spike B (`cx` 860, `cy` 210, radius 40) and its pieces: three pipes (width 24, casing 10) in `illustration.accent`, `color.healthy` and `color.transitional`; nine `stationMarker`s (`r` 20, `inkScale` 1.6, `surface` dark; seven stops, one interchange capsule from `[920, 120]` to `[920, 300]` and one `deprecated` stop at `[920, 210]`); three `lineBadge`s (height 34, width 54, no `text`). The `ledgerMark` box at the right end of spike B is left out. `validateCoverSpec` must return no problem; the script refuses to write otherwise. Its `title` and `description` say what the picture shows, in English, since they go into the SVG's `title` and `desc`.
 
 ### 3. Where the banner sits
 
@@ -31,7 +33,7 @@ In `.home-banner`, after the `h1` and the text: `<img class="home-banner-art" sr
 
 ### 4. Link icons
 
-`icon` is optional on each link, one of the four names of `LINK_ICON_NAMES` in 0.3.0. With `icon`, the link's anchor starts with two `img` elements (`themed-light` and `themed-dark`, `alt=""`, 24 × 24 CSS pixels), then the title; the description stays after the anchor. Without `icon`, the link is drawn as today. The list of allowed names is the schema's own copy of the four names, so `stackledger validate` does not import the design system; a unit test checks it equals `LINK_ICON_NAMES`.
+`icon` is optional on each link, one of the four names of `LINK_ICON_NAMES` in 0.3.0. It travels from `src/schema.ts` through `src/site/data.ts` (`HomeLink` gains `icon?`, and `siteSettings()` copies it as it copies `description`) to the page; the schema's enum is the only way a value reaches the `src` of an `img`, so no catalogue text becomes a path. With `icon`, the link's anchor starts with two `img` elements (`themed-light` and `themed-dark`, `alt=""`, 24 × 24 CSS pixels), then the title; the description stays after the anchor. Without `icon`, the link is drawn as today. The list of allowed names is the schema's own copy of the four names, so `stackledger validate` does not import the design system; a unit test checks it equals `LINK_ICON_NAMES`.
 
 ### 5. Dark header mark
 
@@ -39,7 +41,7 @@ The header holds two marks: `favicon.svg` with `themed-light`, `brand-mark-dark.
 
 ### 6. Images the site writes
 
-"Brand mark" said the header mark is the only `img`. It becomes: the site's templates write `img` elements only for the header marks, the home banner and the link icons, all from the site's own folder with `alt=""`. "Description with HTML" (skills-site) checks that a hostile description adds no `img`: it now ignores those with the class `brand-mark`, as it ignores the header mark today.
+"Brand mark" said the header mark is the only `img`. It becomes: the site's templates write `img` elements only for the header marks, the home banner and the link icons, all from the site's own folder with `alt=""`. The tests use one allow-list of those images: an `img` is the site's own when its class is `brand-mark`, `home-banner-art` or `link-icon`, its `alt` is empty, it has no other attribute than `class`, `src`, `alt`, `width` and `height`, and its `src` ends in `favicon.svg`, `brand-mark-dark.svg`, `home-banner.svg` or `link-icons/<icon>-<light|dark>.svg`. "Description with HTML" removes those and finds no other `img` on any page.
 
 ### 7. Example
 
@@ -47,7 +49,7 @@ The header holds two marks: `favicon.svg` with `themed-light`, `brand-mark-dark.
 
 ## Risks
 
-- **Cover code in the published package.** Only `scripts/site-art.mjs` and the tests import `coverTree`; the CLI does not, so `stackledger build` loads nothing new.
+- **Cover code in the published package.** The map modules already import the package's root entry, which loads its cover module; this change adds no runtime call to it. Only `scripts/site-art.mjs` and the tests call `coverTree`. `site/art/` and `scripts/site-art.mjs` stay out of the published files: the build reads only `site/public/`.
 - **Package bumps.** A design system version that redraws a link icon or the banner makes the tests fail until the script runs; that is the intent.
 
 ## Test changes
@@ -56,5 +58,6 @@ The header holds two marks: `favicon.svg` with `themed-light`, `brand-mark-dark.
 | --- | --- | --- |
 | Header mark with a custom title, Site title, Default title | `test/integration/site.test.ts` | the brand link now holds two marks (light and dark) before the title |
 | Default title (Skills pages) | `test/integration/site-skills.test.ts` | same |
-| Description with HTML | `test/integration/site-skills.test.ts` | ignores the site's own images by class, not only the brand mark |
+| Description with HTML | `test/integration/site-skills.test.ts` | removes the site's own images by the allow-list of §6, not only the brand mark |
+| Map canvases and symbols in both themes | `test/browser/site.spec.ts` (existing theme tests) | must still pass with `display: revert`; a check that the map canvas and a legend symbol are block-level in both themes, by system preference and by the switch |
 | Two links | `test/integration/site.test.ts` | unchanged: links without `icon` keep today's markup |

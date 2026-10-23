@@ -63,6 +63,14 @@ When `spec.site.home.links` is set, the home page SHALL show a `Links` list afte
 - **WHEN** each file in `site/public/link-icons/` is read
 - **THEN** there are eight, one per icon and surface, each a 46 × 46 SVG whose shapes equal those of `linkIcon({ icon, x: 0, y: 0, surface })`
 
+#### Scenario: Site art is inert
+- **WHEN** `home-banner.svg`, `brand-mark-dark.svg` and each link icon are read
+- **THEN** none holds a `script`, `foreignObject` or `style` element, a `style` attribute, an attribute starting with `on`, or an `href` or `url(…)` other than an internal `url(#id)`
+
+#### Scenario: Icon with broken settings
+- **WHEN** the `Settings` has a link with `icon: github` and an error elsewhere
+- **THEN** the home has no `Links` heading and no link icon
+
 ### Requirement: Brand mark
 The favicon SHALL be the design system's `ledgerMark` at size 32 in a 32 × 32 SVG. The header SHALL show the mark before the site title as decorative images (`alt=""`) loaded from the site's own folder: `favicon.svg` in the light theme, and `brand-mark-dark.svg`, the `ledgerMark` drawn for the dark surface, in the dark theme. The site's templates SHALL write `img` elements only for the header marks, the home banner and the home link icons.
 

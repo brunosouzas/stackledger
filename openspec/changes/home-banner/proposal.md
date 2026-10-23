@@ -29,7 +29,7 @@ None.
 ## Impact
 
 - `package.json`, `npm-shrinkwrap.json`: design system 0.3.0.
-- `src/schema.ts` (link `icon`), `site/src/pages/index.astro`, `site/src/components/Header.astro`, `site/src/styles/pages.css`, `site/src/styles/base.css` (themed images), a new `scripts/site-art.mjs`, new files in `site/public/` (`home-banner.svg`, `brand-mark-dark.svg`, `link-icons/<name>-light.svg` and `-dark.svg`).
+- `src/schema.ts` (link `icon`), `src/site/data.ts` (`HomeLink.icon`), `site/src/pages/index.astro`, `site/src/components/Header.astro`, `site/src/styles/pages.css`, `site/src/styles/base.css` (themed images), a new `scripts/site-art.mjs`, new files in `site/public/` (`home-banner.svg`, `brand-mark-dark.svg`, `link-icons/<name>-light.svg` and `-dark.svg`).
 - `examples/northwind/stackledger.yaml`: fictitious home text and links with icons, for the screenshots.
 - Tests: `test/unit/site-brand.test.ts`, `test/integration/site.test.ts`, `test/integration/site-skills.test.ts`, `test/browser/site.spec.ts`, the catalogue schema tests. README images `site-home.png` and any other that shows the header.
 

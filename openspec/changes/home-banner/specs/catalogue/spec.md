@@ -28,7 +28,7 @@
 - **THEN** it has no problem
 
 #### Scenario: Unknown link icon
-- **WHEN** `links[0]` has `icon: twitter`, and in a second document `icon: GitHub`
+- **WHEN** `links[0]` has `icon: twitter`, in a second document `icon: GitHub`, and in a third `icon: "../favicon"`
 - **THEN** each gets an error on `spec.site.home.links[0].icon`
 
 #### Scenario: Icon names match the design system
