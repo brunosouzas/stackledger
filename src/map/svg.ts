@@ -182,7 +182,8 @@ function headerLayer(geometry: MapGeometry, theme: Theme, paint: Painter): strin
 function legendSymbol(symbol: string, centre: Point, theme: Theme, paint: Painter): string {
   if (symbol === 'interchange') return paint.discSticker(centre, 6, theme.station);
   if (symbol === 'licence' || symbol === 'licence to buy') return paint.licence(centre, symbol === 'licence to buy');
-  if (symbol === 'number of rules') return paint.ruleCount({ text: '3', box: { x: centre[0] - 8, y: centre[1] - 8, w: 16, h: 16 } });
+  // A little smaller than on the map, so the dark theme's rim and shadow stay inside the 24 x 24 symbol.
+  if (symbol === 'number of rules') return paint.ruleCount({ text: '3', box: { x: centre[0] - 7.5, y: centre[1] - 7.5, w: 15, h: 15 } });
   if (symbol === 'suggested position') {
     return paint.circle(centre, 9, { fill: 'none', stroke: theme.muted, 'stroke-width': 1.5, 'stroke-dasharray': '4 3' });
   }

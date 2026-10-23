@@ -147,6 +147,14 @@ test('Shared rule ID', () => {
 test('Rule of a playbook', () => {
   expect(html(out, 'full', 'rules')).toMatch(/<code>REL-1<\/code>[\s\S]*?href="\.\.\/playbooks\/release\/"/);
 });
+// metro-map "Legend of a skills map", as the site shows it: the symbols are listed under the map.
+test('Legend of a skills map on the site', () => {
+  const symbols = /<ul class="map-symbols">([\s\S]*?)<\/ul>/.exec(html(out, 'full', 'skill-map'))![1]!;
+  const labels = ['Interchange', 'Number of rules', 'Suggested position'];
+  for (const label of labels) expect(symbols).toContain(label);
+  expect(labels.map(label => symbols.indexOf(label))).toEqual([...labels.map(label => symbols.indexOf(label))].sort((a, b) => a - b));
+  expect(symbols).not.toContain('Licence');
+});
 test('Relation error keeps the page', () => {
   expect(html(out, 'full', 'skills')).toContain('href="../playbooks/release/"'); expect(html(out, 'full', 'playbooks/release')).not.toContain('ghost');
 });
