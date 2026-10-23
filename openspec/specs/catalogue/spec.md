@@ -566,7 +566,7 @@ The catalogue walk SHALL skip, without a problem and before checking that it can
 - **THEN** the link is not followed and gets the link warning, as any other link
 
 ### Requirement: Home settings
-`spec.site.home` MAY have `text`, a non-empty string of at most 200 characters, and `links`, a list of 1 to 20 mappings, each with `title` (non-empty, at most 60 characters), `url` (at most 2,048 characters; an `https:` or `http:` WHATWG URL with a host, no user name or password, and no space, control character, `<`, `>`, quote or backtick), optionally `description` (non-empty, at most 200 characters) and optionally `icon` (one of `github`, `website`, `linkedin` and `email`). Any other field under `spec.site.home` or in a link, and any other `icon` value, SHALL be an error on its path.
+`spec.site.home` MAY have `text`, a non-empty string of at most 200 characters, and `links`, a list of 1 to 20 mappings, each with `title` (non-empty, at most 60 characters), `url` (at most 2,048 characters; an `https:` or `http:` WHATWG URL with a host, no user name or password, and no space, control character, `<`, `>`, quote or backtick), optionally `description` (non-empty, at most 200 characters) and `icon`. Any other field under `spec.site.home` or in a link SHALL be an error on its path.
 
 #### Scenario: Home text and links
 - **WHEN** `spec.site.home` has `text: Northwind tools` and `links` with `{ title: Articles, url: "https://example.org/articles/", description: What we write }`
@@ -587,6 +587,9 @@ The catalogue walk SHALL skip, without a problem and before checking that it can
 #### Scenario: Unknown home field
 - **WHEN** `spec.site.home` has `image`
 - **THEN** it gets an error on `spec.site.home.image`
+
+### Requirement: Home link icon setting
+A home link's `icon` SHALL be one of `github`, `website`, `linkedin` and `email`, the link icon names of `@brunosouzas/design-system`; any other value SHALL be an error on its path.
 
 #### Scenario: Link icon
 - **WHEN** `links[0]` has `icon: github` and `links[1]` has `icon: website`

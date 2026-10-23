@@ -211,7 +211,7 @@ The home page SHALL have no sub-navigation (overriding "Layout" for this page), 
 - **THEN** it has no sub-navigation, no header link has `aria-current`, and its `title` element is the site title, without a page name before it
 
 ### Requirement: Home links
-When `spec.site.home.links` is set, the home page SHALL show a `Links` list after the cards, in the order given, each item an anchor to its `url` with its `title` as text and its `description`, when set, after it; every anchor SHALL carry `rel="noopener noreferrer"` and no `target`. A link with `icon` SHALL start its anchor with that icon: two decorative `img` elements (`alt=""`) from the site's own `link-icons/` folder, `<icon>-light.svg` shown in the light theme and `<icon>-dark.svg` in the dark one. Without links there is no `Links` heading. When the `Settings` in use has an error, there is no `Links` heading and the banner shows the default text.
+When `spec.site.home.links` is set, the home page SHALL show a `Links` list after the cards, in the order given, each item an anchor to its `url` with its `title` as text and its `description`, when set, after it; every anchor SHALL carry `rel="noopener noreferrer"` and no `target`. A link with `icon` starts with that icon ("Home link icons"). Without links there is no `Links` heading. When the `Settings` in use has an error, there is no `Links` heading and the banner shows the default text.
 
 #### Scenario: Two links
 - **WHEN** `spec.site.home.links` lists `Articles` (`https://example.org/articles/`, description `What I write`) then `Team wiki` (`http://wiki.example.org/`)
@@ -225,6 +225,17 @@ When `spec.site.home.links` is set, the home page SHALL show a `Links` list afte
 - **WHEN** a link's title is `<script>alert(1)</script>`
 - **THEN** the home shows that text literally and holds no `script` element from it
 
+#### Scenario: Site art is inert
+- **WHEN** `home-banner.svg`, `brand-mark-dark.svg` and each link icon are read
+- **THEN** none holds a `script`, `foreignObject` or `style` element, a `style` attribute, an attribute starting with `on`, or an `href` or `url(…)` other than an internal `url(#id)`
+
+#### Scenario: Icon with broken settings
+- **WHEN** the `Settings` has a link with `icon: github` and an error elsewhere
+- **THEN** the home has no `Links` heading and no link icon
+
+### Requirement: Home link icons
+A home link with `icon` SHALL start its anchor with that icon: two decorative `img` elements (`alt=""`) from the site's own `link-icons/` folder, `<icon>-light.svg` shown in the light theme and `<icon>-dark.svg` in the dark one, each the design system's `linkIcon` for that surface.
+
 #### Scenario: Link with an icon
 - **WHEN** `spec.site.home.links` lists `Source` (`https://github.example.com/northwind/`, `icon: github`) then `Blog` (`https://blog.example.com/`, no icon)
 - **THEN** the anchor of `Source` holds `img` elements with `alt=""` and relative `src` ending in `link-icons/github-light.svg` and `link-icons/github-dark.svg`, before the text `Source`, and the anchor of `Blog` holds no `img`
@@ -236,14 +247,6 @@ When `spec.site.home.links` is set, the home page SHALL show a `Links` list afte
 #### Scenario: Link icon files are the design system's
 - **WHEN** each file in `site/public/link-icons/` is read
 - **THEN** there are eight, one per icon and surface, each a 46 × 46 SVG whose shapes equal those of `linkIcon({ icon, x: 0, y: 0, surface })`
-
-#### Scenario: Site art is inert
-- **WHEN** `home-banner.svg`, `brand-mark-dark.svg` and each link icon are read
-- **THEN** none holds a `script`, `foreignObject` or `style` element, a `style` attribute, an attribute starting with `on`, or an `href` or `url(…)` other than an internal `url(#id)`
-
-#### Scenario: Icon with broken settings
-- **WHEN** the `Settings` has a link with `icon: github` and an error elsewhere
-- **THEN** the home has no `Links` heading and no link icon
 
 ### Requirement: Site tokens from the design system
 The colour, font-size and heading variables of "Look and theme" SHALL read the `site` variables of `@brunosouzas/design-system` (`--ds-site-*`), which the build ships in the site's own stylesheet. The accent, the focus colour and the colour on primary are stackledger's own and stay literal.
