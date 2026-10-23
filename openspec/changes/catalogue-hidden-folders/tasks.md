@@ -11,4 +11,4 @@
 
 ## 2. Documentation
 
-- [ ] 2.1 `docs/catalogue-format.md`: the skipped folders, and a note that releases after 0.3.0 stop reading hidden folders (the repository has no CHANGELOG; the next release's text repeats it). `examples/catalogue-repository/README.md`: keep `catalog/`, and reword the reason, since hidden folders are now skipped anyway. Verify: `test/integration/docs.test.ts`, `openspec validate --all --strict --no-interactive`, `git diff --check`.
+- [ ] 2.1 `docs/catalogue-format.md`: the skipped folders, and a note that releases after 0.3.0 stop reading hidden folders (the repository has no CHANGELOG; the next release's text repeats it). `examples/catalogue-repository/README.md`: keep `catalog/` and its reason, adding "(needed up to 0.3.0, which the template pins; later releases skip hidden folders)". Verify: `test/integration/docs.test.ts`, `openspec validate --all --strict --no-interactive`, `git diff --check`.

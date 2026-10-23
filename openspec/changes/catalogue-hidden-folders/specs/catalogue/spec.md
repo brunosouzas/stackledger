@@ -18,7 +18,7 @@ The catalogue SHALL be every regular file ending in `.yaml` or `.yml` under the 
 ## ADDED Requirements
 
 ### Requirement: Skipped folders
-The catalogue walk SHALL skip, without a problem and before checking that it can be read, every folder below the given folder whose name starts with `.` or is `node_modules`. The given folder is read whatever its name. Files whose name starts with `.` are read as any other file. A symbolic link is checked before its name: a link named with a leading `.` still gets the warning of "Links are not followed".
+The catalogue walk SHALL skip, without a problem and before checking that it can be read, every folder below the given folder whose name starts with `.` or is `node_modules`; this comes before "Unreadable and oversized files". The given folder is read whatever its name. Files whose name starts with `.` are read as any other file. A symbolic link is checked before its name: a link named with a leading `.` still gets the warning of "Links are not followed".
 
 #### Scenario: Pipeline folder in a catalogue repository
 - **WHEN** the folder holds `.github/workflows/stackledger.yml` (a workflow, with no `kind`), `team/.config/z.yaml` and a valid `a.yaml`
