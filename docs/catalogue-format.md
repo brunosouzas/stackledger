@@ -26,7 +26,7 @@ Positions are one-based. Values point at their value; secret keys, unknown field
 
 ## Files and document order
 
-- Folders whose name starts with `.` (`.git`, `.github`, `.vscode`…) and `node_modules` folders are skipped, as are non-YAML files. The folder you pass is read whatever its name, and a YAML file whose own name starts with `.` is read. Up to 0.3.0 the only hidden folder skipped was `.git`, so a catalogue kept at the top of a repository read `.github/workflows/*.yml` and reported `kind is required`; later releases skip every hidden folder.
+- Folders whose name starts with `.` (`.git`, `.github`, `.vscode`…) and `node_modules` folders are skipped, as are non-YAML files. The folder you pass is read whatever its name, and a YAML file whose own name starts with `.` is read. Up to 0.3.0 the only hidden folder skipped was `.git`, so a catalogue kept at the top of a repository read `.github/workflows/*.yml` and reported `kind is required`; from 0.4.0, every hidden folder is skipped.
 - A file named exactly `stackledger-skills.yaml` is never read: it is a [skills map file](skills.md#the-skills-map-file), so a skills repository can hold the catalogue. Since 0.3.0; a catalogue that used this name for its own documents must rename the file.
 - Every symbolic link gets a warning and is never followed, including broken links and links inside the folder.
 - Files exceeding 1 MiB get an error without being read. Unreadable files or subfolders get errors; other files still run.

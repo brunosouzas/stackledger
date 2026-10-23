@@ -7,7 +7,8 @@ const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta
 test('Deployment documentation: npm once released, template, hosting, release rule and roadmap', () => {
   const readme = read('README.md');
   for (const text of ['npx stackledger@0.4.0', 'examples/catalogue-repository/', 'docs/hosting.md', 'docs/release.md']) expect(readme).toContain(text);
-  expect(readme).toMatch(/not published|not released|not yet released/i);
+  // The README no longer says the tool is unreleased: it is on npm.
+  expect(readme).not.toMatch(/not published|not released|not yet released/i);
   const agents = read('AGENTS.md');
   expect(agents).toContain('`catalogue-deployment`');
   expect(agents).toMatch(/releases only via.*tag.*owner-approved environment/i);
