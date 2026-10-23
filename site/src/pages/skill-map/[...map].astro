@@ -28,9 +28,9 @@ const { lines, zones, symbols } = skills.map;
     }
     <div class="map-tools" data-map-tools hidden>
       <div class="map-zoom" role="group" aria-label="Zoom">
-        <button type="button" class="btn" data-zoom="in" aria-label="Zoom in">+</button>
-        <button type="button" class="btn" data-zoom="out" aria-label="Zoom out">−</button>
-        <button type="button" class="btn" data-zoom="reset">Reset</button>
+        <button type="button" class="btn" data-zoom="in" aria-label="Zoom in"><span class="icon" set:html={site.icons.zoomIn} /></button>
+        <button type="button" class="btn" data-zoom="out" aria-label="Zoom out"><span class="icon" set:html={site.icons.zoomOut} /></button>
+        <button type="button" class="btn" data-zoom="reset"><span class="icon" set:html={site.icons.reset} />Reset</button>
       </div>
       {
         zones.length > 0 && (

@@ -14,6 +14,7 @@
  * date with a 90-day window, and the full build returns the renewal calendar text (src/ics.ts) for
  * renewals.ics. Only FullSiteData has a `report` field, so staff data holding one is a type error.
  */
+import { siteIcons, type IconName } from './ui-icons.js';
 import { compareRefs } from '../identity.js';
 import { buildGraph, impact, linesOf, summary, type Graph, type Item } from '../graph.js';
 import { buildMapModel, type MapLine, type MapModel } from '../map/model.js';
@@ -66,6 +67,8 @@ export interface ReportPage {
 }
 export interface HomeLink { title: string; url: string; description?: string; icon?: (typeof HOME_LINK_ICONS)[number] }
 interface SiteBase {
+  /** Interface icons inlined in buttons (src/site/ui-icons.ts). */
+  icons: Record<IconName, string>;
   version: string; title: string; colors: Partial<Record<SiteColorName, string>>;
   /** The home page's banner text and links (catalogue-site, Home page and Home links). */
   home: { text: string; links: HomeLink[] };
@@ -275,6 +278,7 @@ export function buildSiteData(catalogue: Catalogue, view: ViewName, version: str
   const rows = [...components, ...licences].sort((one, two) => compareRefs(one.ref, two.ref)).map(item => row(item, owners));
   const settings = siteSettings(catalogue);
   const base: SiteBase = {
+    icons: siteIcons(),
     version,
     ...settings,
     map: {
