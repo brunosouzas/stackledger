@@ -17,7 +17,7 @@ Levels: U unit, I integration. Every scenario has one test named after it. Tests
 ## 0. Evidence for gate 1
 
 - [x] 0.1 Spike outside the branch: arcs of radius 0, 16, 24 and 32 on the Northwind software map (light, dark, phone width) and skills map, in one contact sheet (`~/.hermes/spikes/design-system/round-bends/contact-sheet.png`). Verify: sheet looked at; the owner chose 32.
-- [ ] 0.2 Gate 1: the owner approves the spec. The code waits for the design system version with `map.bendRadius`.
+- [x] 0.2 Gate 1: the owner approves the spec (2026-10-23: bends at stations stay mitred, as in the spec). The code waits for the design system version with `map.bendRadius`.
 
 ## 1. Dependency and token
 
