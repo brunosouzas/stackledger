@@ -22,8 +22,8 @@
   --color-text-light: var(--ds-site-light-text-light);
   --color-on-primary: #ffffff;
 
-  --font-primary: "Heebo", system-ui, sans-serif;
-  --font-secondary: "Signika", system-ui, sans-serif;
+  --font-primary: var(--ds-site-font-primary);
+  --font-secondary: var(--ds-site-font-secondary);
 
   --text-base: var(--ds-site-font-size-base);
   --text-base-sm: var(--ds-site-font-size-base-small);
@@ -43,6 +43,8 @@
   /* The identity's ink frame (cards, buttons, chips): ink outline and hard shadow. */
   --frame-outline: var(--ds-outline-small) solid var(--ds-color-ink);
   --frame-shadow: var(--ds-shadow-small) var(--ds-shadow-small) 0 var(--ds-surface-light-shadow);
+  /* What a frame keeps when it is pressed down onto its shadow: nothing in light, the rim in dark. */
+  --frame-pressed: none;
 }
 
 :root[data-theme="dark"] {
@@ -61,6 +63,7 @@
 
   /* On a dark page the ink outline gets a light rim and the shadow turns indigo, as on the map. */
   --frame-shadow: 0 0 0 var(--ds-surface-dark-rim-width) var(--ds-surface-dark-rim), var(--ds-shadow-small) var(--ds-shadow-small) 0 var(--ds-surface-dark-shadow);
+  --frame-pressed: 0 0 0 var(--ds-surface-dark-rim-width) var(--ds-surface-dark-rim);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -79,5 +82,6 @@
     --color-on-primary: #040404;
 
     --frame-shadow: 0 0 0 var(--ds-surface-dark-rim-width) var(--ds-surface-dark-rim), var(--ds-shadow-small) var(--ds-shadow-small) 0 var(--ds-surface-dark-shadow);
+  --frame-pressed: 0 0 0 var(--ds-surface-dark-rim-width) var(--ds-surface-dark-rim);
   }
 }

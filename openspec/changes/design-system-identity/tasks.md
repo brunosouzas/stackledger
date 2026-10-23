@@ -20,35 +20,35 @@ Levels: U unit, I integration (built site), B browser (Playwright). Every scenar
 
 ## 0. Evidence for gate 1
 
-- [ ] 0.1 Build the Northwind example from `main` and from a throwaway prototype of this change (outside the branch), take the home, map, a software item, a journey, the skills map and an agent page in light and dark, and put them in a before and after contact sheet. Verify: both sheets opened and looked at; shown to the owner at gate 1.
+- [x] 0.1 Build the Northwind example from `main` and from a throwaway prototype of this change (outside the branch), take the home, map, a software item, a journey, the skills map and an agent page in light and dark, and put them in a before and after contact sheet. Verify: both sheets opened and looked at; shown to the owner at gate 1.
 
 ## 1. Dependency and tokens
 
-- [ ] 1.1 Add `@brunosouzas/design-system` `0.1.1`, the first version whose coordinate limit covers the map (design §10), as an exact production dependency and refresh `npm-shrinkwrap.json`. Verify: `npm ls @brunosouzas/design-system` shows that version; `test/unit/package-metadata.test.ts` and the package tests pass.
-- [ ] 1.2 Tests first: "Theme values are the tokens", "Light theme has no rim", "Dark shadow and rim" with `#EEF2FF`, "Custom ink is refused", "Other theme fields stay free". Verify: they fail on the branch base.
-- [ ] 1.3 `src/map/themes.ts` reads the tokens and gains `surface`; the renderers check a theme's ink against its surface (design §2, §2a). Verify: `npm test`.
+- [x] 1.1 Add `@brunosouzas/design-system` `0.1.1`, the first version whose coordinate limit covers the map (design §10), as an exact production dependency and refresh `npm-shrinkwrap.json`. Verify: `npm ls @brunosouzas/design-system` shows that version; `test/unit/package-metadata.test.ts` and the package tests pass.
+- [x] 1.2 Tests first: "Theme values are the tokens", "Light theme has no rim", "Dark shadow and rim" with `#EEF2FF`, "Custom ink is refused", "Other theme fields stay free". Verify: they fail on the branch base.
+- [x] 1.3 `src/map/themes.ts` reads the tokens and gains `surface`; the renderers check a theme's ink against its surface (design §2, §2a). Verify: `npm test`.
 
 ## 2. Piece writer
 
-- [ ] 2.1 Tests first: "Stop drawn by the piece", "Piece node outside the allow-list", "Piece text has no font of its own", "Far station drawn by the piece" (whole map, both themes). Verify: they fail.
-- [ ] 2.2 `src/map/pieces.ts`: write a piece's `{ body, text }` node tree with `tag()`, leaving out `font-family`. Verify: `npm test`.
+- [x] 2.1 Tests first: "Stop drawn by the piece", "Piece node outside the allow-list", "Piece text has no font of its own", "Far station drawn by the piece" (whole map, both themes). Verify: they fail.
+- [x] 2.2 `src/map/pieces.ts`: write a piece's `{ body, text }` node tree with `tag()`, leaving out `font-family`. Verify: `npm test`.
 
 ## 3. Map
 
-- [ ] 3.1 Tests first: "Legend interchange is a capsule" (no circle, every shape grown by half its stroke inside 24 × 24); rewrite "Example map" to compare line paths, marker centres and label positions parsed from the 0.2.0 fixtures; migrate "Legend badges fit long codes without covering the line sample" to the sample `path` (design §11). Verify: the capsule test fails; the rewritten "Example map" passes on the base.
-- [ ] 3.2 `src/map/svg.ts`: markers, lines, terminal and legend badges, rule counts and the legend's interchange through the pieces; licence marker, renewal ring, halo, zones, title band and legend panel stay local (design §3). Verify: `npm test`.
+- [x] 3.1 Tests first: "Legend interchange is a capsule" (no circle, every shape grown by half its stroke inside 24 × 24); rewrite "Example map" to compare line paths, marker centres and label positions parsed from the 0.2.0 fixtures; migrate "Legend badges fit long codes without covering the line sample" to the sample `path` (design §11). Verify: the capsule test fails; the rewritten "Example map" passes on the base.
+- [x] 3.2 `src/map/svg.ts`: markers, lines, terminal and legend badges, rule counts and the legend's interchange through the pieces; licence marker, renewal ring, halo, zones, title band and legend panel stay local (design §3). Verify: `npm test`.
 
 ## 4. Diagrams
 
-- [ ] 4.1 Tests first: "Edges point right", "Strip interchange is a capsule", "Blank title" (unit and integration), "Resource without a shadow" (title centred), "Diagram of a skill" (edge head), "Long playbook name fits", "Name with only control characters"; migrate "Strip line and stops" to pipe paths and "Terminal badge over an end interchange" to the capsule's bounds, failing when no marker shape is found. Verify: the new tests fail; the migrated ones fail only where the shape changed.
-- [ ] 4.2 `strip.ts`, `neighbourhood.ts`, `relations.ts` through the pieces (design §3 to §5, §9). Verify: `npm test`.
+- [x] 4.1 Tests first: "Edges point right", "Strip interchange is a capsule", "Blank title" (unit and integration), "Resource without a shadow" (title centred), "Diagram of a skill" (edge head), "Long playbook name fits", "Name with only control characters"; migrate "Strip line and stops" to pipe paths and "Terminal badge over an end interchange" to the capsule's bounds, failing when no marker shape is found. Verify: the new tests fail; the migrated ones fail only where the shape changed.
+- [x] 4.2 `strip.ts`, `neighbourhood.ts`, `relations.ts` through the pieces (design §3 to §5, §9). Verify: `npm test`.
 
 ## 5. Site
 
-- [ ] 5.1 Tests first: "Favicon is the mark", "Header mark with a custom title", "Palette from the design system", "Accent stays stackledger's", "Card frame in light", "Card frame in dark", "Focus still visible"; update "Description with HTML". Verify: they fail.
-- [ ] 5.2 `src/site/build.ts` copies the package's `tokens.css`; `tokens.css` reads `--ds-site-*`; `base.css` and `pages.css` get the ink frame; `Header.astro` shows the mark; `favicon.svg` is the `ledgerMark` (design §6 to §8). Verify: `npm run build && npm test`, `npm run test:browser`.
+- [x] 5.1 Tests first: "Favicon is the mark", "Header mark with a custom title", "Palette from the design system", "Accent stays stackledger's", "Card frame in light", "Card frame in dark", "Focus still visible"; update "Description with HTML". Verify: they fail.
+- [x] 5.2 `src/site/build.ts` copies the package's `tokens.css`; `tokens.css` reads `--ds-site-*`; `base.css` and `pages.css` get the ink frame; `Header.astro` shows the mark; `favicon.svg` is the `ledgerMark` (design §6 to §8). Verify: `npm run build && npm test`, `npm run test:browser`.
 
 ## 6. Images and documentation
 
-- [ ] 6.1 Build the Northwind example site again from the branch, take the same pages in both themes, look at each, and regenerate the README images that changed (`docs/images/site-home.png`, `site-map-light.png`, `site-map-dark.png`, and any other in `docs/images/` that shows a changed page). Verify: images opened and checked.
-- [ ] 6.2 Update `README.md` (dependency, images), `docs/map.md`, `docs/site.md` and `docs/roadmap.md`. Verify: `test/integration/docs.test.ts`, `openspec validate --all --strict --no-interactive`, `git diff --check`.
+- [x] 6.1 Build the Northwind example site again from the branch, take the same pages in both themes, look at each, and regenerate the README images that changed (`docs/images/site-home.png`, `site-map-light.png`, `site-map-dark.png`, and any other in `docs/images/` that shows a changed page). Verify: images opened and checked.
+- [x] 6.2 Update `README.md` (dependency, images), `docs/map.md`, `docs/site.md` and `docs/roadmap.md`. Verify: `test/integration/docs.test.ts`, `openspec validate --all --strict --no-interactive`, `git diff --check`.

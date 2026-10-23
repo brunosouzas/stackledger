@@ -86,8 +86,15 @@ export function checkInk(theme: Theme): void {
   const own = fromTokens(theme.surface, theme.zoneOpacity, theme.zoneTitleTint);
   const fields = ['outline', 'outlineWidth', 'shadow', 'rim', 'casing', 'lineWidth'] as const;
   for (const field of fields) {
-    if (JSON.stringify(theme[field]) !== JSON.stringify(own[field])) throw new Error(`Theme ${field} must be the design system's for the ${theme.surface} surface`);
+    if (!sameValue(theme[field], own[field])) throw new Error(`Theme ${field} must be the design system's for the ${theme.surface} surface`);
   }
+}
+
+/** Equal by value: numbers, strings and booleans, or objects with the same keys holding equal values, in any order. */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return Object.is(a, b);
+  const keys = Object.keys(b);
+  return Object.keys(a).length === keys.length && keys.every(key => Object.hasOwn(a, key) && sameValue((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]));
 }
 
 /** How far a theme's ink reaches beyond plain geometry: the extra width of a line's casing, the

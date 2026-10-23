@@ -178,6 +178,8 @@ test('Palette from the design system', () => {
     expect(themeVar(site, '--ds-site-light-body').light).toMatch(/^#fff(?:fff)?$/);
     expect(themeVar(site, '--ds-site-dark-body').light).toBe('#1c1c1c');
     expect(themeVar(site, '--color-body')).toEqual({ light: 'var(--ds-site-light-body)', dark: 'var(--ds-site-dark-body)' });
+    expect(themeVar(site, '--font-primary').light).toBe('var(--ds-site-font-primary)');
+    expect(themeVar(site, '--font-secondary').light).toBe('var(--ds-site-font-secondary)');
   }
 });
 

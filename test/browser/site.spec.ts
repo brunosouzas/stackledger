@@ -264,6 +264,17 @@ test('Card frame in dark', async ({ page }) => {
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(28, 28, 28)');
 });
 
+test('Pressed chip keeps the dark rim', async ({ page }) => {
+  for (const [scheme, shadow] of [['light', 'none'], ['dark', 'rgb(238, 242, 255) 0px 0px 0px 1px']] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto('/full/map/');
+    const chip = page.locator('.line-chips .btn').first();
+    await chip.click();
+    await expect(chip).toHaveAttribute('aria-pressed', 'true');
+    expect((await frameOf(page, '.line-chips .btn[aria-pressed="true"]')).shadow, scheme).toBe(shadow);
+  }
+});
+
 test('Focus still visible', async ({ page }) => {
   for (const [scheme, accent] of [['light', 'rgb(0, 15, 159)'], ['dark', 'rgb(157, 168, 255)']] as const) {
     await page.emulateMedia({ colorScheme: scheme });

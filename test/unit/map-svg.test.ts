@@ -61,6 +61,10 @@ test('Custom ink is refused',()=>{
  expect(()=>renderSvg(geometry(),wide)).toThrow(/outlineWidth/);
  const flat=structuredClone(themes.light);flat.shadow.enabled=false;
  expect(()=>renderSvg(geometry(),flat)).toThrow(/shadow/);
+ // Same values in another key order are the same ink; a changed value is not.
+ const reordered={...themes.dark,shadow:{dy:themes.dark.shadow.dy,dx:themes.dark.shadow.dx,color:themes.dark.shadow.color,enabled:true}};
+ expect(()=>renderSvg(geometry(),reordered)).not.toThrow();
+ expect(()=>renderSvg(geometry(),{...reordered,shadow:{...reordered.shadow,color:'#4C5CB9'}})).toThrow(/shadow/);
 });
 test('Other theme fields stay free',()=>{
  const t=structuredClone(themes.light);t.zoneOpacity=0.5;
@@ -363,7 +367,8 @@ test('Legend interchange is a capsule', () => {
 // the site draw them. Only the painting may differ, so geometry is compared, not bytes.
 function placement(svg:string){
  const doc=parseSvg(svg),groups=Array.from(doc.getElementsByTagName('g'));
- const lines=groups.filter(g=>g.getAttribute('data-ref')?.startsWith('line:')).map(g=>[g.getAttribute('data-ref'),Array.from(g.getElementsByTagName('path')).map(p=>p.getAttribute('d'))[0]]);
+ // Every path of a line: its casing and its colour.
+ const lines=groups.filter(g=>g.getAttribute('data-ref')?.startsWith('line:')).map(g=>[g.getAttribute('data-ref'),Array.from(g.getElementsByTagName('path')).map(p=>p.getAttribute('d'))]);
  // A station's outlined face is its last white-or-muted shape with an ink stroke; its centre is cx,cy or the capsule's start.
  const stations=groups.filter(g=>g.getAttribute('data-ref')?.startsWith('component:')).map(g=>{
   // Licence markers (radius 5) and renewal rings (no fill) share the group; they are not the marker.
