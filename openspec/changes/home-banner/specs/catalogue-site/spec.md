@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Home banner art
-The home page's banner SHALL show, after its `h1` and text, the image `home-banner.svg` from the site's own folder as a decorative `img` (`alt=""`, `width` 1200, `height` 420), as wide as the container and at its own ratio. The file SHALL be the design system's banner (`coverTree`) of the spec `site/art/home-banner.json`: the navy background, three lines with stations and an interchange, and line badges with no letter. It is the same in both themes and on every site.
+The home page's banner SHALL show, after its `h1` and text, the image `home-banner.svg` from the site's own folder as a decorative `img` (`alt=""`, `width` 1200, `height` 420), as wide as the container and at its own ratio. The file SHALL be the design system's banner (`coverTree`) of the spec `scripts/home-banner.json`: the navy background, three lines with stations and an interchange, and line badges with no letter. It is the same in both themes and on every site.
 
 #### Scenario: Banner on the home
 - **WHEN** the home page of either site is opened
@@ -9,7 +9,7 @@ The home page's banner SHALL show, after its `h1` and text, the image `home-bann
 
 #### Scenario: Banner file is the design system's banner
 - **WHEN** `site/public/home-banner.svg` is read
-- **THEN** its shapes equal those of `coverTree` for `site/art/home-banner.json`, which `validateCoverSpec` accepts with no problem, and no `lineBadge` in the spec has a `text`
+- **THEN** its shapes equal those of `coverTree` for `scripts/home-banner.json`, which `validateCoverSpec` accepts with no problem, and no `lineBadge` in the spec has a `text`
 
 #### Scenario: Banner keeps its ratio
 - **WHEN** the home is shown 375 and 1440 CSS pixels wide

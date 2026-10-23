@@ -13,7 +13,7 @@
 
 | File | Drawing |
 | --- | --- |
-| `site/public/home-banner.svg` | `toSvg(coverTree(spec))` of `site/art/home-banner.json` |
+| `site/public/home-banner.svg` | `toSvg(coverTree(spec))` of `scripts/home-banner.json` |
 | `site/public/brand-mark-dark.svg` | `ledgerMark({ x: 0, y: 0, size: 32, surface: "dark" })` in a 32 × 32 SVG |
 | `site/public/link-icons/<icon>-<surface>.svg` | `linkIcon({ icon, x: 0, y: 0, surface })` in a 46 × 46 SVG, for the four icons and both surfaces |
 
@@ -25,7 +25,7 @@ Every written file is also checked for safety by a unit test: an `svg` root with
 
 ### 2. The banner spec
 
-`site/art/home-banner.json` is a cover spec with `"format": "banner"`, `"background": "navy"`, the rings of spike B (`cx` 860, `cy` 210, radius 40) and its pieces: three pipes (width 24, casing 10) in `illustration.accent`, `color.healthy` and `color.transitional`; nine `stationMarker`s (`r` 20, `inkScale` 1.6, `surface` dark; seven stops, one interchange capsule from `[920, 120]` to `[920, 300]` and one `deprecated` stop at `[920, 210]`); three `lineBadge`s (height 34, width 54, no `text`). The `ledgerMark` box at the right end of spike B is left out. `validateCoverSpec` must return no problem; the script refuses to write otherwise. Its `title` and `description` say what the picture shows, in English, since they go into the SVG's `title` and `desc`.
+`scripts/home-banner.json` is a cover spec with `"format": "banner"`, `"background": "navy"`, the rings of spike B (`cx` 860, `cy` 210, radius 40) and its pieces: three pipes (width 24, casing 10) in `illustration.accent`, `color.healthy` and `color.transitional`; nine `stationMarker`s (`r` 20, `inkScale` 1.6, `surface` dark; seven stops, one interchange capsule from `[920, 120]` to `[920, 300]` and one `deprecated` stop at `[920, 210]`); three `lineBadge`s (height 34, width 54, no `text`). The `ledgerMark` box at the right end of spike B is left out. `validateCoverSpec` must return no problem; the script refuses to write otherwise. Its `title` and `description` say what the picture shows, in English, since they go into the SVG's `title` and `desc`.
 
 ### 3. Where the banner sits
 
@@ -49,7 +49,7 @@ The header holds two marks: `favicon.svg` with `themed-light`, `brand-mark-dark.
 
 ## Risks
 
-- **Cover code in the published package.** The map modules already import the package's root entry, which loads its cover module; this change adds no runtime call to it. Only `scripts/site-art.mjs` and the tests call `coverTree`. `site/art/` and `scripts/site-art.mjs` stay out of the published files: the build reads only `site/public/`.
+- **Cover code in the published package.** The map modules already import the package's root entry, which loads its cover module; this change adds no runtime call to it. Only `scripts/site-art.mjs` and the tests call `coverTree`. `scripts/home-banner.json` and `scripts/site-art.mjs` stay out of the published files (`package.json` `files` and `scripts/pack-production.mjs` ship `site/` but not `scripts/`); a package test checks that the packed files hold the new SVGs in `site/public/` and nothing from `scripts/`.
 - **Package bumps.** A design system version that redraws a link icon or the banner makes the tests fail until the script runs; that is the intent.
 
 ## Test changes

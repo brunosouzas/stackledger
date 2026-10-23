@@ -10,6 +10,7 @@ Levels: U unit, I integration (built site), B browser (Playwright). Every scenar
 | catalogue-site | Banner on the home; Link with an icon; Icon with broken settings; Header mark with a custom title; Two links, Broken settings, no links, Hostile link text, Home in full and staff, Home text, Home without skills and Empty catalogue (unchanged) | `test/integration/site.test.ts` | I |
 | catalogue-site | The icon reaches the page data (`siteSettings()` keeps `icon`) | `test/integration/site.test.ts` ("Link with an icon" reads the built page, which only gets `icon` through `siteSettings()`) | U |
 | catalogue-site | Banner keeps its ratio; Link icon follows the theme and Mark follows the theme, each by system preference and by the theme switch; map canvas and legend symbol still block-level in both themes | `test/browser/site.spec.ts` | B |
+| package | The packed files hold `site/public/home-banner.svg`, `brand-mark-dark.svg` and `link-icons/`, and nothing from `scripts/` (design Risks) | `test/unit/package-metadata.test.ts` | U |
 | skills-site | Description with HTML (allow-list of design §6); Hostile script text and Bidirectional override (unchanged) | `test/integration/site-skills.test.ts` | I |
 
 ## 0. Evidence for gate 1
@@ -21,7 +22,7 @@ Levels: U unit, I integration (built site), B browser (Playwright). Every scenar
 
 - [ ] 1.1 Pin `@brunosouzas/design-system` 0.3.0, exact, production; refresh `npm-shrinkwrap.json`. Verify: `npm ls @brunosouzas/design-system`.
 - [ ] 1.2 Tests first: "Banner file is the design system's banner", "Link icon files are the design system's", "Dark mark is the dark ledgerMark", "Site art is inert", "Icon names match the design system". Verify: they fail.
-- [ ] 1.3 `site/art/home-banner.json` and `scripts/site-art.mjs` (design §1, §2); run it; `favicon.svg` unchanged. Verify: `npm test`; `git diff --stat site/public/favicon.svg` empty.
+- [ ] 1.3 `scripts/home-banner.json` and `scripts/site-art.mjs` (design §1, §2); run it; `favicon.svg` unchanged. Verify: `npm test`, including the package test; `git diff --stat site/public/favicon.svg` empty.
 
 ## 2. Settings
 
