@@ -75,7 +75,7 @@ test('Default title (Skills pages)', () => {
     for (const page of ['skills', 'skill-map', 'rules', 'skills/writer']) {
       const text = html(out, site, page);
       expect(text, `${site}/${page}`).toMatch(/<title>[^<]* \| stackledger<\/title>/);
-      expect(text, `${site}/${page}`).toMatch(/<a class="navbar-brand" href="[^"]*">stackledger<\/a>/);
+      expect(text, `${site}/${page}`).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark" src="(?:\.\/|(?:\.\.\/)+)favicon\.svg" alt="" width="28" height="28">stackledger<\/a>/);
     }
   }
 });
@@ -164,7 +164,7 @@ test.concurrent('Relative skills folder', async () => {
   for (const file of files(target)) expect(readFileSync(join(target, file), 'utf8'), file).not.toContain('northwind-kit');
 }, 180_000);
 test('Description with HTML', () => {
-  for (const file of files(join(out, 'full')).filter(file => file.endsWith('.html'))) expect(readFileSync(join(out, 'full', file), 'utf8'), file).not.toMatch(/<img\b/);
+  for (const file of files(join(out, 'full')).filter(file => file.endsWith('.html'))) expect(readFileSync(join(out, 'full', file), 'utf8').replace(/<img class="brand-mark" [^>]*>/g, ''), file).not.toMatch(/<img\b/);
   expect(html(out, 'full', 'skills/writer')).toContain('&lt;img src=x onerror=alert(1)&gt;');
 });
 test('Hostile script text', () => {

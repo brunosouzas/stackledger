@@ -244,6 +244,43 @@ test('Theme remembered', async ({ page }) => {
   await expect(page.locator('.diagram.themed-light')).toBeHidden();
 });
 
+// catalogue-site "Ink frame" and "Site tokens from the design system".
+const frameOf = (page: Page, selector: string) => page.locator(selector).first().evaluate(element => {
+  const style = getComputedStyle(element);
+  return { width: style.borderTopWidth, style: style.borderTopStyle, color: style.borderTopColor, shadow: style.boxShadow };
+});
+
+test('Card frame in light', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('/full/');
+  expect(await frameOf(page, '.card')).toEqual({ width: '3px', style: 'solid', color: 'rgb(10, 16, 51)', shadow: 'rgb(10, 16, 51) 4px 4px 0px 0px' });
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(255, 255, 255)');
+});
+
+test('Card frame in dark', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/full/');
+  expect(await frameOf(page, '.card')).toEqual({ width: '3px', style: 'solid', color: 'rgb(10, 16, 51)', shadow: 'rgb(238, 242, 255) 0px 0px 0px 1px, rgb(76, 92, 184) 4px 4px 0px 0px' });
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(28, 28, 28)');
+});
+
+test('Focus still visible', async ({ page }) => {
+  for (const [scheme, accent] of [['light', 'rgb(0, 15, 159)'], ['dark', 'rgb(157, 168, 255)']] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto('/full/map/');
+    const chips = page.locator('.line-chips .btn');
+    // Reach the second chip with the keyboard, so the browser treats the focus as keyboard focus.
+    await chips.first().focus();
+    await page.keyboard.press('Tab');
+    const outline = await chips.nth(1).evaluate(element => {
+      const style = getComputedStyle(element);
+      return { focused: element.matches(':focus-visible'), style: style.outlineStyle, width: style.outlineWidth, color: style.outlineColor };
+    });
+    expect(outline, scheme).toEqual({ focused: true, style: 'solid', width: '3px', color: accent });
+    expect((await frameOf(page, '.line-chips .btn')).width, scheme).toBe('3px');
+  }
+});
+
 test('The Reports page under the CSP', async ({ page }) => {
   const watched = await watch(page, '/full/');
   await page.goto('/full/');

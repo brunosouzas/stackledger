@@ -12,6 +12,7 @@ import { component, journey, positions, set, viewOf } from './map-helpers.js';
 import { licence, settings, checkFiles } from './helpers.js';
 import { applyView, resolveHidden } from '../../src/views.js';
 import { attributes, parseSvg, safe } from './svg-helpers.js';
+import { tokens } from '@brunosouzas/design-system/tokens';
 // The only attributes that may carry catalogue text (Safe SVG text).
 const textAttributes=new Set(['data-ref','data-line','data-zone']);
 const docs=()=>[component('a'),component('b'),journey('ship',['a','b']),positions({a:[0,0],b:[4,0]})];
@@ -41,11 +42,30 @@ test('Dark theme',()=>{const g=geometry(),svg=renderSvg(g,themes.dark);expect(th
 test('Themes are data, with casing and offset shadows on in both themes',()=>{
  for(const t of Object.values(themes)){expect(t.casing).toMatchObject({enabled:true,color:INK});expect(t.casing.extraWidth).toBeGreaterThan(0);expect(t.shadow.enabled).toBe(true);expect(t.shadow.dx).toBeGreaterThan(0);expect(t.shadow.dy).toBeGreaterThan(0);expect(t.outline).toBe(INK);expect(t.font).toBe('Lato, Helvetica Neue, Helvetica, Arial, sans-serif');}
  expect(themes.light.shadow.color).toBe(INK);expect(themes.dark.shadow.color).toBe('#4C5CB8');
- // Turning the hooks off removes casing and shadows: the renderer reads data, not theme names.
- const flat=structuredClone(themes.light);flat.casing.enabled=false;flat.shadow.enabled=false;flat.shadow.color='#123456';const plain=renderSvg(geometry(),flat);
- expect(plain).not.toContain('fill="#123456"');expect(plain).not.toContain(`stroke-width="${flat.lineWidth+flat.casing.extraWidth}"`);
- const t=structuredClone(themes.light);t.background='#ABCDEF';t.lineWidth=9;t.casing={enabled:true,color:'#0A1033',extraWidth:4};t.shadow={enabled:true,color:'#123456',dx:5,dy:6};
- const svg=renderSvg(geometry(),t);safe(svg);expect(svg).toContain('stroke="#0A1033" stroke-width="13"');expect(svg).toContain('fill="#123456"');expect(svg).not.toContain('transform=');expect(svg).toContain('fill="#ABCDEF"');
+});
+// metro-map "Design system tokens".
+test('Theme values are the tokens',()=>{
+ const d=tokens.surface.dark,t=themes.dark;
+ expect(t.surface).toBe('dark');expect(t.background).toBe(d.background);expect(t.shadow.color).toBe(d.shadow);expect(t.rim.width).toBe(d.rimWidth);
+ expect(t.outlineWidth).toBe(tokens.map.outline);expect(t.lineWidth).toBe(tokens.map.lineWidth);
+ expect([t.text,t.muted,t.grid,t.panel,t.rim.color]).toEqual([d.text,d.muted,d.grid,d.panel,d.rim]);
+ expect([t.casing.extraWidth,t.shadow.dx,t.shadow.dy]).toEqual([tokens.map.casing,tokens.map.shadow,tokens.map.shadow]);
+ expect([t.outline,t.station,t.badgeText,t.licence,t.renewal,t.accent]).toEqual([tokens.color.ink,tokens.color.white,tokens.color.white,tokens.color.transitional,tokens.color.blocked,tokens.color.caller]);
+});
+test('Light theme has no rim',()=>{
+ expect(tokens.surface.light.rimWidth).toBe(0);expect(themes.light.rim.enabled).toBe(false);expect(inkOf(themes.light).outline).toBe(tokens.map.outline);
+});
+// metro-map "Theme ink comes from the design system".
+test('Custom ink is refused',()=>{
+ const wide=structuredClone(themes.light);wide.outlineWidth=9;
+ expect(()=>renderSvg(geometry(),wide)).toThrow(/outlineWidth/);
+ const flat=structuredClone(themes.light);flat.shadow.enabled=false;
+ expect(()=>renderSvg(geometry(),flat)).toThrow(/shadow/);
+});
+test('Other theme fields stay free',()=>{
+ const t=structuredClone(themes.light);t.zoneOpacity=0.5;
+ const g=geometry([set(component('a'),'metadata.labels',{'stackledger/zone':'finance'}),component('b'),journey('ship',['a','b']),set(positions({a:[0,0],b:[4,0]}),'spec.zones',[{name:'finance',title:'Finance',color:'#9B0056'}])]);
+ expect(renderSvg(g,t)).toContain('opacity="0.5"');
 });
 const INK='#0A1033';
 // Two lines through `slack` make it an interchange; `a` and `b` stay ticks.
@@ -158,11 +178,11 @@ test('Shadow under an interchange',()=>{
 
 test('Dark shadow and rim',()=>{
  const svg=renderSvg(geometry(interchangeDocs()),themes.dark),doc=safe(svg);
- expect(svg).toContain('fill="#4C5CB8"');expect(svg).toContain('stroke="#EEF1FF"');expect(svg).not.toMatch(/transform|filter/);
+ expect(svg).toContain('fill="#4C5CB8"');expect(svg).toContain('stroke="#EEF2FF"');expect(svg).not.toMatch(/transform|filter/);
  // Ink stays the outline and casing; apart from the title band no shape is filled with it.
  for(const e of Array.from(doc.getElementsByTagName('*')))if(e.tagName!=='rect'||num(e,'height')!==64)expect(e.getAttribute('fill'),e.tagName).not.toBe(INK);
  const marker=shapes(groupOf(doc,'component:slack')).filter(e=>e.tagName!=='text');
- expect(marker.map(e=>e.getAttribute('fill'))).toEqual(['#4C5CB8','#EEF1FF','#FFFFFF']);
+ expect(marker.map(e=>e.getAttribute('fill'))).toEqual(['#4C5CB8','#EEF2FF','#FFFFFF']);
 });
 
 test('Light theme',()=>{
@@ -233,9 +253,11 @@ test('Legend badges fit long codes without covering the line sample',()=>{
  const g=geometry([component('a'),component('b'),journey('ship',['a','b'],'WWW'),positions({a:[0,0],b:[4,0]})]);
  const doc=parseSvg(renderSvg(g,themes.light)),inside=(e:any)=>Number(e.getAttribute('x'))>=g.legend.box.x;
  const badge=Array.from(doc.getElementsByTagName('rect')).filter(e=>e.getAttribute('fill')==='#FF0000'&&inside(e)).at(-1)!;
- const sample=Array.from(doc.getElementsByTagName('line')).find(e=>e.getAttribute('stroke')==='#FF0000'&&Number(e.getAttribute('x1'))>=g.legend.box.x)!;
+ // The legend's line sample is a pipe: its colour path starts at the first point of its `d`.
+ const start=(e:Element)=>Number(/^M(-?[\d.]+),/.exec(e.getAttribute('d')!)![1]);
+ const sample=Array.from(doc.getElementsByTagName('path')).find(e=>e.getAttribute('stroke')==='#FF0000'&&start(e)>=g.legend.box.x)!;
  const mapBadge=g.badges[0]!.box;expect(Number(badge.getAttribute('width'))).toBe(mapBadge.w);
- expect(Number(sample.getAttribute('x1'))).toBeGreaterThan(Number(badge.getAttribute('x'))+Number(badge.getAttribute('width')));
+ expect(start(sample)).toBeGreaterThan(Number(badge.getAttribute('x'))+Number(badge.getAttribute('width')));
 });
 test('The root namespace and role are fixed values',()=>{expect(()=>tag('svg',{xmlns:'http://example.com/other'})).toThrow(/namespace/);expect(()=>tag('svg',{role:'presentation'})).toThrow(/role/);});
 test('Zone titles are readable in both themes',()=>{
@@ -303,12 +325,54 @@ test('Legend symbols on their own', () => {
     for (const symbol of geometry().legend.symbols) {
       const doc = safe(renderSymbol(symbol, theme));
       expect(doc.documentElement.getAttribute('viewBox')).toBe('0 0 24 24');
-      expect(doc.getElementsByTagName('circle').length, symbol).toBeGreaterThan(0);
+      if (symbol !== 'interchange') expect(doc.getElementsByTagName('circle').length, symbol).toBeGreaterThan(0);
     }
   }
 });
-// metro-map "Software map unchanged": the example's SVGs must equal the ones the 0.2.0 engine drew
-// (recorded by test/fixtures/map-0.2.0/record.mjs from the 0.2.0 code), as `stackledger map` and the site draw them.
+/** Bounds of a symbol's shape, grown by half its stroke: circles, rects and the capsule path of stationMarker. */
+function bounds(e: any): [number, number, number, number] {
+  const half = Number(e.getAttribute('stroke-width') ?? 0) / 2;
+  const n = (name: string) => Number(e.getAttribute(name));
+  if (e.tagName === 'circle') return [n('cx') - n('r') - half, n('cy') - n('r') - half, n('cx') + n('r') + half, n('cy') + n('r') + half];
+  if (e.tagName === 'rect') return [n('x') - half, n('y') - half, n('x') + n('width') + half, n('y') + n('height') + half];
+  // Capsule: M p1 L p2 A r,r 0 0 0 p3 L p4 A r,r 0 0 0 p1; its axis runs from (p1+p4)/2 to (p2+p3)/2.
+  const d = e.getAttribute('d')!, r = Number(/A(-?[\d.]+),/.exec(d)![1]);
+  const [p1, p2, p3, p4] = d.replace(/A-?[\d.]+,-?[\d.]+ 0 0 0 /g, 'A ').match(/-?[\d.]+,-?[\d.]+/g)!.map(pair => pair.split(',').map(Number));
+  const a = [(p1![0]! + p4![0]!) / 2, (p1![1]! + p4![1]!) / 2], b = [(p2![0]! + p3![0]!) / 2, (p2![1]! + p3![1]!) / 2];
+  return [Math.min(a[0]!, b[0]!) - r - half, Math.min(a[1]!, b[1]!) - r - half, Math.max(a[0]!, b[0]!) + r + half, Math.max(a[1]!, b[1]!) + r + half];
+}
+// metro-map "Legend interchange symbol".
+test('Legend interchange is a capsule', () => {
+  for (const theme of Object.values(themes)) {
+    const doc = safe(renderSymbol('interchange', theme));
+    expect(doc.getElementsByTagName('circle')).toHaveLength(0);
+    const shapes = Array.from(doc.getElementsByTagName('*')).filter(e => ['circle', 'rect', 'path', 'polygon'].includes(e.tagName));
+    const face = shapes.at(-1)!;
+    expect(face.tagName).toBe('path');expect(face.getAttribute('stroke')).toBe(INK);
+    expect(face.getAttribute('d')!.match(/A/g)).toHaveLength(2);
+    const [x0, y0, x1, y1] = bounds(face);expect(y1 - y0).toBeGreaterThan(x1 - x0);
+    for (const shape of shapes) {
+      const [l, t, r, b] = bounds(shape);
+      expect(l, theme.background).toBeGreaterThanOrEqual(0);expect(t, theme.background).toBeGreaterThanOrEqual(0);
+      expect(r, theme.background).toBeLessThanOrEqual(24);expect(b, theme.background).toBeLessThanOrEqual(24);
+    }
+  }
+});
+// metro-map "Software map unchanged": the example's SVGs must place lines, station markers and labels where the
+// 0.2.0 engine did (recorded by test/fixtures/map-0.2.0/record.mjs from the 0.2.0 code), as `stackledger map` and
+// the site draw them. Only the painting may differ, so geometry is compared, not bytes.
+function placement(svg:string){
+ const doc=parseSvg(svg),groups=Array.from(doc.getElementsByTagName('g'));
+ const lines=groups.filter(g=>g.getAttribute('data-ref')?.startsWith('line:')).map(g=>[g.getAttribute('data-ref'),Array.from(g.getElementsByTagName('path')).map(p=>p.getAttribute('d'))[0]]);
+ // A station's outlined face is its last white-or-muted shape with an ink stroke; its centre is cx,cy or the capsule's start.
+ const stations=groups.filter(g=>g.getAttribute('data-ref')?.startsWith('component:')).map(g=>{
+  // Licence markers (radius 5) and renewal rings (no fill) share the group; they are not the marker.
+  const face=Array.from(g.children).filter(e=>['circle','path'].includes(e.tagName)&&e.getAttribute('stroke')==='#0A1033'&&e.getAttribute('fill')!=='none'&&e.getAttribute('r')!=='5').at(-1)!;
+  return [g.getAttribute('data-ref'),face.tagName==='circle'?[face.getAttribute('cx'),face.getAttribute('cy'),face.getAttribute('r')]:[face.getAttribute('d')]];
+ });
+ const labels=Array.from(doc.getElementsByTagName('text')).filter(t=>t.parentElement?.tagName==='g'&&!t.parentElement.getAttribute('data-ref')&&t.getAttribute('data-line')).map(t=>[t.textContent,t.getAttribute('x'),t.getAttribute('y')]);
+ return {lines,stations,labels};
+}
 test('Example map',async()=>{
  const { readFileSync } = await import('node:fs'); const { join } = await import('node:path');
  const { loadFolder } = await import('../../src/source.js'); const { validateLoaded } = await import('../../src/validate.js');
@@ -319,7 +383,9 @@ test('Example map',async()=>{
   const theme=themes[name],ink=chrome?inkOf(theme):widestInk(inkOf(themes.light),inkOf(themes.dark));
   const served=applyView(catalogue.served,view,resolveHidden(catalogue));
   const svg=renderSvg(layoutMap(buildMapModel(served,'2027-06-01'),chrome?theme.lineWidth:themes.light.lineWidth,ink),theme,{chrome});
-  expect(svg+'\n',`${view}-${name}${chrome?'':'-site'}`).toBe(readFileSync(join(fixtures,`${view}-${name}${chrome?'':'-site'}.svg`),'utf8'));
+  const recorded=placement(readFileSync(join(fixtures,`${view}-${name}${chrome?'':'-site'}.svg`),'utf8')),drawn=placement(svg);
+  expect(recorded.stations.length).toBeGreaterThan(10);expect(recorded.labels.length).toBeGreaterThan(10);
+  expect(drawn,`${view}-${name}${chrome?'':'-site'}`).toEqual(recorded);
  }
 });
 // metro-map "A cut label now wraps" and "Software map has no rule count", on the example catalogue.

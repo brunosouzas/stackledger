@@ -179,22 +179,85 @@ test('Neighbourhood boxes', () => {
   expect(safe(svg).documentElement.getAttribute('font-family')!.startsWith('Lato')).toBe(true);
 });
 
+/** Bounds of a marker shape grown by half its stroke: a circle, or the capsule path of stationMarker
+ * (M p1 L p2 A r,r 0 0 0 p3 L p4 A r,r 0 0 0 p1, its axis from (p1+p4)/2 to (p2+p3)/2). */
+function bounds(e: any): { left: number; top: number; right: number; bottom: number } {
+  const half = Number(e.getAttribute('stroke-width') ?? 0) / 2;
+  const n = (name: string) => Number(e.getAttribute(name));
+  if (e.tagName === 'circle') return { left: n('cx') - n('r') - half, top: n('cy') - n('r') - half, right: n('cx') + n('r') + half, bottom: n('cy') + n('r') + half };
+  expect(e.tagName).toBe('path');
+  const d = e.getAttribute('d')!, r = Number(/A(-?[\d.]+),/.exec(d)![1]);
+  const [p1, p2, p3, p4] = d.replace(/A-?[\d.]+,-?[\d.]+ 0 0 0 /g, 'A ').match(/-?[\d.]+,-?[\d.]+/g)!.map(pair => pair.split(',').map(Number));
+  const xs = [(p1![0]! + p4![0]!) / 2, (p2![0]! + p3![0]!) / 2], ys = [(p1![1]! + p4![1]!) / 2, (p2![1]! + p3![1]!) / 2];
+  return { left: Math.min(...xs) - r - half, top: Math.min(...ys) - r - half, right: Math.max(...xs) + r + half, bottom: Math.max(...ys) + r + half };
+}
+/** The marker shapes of a strip stop (circles or capsule paths); the test fails when there are none. */
+function markers(stop: any): any[] {
+  const found = shapesOf(stop).filter(item => item.tagName === 'circle' || item.tagName === 'path');
+  expect(found.length).toBeGreaterThan(0);
+  return found;
+}
+
 test('Strip line and stops', () => {
   const model = buildMapModel(interchangeView(), '');
   const input = { ...strip(model, model.lines.find(line => line.name === 'ship')!), color: '#FF0000' };
   const svg = renderStrip(input, themes.dark);
   expect(svg).not.toMatch(/transform|filter/);
   const all = groups(svg);
-  const pipe = shapesOf(all.find(group => group.getAttribute('data-line') === input.ref && !group.getAttribute('data-ref'))!).filter(item => item.tagName === 'line');
+  const pipe = shapesOf(all.find(group => group.getAttribute('data-line') === input.ref && !group.getAttribute('data-ref'))!).filter(item => item.tagName === 'path');
   expect(pipe.map(item => item.getAttribute('stroke'))).toEqual([INK, '#FF0000']);
   expect(Number(pipe[0]!.getAttribute('stroke-width'))).toBeGreaterThan(Number(pipe[1]!.getAttribute('stroke-width')));
   for (const ref of ['component:linear', 'component:slack']) {
-    const circles = shapesOf(all.find(group => group.getAttribute('data-ref') === ref)!).filter(item => item.tagName === 'circle');
-    expect(circles[0]!.getAttribute('fill')).toBe('#4C5CB8');
-    // Every stop is a white circle with an ink outline, as on the map; interchanges are larger.
-    expect(circles.at(-1)!.getAttribute('stroke')).toBe(INK);
-    expect(circles.at(-1)!.getAttribute('fill')).toBe('#FFFFFF');
-    expect(2 * Number(circles.at(-1)!.getAttribute('r'))).toBeGreaterThan(themes.dark.lineWidth + themes.dark.casing.extraWidth);
+    const shapes = markers(all.find(group => group.getAttribute('data-ref') === ref)!);
+    expect(shapes[0]!.getAttribute('fill')).toBe('#4C5CB8');
+    // Every stop is white with an ink outline, as on the map, and wider than the pipe.
+    const face = shapes.at(-1)!, box = bounds(face);
+    expect(face.getAttribute('stroke')).toBe(INK);
+    expect(face.getAttribute('fill')).toBe('#FFFFFF');
+    expect(box.right - box.left).toBeGreaterThan(themes.dark.lineWidth + themes.dark.casing.extraWidth);
+  }
+});
+
+// catalogue-site "Strip interchange".
+test('Strip interchange is a capsule', () => {
+  const model = buildMapModel(interchangeView(), '');
+  for (const theme of Object.values(themes)) {
+    const svg = renderStrip(strip(model, model.lines.find(line => line.name === 'ship')!), theme);
+    const all = groups(svg);
+    const face = markers(all.find(group => group.getAttribute('data-ref') === 'component:slack')!).at(-1)!;
+    expect(face.tagName).toBe('path');
+    const box = bounds(face);
+    expect(box.bottom - box.top).toBeGreaterThan(box.right - box.left);
+    // Centred on the line: the pipe's y is the capsule's middle.
+    const lineY = Number(/^M-?[\d.]+,(-?[\d.]+)/.exec(shapesOf(all.find(group => group.getAttribute('data-line') === 'line:ship' && !group.getAttribute('data-ref'))!).find(item => item.tagName === 'path')!.getAttribute('d')!)![1]);
+    expect((box.top + box.bottom) / 2).toBeCloseTo(lineY, 5);
+  }
+});
+
+// catalogue-site "Diagram style": arrows point right, their tips on the box to their right.
+test('Edges point right', () => {
+  const graph = graphOf([depends('forge', ['component:vault']), component('vault'), depends('editor', ['component:forge'])]);
+  for (const theme of Object.values(themes)) {
+    const svg = renderNeighbourhood(neighbourhood(graph, graph.items.get('component:forge')!), theme);
+    const all = boxes(svg);
+    const heads = Array.from(safe(svg).getElementsByTagName('polygon')).filter(polygon => polygon.getAttribute('fill') === theme.text);
+    const tips = heads.map(head => head.getAttribute('points')!.split(' ')[0]!.split(',').map(Number)).sort((a, b) => a[0]! - b[0]!);
+    expect(tips).toHaveLength(2);
+    const centre = (ref: string) => [all.get(ref)!.x, all.get(ref)!.y + 23];
+    expect(tips[0]).toEqual(centre('component:forge'));
+    expect(tips[1]).toEqual(centre('component:editor'));
+  }
+});
+
+// catalogue-site "Diagram box titles".
+test('Blank title', () => {
+  const graph = graphOf([set(depends('forge', ['component:vault']), 'metadata.title', ' '), depends('vault', []), depends('editor', ['component:forge'])]);
+  for (const theme of Object.values(themes)) {
+    for (const ref of ['component:forge', 'component:vault', 'component:editor']) {
+      const doc = safe(renderNeighbourhood(neighbourhood(graph, graph.items.get(ref)!), theme));
+      const box = Array.from(doc.getElementsByTagName('g')).find(group => group.getAttribute('data-ref') === 'component:forge')!;
+      expect(Array.from(box.getElementsByTagName('text')).map(text => text.textContent)).toContain('component:forge');
+    }
   }
 });
 
@@ -207,6 +270,10 @@ test('Resource without a shadow', () => {
     expect(rects).toHaveLength(1);
     expect(rects[0]!.getAttribute('stroke-dasharray')).toBe('5 4');
     expect(rects[0]!.getAttribute('fill')).not.toBe(theme.shadow.color);
+    // The title is centred in the box.
+    const title = Array.from(group.getElementsByTagName('text')).find(text => text.textContent === 'orders-db')!;
+    expect(title.getAttribute('text-anchor')).toBe('middle');
+    expect(Number(title.getAttribute('x'))).toBe(Number(rects[0]!.getAttribute('x')) + Number(rects[0]!.getAttribute('width')) / 2);
   }
 });
 
@@ -216,8 +283,7 @@ test('Strip terminal badges clear an interchange at the end', () => {
   for (const theme of Object.values(themes)) {
     const all = groups(renderStrip(strip(model, model.lines.find(line => line.name === 'ship')!), theme));
     const stop = all.find(group => group.getAttribute('data-ref') === 'component:slack')!;
-    const top = Math.min(...shapesOf(stop).filter(item => item.tagName === 'circle')
-      .map(item => Number(item.getAttribute('cy')) - Number(item.getAttribute('r')) - Number(item.getAttribute('stroke-width') ?? 0) / 2));
+    const top = Math.min(...markers(stop).map(item => bounds(item).top));
     const terminal = shapesOf(all.find(group => group.getAttribute('data-line') === 'line:ship' && !group.getAttribute('data-ref'))!)
       .filter(item => item.tagName === 'rect');
     const lowest = Math.max(...terminal.map(item => Number(item.getAttribute('y')) + Number(item.getAttribute('height')) + Number(item.getAttribute('stroke-width') ?? 0) / 2));
@@ -230,8 +296,7 @@ test('Strip labels clear the stop markers, shadows and badges', () => {
   for (const theme of Object.values(themes)) {
     const all = groups(renderStrip(strip(model, model.lines[0]!), theme));
     const stop = all.find(group => group.getAttribute('data-ref') === 'component:slack')!;
-    const lowest = Math.max(...shapesOf(stop).filter(item => item.tagName === 'circle')
-      .map(item => Number(item.getAttribute('cy')) + Number(item.getAttribute('r')) + Number(item.getAttribute('stroke-width') ?? 0) / 2));
+    const lowest = Math.max(...markers(stop).map(item => bounds(item).bottom));
     const label = stop.getElementsByTagName('text')[0]!;
     // The label's cap height is about 10 units above its baseline; descenders reach about 4 below.
     expect(Number(label.getAttribute('y')) - 10).toBeGreaterThan(lowest);
