@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Design system tokens
-The `light` and `dark` themes SHALL take their colours and ink measures from the tokens of `@brunosouzas/design-system`, pinned to one exact version: background, text, muted, grid, panel, shadow colour, rim colour and rim width from `surface.<theme>`; outline width, shadow offset, line width and casing from `map`; ink, station, badge text, licence, renewal and accent colours from `color`; the font stack from `font.sans`.
+The `light` and `dark` themes SHALL take their colours and ink measures from the tokens of `@brunosouzas/design-system`, pinned to one exact version: background, text, muted, grid, panel, shadow colour, rim colour and rim width from `surface.<theme>`; outline width, shadow offset, line width and casing from `map`; ink, station, badge text, licence, renewal and accent colours from `color`. The font stack stays the one of "Themes".
 
 #### Scenario: Theme values are the tokens
 - **WHEN** the `dark` theme is read
@@ -11,8 +11,19 @@ The `light` and `dark` themes SHALL take their colours and ink measures from the
 - **WHEN** the `light` theme is read
 - **THEN** its rim is disabled, because `surface.light.rimWidth` is 0, and `inkOf` gives an outline equal to `map.outline`
 
+### Requirement: Theme ink comes from the design system
+The map and diagram renderers SHALL refuse, with an error naming the field, a theme whose outline colour or width, shadow, rim, casing or line width differs from the tokens of its `surface`, because the pieces paint those from the tokens and the layout must count the same ink.
+
+#### Scenario: Custom ink is refused
+- **WHEN** `renderSvg` is given a copy of `themes.light` with `outlineWidth` 9, or with the shadow turned off
+- **THEN** it throws an error naming `outlineWidth`, or `shadow`, and returns no SVG
+
+#### Scenario: Other theme fields stay free
+- **WHEN** `renderSvg` is given a copy of `themes.light` with another `zoneOpacity`
+- **THEN** it draws the map with that zone opacity
+
 ### Requirement: Design system pieces
-Stop and interchange markers, lines, terminal badges and rule counts SHALL be drawn by the design system's `stationMarker`, `pipe`, `lineBadge` and `countBadge`, at the coordinates the layout gives, wherever they are. Their output SHALL be written by the map's own SVG writer, which applies "Safe SVG structure", "Allowed attributes", "Allowed attribute values" and "Safe SVG text"; a piece node outside those rules SHALL make drawing fail.
+Stop and interchange markers, lines, terminal badges and rule counts SHALL be drawn by the design system's `stationMarker`, `pipe`, `lineBadge` and `countBadge`, at every finite coordinate the layout gives. Their output SHALL be written by the map's own SVG writer, which applies "Safe SVG structure", "Allowed attributes", "Allowed attribute values" and "Safe SVG text", and leaves out the pieces' `font-family`, which the SVG root names; a piece node outside those rules SHALL make drawing fail.
 
 #### Scenario: Stop drawn by the piece
 - **WHEN** station `a`, a stop of one line, is drawn in the `light` theme
@@ -24,7 +35,11 @@ Stop and interchange markers, lines, terminal badges and rule counts SHALL be dr
 
 #### Scenario: Far station drawn by the piece
 - **WHEN** consecutive stops are at `[0, 0]` and `[100000, 100000]`
-- **THEN** both stations are drawn by `stationMarker` at `(0, 0)` and `(6400000, 6400000)` and the map is drawn, as "Far-away typo" requires
+- **THEN** the whole map, with its terminal badges and legend, is drawn in both themes, and both stations are drawn by `stationMarker` at `(0, 0)` and `(6400000, 6400000)`
+
+#### Scenario: Piece text has no font of its own
+- **WHEN** any map is drawn
+- **THEN** only the root `svg` element carries `font-family`, and no attribute value holds an apostrophe
 
 ### Requirement: Legend interchange symbol
 The legend's interchange symbol SHALL be a vertical capsule drawn by `stationMarker` with radius 6 from 1.5 units above to 1.5 units below the symbol's centre point, so that with its outline, rim and shadow it stays inside the 24 × 24 symbol in both themes.

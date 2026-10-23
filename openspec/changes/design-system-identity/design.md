@@ -10,13 +10,17 @@
 
 A new `src/map/pieces.ts` walks a piece's node tree and writes each node with `tag()` from `src/map/xml.ts`. `tag()` already enforces the element and attribute allow-lists, writes paint only as `#RRGGBB` or `none`, rejects nonfinite numbers and escapes text. So the metro-map and site-security rules keep one writer and one escaping path, and a future piece that emits something outside the lists (for example `transform`) fails loudly instead of reaching a page.
 
+The writer leaves out `font-family` on piece nodes. The pieces name `Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif` on every text; the root `svg` already names the same families without quotes, so dropping it changes no rendering and keeps quote characters out of attribute values, which the hostile-input tests check.
+
 Rejected: `toSvg` from the package. It escapes text, but does not check names or paints against stackledger's lists, and it adds indentation that changes every snapshot for nothing.
 
 ### 2. Themes are built from the tokens
 
-`themes.ts` keeps its `Theme` shape, so renderers and the layout do not change their inputs. Each field reads a token: `surface.<t>.background/text/muted/grid/panel`, shadow colour `surface.<t>.shadow`, rim `surface.<t>.rim` with `enabled = rimWidth > 0` and `width = rimWidth`, `outline` and `casing.color` `color.ink`, `outlineWidth` `map.outline`, shadow offset `map.shadow`, `lineWidth` `map.lineWidth`, `casing.extraWidth` `map.casing`, `station` and `badgeText` `color.white`, `licence` `color.transitional`, `renewal` `color.blocked`, `accent` `color.caller`, `font` `font.sans`. Without a token, and so staying in `themes.ts`: `header`, `headerText` (the CLI title band), `zoneOpacity`, `zoneTitleTint`. `inkOf`, `widestInk` and `inkBox` are unchanged code over those values, so the layout's obstacles match the pieces' ink (the pieces' sticker uses the same outline, rim and offset).
+`themes.ts` keeps its `Theme` shape, so renderers and the layout do not change their inputs. Each field reads a token: `surface.<t>.background/text/muted/grid/panel`, shadow colour `surface.<t>.shadow`, rim `surface.<t>.rim` with `enabled = rimWidth > 0` and `width = rimWidth`, `outline` and `casing.color` `color.ink`, `outlineWidth` `map.outline`, shadow offset `map.shadow`, `lineWidth` `map.lineWidth`, `casing.extraWidth` `map.casing`, `station` and `badgeText` `color.white`, `licence` `color.transitional`, `renewal` `color.blocked`, `accent` `color.caller`, `header` `color.ink`, `headerText` `color.white`. Without a token, and so staying in `themes.ts`: `zoneOpacity`, `zoneTitleTint` and `font`, which keeps today's unquoted stack (the same families as `font.sans`). `inkOf`, `widestInk` and `inkBox` are unchanged code over those values, so the layout's obstacles match the pieces' ink (the pieces' sticker uses the same outline, rim and offset). `Theme` gains `surface: 'light' | 'dark'`, the surface the pieces draw on.
 
-The font stack becomes the token `Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif`. Its quotes are escaped as `&apos;` in attributes; it still starts with `Lato` and ends with `sans-serif`.
+### 2a. A theme's ink must be its surface's
+
+`Theme`, `themes` and `renderSvg` are exported by the package's library entry (`src/index.ts`), and a test today turns casing and shadow off in a copied theme. The pieces cannot honour that: they draw a surface's ink at a scale. Painting with the tokens while the layout counts the caller's values would let obstacles and drawing drift apart. So the renderers check the ink fields (outline, outline width, shadow, rim, casing, line width) against the tokens of `theme.surface` and throw naming the first field that differs. Other fields (colours of text and zones, zone opacity and tint, font) stay free. This is a library behaviour change for anyone passing a custom theme; it goes under "Behaviour changes" of the next release. Rejected: ignoring the caller's ink silently.
 
 ### 3. Which drawing becomes which piece
 
@@ -64,7 +68,7 @@ The pieces reject a `title`, `subtitle` or `text` that is empty after trimming. 
 
 ### 10. Coordinate limit of the pieces (blocking)
 
-`@brunosouzas/design-system` 0.1.0 accepts positions and points only within ±10,000 (`MAX_SIZE` in `params.js`). The map places grid point `[c, r]` at `(64c, 64r)`, and "Far-away typo" draws a stop at `[100000, 100000]`, that is 6,400,000 units away; a column of 157 already passes the limit. stackledger cannot keep its contract with 0.1.0. This change therefore needs a design-system release whose limit covers the map (request below), and pins that version instead of 0.1.0. Rejected: drawing far stations with stackledger's own code (two drawing paths for one shape), and clamping coordinates (moves stations).
+`@brunosouzas/design-system` 0.1.0 accepts positions and points only within ±10,000 (`MAX_SIZE` in `params.js`). The map places grid point `[c, r]` at `(64c, 64r)`, and "Far-away typo" draws a stop at `[100000, 100000]`, that is 6,400,000 units away; a column of 157 already passes the limit. Badges, labels and the legend sit beyond the stations (the far fixture puts a badge at 6,400,031 and the legend at 6,400,127), and stored positions have no upper bound, so no fixed limit is safe. stackledger cannot keep its contract with 0.1.0. This change therefore needs a design-system release whose pieces accept any finite position and point (request below), and pins that version instead of 0.1.0. Rejected: drawing far stations with stackledger's own code (two drawing paths for one shape), and clamping coordinates (moves stations).
 
 ### 11. Tests that change
 
@@ -76,12 +80,15 @@ The pieces reject a `title`, `subtitle` or `text` that is empty after trimming. 
 | `map-diagrams.test.ts` "Strip line and stops" | selects `line` and `circle` | selects the pipe `path`s and marker shapes (`circle` or `path`) |
 | `map-diagrams.test.ts` "Terminal badge over an end interchange" | top of the interchange `circle` | top of the capsule's bounding box with outline and rim; the test fails when no marker shape is found |
 | `site-skills.test.ts` "Description with HTML" | no `<img` on any page | no `<img` except the header mark |
+| `map-svg.test.ts` "Themes are data, with casing and offset shadows on in both themes" | a copied theme with casing and shadow off draws without them | replaced by "Custom ink is refused" and "Other theme fields stay free"; the checks on `themes` values stay |
+| `map-svg.test.ts` "Legend badges fit long codes without covering the line sample" | finds the sample as a `line` | finds it as the legend's colour `path` and measures its start from `d` |
+| `map-svg.test.ts` hostile-input checks (apostrophes in attributes) and `map-diagrams.test.ts` the same | unchanged | unchanged: they hold because the writer drops the pieces' `font-family` (§1) |
 
 Each is named in the pull request with its reason.
 
 ## Requests to the design system (not in this change)
 
-- **Blocking:** position and point limit of at least ±6,400,000 (or any finite number) on every piece stackledger uses.
+- **Blocking:** accept any finite number for positions and points (`pos`, `point`) on `stationMarker`, `lineBadge`, `countBadge`, the three nodes and `messageArrow`, with `pipe` already free; sizes may keep their limit.
 - `placeholder` with an optional subtitle (to keep `resource` on unlinked boxes).
 - Pieces for the renewal ring, suggested halo, licence marker (at 10 units) and zone; interface icons.
 
