@@ -4,7 +4,7 @@ stackledger draws its map, its page diagrams and its site with values copied by 
 
 ## What Changes
 
-- **Dependency.** `@brunosouzas/design-system` becomes an exact production dependency. It has no runtime dependency of its own. 0.1.0 is not enough: its pieces reject positions beyond ±10,000 map units, and the map must draw a stop 6,400,000 units away ("Far-away typo"). The change pins the first release that lifts that limit (design §10).
+- **Dependency.** `@brunosouzas/design-system` becomes an exact production dependency. It has no runtime dependency of its own. 0.1.0 is not enough: its pieces reject positions beyond ±10,000 map units, and the map must draw a stop 6,400,000 units away ("Far-away typo"). The change pins 0.1.1, which lifts that limit (AB#165; design §10).
 - **Tokens instead of copied values.** The map themes read `surface.<theme>`, `map.*` and `color.*`; the ink measures used by the layout (`inkOf`, `widestInk`, `inkBox`) follow from the same values. The site's colour, font and type-scale variables read the package's `site.*` CSS variables. The accent and focus colours stay stackledger's own.
 - **Pieces instead of own drawing.** Stops and interchanges (`stationMarker`), lines (`pipe`), terminal badges (`lineBadge`, `flat` in HTML lists), rule counts (`countBadge`), diagram boxes (`nodeBlock`, `pillNode`, `hexNode`, with `focus` for the centre item and `placeholder` for "Nothing" and unlinked resources) and diagram edges (`messageArrow`, with a head). Piece output is written through the map's own SVG writer, so the allow-lists and escaping stay as they are.
 - **One interchange shape.** The interchange is a capsule on the map, on the journey strip and in the legend.

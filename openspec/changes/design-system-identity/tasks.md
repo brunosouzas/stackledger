@@ -24,7 +24,7 @@ Levels: U unit, I integration (built site), B browser (Playwright). Every scenar
 
 ## 1. Dependency and tokens
 
-- [ ] 1.1 Add `@brunosouzas/design-system` at the first version whose coordinate limit covers the map (design §10) as an exact production dependency and refresh `npm-shrinkwrap.json`. Verify: `npm ls @brunosouzas/design-system` shows that version; `test/unit/package-metadata.test.ts` and the package tests pass.
+- [ ] 1.1 Add `@brunosouzas/design-system` `0.1.1`, the first version whose coordinate limit covers the map (design §10), as an exact production dependency and refresh `npm-shrinkwrap.json`. Verify: `npm ls @brunosouzas/design-system` shows that version; `test/unit/package-metadata.test.ts` and the package tests pass.
 - [ ] 1.2 Tests first: "Theme values are the tokens", "Light theme has no rim", "Dark shadow and rim" with `#EEF2FF`, "Custom ink is refused", "Other theme fields stay free". Verify: they fail on the branch base.
 - [ ] 1.3 `src/map/themes.ts` reads the tokens and gains `surface`; the renderers check a theme's ink against its surface (design §2, §2a). Verify: `npm test`.
 
