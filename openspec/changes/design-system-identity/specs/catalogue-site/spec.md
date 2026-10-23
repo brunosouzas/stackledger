@@ -1,5 +1,16 @@
 ## ADDED Requirements
 
+### Requirement: Site tokens from the design system
+The colour, font-size and heading variables of "Look and theme" SHALL read the `site` variables of `@brunosouzas/design-system` (`--ds-site-*`), which the build ships in the site's own stylesheet. The accent, the focus colour and the colour on primary are stackledger's own and stay literal.
+
+#### Scenario: Palette from the design system
+- **WHEN** a site is built
+- **THEN** its stylesheet defines `--ds-site-light-body` and `--ds-site-dark-body` with the package's values, `--color-body` is `var(--ds-site-light-body)` in light and `var(--ds-site-dark-body)` in dark, and a page's body background is `#FFFFFF` in light and `#1C1C1C` in dark
+
+#### Scenario: Accent stays stackledger's
+- **WHEN** a site is built without `spec.site.colors`
+- **THEN** `--color-accent` is `#000f9f` in light and `#9da8ff` in dark
+
 ### Requirement: Ink frame
 Cards, buttons, line chips and tag chips SHALL have the identity's ink frame: an outline of `--ds-outline-small` in `--ds-color-ink` and a hard shadow offset right and down by `--ds-shadow-small` with no blur. In the dark theme the shadow SHALL be `surface.dark.shadow` and a ring of `surface.dark.rimWidth` in `surface.dark.rim` SHALL surround the outline.
 
@@ -13,42 +24,37 @@ Cards, buttons, line chips and tag chips SHALL have the identity's ink frame: an
 
 #### Scenario: Focus still visible
 - **WHEN** a line chip button is focused with the keyboard in either theme
-- **THEN** it shows the focus outline it showed before this change, besides its frame
+- **THEN** it shows the same focus outline as before this change, besides its frame
 
 ### Requirement: Brand mark
-The favicon SHALL be the design system's `ledgerMark` at size 32 in a 32 × 32 SVG. The header SHALL show the same file before the site title, as a decorative image (`alt=""`) loaded from the site's own folder.
+The favicon SHALL be the design system's `ledgerMark` at size 32 in a 32 × 32 SVG. The header SHALL show the same file before the site title, as a decorative image (`alt=""`) loaded from the site's own folder. It SHALL be the only `img` element the site's templates write.
 
 #### Scenario: Favicon is the mark
 - **WHEN** `site/public/favicon.svg` is read
-- **THEN** it is a 32 × 32 SVG whose content equals `ledgerMark({ x: 0, y: 0, size: 32 })`
+- **THEN** it is a 32 × 32 SVG whose shapes equal those of `ledgerMark({ x: 0, y: 0, size: 32 })`
 
 #### Scenario: Header mark with a custom title
 - **WHEN** `spec.site.title` is `Northwind software` and any page is opened
 - **THEN** the header link to the home holds an `img` with `alt=""` and a relative `src` ending in `favicon.svg`, followed by `Northwind software`
 
+### Requirement: Strip interchange
+On a journey strip, a stop that is also on another drawn line SHALL be a vertical capsule drawn by `stationMarker` with the interchange radius (`map.stopRadius` plus `map.interchangeExtra`), from 4 units above to 4 units below the line, so the terminal badge above it and the label below it stay clear of its outline, rim and shadow.
+
+#### Scenario: Strip interchange is a capsule
+- **WHEN** line `ship` stops at `slack`, which is also a stop of `design`
+- **THEN** `slack`'s marker on the `ship` strip is a closed `path` taller than it is wide, centred on the line, and its label starts below the capsule's shadow
+
+### Requirement: Diagram box titles
+A diagram box whose title is empty after trimming SHALL show the item's reference instead (for example `component:forge`), so a title the catalogue allows never stops the build.
+
+#### Scenario: Blank title
+- **WHEN** component `forge` has `metadata.title` `" "` and the site is built
+- **THEN** the build succeeds and `forge`'s box in every neighbourhood diagram shows `component:forge`
+
 ## MODIFIED Requirements
 
-### Requirement: Look and theme
-The default look SHALL follow brunosouzas.com through the `site` tokens of `@brunosouzas/design-system`: its colour tokens for light and dark, the Heebo and Signika fonts for pages and Lato for the map and diagrams, all shipped with the package, and its type scale. The accent and focus colours are stackledger's own. `spec.site.colors` SHALL override the matching light-theme tokens only. When the `Settings` in use has an error, the site uses the default title and colours. All colours and fonts come from one stylesheet of variables, which reads the package's variables.
-
-#### Scenario: Accent override
-- **WHEN** `spec.site.colors.accent` is `#E4002B`
-- **THEN** the light theme's accent variable is `#E4002B` and the dark theme's is the default
-
-#### Scenario: Broken settings
-- **WHEN** the `Settings` in use has an error in `spec.site.colors`
-- **THEN** the site uses the default title and colours
-
-#### Scenario: Lato shipped locally
-- **WHEN** a site is built
-- **THEN** its stylesheet declares `@font-face` rules for `Lato` whose files are in the site's own folder, and no page requests a font from another origin
-
-#### Scenario: Palette from the design system
-- **WHEN** a site is built
-- **THEN** its stylesheet defines `--ds-site-light-body` and `--ds-site-dark-body` with the package's values, `--color-body` is `var(--ds-site-light-body)` in light and `var(--ds-site-dark-body)` in dark, and a page's body background is `#FFFFFF` in light and `#1C1C1C` in dark
-
 ### Requirement: Diagram style
-The neighbourhood and strip diagrams SHALL use the map's theme and the design system's pieces: boxes are `nodeBlock`, the centre item in its `focus` state; edges are `messageArrow` curves with a head at their right-hand end; the strip's line is a `pipe`, its stops `stationMarker` and its badges `lineBadge`. A strip stop that is an interchange SHALL be a vertical capsule. A box without a page, and an empty column's "Nothing", SHALL be a `placeholder`: dashed, muted, without a shadow, so it does not look clickable.
+The neighbourhood and strip diagrams SHALL use the map's theme and the design system's pieces: boxes are `nodeBlock`, the centre item in its `focus` state; edges are `messageArrow` curves with a head at their right-hand end; the strip's line is a `pipe`, its stops `stationMarker` and its badges `lineBadge`. A box without a page, and an empty column's "Nothing", SHALL be a `placeholder`: dashed, muted, without a shadow.
 
 #### Scenario: Neighbourhood boxes
 - **WHEN** `forge`'s neighbourhood diagram is drawn in the `light` theme
@@ -60,15 +66,11 @@ The neighbourhood and strip diagrams SHALL use the map's theme and the design sy
 
 #### Scenario: Strip line and stops
 - **WHEN** the strip of line `ship` in `#FF0000` is drawn in the `dark` theme
-- **THEN** the line is a `#FF0000` stroke over a wider `#0A1033` casing, and each stop marker has a shadow filled `#4C5CB8`
-
-#### Scenario: Strip interchange is a capsule
-- **WHEN** line `ship` stops at `slack`, which is also a stop of `design`
-- **THEN** `slack`'s marker on the `ship` strip is a closed `path` taller than it is wide, centred on the line
+- **THEN** the line is a `#FF0000` path over a wider `#0A1033` casing path, and each stop marker has a shadow filled `#4C5CB8`
 
 #### Scenario: Terminal badge over an end interchange
 - **WHEN** line `ship` ends at `slack`, which is also a stop of `design`
-- **THEN** in both themes the terminal badge above `slack`, with its outline and shadow, ends above the top of `slack`'s marker and rim
+- **THEN** in both themes the terminal badge above `slack`, with its outline and shadow, ends above the top of `slack`'s capsule with its outline and rim
 
 #### Scenario: Resource without a shadow
 - **WHEN** `forge` depends on resource `orders-db`, which is not a licence

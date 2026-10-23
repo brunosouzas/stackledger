@@ -23,8 +23,8 @@ The font stack becomes the token `Lato, 'Helvetica Neue', Helvetica, Arial, sans
 | Today | Piece | Note |
 |---|---|---|
 | stop, interchange on the map (`svg.ts` `marker`) | `stationMarker` (`to` for the capsule, `state: deprecated`) | same geometry: the radius comes from the layout's marker |
-| legend interchange (disc) | `stationMarker` with `to`, vertical capsule | one shape everywhere |
-| strip stop, strip interchange (larger disc) | `stationMarker`; interchange as a vertical capsule centred on the line | parallel lines on a horizontal edge stack vertically, so the map's capsules on such edges are vertical too |
+| legend interchange (disc) | `stationMarker`, radius 6, from 1.5 above to 1.5 below the symbol's centre (10.5, 10.5) | one shape everywhere; with the dark rim and shadow it spans x 2 to 22.5 and y 0.5 to 24, inside 24 × 24 |
+| strip stop, strip interchange (larger disc, radius 15) | `stationMarker`; interchange radius 14 (`stopRadius` + `interchangeExtra`), from 4 above to 4 below the line | parallel lines on a horizontal edge stack vertically, so the map's capsules on such edges are vertical too. Top with outline and dark rim: line − 20.5; the terminal badge's shadow ends at line − 22; the label's top is at about line + 26 |
 | lines and legend samples, strip line | `pipe` | |
 | terminal badges, strip badges, HTML badges | `lineBadge` (`flat` for `renderLineBadge`) | width still from `badges.ts` |
 | rule count and its legend symbol | `countBadge` | box from the layout |
@@ -58,12 +58,34 @@ Rejected: importing the package's CSS through the Vite resolver (the working cop
 
 `site/public/favicon.svg` is the `ledgerMark` at size 32 in a 32 × 32 `svg`, written once and checked by a unit test against the piece, so it cannot drift. The header shows it as `<img src="…favicon.svg" alt="" width="28" height="28">` before the title link text: a decorative image from the site's own folder, no inline SVG, style or script.
 
+### 9. Blank text never reaches a piece
+
+The pieces reject a `title`, `subtitle` or `text` that is empty after trimming. The catalogue allows a title of spaces, and cleaning a skill name can leave nothing. So a diagram box whose title would be blank shows the item's reference (`component:forge`, `skill:writer`), which is never empty. Line badges are safe: a code is one to three ASCII letters or digits, and the fallback is a name's first character.
+
+### 10. Coordinate limit of the pieces (blocking)
+
+`@brunosouzas/design-system` 0.1.0 accepts positions and points only within ±10,000 (`MAX_SIZE` in `params.js`). The map places grid point `[c, r]` at `(64c, 64r)`, and "Far-away typo" draws a stop at `[100000, 100000]`, that is 6,400,000 units away; a column of 157 already passes the limit. stackledger cannot keep its contract with 0.1.0. This change therefore needs a design-system release whose limit covers the map (request below), and pins that version instead of 0.1.0. Rejected: drawing far stations with stackledger's own code (two drawing paths for one shape), and clamping coordinates (moves stations).
+
+### 11. Tests that change
+
+| Test | Today | After |
+|---|---|---|
+| `map-svg.test.ts` "Example map" | bytes equal the 0.2.0 SVGs | line `d`, marker centres and label positions equal those parsed from the same 0.2.0 SVGs |
+| `map-svg.test.ts` "Legend symbols on their own" | every symbol has a `circle` | interchange has none (a capsule `path`); others unchanged; every symbol inside 24 × 24 |
+| `map-svg.test.ts` "Dark shadow and rim" | rim `#EEF1FF` | `#EEF2FF` |
+| `map-diagrams.test.ts` "Strip line and stops" | selects `line` and `circle` | selects the pipe `path`s and marker shapes (`circle` or `path`) |
+| `map-diagrams.test.ts` "Terminal badge over an end interchange" | top of the interchange `circle` | top of the capsule's bounding box with outline and rim; the test fails when no marker shape is found |
+| `site-skills.test.ts` "Description with HTML" | no `<img` on any page | no `<img` except the header mark |
+
+Each is named in the pull request with its reason.
+
 ## Requests to the design system (not in this change)
 
+- **Blocking:** position and point limit of at least ±6,400,000 (or any finite number) on every piece stackledger uses.
 - `placeholder` with an optional subtitle (to keep `resource` on unlinked boxes).
 - Pieces for the renewal ring, suggested halo, licence marker (at 10 units) and zone; interface icons.
 
 ## Risks
 
-- Every map snapshot changes byte-wise (attribute order, `stroke-linejoin`, `font-family` on texts). The positions test compares geometry, not bytes, so it proves positions did not move.
+- Every map snapshot changes byte-wise (attribute order, `stroke-linejoin`, `font-family` on texts). The rewritten "Example map" test compares geometry parsed from the 0.2.0 SVGs, not bytes, so it proves positions did not move.
 - A future package version could change a measure; the dependency is pinned exactly, and a bump is its own change.

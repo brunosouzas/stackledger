@@ -4,7 +4,7 @@ stackledger draws its map, its page diagrams and its site with values copied by 
 
 ## What Changes
 
-- **Dependency.** `@brunosouzas/design-system` 0.1.0 becomes an exact production dependency. It has no runtime dependency of its own.
+- **Dependency.** `@brunosouzas/design-system` becomes an exact production dependency. It has no runtime dependency of its own. 0.1.0 is not enough: its pieces reject positions beyond ±10,000 map units, and the map must draw a stop 6,400,000 units away ("Far-away typo"). The change pins the first release that lifts that limit (design §10).
 - **Tokens instead of copied values.** The map themes read `surface.<theme>`, `map.*` and `color.*`; the ink measures used by the layout (`inkOf`, `widestInk`, `inkBox`) follow from the same values. The site's colour, font and type-scale variables read the package's `site.*` CSS variables. The accent and focus colours stay stackledger's own.
 - **Pieces instead of own drawing.** Stops and interchanges (`stationMarker`), lines (`pipe`), terminal badges (`lineBadge`, `flat` in HTML lists), rule counts (`countBadge`), diagram boxes (`nodeBlock`, `pillNode`, `hexNode`, with `focus` for the centre item and `placeholder` for "Nothing" and unlinked resources) and diagram edges (`messageArrow`, with a head). Piece output is written through the map's own SVG writer, so the allow-lists and escaping stay as they are.
 - **One interchange shape.** The interchange is a capsule on the map, on the journey strip and in the legend.
@@ -30,9 +30,9 @@ None.
 
 ### Modified Capabilities
 
-- `metro-map`: two requirements added (tokens and pieces from the design system); "Stations and interchanges" (legend capsule) and "Hard offset shadow" (dark rim `#EEF2FF`) modified.
-- `catalogue-site`: "Look and theme" (site tokens from the package) and "Diagram style" (pieces, arrows, strip capsule, placeholder) modified; "Ink frame" and "Brand mark" added.
-- `skills-site`: "Relation diagram" modified (pieces, arrows, text room per shape).
+- `metro-map`: "Design system tokens", "Design system pieces" and "Legend interchange symbol" added; "Hard offset shadow" (dark rim `#EEF2FF`) and "Software map unchanged" (positions, not bytes) modified.
+- `catalogue-site`: "Site tokens from the design system", "Ink frame", "Brand mark", "Strip interchange" and "Diagram box titles" added; "Diagram style" (pieces, arrows, placeholder) modified.
+- `skills-site`: "Relation box text room" added; "Relation diagram" (arrows) and "Text from skill files" (the header mark is the one `img`) modified.
 
 ## Impact
 
@@ -44,8 +44,8 @@ None.
 
 ## Implicit requirements
 
-- **Errors and invalid input:** a piece rejects bad parameters with a `RangeError`; the map's writer rejects any element, attribute or paint outside its allow-lists. Both make the build fail, as an invalid colour does today. Catalogue data reaches pieces only as text (escaped by the writer) and line colours (already validated `#RRGGBB`).
-- **Limits:** the pieces' minimum sizes (shape at least four outlines) hold for every size stackledger uses; the licence marker (10 units) stays local for that reason.
+- **Errors and invalid input:** a piece rejects bad parameters with a `RangeError`; the map's writer rejects any element, attribute or paint outside its allow-lists. Both make the build fail, as an invalid colour does today. Catalogue data reaches pieces only as text (escaped by the writer) and line colours (already validated `#RRGGBB`). Text the catalogue allows but a piece rejects (a title of spaces, a skill name emptied by cleaning) is replaced by the item's reference before it reaches the piece ("Diagram box titles", "Relation box text room").
+- **Limits:** the pieces' minimum sizes (shape at least four outlines) hold for every size stackledger uses; the licence marker (10 units) stays local for that reason. The pieces' coordinate limit must cover the map's (design §10).
 - **Repetition and idempotency:** output stays byte-identical for the same input.
 - **Concurrency:** n/a, pure functions.
 - **Security:** the package has no runtime dependency and no install script; its output passes through the existing SVG writer, so the site-security and metro-map allow-lists are unchanged. No URL, font or script is added to the pages.

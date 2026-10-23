@@ -12,7 +12,7 @@ The `light` and `dark` themes SHALL take their colours and ink measures from the
 - **THEN** its rim is disabled, because `surface.light.rimWidth` is 0, and `inkOf` gives an outline equal to `map.outline`
 
 ### Requirement: Design system pieces
-Stop and interchange markers, lines, terminal badges and rule counts SHALL be drawn by the design system's `stationMarker`, `pipe`, `lineBadge` and `countBadge`. Their output SHALL be written by the map's own SVG writer, which applies "Safe SVG structure", "Allowed attributes", "Allowed attribute values" and "Safe SVG text"; a piece node outside those rules SHALL make drawing fail.
+Stop and interchange markers, lines, terminal badges and rule counts SHALL be drawn by the design system's `stationMarker`, `pipe`, `lineBadge` and `countBadge`, at the coordinates the layout gives, wherever they are. Their output SHALL be written by the map's own SVG writer, which applies "Safe SVG structure", "Allowed attributes", "Allowed attribute values" and "Safe SVG text"; a piece node outside those rules SHALL make drawing fail.
 
 #### Scenario: Stop drawn by the piece
 - **WHEN** station `a`, a stop of one line, is drawn in the `light` theme
@@ -22,26 +22,18 @@ Stop and interchange markers, lines, terminal badges and rule counts SHALL be dr
 - **WHEN** the map's writer is given a piece node with a `transform` attribute
 - **THEN** it throws and returns no SVG
 
-## MODIFIED Requirements
+#### Scenario: Far station drawn by the piece
+- **WHEN** consecutive stops are at `[0, 0]` and `[100000, 100000]`
+- **THEN** both stations are drawn by `stationMarker` at `(0, 0)` and `(6400000, 6400000)` and the map is drawn, as "Far-away typo" requires
 
-### Requirement: Stations and interchanges
-A station served by one line SHALL be drawn as a circle in the theme's station colour, centred on its line and wider than the pipe. A station served by two or more lines SHALL be drawn as an interchange: a capsule (corner radius half its short side) in the station colour, larger than a stop circle, spanning every line through it. The legend's interchange symbol SHALL be a capsule too. A component whose `spec.lifecycle` equals `deprecated`, ignoring case, has its station marker and label muted; its lines are not.
-
-#### Scenario: Interchange
-- **WHEN** `slack` is a stop of three lines
-- **THEN** it is drawn as one interchange marker spanning the three lines
-
-#### Scenario: Stations are circles
-- **WHEN** `a` is a stop of one line and `slack` of two, in either theme
-- **THEN** `a` is a white circle with an ink outline whose diameter exceeds the pipe's outer width, and `slack` is a capsule with a larger radius that contains all its contact points
-
-#### Scenario: Diagonal interchange contains every contact
-- **WHEN** eight lines share the diagonal edge from `a` at `[0, 0]` to `b` at `[4, 4]`
-- **THEN** every contact of the lines at `a` lies inside the drawn interchange capsule, in both themes
+### Requirement: Legend interchange symbol
+The legend's interchange symbol SHALL be a vertical capsule drawn by `stationMarker` with radius 6 from 1.5 units above to 1.5 units below the symbol's centre point, so that with its outline, rim and shadow it stays inside the 24 × 24 symbol in both themes.
 
 #### Scenario: Legend interchange is a capsule
 - **WHEN** the interchange symbol is drawn on its own, in either theme
-- **THEN** its outlined marker is a closed `path` with two arcs and the symbol has no `circle`
+- **THEN** its outlined marker is a closed `path` with two arcs, the symbol has no `circle`, and every shape of the symbol, grown by half its stroke width, lies inside `0 0 24 24`
+
+## MODIFIED Requirements
 
 ### Requirement: Hard offset shadow
 Stations, terminal badges, licence markers and the legend panel SHALL have a hard offset shadow: a copy of the shape in the theme's shadow colour, moved right and down by the theme's offset, drawn first in the same group, without `transform` or `filter`. Lines and renewal rings have no shadow.
