@@ -58,6 +58,9 @@ const homeUrl = z.string().max(2048, 'Must have maximum 2048 characters').superR
   else if (!url.hostname) context.addIssue({ code: 'custom', message: 'Must have a host' });
   else if (url.username || url.password || /@/.test(value.slice(value.indexOf('//') + 2).split(/[/?#]/)[0]!)) context.addIssue({ code: 'custom', message: 'Must not hold a user name or password' });
   else if (/[\s\p{Cc}]/u.test(value)) context.addIssue({ code: 'custom', message: 'Must not hold a space or control character' });
+  // HTML-significant characters: Astro writes < and > raw inside an attribute, and the build's scan
+  // must read the page tag by tag; a real URL percent-encodes them anyway.
+  else if (/[<>"'`]/.test(value)) context.addIssue({ code: 'custom', message: 'Must not hold <, >, quotes or backticks (percent-encode them)' });
 });
 const home = z.strictObject({
   text: text.max(200, 'Must have maximum 200 characters').optional(),

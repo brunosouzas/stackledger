@@ -22,7 +22,7 @@
 ## ADDED Requirements
 
 ### Requirement: Home settings
-`spec.site.home` MAY have `text`, a non-empty string of at most 200 characters, and `links`, a list of 1 to 20 mappings, each with `title` (non-empty, at most 60 characters), `url` (at most 2,048 characters; a WHATWG URL with protocol `https:` or `http:`, a non-empty host, no user name or password, and no space or control character) and optionally `description` (non-empty, at most 200 characters). Any other field under `spec.site.home` or in a link SHALL be an error on its path.
+`spec.site.home` MAY have `text`, a non-empty string of at most 200 characters, and `links`, a list of 1 to 20 mappings, each with `title` (non-empty, at most 60 characters), `url` (at most 2,048 characters; an `https:` or `http:` WHATWG URL with a host, no user name or password, and no space, control character, `<`, `>`, quote or backtick) and optionally `description` (non-empty, at most 200 characters). Any other field under `spec.site.home` or in a link SHALL be an error on its path.
 
 #### Scenario: Home text and links
 - **WHEN** `spec.site.home` has `text: Northwind tools` and `links` with `{ title: Articles, url: "https://example.org/articles/", description: What we write }`

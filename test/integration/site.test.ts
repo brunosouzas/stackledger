@@ -65,16 +65,17 @@ const hostileCatalogue = {
     set(stops('ship', ['editor', 'forge']), 'metadata.title', hostileLine)),
 };
 
-// catalogue-site, Home page and Home links: a catalogue with home text and links, and one with nothing in it.
+// catalogue-site, Home page and Home links: the example with home text and links, and a catalogue with nothing in it.
 const HOSTILE_LINK = '<script>alert(1)</script>';
-const linkedCatalogue = {
-  'catalogue.yaml': yaml(component('editor'), component('forge'), stops('ship', ['editor', 'forge'])),
-  'stackledger.yaml': settingsFile({ site: { home: { text: 'Northwind tools', links: [
-    { title: 'Articles', url: 'https://example.org/articles/', description: 'What I write' },
-    { title: 'Team wiki', url: 'http://wiki.example.org/' },
-    { title: HOSTILE_LINK, url: 'https://example.org/?a=1&b=2' },
-  ] } } }),
-};
+// The fictitious example with home text and links added to its Settings (spec.site.home).
+const HOME_SETTINGS = `  site:
+    home:
+      text: Northwind tools
+      links:
+        - { title: Articles, url: "https://example.org/articles/", description: What I write }
+        - { title: Team wiki, url: "http://wiki.example.org/" }
+        - { title: "${HOSTILE_LINK}", url: "https://example.org/?a=1&b=2" }
+`;
 const emptyCatalogue = { 'stackledger.yaml': settingsFile({}) };
 
 let main: Built, other: Built, customA: Built, customB: Built, broken: Built, hostile: Built, example: Built, linked: Built, empty: Built;
@@ -89,7 +90,7 @@ beforeAll(async () => {
     buildSites(brokenCatalogue),
     buildSites(hostileCatalogue),
     buildSites(exampleFiles),
-    buildSites(linkedCatalogue),
+    buildSites({ ...exampleFiles, 'stackledger.yaml': exampleFiles['stackledger.yaml']! + HOME_SETTINGS }),
     buildSites(emptyCatalogue),
   ]);
 }, 180_000);
@@ -377,6 +378,7 @@ test('Software sub-navigation', () => {
     expect(header).not.toContain('Journeys');
     const nav = subNav(html);
     for (const title of ['Map', 'List', 'Journeys']) expect(nav, page).toMatch(new RegExp(`>\\s*${title}\\s*<`));
+    expect(nav, page).toMatch(/href="(?:\.\.\/)+map\/"[^>]*>\s*Map\s*</);
     const marked = [...nav.matchAll(/<a [^>]*aria-current="page"[^>]*>\s*([^<]+?)\s*</g)].map(match => match[1]);
     expect(marked, page).toEqual(page === 'journeys/index.html' ? ['Journeys'] : []);
   }

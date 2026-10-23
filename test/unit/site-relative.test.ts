@@ -24,6 +24,9 @@ test('Link URL outside the home', () => {
   expect(problems).toEqual([`index.html: src="${url}"`, `software/index.html: href="${url}"`]);
   // Without the list, the home anchor is refused too; an unlisted URL on the home is still refused.
   expect(scan(site)).toContain(`index.html: href="${url}"`);
+  // A quoted `>` does not end the tag early: the absolute URL after it is still seen.
+  const quoted = folder({ 'software/index.html': page('<a href="https://evil.example/a>b">x</a>') });
+  expect(scan(quoted)).toEqual(['software/index.html: href="https://evil.example/a>b"']);
   const other = folder({ 'index.html': page('<a href="https://other.example/">x</a>') });
   expect(scan(other, [], [url])).toEqual(['index.html: href="https://other.example/"']);
 });

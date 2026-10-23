@@ -25,7 +25,8 @@ import { join, posix, relative, sep } from 'node:path';
 import { POLICY } from './policy.js';
 
 const URL_ATTRIBUTES = new Set(['href', 'src', 'action', 'formaction', 'poster', 'data', 'xlink:href']);
-const TAG = /<([A-Za-z][A-Za-z0-9:-]*)((?:\s[^<>]*?)?)(\/?)>/g;
+// Quoted attribute values may hold `>` (Astro escapes only `&` and `"`), so they are matched whole.
+const TAG = /<([A-Za-z][A-Za-z0-9:-]*)((?:\s(?:"[^"]*"|'[^']*'|[^<>"'])*?)?)(\/?)>/g;
 const ATTRIBUTE = /([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
 const SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*:/;
 const ASTRO_ASSET = /^\/_astro\//;

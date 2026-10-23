@@ -45,8 +45,10 @@ test('Script URL', () => {
   expect(check(site({ home: { links: [link({ url: 'HTTPS://Example.org/' }), link({ url: 'http://wiki.example.org/' })] } })).problems).toEqual([]);
 });
 test('Bad link', () => {
-  const result = errors(site({ home: { links: [{ title: 'No URL' }, link({ url: 'https://user:secret@example.org/' }), link({ url: 'https://' }), link({ target: '_blank' }), link({ url: 'https://example.org/a b' })] } }));
-  expect(result.map(problem => problem.field)).toEqual(['spec.site.home.links[0].url', 'spec.site.home.links[1].url', 'spec.site.home.links[2].url', 'spec.site.home.links[3].target', 'spec.site.home.links[4].url']);
+  const result = errors(site({ home: { links: [{ title: 'No URL' }, link({ url: 'https://user:secret@example.org/' }), link({ url: 'https://' }), link({ target: '_blank' }), link({ url: 'https://example.org/a b' }),
+    link({ url: 'https://x.example/"><script>alert(1)</script>' }), link({ url: 'https://x.example/a>b' }), link({ url: "https://x.example/a'b" })] } }));
+  expect(result.map(problem => problem.field)).toEqual(['spec.site.home.links[0].url', 'spec.site.home.links[1].url', 'spec.site.home.links[2].url', 'spec.site.home.links[3].target', 'spec.site.home.links[4].url',
+    'spec.site.home.links[5].url', 'spec.site.home.links[6].url', 'spec.site.home.links[7].url']);
 });
 test('Too many links', () => {
   expect(errors(site({ home: { links: Array.from({ length: 21 }, () => link({})) } }))).toMatchObject([{ field: 'spec.site.home.links' }]);

@@ -125,7 +125,7 @@ cd /path/to/skills && node /path/to/stackledger/dist/cli.js skills map . --out d
 
 ## The website
 
-`stackledger build` makes two static sites from one catalogue, each with a **Software** division (map, list, journeys and, in `full`, reports) and, when given a skill set, a **Skills** division: `full` for owners and finance, `staff` for everyone else, without costs, renewal dates, payers, seats, password-manager references or notes. Serve them behind an identity-aware proxy, publishing only `full/`, `staff/`, `_headers`, `robots.txt` and `_redirects`; with `spec.sites: [full]` (the personal mode) only `full` is built; [docs/site.md](docs/site.md) explains the pages, the hosting and the security rules. Screenshots from the fictitious [Northwind catalogue](examples/northwind/), dated 2027-06-01:
+`stackledger build` makes two static sites from one catalogue: `full` for owners and finance, `staff` for everyone else, without costs, renewal dates, payers, seats, password-manager references or notes. Each has a **Software** division (the map at `/map/`, list, journeys and, in `full`, reports) and, when given a skill set, a **Skills** division. The site title (`stackledger` unless `spec.site.title` sets one) opens a **home page** at `/` with a card per division and, if you list them in `spec.site.home.links`, your own links. Serve them behind an identity-aware proxy, publishing only `full/`, `staff/`, `_headers`, `robots.txt` and `_redirects`; with `spec.sites: [full]` (the personal mode) only `full` is built; [docs/site.md](docs/site.md) explains the pages, the hosting and the security rules. Screenshots from the fictitious [Northwind catalogue](examples/northwind/), dated 2027-06-01:
 
 | | |
 |---|---|
