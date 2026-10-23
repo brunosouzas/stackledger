@@ -4,13 +4,14 @@ Levels: U unit, I integration (built site), B browser (Playwright). Every new or
 
 | Spec | Scenarios | File | Level |
 | --- | --- | --- | --- |
-| metro-map | Halo drawn by the piece; Zone drawn by the piece; Blank zone title; One-station zone; Held licence is green; Licence to buy is white; Ring drawn by the piece; Legend symbols drawn by the pieces; Far symbols drawn by the pieces; Custom piece colour is refused; Other theme fields stay free (changed); Custom ink is refused (unchanged) | `test/unit/map-svg.test.ts` | U |
+| metro-map | Halo drawn by the piece; Zone drawn by the piece; Blank zone title; Ring beyond the piece's limit; Ring at the piece's limit; One-station zone; Held licence is green; Licence to buy is white; Ring drawn by the piece; Legend symbols drawn by the pieces; Far symbols drawn by the pieces; Custom piece colour is refused; Other theme fields stay free (changed); Custom ink is refused (unchanged) | `test/unit/map-svg.test.ts` | U |
 | metro-map | Piece colours are the tokens; Light zone titles are not tinted | `test/unit/map-svg.test.ts`, next to "Theme values are the tokens" | U |
 | metro-map | Nothing placed, Suggested interchange, Zone area (unchanged layout tests; the drawing is proven by "Halo drawn by the piece" and "Zone drawn by the piece") | `test/unit/map-layout.test.ts` | U |
-| metro-map | Active and to-buy, Renewal soon in full (unchanged model tests; the drawing is proven by "Held licence is green", "Licence to buy is white" and "Ring drawn by the piece"); Staff ignores hidden fields and the date (unchanged, where it is today) | `test/unit/map-model.test.ts` | U |
+| metro-map | Active and to-buy, Renewal soon in full (unchanged model tests; the drawing is proven by "Held licence is green", "Licence to buy is white" and "Ring drawn by the piece") | `test/unit/map-model.test.ts` | U |
+| metro-map | Staff ignores hidden fields and the date (unchanged) | `test/unit/map-svg.test.ts` | U |
 | metro-map | "Map symbols drawn by the pieces" refuses an out-of-rule node through the shared writer: the existing "Piece node outside the allow-list" | `test/unit/map-svg.test.ts` | U |
 | metro-map | `renderNeighbourhood` part of "Custom piece colour is refused" | `test/unit/map-diagrams.test.ts` | U |
-| catalogue-site | Resource without a shadow (Diagram style, changed); Empty column keeps no subtitle | `test/unit/map-diagrams.test.ts` | U |
+| catalogue-site | Resource without a shadow (Diagram style, changed); Empty column keeps no subtitle; Neighbourhood boxes, Edges point right, Strip line and stops, Terminal badge over an end interchange (Diagram style, unchanged; the last is the test "Strip terminal badges clear an interchange at the end") | `test/unit/map-diagrams.test.ts` | U |
 | catalogue-site | Icon is the design system's | `test/unit/site-icons.test.ts` (new) | U |
 | catalogue-site | Zoom buttons with icons; Calendar button with an icon; Interface icons are inert | `test/integration/site.test.ts`, `/skill-map/` part in `test/integration/site-skills.test.ts` | I |
 | site-security | No icon from catalogue text; Hostile title (unchanged) | `test/integration/site.test.ts` (or the file of "Hostile title" today) | I |

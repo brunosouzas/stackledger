@@ -29,6 +29,17 @@ A zone whose title is only whitespace (JavaScript `trim()` gives an empty string
 - **WHEN** zone `finance` has the title `" "`, which the catalogue accepts
 - **THEN** the map is drawn, with the area of `finance` equal to `zone` without a title and no text for that zone
 
+### Requirement: Piece limits
+A map whose renewal ring or suggested halo would need a radius above 10,000 map units (an interchange spanning about 1,200 parallel lines), or whose zone hull has more than 10,000 points, SHALL fail to draw with an error, because the design system's pieces refuse those inputs; the map is not drawn with a smaller ring or a cut zone. Both are far beyond "Size and speed".
+
+#### Scenario: Ring beyond the piece's limit
+- **WHEN** `renderSvg` is given a geometry whose renewed station has a halo of 10,010.75
+- **THEN** it throws and returns no SVG
+
+#### Scenario: Ring at the piece's limit
+- **WHEN** `renderSvg` is given a geometry whose renewed, not suggested, station has a halo of 10,000
+- **THEN** it draws the ring with radius 10,000
+
 ## MODIFIED Requirements
 
 ### Requirement: Suggestion without neighbours

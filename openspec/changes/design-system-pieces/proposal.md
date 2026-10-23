@@ -20,6 +20,7 @@ Out of scope: round bends (AB#166), map backgrounds (AB#134), icons on other but
 - A held licence's marker is green instead of amber, on the map and in its legend.
 - A resource without a page shows its kind as a subtitle in the neighbourhood diagram.
 - The zoom and calendar buttons and the theme switch show the design system's icons; zoom in and zoom out show a magnifier instead of `+` and `−`.
+- A map with a ring or halo radius above 10,000 map units or a zone hull above 10,000 points fails with an error ("Piece limits").
 - `renderSvg`, `renderSymbol` and `renderNeighbourhood` refuse a theme whose `licence`, `renewal`, `zoneOpacity` or `zoneTitleTint` differs from the design system's (before, `zoneOpacity` and the others were honoured).
 
 ## Capabilities
@@ -30,7 +31,7 @@ None.
 
 ### Modified Capabilities
 
-- `metro-map`: modified "Suggestion without neighbours" (the halo is `suggestedHalo`), "Zones", "Licence markers", "Renewal ring" and "Theme ink comes from the design system"; added "Map symbols drawn by the pieces", "Piece colours in the themes" and "Blank zone title" (kept apart from "Design system pieces" and "Design system tokens", which stay as they are, so no requirement grows past the validator's length limit).
+- `metro-map`: modified "Suggestion without neighbours" (the halo is `suggestedHalo`), "Zones", "Licence markers", "Renewal ring" and "Theme ink comes from the design system"; added "Map symbols drawn by the pieces", "Piece colours in the themes", "Blank zone title" and "Piece limits" (kept apart from "Design system pieces" and "Design system tokens", which stay as they are, so no requirement grows past the validator's length limit).
 - `catalogue-site`: modified "Map page" (icons on the zoom buttons) and "Diagram style" ("Resource without a shadow": the title moves to the inset, the kind under it); added "Interface icons" (where the icons are, the theme switch), "Inline icon markup" (how they are written) and "Neighbourhood placeholder box".
 - `site-security`: modified "Escaped catalogue text" (the interface icons are a third thing inserted raw, and hold no catalogue text).
 
@@ -47,7 +48,7 @@ None.
 ## Implicit requirements
 
 - **Errors and invalid input:** a theme with a custom `licence`, `renewal`, `zoneOpacity` or `zoneTitleTint` is refused with an error naming the field ("Theme ink comes from the design system"). A piece that rejects its input throws and the drawing fails, as for the 0.2.0 pieces.
-- **Limits:** none new. A zone title that is only whitespace, which the catalogue accepts and the `zone` piece refuses, is drawn as no title ("Blank zone title"), so no valid catalogue stops drawing. The pieces accept every finite coordinate the layout gives ("Far station drawn by the piece" covers them).
+- **Limits:** two new, from the pieces ("Piece limits"): a ring or halo radius above 10,000 map units, or a zone hull above 10,000 points, fails the drawing with an error instead of drawing a smaller shape; both are far beyond "Size and speed" (200 stations, 20 lines). A zone title that is only whitespace, which the catalogue accepts and the `zone` piece refuses, is drawn as no title ("Blank zone title"), so no valid catalogue stops drawing. The pieces accept every finite coordinate the layout gives ("Far station drawn by the piece" covers them).
 - **Repetition and idempotency:** the same catalogue and date give byte-identical SVG and HTML, as today ("Deterministic output").
 - **Concurrency:** n/a, pure drawing.
 - **Security:** icons are inline SVG built from the package's fixed shapes at build time, with no catalogue text; they hold no `script`, `foreignObject` or `style` element, no `style` or `on…` attribute and no `href` or `url(…)`, so the Content Security Policy and "No inline code" hold unchanged. No new `img`, file or request.
