@@ -32,10 +32,13 @@ case "$1 $2" in
 esac
 if [ "$1" = api ]; then
   if [ -n "$FAKE_GH_API_ERR" ]; then echo "$FAKE_GH_API_ERR" >&2; exit 1; fi
+  case "$2" in */git/ref/tags/*) if [ -n "$FAKE_GH_REF_ERR" ]; then echo "$FAKE_GH_REF_ERR" >&2; exit 1; fi ;; esac
+  case "$2" in */git/tags/*) if [ -n "$FAKE_GH_TAGOBJ_ERR" ]; then echo "$FAKE_GH_TAGOBJ_ERR" >&2; exit 1; fi; cat "$FAKE_STATE/annotated"; exit 0 ;; esac
   if [ "$2 $3" = "-X POST" ]; then
     [ -f "$FAKE_STATE/tag" ] && { echo "gh: Reference already exists (HTTP 422)" >&2; exit 1; }
     for a in "$@"; do case "$a" in sha=*) printf '%s' "\${a#sha=}" > "$FAKE_STATE/tag" ;; esac; done; exit 0
   fi
+  [ -f "$FAKE_STATE/annotated" ] && { echo "tag tagobject1"; exit 0; }
   [ -f "$FAKE_STATE/tag" ] && { echo "commit $(cat "$FAKE_STATE/tag")"; exit 0; }
   echo "gh: Not Found (HTTP 404)" >&2; exit 1
 fi
@@ -44,7 +47,9 @@ echo "fake gh: unexpected call" >&2; exit 99
 
 interface Answers { npmView: { status: number; stdout?: string; stderr?: string }; ghView?: { status: number; stderr?: string };
   /** From main: the commit to release (RELEASE_COMMIT), the tag already on GitHub, a GitHub API error. */
-  commit?: string; tagOn?: string; apiError?: string }
+  commit?: string; tagOn?: string; apiError?: string;
+  /** An annotated tag whose object points at this commit; failures of the ref and tag-object reads; the bash to run. */
+  annotatedOn?: string; refError?: string; tagObjectError?: string; shell?: string }
 
 function release(answers: Answers) {
   const work = folder({ 'bin/npm': fakeNpm, 'bin/gh': fakeGh, 'release/brunosouzas-stackledger-0.1.0.tgz': 'tarball bytes',
@@ -53,10 +58,11 @@ function release(answers: Answers) {
   const log = join(work, 'calls.log');
   const state = join(work, 'state'); mkdirSync(state);
   if (answers.tagOn) writeFileSync(join(state, 'tag'), answers.tagOn);
+  if (answers.annotatedOn) { writeFileSync(join(state, 'tag'), 'tagobject1'); writeFileSync(join(state, 'annotated'), answers.annotatedOn); }
   const fromMain = answers.commit ? { GITHUB_REF_NAME: 'main', RELEASE_TAG: 'v0.1.0', RELEASE_COMMIT: answers.commit } : {};
-  const result = spawnSync('bash', [script, join(work, 'release/brunosouzas-stackledger-0.1.0.tgz'), join(work, 'release/integrity'), join(work, 'release/stackledger-0.1.0.cdx.json')], {
+  const result = spawnSync(answers.shell ?? 'bash', [script, join(work, 'release/brunosouzas-stackledger-0.1.0.tgz'), join(work, 'release/integrity'), join(work, 'release/stackledger-0.1.0.cdx.json')], {
     cwd: work, encoding: 'utf8',
-    env: { ...process.env, PATH: `${join(work, 'bin')}${delimiter}${process.env.PATH}`, FAKE_LOG: log, FAKE_STATE: state, FAKE_GH_API_ERR: answers.apiError ?? '', GH_REPO: 'brunosouzas/stackledger', GITHUB_REF_NAME: 'v0.1.0', ...fromMain,
+    env: { ...process.env, PATH: `${join(work, 'bin')}${delimiter}${process.env.PATH}`, FAKE_LOG: log, FAKE_STATE: state, FAKE_GH_API_ERR: answers.apiError ?? '', FAKE_GH_REF_ERR: answers.refError ?? '', FAKE_GH_TAGOBJ_ERR: answers.tagObjectError ?? '', GH_REPO: 'brunosouzas/stackledger', GITHUB_REF_NAME: 'v0.1.0', ...fromMain,
       FAKE_NPM_VIEW_STATUS: String(answers.npmView.status), FAKE_NPM_VIEW_STDOUT: answers.npmView.stdout ?? '', FAKE_NPM_VIEW_STDERR: answers.npmView.stderr ?? '',
       FAKE_GH_VIEW_STATUS: String(answers.ghView?.status ?? 0), FAKE_GH_VIEW_STDERR: answers.ghView?.stderr ?? '' },
   });
@@ -174,4 +180,28 @@ test('Registry fails after the reservation: exit 1, the tag stays, nothing publi
   expect(run.calls[0]).toBe(reserve);
   expect(readFileSync(join(run.work, 'state/tag'), 'utf8')).toBe('abc123');
   expect(run.calls.filter(call => call.startsWith('npm publish') || call.startsWith('gh release'))).toEqual([]);
+});
+
+// Every shell the script may meet: macOS bash 3.2 and, when installed, a bash 5 (CI's).
+const shells = ['/bin/bash', '/opt/homebrew/bin/bash', '/usr/local/bin/bash'].filter(path => existsSync(path));
+
+test('Tag reservation: annotated tags and every lookup failure stop before npm, on each bash', () => {
+  for (const shell of shells) {
+    const matching = release({ npmView: notFound, ghView: releaseNotFound, commit: 'abc123', annotatedOn: 'abc123', shell });
+    expect(matching.status, `${shell} ${matching.stderr}`).toBe(0);
+    expect(matching.calls.some(call => call.startsWith('npm publish')), shell).toBe(true);
+
+    const cases: [string, Partial<Answers>, RegExp][] = [
+      ['annotated on another commit', { annotatedOn: 'def456' }, /names def456, not the released commit abc123/],
+      ['ref lookup fails after 422', { tagOn: 'abc123', refError: 'HTTP 500: boom' }, /cannot read tag v0\.1\.0/],
+      ['ref missing after 422', { tagOn: 'abc123', refError: 'gh: Not Found (HTTP 404)' }, /names nothing, not the released commit/],
+      ['annotated tag object lookup fails', { annotatedOn: 'abc123', tagObjectError: 'HTTP 500: boom' }, /cannot read annotated tag/],
+    ];
+    for (const [name, extra, message] of cases) {
+      const run = release({ npmView: notFound, ghView: releaseNotFound, commit: 'abc123', shell, ...extra });
+      expect(run.status, `${shell} ${name}`).toBe(1);
+      expect(run.stderr, `${shell} ${name}`).toMatch(message);
+      expect(run.calls.filter(call => call.startsWith('npm') || call.startsWith('gh release')), `${shell} ${name}`).toEqual([]);
+    }
+  }
 });
