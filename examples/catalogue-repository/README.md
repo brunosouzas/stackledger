@@ -89,8 +89,8 @@ To fix forward, revert the bad commit on `main`; the push deploys the result. St
 With Node.js 22.12 or later:
 
 ```sh
-npx --yes @brunosouzas/stackledger@0.4.1 validate catalog
-npx --yes @brunosouzas/stackledger@0.4.1 build catalog --out ../catalogue-site --date "$(date -u +%F)"
+npx --yes @brunosouzas/stackledger@0.5.0 validate catalog
+npx --yes @brunosouzas/stackledger@0.5.0 build catalog --out ../catalogue-site --date "$(date -u +%F)"
 ```
 
 Build outside the repository, so the build is never committed.

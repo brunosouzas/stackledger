@@ -135,7 +135,7 @@ The trusted publisher on npm does not change: it names the workflow file `releas
 **On npm.** The package page on npmjs.com shows a provenance badge naming the repository, the workflow and the commit. From the command line:
 
 ```sh
-npm view @brunosouzas/stackledger@0.4.1 dist --json   # integrity and attestations.provenance
+npm view @brunosouzas/stackledger@0.5.0 dist --json   # integrity and attestations.provenance
 ```
 
 **Signatures and provenance of an install.** In a scratch folder, not in a project:
@@ -143,7 +143,7 @@ npm view @brunosouzas/stackledger@0.4.1 dist --json   # integrity and attestatio
 ```sh
 mkdir stackledger-check && cd stackledger-check
 npm init -y
-npm install @brunosouzas/stackledger@0.4.1
+npm install @brunosouzas/stackledger@0.5.0
 npm audit signatures
 ```
 
@@ -152,7 +152,7 @@ npm audit signatures
 **The SBOM.** The GitHub release of the tag has `stackledger-<version>.cdx.json` attached: a CycloneDX list of the production dependencies with their versions and integrity hashes, the same versions `npm-shrinkwrap.json` locks. To read it:
 
 ```sh
-gh release download v0.4.1 -R brunosouzas/stackledger -p 'stackledger-*.cdx.json'
+gh release download v0.5.0 -R brunosouzas/stackledger -p 'stackledger-*.cdx.json'
 ```
 
 **What this proves.** Provenance says the tarball on npm was built by `release.yml` in `brunosouzas/stackledger` from the tagged commit; it does not say the code is safe. The SBOM says which dependency versions the package installs, so you can check them against advisories later. The tarball on npm is the one the `check` job tested and audited: `publish` uploads those bytes and builds nothing.
