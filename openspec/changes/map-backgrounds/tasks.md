@@ -31,16 +31,16 @@ Levels: U unit (vitest, `npm test`), B browser (Playwright, `npm run test:browse
 
 ## 1. Tests first
 
-- [ ] 1.1 Record from 0.5.1 the `staff` SVGs of the example catalogue and the site-style SVGs without header and legend of both views (both themes, map date 2027-06-01) into `test/fixtures/`. Write the tests of the table. Verify: every "new" test fails on the current code and every "kept" one passes.
+- [x] 1.1 Record from 0.5.1 the `staff` SVGs of the example catalogue and the site-style SVGs without header and legend of both views (both themes, map date 2027-06-01) into `test/fixtures/`. Write the tests of the table. Verify: every "new" test fails on the current code and every "kept" one passes. Done: fixtures in `test/fixtures/map-0.5.1/` (`record.mjs`), recorded and committed before any code change. "London colours are the tokens" and "Credit colour is the token" are `it.todo` and "London credit on the page" and "Credit readable on a phone" are `test.fixme`, waiting on AB#180 and 2.5. "Reproducible data" runs only with `STACKLEDGER_BACKDROP_BUILD=1` (it runs mapshaper through npx).
 
 ## 2. Code
 
-- [ ] 2.1 `scripts/backdrops/london.overpassql`, `refresh.mjs` (network, by hand) and `build.mjs` (offline, pinned tool versions); commit `london-extract.json` and the generated `src/map/backdrops/london.ts`. Verify: `build.mjs` twice gives the same module; under 16 KB.
-- [ ] 2.2 `spec.map.backdrop` in the Settings schema.
-- [ ] 2.3 Backdrop paths and credit in `src/map/svg.ts` through the writer, colours in `src/map/themes.ts`.
-- [ ] 2.4 `--backdrop` in `src/map/command.ts`; the build passes the setting to the software map only.
+- [x] 2.1 `scripts/backdrops/london.overpassql`, `refresh.mjs` (network, by hand) and `build.mjs` (offline, pinned tool versions); commit `london-extract.json` and the generated `src/map/backdrops/london.ts`. Verify: `build.mjs` twice gives the same module; under 16 KB.
+- [x] 2.2 `spec.map.backdrop` in the Settings schema.
+- [ ] 2.3 Backdrop paths and credit in `src/map/svg.ts` through the writer, colours in `src/map/themes.ts`. Partial: geometry, layer order and SVG credit done; the colours are a placeholder from existing surface tokens (`placeholderBackdrop`, `TODO AB#180`) until the `backdrop` tokens ship.
+- [x] 2.4 `--backdrop` in `src/map/command.ts`; the build passes the setting to the software map only.
 - [ ] 2.5 Credit line under the map frame in the site.
-- [ ] 2.6 Docs: `docs/map.md`, `docs/site.md`, `README.md` (ODbL attribution for the bundled data).
+- [ ] 2.6 Docs: `docs/map.md`, `docs/site.md`, `README.md` (ODbL attribution for the bundled data). Partial: done for 2.1 to 2.4 (and `docs/catalogue-format.md`); the site credit line (2.5) and the final colour note wait on AB#180.
 
 ## 3. Close
 
