@@ -4,6 +4,7 @@
  * (a zone named `Team tools`, one skill line, no playbook zones, no rules). Run npm run test:browser.
  */
 import { expect, test, type Page } from '@playwright/test';
+import { mapSize } from './map-size.js';
 
 declare global {
   interface Window { cspViolations: string[] }
@@ -129,5 +130,68 @@ test.describe('Without JavaScript', () => {
     await page.goto('/staff/skill-map/');
     await expect(page.locator('.map-canvas.themed-light svg')).toBeVisible();
     await expect(page.locator('[data-map-tools]')).toBeHidden();
+    // Whole, at the size "Skills map shown size" gives (the example map fits the 1360-pixel window).
+    const size = await mapSize(page);
+    expect(Math.abs(size.width - size.viewBoxWidth)).toBeLessThanOrEqual(1);
+  });
+  test('Skills shown size without JavaScript', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 900 });
+    await page.goto('/full/skill-map/');
+    await expect(page.locator('.map-canvas.themed-light svg')).toBeVisible();
+    const size = await mapSize(page);
+    expect(Math.abs(size.width - size.viewBoxWidth)).toBeLessThanOrEqual(1);
+  });
+});
+
+// skills-site "Skills map shown size": sized as the software map page; same ink on both maps.
+test.describe('Skills map shown size', () => {
+  test('Skills map not enlarged', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 900 });
+    await page.goto('/full/skill-map/');
+    const size = await mapSize(page);
+    expect(Math.abs(size.width - size.viewBoxWidth)).toBeLessThanOrEqual(1);
+    expect(Math.abs(size.frameContentWidth - size.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(size.leftGap - size.rightGap)).toBeLessThanOrEqual(1);
+  });
+  test('Same ink as the software map', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 900 });
+    await page.goto('/full/map/');
+    const software = await mapSize(page);
+    await page.goto('/full/skill-map/');
+    const skills = await mapSize(page);
+    const softwareScale = software.width / software.viewBoxWidth;
+    const skillsScale = skills.width / skills.viewBoxWidth;
+    expect(softwareScale).toBeLessThanOrEqual(1.01);
+    expect(skillsScale).toBeLessThanOrEqual(1.01);
+    expect(Math.abs(softwareScale - skillsScale) / skillsScale).toBeLessThan(0.05);
+  });
+  test('Skills map just wider than the room', async ({ page }) => {
+    await page.setViewportSize({ width: 677, height: 900 });
+    await page.goto('/full/skill-map/');
+    const size = await mapSize(page);
+    expect(size.frameContentWidth).toBeLessThan(size.viewBoxWidth);
+    expect(Math.abs(size.width - size.frameContentWidth)).toBeLessThanOrEqual(1);
+    expect(size.pageScrolls).toBe(false);
+  });
+  test('Skills map on a phone', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto('/full/skill-map/');
+    const size = await mapSize(page);
+    expect(Math.abs(size.width - size.frameContentWidth)).toBeLessThanOrEqual(1);
+    expect(size.pageScrolls).toBe(false);
+  });
+  test('Skills zoom keeps the shown size', async ({ page }) => {
+    await page.goto('/full/skill-map/');
+    const before = await mapSize(page);
+    await page.getByRole('button', { name: 'Zoom in' }).click();
+    await page.getByRole('button', { name: 'Zoom in' }).click();
+    const frame = (await page.locator('[data-map]').boundingBox())!;
+    await page.mouse.move(frame.x + 60, frame.y + 60);
+    await page.mouse.down();
+    await page.mouse.move(frame.x + 160, frame.y + 100, { steps: 5 });
+    await page.mouse.up();
+    const after = await mapSize(page);
+    expect(Math.abs(after.width - before.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(after.height - before.height)).toBeLessThanOrEqual(1);
   });
 });
