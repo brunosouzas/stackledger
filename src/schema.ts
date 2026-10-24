@@ -100,11 +100,14 @@ const skillsSettings = z.strictObject({
       if (list.indexOf(value) < index) context.addIssue({ code: 'custom', message: 'Folder is already listed', path: [index] });
     })).optional(),
 });
+/** Backdrops spec.map.backdrop may name (catalogue, Map settings); the same list as src/map/svg.ts backdropNames. */
+export const mapBackdrops = ['neutral', 'london'] as const;
+const mapSettings = z.strictObject({ backdrop: z.enum(mapBackdrops).optional() });
 export const settingsSchema = z.strictObject({
   apiVersion: z.literal('stackledger/v1alpha1'), kind: z.literal('Settings'),
   metadata: z.strictObject({ ...identity, title: text.optional() }),
   spec: z.strictObject({ views: z.strictObject({ staff: z.strictObject({ hide: hide.optional() }).optional() }).optional(), site: site.optional(), sites: sites.optional(),
-    skills: skillsSettings.optional() }),
+    skills: skillsSettings.optional(), map: mapSettings.optional() }),
 });
 export const schemas = { Component: componentSchema, Resource: licenceSchema, Line: lineSchema, MapLayout: layoutSchema, Settings: settingsSchema };
 export type Component = z.infer<typeof componentSchema>;

@@ -39,7 +39,7 @@ The skills, agents, playbooks and rules that AI coding agents use, as a second l
 ## Later
 
 - `site-home` (AB#137, delivered in [#25](https://github.com/brunosouzas/stackledger/pull/25), released as 0.4.0): the site title `stackledger` opens a home page at `/` with a banner, the division cards and links set in `Settings`; the software map moves to `/map/`.
-- `map-backgrounds` (AB#134, next): a city backdrop behind the software map (`neutral` and `london` to start; `sao-paulo` later; the skills map keeps a plain background), chosen in `Settings` or with `--background`. Drawn from OpenStreetMap data (rivers, coastline, parks), simplified and attributed, never from official metro maps, which are copyrighted. The map engine already draws an empty background layer for it.
+- `map-backgrounds` (AB#134, delivered in [#39](https://github.com/brunosouzas/stackledger/pull/39), not released yet): a city backdrop behind the software map, `neutral` (the default, byte for byte the 0.5.1 map) or `london` (the Thames, docks, lakes and large parks of central London from OpenStreetMap data, simplified and attributed, in the `backdrop` colours of `@brunosouzas/design-system` 0.5.3), chosen with `spec.map.backdrop` or `stackledger map --backdrop`; the skills map stays flat. `sao-paulo` later. Never drawn from official metro maps, which are copyrighted.
 
 - Icons and line badges drawn with the designer style of brunosouzas.com.
 

@@ -85,6 +85,7 @@ const ICON_SETTINGS = `  site:
         - { title: Source, url: "https://github.example.com/northwind/", icon: github }
         - { title: Blog, url: "https://blog.example.com/" }
 `;
+const CITY_SETTINGS = '  map:\n    backdrop: london\n';
 const emptyCatalogue = { 'stackledger.yaml': settingsFile({}) };
 
 // site-security "No icon from catalogue text": catalogue text shaped like an inline SVG.
@@ -97,11 +98,11 @@ const svgCatalogue = {
 // catalogue-site "Diagram box titles": a title of spaces is valid in the catalogue.
 const blankCatalogue = { 'catalogue.yaml': yaml(set(depends(component('forge'), ['component:vault']), 'metadata.title', ' '), component('vault'), depends(component('editor'), ['component:forge'])) };
 
-let main: Built, other: Built, customA: Built, customB: Built, broken: Built, hostile: Built, example: Built, linked: Built, empty: Built, blank: Built, iconed: Built, svgHostile: Built;
+let main: Built, other: Built, customA: Built, customB: Built, broken: Built, hostile: Built, example: Built, linked: Built, empty: Built, blank: Built, iconed: Built, svgHostile: Built, city: Built;
 
 beforeAll(async () => {
   const exampleFiles = Object.fromEntries(['catalog-info.yaml', 'stackledger.yaml'].map(file => [file, read(join(root, 'examples/northwind'), file)]));
-  [main, other, customA, customB, broken, hostile, example, linked, empty, blank, iconed, svgHostile] = await Promise.all([
+  [main, other, customA, customB, broken, hostile, example, linked, empty, blank, iconed, svgHostile, city] = await Promise.all([
     buildSites(mainCatalogue(DEFAULT_HIDDEN), '2027-06-01'),
     buildSites(mainCatalogue(OTHER_HIDDEN), '2031-01-01'),
     buildSites(customHidden('Northwind Studio', 'to-confirm'), '2027-06-01'),
@@ -114,6 +115,7 @@ beforeAll(async () => {
     buildSites(blankCatalogue),
     buildSites({ ...exampleFiles, 'stackledger.yaml': exampleFiles['stackledger.yaml']! + ICON_SETTINGS }),
     buildSites(svgCatalogue),
+    buildSites({ ...exampleFiles, 'stackledger.yaml': exampleFiles['stackledger.yaml']! + HOME_SETTINGS + CITY_SETTINGS }),
   ]);
 }, 180_000);
 
@@ -451,6 +453,24 @@ test('Home links are the only external URLs', () => {
       }
     }
     expect(found).toEqual(['index.html a href https://example.org/articles/', 'index.html a href http://wiki.example.org/', 'index.html a href https://example.org/?a=1&b=2']);
+  }
+});
+
+// site-security, Map credit link: over a city backdrop, the map page's credit anchor is the only other absolute URL.
+test('Map credit is the only other external URL', () => {
+  const external = /^(?:[A-Za-z][A-Za-z0-9+.-]*:|\/\/)/;
+  for (const site of [city.full, city.staff]) {
+    const found: string[] = [];
+    for (const [file, content] of tree(site)) {
+      if (!file.endsWith('.html')) continue;
+      for (const tag of tagsOf(content)) {
+        for (const attr of attrsOf(tag.attrs)) {
+          if (['href', 'src', 'action', 'formaction', 'poster', 'data'].includes(attr.name) && external.test(decode(attr.value))) found.push(`${file} ${tag.name} ${attr.name} ${decode(attr.value)}`);
+        }
+      }
+    }
+    expect(found.filter(entry => !entry.startsWith('index.html '))).toEqual(['map/index.html a href https://www.openstreetmap.org/copyright']);
+    expect(found.filter(entry => entry.startsWith('index.html '))).toHaveLength(3);
   }
 });
 

@@ -30,6 +30,23 @@ test('Link URL outside the home', () => {
   const other = folder({ 'index.html': page('<a href="https://other.example/">x</a>') });
   expect(scan(other, [], [url])).toEqual(['index.html: href="https://other.example/"']);
 });
+// site-security, Map credit link: over a city backdrop, the OpenStreetMap copyright URL passes only
+// as an a href of map/index.html.
+test('Credit URL outside the map page', () => {
+  const url = 'https://www.openstreetmap.org/copyright';
+  const anchor = `<a href="${url}" rel="noopener noreferrer">OpenStreetMap contributors</a>`;
+  const site = folder({
+    'map/index.html': page(anchor),
+    'index.html': page(anchor),
+    'software/index.html': page(`<img src="${url}" alt="">`),
+  });
+  expect(scan(site, [], [], true)).toEqual([`index.html: href="${url}"`, `software/index.html: src="${url}"`]);
+  // Without a city backdrop the map page's anchor is refused too.
+  expect(scan(site)).toContain(`map/index.html: href="${url}"`);
+  // A src on the map page, or another URL there, is still refused.
+  const other = folder({ 'map/index.html': page(`<img src="${url}" alt=""><a href="https://www.openstreetmap.org/">x</a>`) });
+  expect(scan(other, [], [], true)).toEqual([`map/index.html: src="${url}"`, 'map/index.html: href="https://www.openstreetmap.org/"']);
+});
 test('Astro asset URLs become relative to the file that holds them', () => {
   const site = folder({
     'index.html': page('<link rel="stylesheet" href="/_astro/site.css"><script type="module" src="/_astro/map.js"></script>'),

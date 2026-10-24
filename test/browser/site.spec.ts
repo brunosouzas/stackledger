@@ -464,3 +464,80 @@ test.describe('Map shown size without JavaScript', () => {
     expect(Math.abs(size.width - size.viewBoxWidth)).toBeLessThanOrEqual(1);
   });
 });
+
+// catalogue-site, Map backdrop: /extra/ and /extra-staff/ are the full and staff sites of a scratch catalogue
+// with spec.map.backdrop: london (test/browser/serve.mjs).
+const cityViews = ['/extra/', '/extra-staff/'];
+test.describe('Map backdrop', () => {
+  test('London map on the page', async ({ page }) => {
+    for (const view of cityViews) {
+      await page.goto(`${view}map/`);
+      for (const theme of ['light', 'dark']) {
+        const svg = page.locator(`.map-canvas.themed-${theme} svg`);
+        // The group right after the background holds the water and park paths; the credit ends the SVG.
+        expect(await svg.locator(':scope > g:nth-of-type(2) > path').count(), `${view} ${theme}`).toBe(2);
+        await expect(svg.locator(':scope > g:last-of-type > text')).toHaveText('© OpenStreetMap contributors');
+      }
+      // The skills map of the same catalogue stays flat (metro-map, Map backdrop).
+      await page.goto(`${view}skill-map/`);
+      expect(await page.content(), view).not.toContain('OpenStreetMap');
+    }
+  });
+  test('London credit on the page', async ({ context }) => {
+    for (const view of cityViews) {
+      // A fresh tab per view, so one view's watcher does not see the other's requests.
+      const page = await context.newPage();
+      // The policy holds on the page with the credit too (regression "Pages work under the policy").
+      const watched = await watch(page, view);
+      await page.goto(`${view}map/`);
+      await page.waitForLoadState('networkidle');
+      expect(await violations(page), view).toEqual([]);
+      const credit = page.locator('.map-credit');
+      await expect(credit).toHaveCount(1);
+      await expect(credit).toHaveText('Map data © OpenStreetMap contributors');
+      const link = credit.getByRole('link', { name: 'OpenStreetMap contributors' });
+      await expect(link).toHaveAttribute('href', 'https://www.openstreetmap.org/copyright');
+      await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      expect(await link.getAttribute('target')).toBeNull();
+      // Right under the map frame: the next element, starting below the frame's bottom edge.
+      expect(await page.locator('[data-map] + .map-credit').count()).toBe(1);
+      const frame = (await page.locator('[data-map]').boundingBox())!;
+      const box = (await credit.boundingBox())!;
+      expect(box.y).toBeGreaterThanOrEqual(frame.y + frame.height - 1);
+      expect(box.y - (frame.y + frame.height)).toBeLessThan(24);
+      // In the backdrop credit token of each theme.
+      for (const [theme, token] of [['light', '--ds-surface-light-backdrop-credit'], ['dark', '--ds-surface-dark-backdrop-credit']] as const) {
+        await page.evaluate(name => document.documentElement.setAttribute('data-theme', name), theme);
+        const [colour, expected] = await credit.evaluate((node, name) => {
+          const probe = document.createElement('span');
+          probe.style.color = getComputedStyle(document.documentElement).getPropertyValue(name);
+          document.body.append(probe);
+          const value = getComputedStyle(probe).color;
+          probe.remove();
+          return [getComputedStyle(node).color, value];
+        }, token);
+        expect(colour, `${view} ${theme}`).toBe(expected);
+      }
+      expect(watched.problems, view).toEqual([]);
+      await page.close();
+    }
+  });
+  test('Credit readable on a phone', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    for (const view of cityViews) {
+      await page.goto(`${view}map/`);
+      const credit = page.locator('.map-credit');
+      await expect(credit).toBeVisible();
+      expect(await credit.evaluate(node => parseFloat(getComputedStyle(node).fontSize)), view).toBeGreaterThanOrEqual(12);
+      const box = (await credit.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(390);
+    }
+  });
+  test('No credit without a city', async ({ page }) => {
+    for (const path of ['/full/', '/full/map/', '/staff/map/', '/full/software/', '/full/skill-map/']) {
+      await page.goto(path);
+      expect(await page.content(), path).not.toContain('OpenStreetMap');
+    }
+  });
+});

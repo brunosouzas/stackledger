@@ -24,6 +24,8 @@ import { countBadge, licenceMark, lineBadge, pipe as pipePiece, renewalRing, sta
 import { sticker } from './ink.js';
 import { writePiece } from './pieces.js';
 import { tag, escapeXml, number, SVG_NAMESPACE, type Attributes } from './xml.js';
+import type { Backdrop } from './backdrops/types.js';
+import { london } from './backdrops/london.js';
 
 export { escapeXml } from './xml.js';
 
@@ -198,8 +200,53 @@ function legendLayer(geometry: MapGeometry, theme: Theme, paint: Painter): strin
   return parts.join('');
 }
 
-/** chrome (default true): draw the title band and the legend panel around the map. */
-export interface RenderOptions { chrome?: boolean }
+/** The backdrops a software map may take (metro-map: Map backdrop); `neutral` draws nothing. */
+export const backdropNames = ['neutral', 'london'] as const;
+export type BackdropName = typeof backdropNames[number];
+const cities: Readonly<Record<Exclude<BackdropName, 'neutral'>, Backdrop>> = { london };
+
+export const BACKDROP_CREDIT = '© OpenStreetMap contributors';
+/** Where the site's credit line under a city map links (catalogue-site: Map backdrop). */
+export const BACKDROP_CREDIT_URL = 'https://www.openstreetmap.org/copyright';
+
+/** One decimal, for backdrop points (metro-map: Backdrop scale); throws on a non-finite value. */
+function tenth(value: number): string {
+  if (!Number.isFinite(value)) throw new Error('SVG geometry must be finite');
+  return String(Math.round(value * 10) / 10);
+}
+
+/** Where a city's point lands: the data's box scaled by s = max(W / w, H / h) and centred on the viewBox
+ * centre, y flipped (the data is y up), so the city covers the viewBox and the viewBox crops it. */
+export function backdropScale(city: Backdrop, viewBox: Box): { s: number; at: (x: number, y: number) => Point } {
+  const { box } = city;
+  const s = Math.max(viewBox.w / box.w, viewBox.h / box.h);
+  const [cx, cy] = [viewBox.x + viewBox.w / 2, viewBox.y + viewBox.h / 2];
+  const [mx, my] = [box.x + box.w / 2, box.y + box.h / 2];
+  return { s, at: (x, y) => [cx + (x - mx) * s, cy - (y - my) * s] };
+}
+
+/** The backdrop group: the water path, then the parks. The generator winds holes opposite to their
+ * outer ring, so the default non-zero fill rule leaves them empty without fill-rule. */
+function backdropLayer(city: Backdrop, viewBox: Box, theme: Theme): string {
+  const { at } = backdropScale(city, viewBox);
+  const d = (rings: Backdrop['water']): string => rings.map(ring => {
+    const points: string[] = [];
+    for (let i = 0; i < ring.length; i += 2) { const [x, y] = at(ring[i]!, ring[i + 1]!); points.push(`${tenth(x)},${tenth(y)}`); }
+    return `M${points.join('L')}Z`;
+  }).join('');
+  const colours = theme.backdrop;
+  return tag('path', { d: d(city.water), fill: colours.water, stroke: colours.waterEdge, 'stroke-width': 2, 'stroke-linejoin': 'round' })
+    + tag('path', { d: d(city.park), fill: colours.park });
+}
+
+/** The OpenStreetMap credit, right-aligned near the bottom-right corner of the viewBox. */
+function creditLayer(viewBox: Box, theme: Theme, paint: Painter): string {
+  return paint.text(BACKDROP_CREDIT, viewBox.x + viewBox.w - 16, viewBox.y + viewBox.h - 14, { fill: theme.backdrop.credit, 'text-anchor': 'end' });
+}
+
+/** chrome (default true): draw the title band and the legend panel around the map. backdrop (default
+ * `neutral`): the city behind a software map; a skills map never takes one. */
+export interface RenderOptions { chrome?: boolean; backdrop?: BackdropName }
 
 /** The frame with a small margin: the viewBox of a map drawn without title band and legend. */
 function frameView(geometry: MapGeometry): Box {
@@ -229,14 +276,19 @@ export function renderSvg(geometry: MapGeometry, theme: Theme, options: RenderOp
     .map(station => stationGroup(station, stationData(station, drawnZones), theme, paint))
     .join('');
   const empty = geometry.lines.length ? '' : paint.text(texts(geometry).empty, geometry.frame.x + 32, geometry.frame.y + 64, { 'font-size': 22 });
+  const backdrop = options.backdrop ?? 'neutral';
+  const city = backdrop === 'neutral' || geometry.kind === 'skills' ? undefined : cities[backdrop];
+  if (backdrop !== 'neutral' && !Object.hasOwn(cities, backdrop)) throw new Error(`Unknown backdrop; allowed backdrops: ${backdropNames.join(', ')}`);
   const layers = [
     background,
+    ...(city ? [backdropLayer(city, viewBox, theme)] : []),
     gridLayer(geometry.frame, theme, paint),
     zonesLayer(geometry.zones, theme),
     lines,
     stations,
     labelsLayer(geometry, drawnZones, theme, paint) + empty,
     ...(chrome ? [headerLayer(geometry, theme, paint), legendLayer(geometry, theme, paint)] : []),
+    ...(city ? [creditLayer(viewBox, theme, paint)] : []),
   ].map(content => tag('g', {}, content)).join('\n');
   const attrs: Attributes = {
     xmlns: SVG_NAMESPACE,

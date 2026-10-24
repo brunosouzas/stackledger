@@ -170,7 +170,7 @@ async function buildView(staging: string, view: ViewName, data: SiteData, calend
   if (calendar !== undefined) writeFileSync(join(dir, CALENDAR_FILE), calendar);
   relativise(dir);
   // The staging folder's absolute path and random name, and the working copy, must not leak into a file.
-  const problems = scan(dir, [staging, work, basename(staging)], data.home.links.map(link => link.url));
+  const problems = scan(dir, [staging, work, basename(staging)], data.home.links.map(link => link.url), data.map.credit);
   if (problems.length) throw new Error(`The ${view} site has URL forms or inline code the build does not allow: ${problems.join('; ')}`);
   writeFileSync(join(dir, '_headers'), HEADERS);
   writeFileSync(join(dir, 'robots.txt'), ROBOTS);

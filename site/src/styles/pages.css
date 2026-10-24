@@ -102,6 +102,20 @@
   outline: 3px solid var(--color-accent);
 }
 
+/* catalogue-site "Map backdrop": the OpenStreetMap credit under the frame, in the backdrop credit token,
+   readable on a phone (at least 12 pixels). */
+.map-credit {
+  margin: 0.4rem 0 0;
+  color: var(--color-map-credit);
+  font-size: max(0.8125rem, 12px);
+  text-align: center;
+}
+
+.map-credit a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 .line-chips {
   display: flex;
   flex-wrap: wrap;

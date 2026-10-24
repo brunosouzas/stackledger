@@ -21,6 +21,7 @@
   --color-text-dark: var(--ds-site-light-text-dark);
   --color-text-light: var(--ds-site-light-text-light);
   --color-on-primary: #ffffff;
+  --color-map-credit: var(--ds-surface-light-backdrop-credit);
 
   --font-primary: var(--ds-site-font-primary);
   --font-secondary: var(--ds-site-font-secondary);
@@ -60,6 +61,7 @@
   --color-text-dark: var(--ds-site-dark-text-dark);
   --color-text-light: var(--ds-site-dark-text-light);
   --color-on-primary: #040404;
+  --color-map-credit: var(--ds-surface-dark-backdrop-credit);
 
   /* On a dark page the ink outline gets a light rim and the shadow turns indigo, as on the map. */
   --frame-shadow: 0 0 0 var(--ds-surface-dark-rim-width) var(--ds-surface-dark-rim), var(--ds-shadow-small) var(--ds-shadow-small) 0 var(--ds-surface-dark-shadow);
@@ -80,6 +82,7 @@
     --color-text-dark: var(--ds-site-dark-text-dark);
     --color-text-light: var(--ds-site-dark-text-light);
     --color-on-primary: #040404;
+    --color-map-credit: var(--ds-surface-dark-backdrop-credit);
 
     --frame-shadow: 0 0 0 var(--ds-surface-dark-rim-width) var(--ds-surface-dark-rim), var(--ds-shadow-small) var(--ds-shadow-small) 0 var(--ds-surface-dark-shadow);
   --frame-pressed: 0 0 0 var(--ds-surface-dark-rim-width) var(--ds-surface-dark-rim);

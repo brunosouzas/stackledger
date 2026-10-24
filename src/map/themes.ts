@@ -1,7 +1,7 @@
 /** The two themes, built from the tokens of @brunosouzas/design-system (metro-map: Design system
  * tokens): each `surface.<theme>`, the `map` measures and the `color` meanings of brunosouzas.com.
  * Ink outlines, pipe lines with an ink casing, hard offset shadows (indigo with a light rim on the
- * dark navy) and the Lato font stack. The pieces paint a surface's ink, the licence and renewal colours
+ * dark navy), the city backdrop colours and the Lato font stack. The pieces paint a surface's ink, the licence and renewal colours
  * and the zone opacity and title tint from the same tokens, so the renderers refuse a theme whose value
  * for any of them differs (checkInk). No fonts or other assets are fetched at render time: the stack names Lato, which the site
  * ships, then system fonts (unquoted, so no quote character reaches an SVG attribute).
@@ -40,6 +40,8 @@ export interface Theme {
   shadow: { enabled: boolean; color: string; dx: number; dy: number };
   /** A light band around the ink outline of stickers, so the outline reads on a dark background. */
   rim: { enabled: boolean; color: string; width: number };
+  /** Colours of a city backdrop (metro-map: Backdrop layer, Backdrop credit). */
+  backdrop: { water: string; waterEdge: string; park: string; credit: string };
 }
 
 const M = tokens.map;
@@ -74,6 +76,7 @@ function fromTokens(surface: 'light' | 'dark'): Theme {
     casing: { enabled: M.casing > 0, color: C.ink, extraWidth: M.casing },
     shadow: { enabled: true, color: s.shadow, dx: M.shadow, dy: M.shadow },
     rim: { enabled: s.rimWidth > 0, color: s.rim, width: s.rimWidth },
+    backdrop: { water: s.backdropWater, waterEdge: s.backdropWaterEdge, park: s.backdropPark, credit: s.backdropCredit },
   };
 }
 
