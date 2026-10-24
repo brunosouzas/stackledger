@@ -384,10 +384,29 @@ test('Legend interchange is a capsule', () => {
 // metro-map "Software map unchanged": the example's SVGs must place lines, station markers and labels where the
 // 0.2.0 engine did (recorded by test/fixtures/map-0.2.0/record.mjs from the 0.2.0 code), as `stackledger map` and
 // the site draw them. Only the painting may differ, so geometry is compared, not bytes.
+/** A path `d` with each round bend read back to its corner (metro-map "Software map unchanged"): the two
+ * tangent points of an arc are replaced by the intersection of the segment that ends at the first and
+ * the segment that starts at the second, written with two decimals as the map writes numbers. */
+function unround(d:string):string{
+ const parts=[...d.matchAll(/([MLA])([^MLA]*)/g)].map(m=>({op:m[1]!,nums:m[2]!.trim().split(/[ ,]+/).map(Number)}));
+ const pts:{p:number[];arc:boolean}[]=parts.map(part=>({p:part.nums.slice(-2),arc:part.op==='A'}));
+ const out:number[][]=[];
+ for(let i=0;i<pts.length;i++){
+  if(pts[i+1]?.arc){
+   const a=out.at(-1)!,t1=pts[i]!.p,t2=pts[i+1]!.p,b=pts[i+2]!.p;
+   const u=[t1[0]!-a[0]!,t1[1]!-a[1]!],v=[b[0]!-t2[0]!,b[1]!-t2[1]!],den=u[0]!*v[1]!-u[1]!*v[0]!;
+   const k=((t2[0]!-a[0]!)*v[1]!-(t2[1]!-a[1]!)*v[0]!)/den;
+   out.push([a[0]!+u[0]!*k,a[1]!+u[1]!*k]);i++;continue;
+  }
+  out.push(pts[i]!.p);
+ }
+ const n=(x:number)=>String(Math.round(x*100)/100);
+ return out.map((p,i)=>`${i?'L':'M'}${n(p[0]!)},${n(p[1]!)}`).join(' ');
+}
 function placement(svg:string){
  const doc=parseSvg(svg),groups=Array.from(doc.getElementsByTagName('g'));
  // Every path of a line: its casing and its colour.
- const lines=groups.filter(g=>g.getAttribute('data-ref')?.startsWith('line:')).map(g=>[g.getAttribute('data-ref'),Array.from(g.getElementsByTagName('path')).map(p=>p.getAttribute('d'))]);
+ const lines=groups.filter(g=>g.getAttribute('data-ref')?.startsWith('line:')).map(g=>[g.getAttribute('data-ref'),Array.from(g.getElementsByTagName('path')).map(p=>unround(p.getAttribute('d')!))]);
  // A station's outlined face is its last white-or-muted shape with an ink stroke; its centre is cx,cy or the capsule's start.
  const stations=groups.filter(g=>g.getAttribute('data-ref')?.startsWith('component:')).map(g=>{
   // Licence markers (radius 5) and renewal rings (no fill) share the group; they are not the marker.

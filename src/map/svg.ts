@@ -98,8 +98,20 @@ function zonesLayer(zones: ZoneGeometry[], theme: Theme): string {
   }).join('');
 }
 
+/** The `d` of a stroke's drawn path: straight parts as `L`, round bends as `A r,r 0 0 sweep x,y`
+ * (metro-map: Round bends). Every operand goes through number(), which throws on a non-finite value. */
+export function pathData(stroke: Stroke): string {
+  return stroke.path.map((part, i) => {
+    const to = `${number(part.to[0])},${number(part.to[1])}`;
+    if (!i) return `M${to}`;
+    if (!part.arc) return `L${to}`;
+    const r = number(part.arc.radius);
+    return `A${r},${r} 0 0 ${part.arc.sweep} ${to}`;
+  }).join(' ');
+}
+
 function lineGroup(stroke: Stroke, theme: Theme, paint: Painter): string {
-  const d = stroke.points.map((point, i) => `${i ? 'L' : 'M'}${number(point[0])},${number(point[1])}`).join(' ');
+  const d = pathData(stroke);
   const body = writePiece(pipePiece({ d, fill: stroke.color, width: theme.lineWidth, casing: theme.casing.enabled ? theme.casing.extraWidth : 0 }));
   return tag('g', { 'data-ref': stroke.ref, 'data-line': stroke.ref }, paint.title(stroke.title) + body);
 }

@@ -31,6 +31,8 @@ export interface Theme {
   accent: string;
   font: string;
   lineWidth: number;
+  /** Radius of a bundle's centre line in a round bend (map.bendRadius). */
+  bendRadius: number;
   zoneOpacity: number;
   /** Zone titles mix the zone colour with white by this amount (0 keeps the catalogue colour). */
   zoneTitleTint: number;
@@ -65,6 +67,7 @@ function fromTokens(surface: 'light' | 'dark'): Theme {
     accent: C.caller,
     font: FONT,
     lineWidth: M.lineWidth,
+    bendRadius: M.bendRadius,
     zoneOpacity: s.zoneOpacity,
     // The zone piece tints titles on the dark surface only.
     zoneTitleTint: surface === 'dark' ? M.zoneTitleTint : 0,
@@ -86,7 +89,7 @@ export const themes: Readonly<Record<'light' | 'dark', Theme>> = {
 export function checkInk(theme: Theme): void {
   if (theme.surface !== 'light' && theme.surface !== 'dark') throw new Error(`Theme surface must be light or dark, found ${String(theme.surface)}`);
   const own = fromTokens(theme.surface);
-  const fields = ['outline', 'outlineWidth', 'shadow', 'rim', 'casing', 'lineWidth', 'licence', 'renewal', 'zoneOpacity', 'zoneTitleTint'] as const;
+  const fields = ['outline', 'outlineWidth', 'shadow', 'rim', 'casing', 'lineWidth', 'bendRadius', 'licence', 'renewal', 'zoneOpacity', 'zoneTitleTint'] as const;
   for (const field of fields) {
     if (!sameValue(theme[field], own[field])) throw new Error(`Theme ${field} must be the design system's for the ${theme.surface} surface`);
   }

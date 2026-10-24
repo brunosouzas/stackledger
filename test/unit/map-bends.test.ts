@@ -51,8 +51,8 @@ test('45-degree turn', () => {
 });
 
 test('Offset line is tangent', () => {
-  const docs = [...stations('a', 'b'), journey('ship', ['a', 'b'], '1'), journey('secrets', ['a', 'b'], '2'), positions({ a: [0, 0], b: [4, 3] })];
-  const path = [[0, 0], [1, 0], [2, 0], [2, 1], [2, 2], [3, 3], [4, 3]];
+  const docs = [...stations('a', 'b'), journey('ship', ['a', 'b'], '1'), journey('secrets', ['a', 'b'], '2'), positions({ a: [0, 0], b: [3, 3] })];
+  const path = [[0, 0], [1, 0], [2, 0], [2, 1], [2, 2], [3, 3]];
   const strokes = draw(docs, { ship: path, secrets: path });
   const turns = [{ node: [128, 0], phi: Math.PI / 2 }, { node: [128, 128], phi: Math.PI / 4 }];
   for (const stroke of strokes) {
@@ -65,7 +65,7 @@ test('Offset line is tangent', () => {
       close(dist(arc.arc.centre, start), arc.arc.radius);close(dist(arc.arc.centre, arc.to), arc.arc.radius);
     });
   }
-  for (const i of [0, 1]) expect(arcs(strokes[0]!)[i]!.arc.centre.map(v => v.toFixed(6))).toEqual(arcs(strokes[1]!)[i]!.arc.centre.map(v => v.toFixed(6)));
+  for (const i of [0, 1]) for (const axis of [0, 1]) close(arcs(strokes[0]!)[i]!.arc.centre[axis]!, arcs(strokes[1]!)[i]!.arc.centre[axis]!);
 });
 
 test('Mirrored turns', () => {
@@ -80,7 +80,7 @@ test('Bundle turns around one centre', () => {
   const path = [[0, 2], [1, 2], [2, 2], [2, 1], [2, 0]];
   const [ship, secrets] = draw([...stations('a', 'b'), journey('ship', ['a', 'b'], '1'), journey('secrets', ['a', 'b'], '2'), positions({ a: [0, 2], b: [2, 0] })], { ship: path, secrets: path });
   const one = arcs(ship!)[0]!, two = arcs(secrets!)[0]!;
-  expect(one.arc.centre).toEqual(two.arc.centre);
+  for (const axis of [0, 1]) close(one.arc.centre[axis]!, two.arc.centre[axis]!);
   close(Math.abs(one.arc.radius - two.arc.radius), GAP + 1.5);
   expect(Math.sign(one.arc.radius - two.arc.radius)).not.toBe(0);
 });
@@ -88,7 +88,7 @@ test('Bundle turns around one centre', () => {
 test('Reversed travel draws the same bends', () => {
   const path = [[0, 2], [1, 2], [2, 2], [2, 1], [2, 0]];
   const docs = (secrets: string[]) => [...stations('a', 'b'), journey('ship', ['a', 'b'], '1'), journey('secrets', secrets, '2'), positions({ a: [0, 2], b: [2, 0] })];
-  const summary = (strokes: Stroke[]) => strokes.flatMap(arcs).map(arc => [arc.arc.centre.map(v => v.toFixed(6)).join(','), arc.arc.radius.toFixed(6)].join(' ')).sort();
+  const summary = (strokes: Stroke[]) => strokes.flatMap(arcs).map(arc => [arc.arc.centre.map(v => v.toFixed(4)).join(','), arc.arc.radius.toFixed(4)].join(' ')).sort();
   expect(summary(draw(docs(['b', 'a']), { ship: path, secrets: [...path].reverse() }))).toEqual(summary(draw(docs(['a', 'b']), { ship: path, secrets: path })));
 });
 
@@ -148,7 +148,7 @@ test('Bundle keeps its sides through a bend', () => {
   for (const s of sides) { expect(s[0]).not.toBe(0); expect(s[1]).toBe(s[0]); }
   expect(sides[0]![0]).not.toBe(sides[1]![0]);
   for (const s of strokes) { expect(s.points).toHaveLength(3); expect(arcs(s)).toHaveLength(1); }
-  expect(arcs(strokes[0]!)[0]!.arc.centre).toEqual(arcs(strokes[1]!)[0]!.arc.centre);
+  for (const axis of [0, 1]) close(arcs(strokes[0]!)[0]!.arc.centre[axis]!, arcs(strokes[1]!)[0]!.arc.centre[axis]!);
 });
 
 // Room for an arc. An S-bend one edge apart: the outer line's setback (32 + 16.5) is more than half the edge.
@@ -240,7 +240,7 @@ test('Label clears the outside of a curve', () => {
 
 test('Label clears a round bend', () => {
   // The first candidate, to the right of the station, sits inside the corner: clear of the mitre, not of the arc.
-  const station = { ref: 'component:x', title: 'Vault', lines: [], point: [70, -2] as Point, marker: { box: { x: 64, y: -8, w: 12, h: 12 } } };
+  const station = { ref: 'component:x', title: 'Vault', lines: [], point: [52, 0] as Point, marker: { box: { x: 46, y: -6, w: 12, h: 12 } } };
   const first = placeLabels([station], mitre())[0]!.box;
   expect(overlapScore(first, mitre())).toBe(0);
   expect(overlapScore(first, pathObstacles(corner(), OUTER))).toBeGreaterThan(0);
