@@ -3,7 +3,10 @@
  * The workflow is read as YAML; actionlint runs on it when it is on PATH (see test/tools.ts).
  */
 import { describe, expect, test } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { chmodSync, readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { join } from 'node:path';
+import { folder } from '../helpers.js';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 import { actionlint, toolOrSkip } from '../tools.js';
@@ -63,6 +66,25 @@ test('The SBOM and publish steps take the version from detect, never from GITHUB
   expect(script.env?.RELEASE_TAG).toBe('${{ needs.detect.outputs.tag }}');
   expect(script.env?.RELEASE_COMMIT).toBe("${{ github.ref_type == 'branch' && github.sha || '' }}");
   expect(script.run).toContain('version="${RELEASE_TAG#v}"');
+  // Exact scoped file names, from the version detect gives (Scoped tarball in the workflow).
+  expect(sbom.run).toContain('tar -xzf "$RUNNER_TEMP/release/brunosouzas-stackledger-${RELEASE_TAG#v}.tgz"');
+  expect(sbom.run).toContain('> "$RUNNER_TEMP/release/stackledger-${RELEASE_TAG#v}.cdx.json"');
+  expect(script.run!.replace(/\\\n\s*/g, '')).toContain(
+    'scripts/release-publish.sh "$RUNNER_TEMP/release/brunosouzas-stackledger-$version.tgz" "$RUNNER_TEMP/release/integrity" "$RUNNER_TEMP/release/stackledger-$version.cdx.json"');
+});
+
+test('The publish step hands the script the scoped files for the detected version, on both paths', () => {
+  const script = publish.steps.find(step => step.run?.includes('scripts/release-publish.sh'))!;
+  const dir = folder({ 'scripts/release-publish.sh': '#!/bin/sh\nprintf "%s\\n" "$RELEASE_TAG|$RELEASE_COMMIT" "$@" > "$OUT"\n', 'step.sh': script.run! });
+  chmodSync(join(dir, 'scripts/release-publish.sh'), 0o755);
+  for (const [refType, commit] of [['branch', 'abc123'], ['tag', '']] as const) {
+    const out = join(dir, `${refType}.txt`);
+    const result = spawnSync('bash', ['-e', join(dir, 'step.sh')], { cwd: dir, encoding: 'utf8',
+      env: { ...process.env, RELEASE_TAG: 'v0.5.0', RELEASE_COMMIT: commit, RUNNER_TEMP: '/tmp/runner', OUT: out, GITHUB_REF_TYPE: refType } });
+    expect(result.status, result.stderr).toBe(0);
+    expect(readFileSync(out, 'utf8').trim().split('\n')).toEqual([`v0.5.0|${commit}`,
+      '/tmp/runner/release/brunosouzas-stackledger-0.5.0.tgz', '/tmp/runner/release/integrity', '/tmp/runner/release/stackledger-0.5.0.cdx.json']);
+  }
 });
 
 test('Checks job: contents: read only; tag check, npm ci, build, tests, audit, pack and SBOM in order', () => {
