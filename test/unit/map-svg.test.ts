@@ -47,7 +47,7 @@ test('Themes are data, with casing and offset shadows on in both themes',()=>{
 test('Theme values are the tokens',()=>{
  const d=tokens.surface.dark,t=themes.dark;
  expect(t.surface).toBe('dark');expect(t.background).toBe(d.background);expect(t.shadow.color).toBe(d.shadow);expect(t.rim.width).toBe(d.rimWidth);
- expect(t.outlineWidth).toBe(tokens.map.outline);expect(t.lineWidth).toBe(tokens.map.lineWidth);
+ expect(t.outlineWidth).toBe(tokens.map.outline);expect(t.lineWidth).toBe(tokens.map.lineWidth);expect(t.bendRadius).toBe(tokens.map.bendRadius);
  expect([t.text,t.muted,t.grid,t.panel,t.rim.color]).toEqual([d.text,d.muted,d.grid,d.panel,d.rim]);
  expect([t.casing.extraWidth,t.shadow.dx,t.shadow.dy]).toEqual([tokens.map.casing,tokens.map.shadow,tokens.map.shadow]);
  expect([t.outline,t.station,t.badgeText,t.licence,t.renewal,t.accent]).toEqual([tokens.color.ink,tokens.color.white,tokens.color.white,tokens.color.healthy,tokens.color.blocked,tokens.color.caller]);
@@ -81,6 +81,10 @@ test('Custom piece colour is refused',()=>{
  expect(()=>renderSvg(g,opaque)).toThrow(/zoneOpacity/);expect(()=>renderSymbol('licence',opaque)).toThrow(/zoneOpacity/);
  expect(()=>renderSvg(g,amber)).toThrow(/licence/);expect(()=>renderSymbol('licence',amber)).toThrow(/licence/);
  for(const field of ['renewal','zoneTitleTint'] as const){const t=structuredClone(themes.dark) as any;t[field]=field==='renewal'?'#000000':0;expect(()=>renderSvg(g,t)).toThrow(new RegExp(field));}
+});
+test('Custom bend radius is refused',()=>{
+ const t=structuredClone(themes.light);t.bendRadius=16;
+ expect(()=>renderSvg(geometry(),t)).toThrow(/bendRadius/);
 });
 test('Other theme fields stay free',()=>{
  const t=structuredClone(themes.light);t.background='#FFFFFF';

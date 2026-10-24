@@ -4,12 +4,13 @@ Levels: U unit, I integration. Every scenario has one test named after it. Tests
 
 | Spec | Scenarios | File | Level |
 | --- | --- | --- | --- |
-| metro-map | Single line turns round; 45-degree turn; Offset line is tangent (90 and 45 degrees); Mirrored turns (sweep and large-arc flags of the written `A`); Bundle turns around one centre; Reversed travel draws the same bends | `test/unit/map-layout.test.ts` | U |
-| metro-map | Three lines turn round; Wide bundle stays mitred; Middle line goes straight on; Arcs with no room stay mitred; Chained conflicts (a two-line bundle, both directions of travel); Bend next to a connector or an end | `test/unit/map-layout.test.ts` | U |
-| metro-map | Bundle keeps its sides through a bend (renamed from "…: bends are mitred"); Bend at a station stays mitred; Bundle splits at a bend (middle line straight on); Bundles merge at a bend | `test/unit/map-layout.test.ts` | U |
-| metro-map | Station in the way and Straight when nothing is in the way (unchanged); Angles (reads `path`) | `test/unit/map-layout.test.ts` | U |
-| metro-map | Skills map turns round | `test/unit/skills-metro.test.ts` | U |
-| metro-map | Label clears a round bend; Label clears the outside of a curve (mid-chord and joints); Terminal badge clears a round bend; Labels do not collide in the example, Larger ink pushes a label out and Rule count pushes a label out (unchanged) | `test/unit/map-layout.test.ts` | U |
+| metro-map | Single line turns round; 45-degree turn; Offset line is tangent (90 and 45 degrees); Mirrored turns (sweep and large-arc flags of the written `A`); Bundle turns around one centre; Reversed travel draws the same bends | `test/unit/map-bends.test.ts` | U |
+| metro-map | Three lines turn round; Wide bundle stays mitred; Middle line goes straight on; Arcs with no room stay mitred; Chained conflicts (a two-line bundle, both directions of travel); Bend next to a connector or an end | `test/unit/map-bends.test.ts` | U |
+| metro-map | Bundle keeps its sides through a bend (renamed from "…: bends are mitred"); Bend at a station stays mitred; Bundle splits at a bend (middle line straight on); Bundles merge at a bend | `test/unit/map-bends.test.ts` (moved from `map-layout.test.ts`) | U |
+| metro-map | Station in the way and Straight when nothing is in the way (unchanged, `map-layout.test.ts`); Angles (reads `path`, moved) | `test/unit/map-bends.test.ts` | U |
+| metro-map | Skills map turns round | `test/unit/map-bends.test.ts` | U |
+| metro-map | Label clears a round bend; Label clears the outside of a curve (mid-chord and joints, Arc obstacles); Terminal badge clears a round bend | `test/unit/map-bends.test.ts` | U |
+| metro-map | Labels do not collide in the example, Larger ink pushes a label out and Rule count pushes a label out (unchanged) | `test/unit/map-layout.test.ts` | U |
 | metro-map | Theme values are the tokens (bend radius); Light theme has no rim, Custom ink is refused and Other theme fields stay free (unchanged); Custom bend radius is refused | `test/unit/map-svg.test.ts` | U |
 | metro-map | Example map (arcs read back to corners); Software lines in a skills map file name and A cut label now wraps (unchanged) | `test/unit/map-svg.test.ts` | U |
 | regression | Far-away typo (`map-layout.test.ts`) and Far station drawn by the piece (`map-pieces.test.ts`), unchanged, must still pass; Numbers have at most two decimals and finite geometry is required (`map-svg.test.ts`) covers arc operands | as listed | U |
