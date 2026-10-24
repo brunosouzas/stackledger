@@ -58,7 +58,11 @@
   justify-content: center;
 }
 
+/* catalogue-site "Map shown size": the frame is as wide as the map it holds, centred in the column. */
 .map-frame {
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
   overflow: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -75,9 +79,12 @@
   cursor: grabbing;
 }
 
+/* A map is never shown larger than its drawn size: width auto takes the SVG's width attribute (its
+   initial viewBox width, src/map/svg.ts), max-width shrinks it when the frame has less room. */
 .map-canvas svg {
   display: block;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   height: auto;
 }
 

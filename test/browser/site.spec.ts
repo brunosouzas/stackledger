@@ -10,6 +10,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { siteIcons } from '../../src/site/ui-icons.js';
+import { mapSize } from './map-size.js';
 
 declare global {
   interface Window { cspViolations: string[] }
@@ -416,4 +417,50 @@ test('Theme switch icons', async ({ page }) => {
   const html = await (await page.request.get('/full/')).text();
   expect(html).toContain(`<span class="icon-sun">${siteIcons().sun}</span>`);
   expect(html).toContain(`<span class="icon-moon">${siteIcons().moon}</span>`);
+});
+
+// catalogue-site "Map shown size": a map is never shown larger than its drawn size; the frame hugs it.
+test.describe('Map shown size', () => {
+  test('Map narrower than the page', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 900 });
+    await page.goto('/extra/map/');
+    const size = await mapSize(page);
+    expect(size.viewBoxWidth).toBeLessThan(size.frameContentWidth + size.leftGap + size.rightGap);
+    expect(Math.abs(size.width - size.viewBoxWidth)).toBeLessThanOrEqual(1);
+    expect(Math.abs(size.frameContentWidth - size.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(size.leftGap - size.rightGap)).toBeLessThanOrEqual(1);
+  });
+  test('Map wider than the page', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto('/full/map/');
+    const size = await mapSize(page);
+    expect(Math.abs(size.width - size.frameContentWidth)).toBeLessThanOrEqual(1);
+    expect(Math.abs(size.height - size.width * size.viewBoxHeight / size.viewBoxWidth)).toBeLessThanOrEqual(1);
+    expect(size.pageScrolls).toBe(false);
+  });
+  test('Zoom keeps the shown size', async ({ page }) => {
+    await page.goto('/full/map/');
+    const before = await mapSize(page);
+    await page.getByRole('button', { name: 'Zoom in' }).click();
+    await page.getByRole('button', { name: 'Zoom in' }).click();
+    const frame = (await page.locator('[data-map]').boundingBox())!;
+    await page.mouse.move(frame.x + 60, frame.y + 60);
+    await page.mouse.down();
+    await page.mouse.move(frame.x + 160, frame.y + 100, { steps: 5 });
+    await page.mouse.up();
+    const after = await mapSize(page);
+    expect(Math.abs(after.width - before.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(after.height - before.height)).toBeLessThanOrEqual(1);
+  });
+});
+
+test.describe('Map shown size without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+  test('Shown size without JavaScript', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 900 });
+    await page.goto('/extra/map/');
+    await expect(page.locator('.map-canvas.themed-light svg')).toBeVisible();
+    const size = await mapSize(page);
+    expect(Math.abs(size.width - size.viewBoxWidth)).toBeLessThanOrEqual(1);
+  });
 });
