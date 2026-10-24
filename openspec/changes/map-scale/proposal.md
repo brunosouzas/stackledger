@@ -23,8 +23,8 @@ None.
 
 ### Modified Capabilities
 
-- `catalogue-site`: "Map shown size" added.
-- `skills-site`: "Skills map shown size" added.
+- `catalogue-site`: "Map shown size" added; "Map page" modified (without JavaScript the map is shown whole at that size, no longer "at full size").
+- `skills-site`: "Skills map shown size" added; "Skills map page" modified (its "Map without JavaScript" scenario, likewise).
 
 ## Implicit requirements
 

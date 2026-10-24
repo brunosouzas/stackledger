@@ -1,6 +1,6 @@
 ## Context
 
-The engine writes every map SVG with `width` and `height` equal to its viewBox size (`src/map/svg.ts`); the page overrides the width with `.map-canvas svg { width: 100%; height: auto }`. Both themed copies sit in `.map-frame`, a bordered box as wide as the page container (1320 pixels at most).
+The engine writes every map SVG with `width` and `height` equal to its viewBox size (`src/map/svg.ts`); the page overrides the width with `.map-canvas svg { width: 100%; height: auto }`. Both themed copies sit in `.map-frame`, a box with 1-pixel borders as wide as the page's content column (measured: 1320 pixels at a 1360-pixel window, the SVG 1318; 390 at a 390-pixel window, the SVG 388).
 
 ## Decisions
 
@@ -10,4 +10,4 @@ The engine writes every map SVG with `width` and `height` equal to its viewBox s
 
 ## Test changes
 
-No existing test changes. New browser tests, one per scenario, in `test/browser/site.spec.ts` (Map page) and `test/browser/site-skills.spec.ts` (Skills map page).
+New browser tests, one per new scenario, in `test/browser/site.spec.ts` and `test/browser/site-skills.spec.ts`. One existing test changes: "Map without JavaScript" (`site-skills.spec.ts`) also checks the map's width, because its scenario now says "at the size Skills map shown size gives". Two existing sentences change meaning and are modified in the deltas: catalogue-site "Map page" and skills-site "Map without JavaScript" said "at full size", which today means stretched to the frame.
