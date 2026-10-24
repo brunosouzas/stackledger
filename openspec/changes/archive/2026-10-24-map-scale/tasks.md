@@ -26,5 +26,5 @@ Levels: B browser (Playwright). Every scenario has one test named after it.
 
 ## 3. Documentation
 
-- [ ] 3.1 `docs/site.md`, Map row: the map is shown at most at its drawn size, in a frame as wide as the map, centred. Verify: `npm test` (docs tests) passes.
-- [ ] 3.2 Archive the change in the same branch: `openspec archive map-scale -y`, then `openspec validate --all --strict`. Verify: all pass.
+- [x] 3.1 `docs/site.md`, Map row: the map is shown at most at its drawn size, in a frame as wide as the map, centred. Verify: `npm test` (docs tests) passes.
+- [x] 3.2 Archive the change in the same branch: `openspec archive map-scale -y`, then `openspec validate --all --strict`. Verify: all pass.

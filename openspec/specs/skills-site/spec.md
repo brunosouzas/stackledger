@@ -179,7 +179,7 @@ Every box of the relation diagram SHALL carry `data-ref` with the item's station
 
 #### Scenario: Map without JavaScript
 - **WHEN** JavaScript is disabled
-- **THEN** the whole map is shown at full size
+- **THEN** the whole map is shown, at the size "Skills map shown size" gives
 
 ### Requirement: Rules index
 `/rules/` SHALL list every rule of the set in one table with its ID, text, group and the skill or playbook that defines it (a link to its page), sorted by ID, then that item's name, by code point; a rule ID used by two skills SHALL give two rows. A search box SHALL hide rows that do not contain the typed text, ignoring case, in their shown cells; without JavaScript the whole table is shown.
@@ -243,3 +243,35 @@ On a relation diagram, skills SHALL be `nodeBlock` boxes with radius 6, playbook
 #### Scenario: Name with only control characters
 - **WHEN** a skill's name is made only of control characters and it is loaded by `release`
 - **THEN** `release`'s diagram is drawn and that box shows the skill's station reference
+
+### Requirement: Skills map shown size
+`/skill-map/` SHALL size the skills map and its frame as the software map page does (catalogue-site, "Map shown size"): the initial viewBox width in CSS pixels, or narrower when the frame's room is smaller, the frame's content box as wide as the map and centred, and the same size while zooming and panning, with no inline style or script.
+
+#### Scenario: Skills map not enlarged
+- **GIVEN** a 1360-pixel-wide window and the example skills map, whose viewBox is narrower than the room
+- **WHEN** the reader opens `/full/skill-map/`
+- **THEN** the map is as wide as its viewBox, the frame's content box is as wide as the map, and the frame's left and right distances to the content column's edges are equal (each within 1 pixel)
+
+#### Scenario: Same ink as the software map
+- **GIVEN** a 1360-pixel-wide window
+- **WHEN** the reader opens `/full/map/` and `/full/skill-map/`
+- **THEN** neither map shows more than 1.01 pixels per initial viewBox unit, and the software map's pixels per unit are within 5% of the skills map's
+
+#### Scenario: Skills map just wider than the room
+- **GIVEN** a 677-pixel-wide window, so that the room is narrower than the skills map's 675.6-unit viewBox
+- **WHEN** the reader opens `/full/skill-map/`
+- **THEN** the map is as wide as the frame's content box (within 1 pixel) and the page has no horizontal scroll
+
+#### Scenario: Skills map on a phone
+- **GIVEN** a 390-pixel-wide window
+- **WHEN** the reader opens `/full/skill-map/`
+- **THEN** the map is as wide as the frame's content box (within 1 pixel) and the page has no horizontal scroll
+
+#### Scenario: Skills zoom keeps the shown size
+- **WHEN** the reader presses zoom in twice on `/full/skill-map/`, then drags the map
+- **THEN** the map's width and height on the page are the same as before (within 1 pixel)
+
+#### Scenario: Skills shown size without JavaScript
+- **GIVEN** JavaScript is disabled and a 1360-pixel-wide window
+- **WHEN** the reader opens `/full/skill-map/`
+- **THEN** the whole map is shown, as wide as its viewBox (within 1 pixel)
