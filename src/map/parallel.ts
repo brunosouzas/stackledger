@@ -150,7 +150,7 @@ function joint(previous: OffsetEdge, next: OffsetEdge): Point[] {
 /** A vertex of a line's mitred polyline; `corner` marks the mitre of a 45- or 90-degree bend. */
 interface Vertex { point: Point; corner?: Corner }
 /** One line's mitre at a bend: its node, directions of travel, centre, signed radius and setback. */
-interface Corner { bend: string; node: Point; u: Point; v: Point; centre: Point; radius: number; setback: number; sweep: 0 | 1 }
+interface Corner { ref: string; bend: string; node: Point; u: Point; v: Point; centre: Point; radius: number; setback: number; sweep: 0 | 1 }
 
 /** Remove repeated and collinear points, keeping bends and reversals. */
 function compact(vertices: Vertex[]): Vertex[] {
@@ -173,7 +173,7 @@ function compact(vertices: Vertex[]): Vertex[] {
 }
 
 /** The mitre of a 45- or 90-degree bend between two offset edges (design §1), or undefined. */
-function corner(previous: OffsetEdge, next: OffsetEdge, radius: number): Corner | undefined {
+function corner(ref: string, previous: OffsetEdge, next: OffsetEdge, radius: number): Corner | undefined {
   const u = unit(previous.a, previous.b);
   const v = unit(next.a, next.b);
   const turn = cross(u, v);
@@ -189,7 +189,7 @@ function corner(previous: OffsetEdge, next: OffsetEdge, radius: number): Corner 
   const inside = previous.offset * (previous.normal[0] * normal[0] + previous.normal[1] * normal[1]);
   const signed = radius - inside;
   const [first, second] = previous.key < next.key ? [previous.key, next.key] : [next.key, previous.key];
-  return { bend: `${first}>${second}@${previous.gridB.join(',')}`, node, u, v, centre, radius: signed, setback: signed * Math.tan(half), sweep: turn > 0 ? 1 : 0 };
+  return { ref, bend: `${first}>${second}@${previous.gridB.join(',')}`, node, u, v, centre, radius: signed, setback: signed * Math.tan(half), sweep: turn > 0 ? 1 : 0 };
 }
 
 /** The drawn path of one line: its polyline, with each eligible corner turned into an arc. */
@@ -229,7 +229,7 @@ export function parallelLines(model: MapModel, routes: Routes, lineWidth = 7, op
     const vertices: Vertex[] = [{ point: edges[0]!.a }];
     for (let i = 1; i < edges.length; i++) {
       const points = joint(edges[i - 1]!, edges[i]!);
-      const bend = points.length === 1 ? corner(edges[i - 1]!, edges[i]!, radius) : undefined;
+      const bend = points.length === 1 ? corner(line.ref, edges[i - 1]!, edges[i]!, radius) : undefined;
       vertices.push(...points.map(point => bend ? { point, corner: bend } : { point }));
     }
     vertices.push({ point: edges.at(-1)!.b });
@@ -246,7 +246,10 @@ export function parallelLines(model: MapModel, routes: Routes, lineWidth = 7, op
     const same = first!.length === second!.length && first!.every(ref => second!.includes(ref));
     const node0 = corners[0]!.node;
     const atStation = stations.has(node) || stations.has([node0[0] / GRID, node0[1] / GRID].join(','));
-    if (!atStation && same && corners.length === first!.length && corners.every(item => item.radius >= outer / 2)) candidates.add(bend);
+    // Every line of the edges turns here (a line may pass the same bend more than once: count lines, not passes).
+    const turningRefs = new Set(corners.map(item => item.ref));
+    const all = turningRefs.size === first!.length && first!.every(ref => turningRefs.has(ref));
+    if (!atStation && same && all && corners.every(item => item.radius >= outer / 2)) candidates.add(bend);
   }
   // 2. Room, from the candidate states only. 3. Eligible when every line of the bundle has room.
   const crowded = new Set<string>();

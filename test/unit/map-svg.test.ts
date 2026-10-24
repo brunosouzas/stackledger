@@ -389,16 +389,24 @@ test('Legend interchange is a capsule', () => {
  * the segment that starts at the second, written with two decimals as the map writes numbers. */
 function unround(d:string):string{
  const parts=[...d.matchAll(/([MLA])([^MLA]*)/g)].map(m=>({op:m[1]!,nums:m[2]!.trim().split(/[ ,]+/).map(Number)}));
- const pts:{p:number[];arc:boolean}[]=parts.map(part=>({p:part.nums.slice(-2),arc:part.op==='A'}));
  const out:number[][]=[];
- for(let i=0;i<pts.length;i++){
-  if(pts[i+1]?.arc){
-   const a=out.at(-1)!,t1=pts[i]!.p,t2=pts[i+1]!.p,b=pts[i+2]!.p;
-   const u=[t1[0]!-a[0]!,t1[1]!-a[1]!],v=[b[0]!-t2[0]!,b[1]!-t2[1]!],den=u[0]!*v[1]!-u[1]!*v[0]!;
-   const k=((t2[0]!-a[0]!)*v[1]!-(t2[1]!-a[1]!)*v[0]!)/den;
+ for(let i=0;i<parts.length;i++){
+  const next=parts[i+1];
+  if(next?.op==='A'){
+   const a=out.at(-1)!,t1=parts[i]!.nums.slice(-2),t2=next.nums.slice(-2),b=parts[i+2]!.nums.slice(-2);
+   const [rx,ry,rotation,large,sweep]=next.nums;
+   expect([rx,rotation,large],d).toEqual([ry,0,0]);
+   const len=(x:number,y:number)=>Math.hypot(x,y)||1;
+   const u=[(t1[0]!-a[0]!)/len(t1[0]!-a[0]!,t1[1]!-a[1]!),(t1[1]!-a[1]!)/len(t1[0]!-a[0]!,t1[1]!-a[1]!)];
+   const v=[(b[0]!-t2[0]!)/len(b[0]!-t2[0]!,b[1]!-t2[1]!),(b[1]!-t2[1]!)/len(b[0]!-t2[0]!,b[1]!-t2[1]!)];
+   // The arc is tangent to both segments: the centre found from each tangent point, on the side the sweep flag names, is the same.
+   const side=sweep===1?1:-1;
+   const c1=[t1[0]!-u[1]!*rx!*side,t1[1]!+u[0]!*rx!*side],c2=[t2[0]!-v[1]!*rx!*side,t2[1]!+v[0]!*rx!*side];
+   expect(Math.hypot(c1[0]!-c2[0]!,c1[1]!-c2[1]!),d).toBeLessThan(0.05);
+   const den=u[0]!*v[1]!-u[1]!*v[0]!,k=((t2[0]!-a[0]!)*v[1]!-(t2[1]!-a[1]!)*v[0]!)/den;
    out.push([a[0]!+u[0]!*k,a[1]!+u[1]!*k]);i++;continue;
   }
-  out.push(pts[i]!.p);
+  out.push(parts[i]!.nums.slice(-2));
  }
  const n=(x:number)=>String(Math.round(x*100)/100);
  return out.map((p,i)=>`${i?'L':'M'}${n(p[0]!)},${n(p[1]!)}`).join(' ');

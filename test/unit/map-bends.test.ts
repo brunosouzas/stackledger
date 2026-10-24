@@ -88,8 +88,18 @@ test('Bundle turns around one centre', () => {
 test('Reversed travel draws the same bends', () => {
   const path = [[0, 2], [1, 2], [2, 2], [2, 1], [2, 0]];
   const docs = (secrets: string[]) => [...stations('a', 'b'), journey('ship', ['a', 'b'], '1'), journey('secrets', secrets, '2'), positions({ a: [0, 2], b: [2, 0] })];
-  const summary = (strokes: Stroke[]) => strokes.flatMap(arcs).map(arc => [arc.arc.centre.map(v => v.toFixed(4)).join(','), arc.arc.radius.toFixed(4)].join(' ')).sort();
-  expect(summary(draw(docs(['b', 'a']), { ship: path, secrets: [...path].reverse() }))).toEqual(summary(draw(docs(['a', 'b']), { ship: path, secrets: path })));
+  const byLine = (strokes: Stroke[]) => Object.fromEntries(strokes.map(stroke => [stroke.ref, arcs(stroke).map(arc => [...arc.arc.centre, arc.arc.radius].map(v => v.toFixed(4)))]));
+  const forward = byLine(draw(docs(['a', 'b']), { ship: path, secrets: path }));
+  const reversed = byLine(draw(docs(['b', 'a']), { ship: path, secrets: [...path].reverse() }));
+  expect(forward['line:ship']).toHaveLength(1);expect(forward['line:secrets']).toHaveLength(1);
+  expect(reversed).toEqual(forward);
+});
+
+test('A line that passes a bend twice turns round both times', () => {
+  // ship goes a -> b and back to a along the same edges: the bend at [2, 2] is passed twice by one line.
+  const path = [[0, 2], [1, 2], [2, 2], [2, 1], [2, 0], [2, 1], [2, 2], [1, 2], [0, 2]];
+  const [ship] = draw([...stations('a', 'b'), journey('ship', ['a', 'b', 'a']), positions({ a: [0, 2], b: [2, 0] })], { ship: path });
+  expect(arcs(ship!)).toHaveLength(2);
 });
 
 test('Three lines turn round', () => {
@@ -174,11 +184,14 @@ test('Bend next to a connector or an end', () => {
   // ship turns at [4, 0] one edge before its last stop [4, 1]; on [3, 0]-[4, 0] it shares the edge with
   // secrets, so ship changes slot with a connector at [3, 0], one edge before that same bend.
   const docs = [...stations('a', 'b', 'c'), journey('ship', ['a', 'c'], '1'), journey('secrets', ['b', 'c'], '2'), positions({ a: [0, 0], b: [2, 1], c: [4, 1] })];
-  const strokes = draw(docs, { ship: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [4, 1]], secrets: [[2, 1], [3, 0], [4, 0], [4, 1]] }, 7);
-  const ship = strokes[0]!;
-  expect(ship.points.length).toBeGreaterThan(4);
-  // Both lines turn together at [4, 0]: the setbacks fit within the whole segments (connector on one side, the end on the other).
+  const paths = { ship: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [4, 1]], secrets: [[2, 1], [3, 0], [4, 0], [4, 1]] };
+  const strokes = draw(docs, paths, 7);
+  expect(strokes[0]!.points.length).toBeGreaterThan(4);
+  // The setbacks fit within the whole segments (connector on one side, the end on the other): both turn round.
   for (const stroke of strokes) expect(arcs(stroke), stroke.ref).toHaveLength(1);
+  // With a radius whose setback is longer than those whole segments, the bend keeps the mitre.
+  const wide = parallelLines(model(...docs), routesOf(paths), 7, { outer: OUTER, radius: 80 });
+  for (const stroke of wide) expect(arcs(stroke), stroke.ref).toHaveLength(0);
 });
 
 test('Angles', () => {
@@ -199,18 +212,25 @@ test('Angles', () => {
 });
 
 test('Skills map turns round', () => {
+  // linter at [1, 0] blocks the straight route from writer to editor, which turns 90 degrees at [1, 1].
+  const skill = (name: string) => ({ name, kind: 'skill', skills: [], agents: [], path: '', description: '', given: '', files: [], rules: [] });
+  const line = (name: string, stops: string[], color: string) => ({ apiVersion: 'stackledger/v1alpha1', kind: 'Line', metadata: { name }, spec: { color, stops } });
   const set = {
-    skills: ['writer', 'editor'].map(name => ({ name, kind: 'skill', skills: [], agents: [], path: '', description: '', given: '', files: [], rules: [] })),
+    skills: ['writer', 'editor', 'linter', 'builder'].map(skill),
     agents: [],
     map: {
-      lines: [{ apiVersion: 'stackledger/v1alpha1', kind: 'Line', metadata: { name: 'publish' }, spec: { color: '#E4002B', stops: ['skill:writer', 'skill:editor'] } }],
-      layout: { apiVersion: 'stackledger/v1alpha1', kind: 'MapLayout', metadata: { name: 'skills' }, spec: { stations: { 'skill:writer': [0, 0], 'skill:editor': [3, 1] } } },
+      lines: [line('publish', ['skill:writer', 'skill:editor'], '#E4002B'), line('check', ['skill:linter', 'skill:builder'], '#0098D4')],
+      layout: { apiVersion: 'stackledger/v1alpha1', kind: 'MapLayout', metadata: { name: 'skills' }, spec: { stations: { 'skill:writer': [0, 0], 'skill:editor': [2, 0], 'skill:linter': [1, 0], 'skill:builder': [0, -2] } } },
     },
   };
   const geometry = layoutMap(buildSkillsMapModel(set as any));
-  const all = geometry.lines.flatMap(arcs);
-  expect(all.length).toBeGreaterThan(0);
-  for (const arc of all) close(arc.arc.radius, R);
+  const publish = geometry.lines.find(line => line.ref === 'line:publish')!;
+  const [arc] = arcs(publish);
+  expect(arc).toBeDefined();
+  close(arc!.arc.radius, R);
+  // A 90-degree arc: its two ends are a quarter circle apart around the centre.
+  const start = arcStarts(publish)[0]!, [cx, cy] = arc!.arc.centre;
+  close(((start[0] - cx) * (arc!.to[0] - cx) + (start[1] - cy) * (arc!.to[1] - cy)) / (R * R), 0);
 });
 
 // Arc obstacles. A hand-made corner: east along y = 20, then north along x = 115, turning round
