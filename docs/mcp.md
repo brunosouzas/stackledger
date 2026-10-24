@@ -4,7 +4,7 @@
 
 ## Run it
 
-With Node.js 22.12 or later, `npx --yes @brunosouzas/stackledger@0.5.0 mcp /path/to/catalogue` starts the server from npm. From a clone:
+With Node.js 22.12 or later, `npx --yes @brunosouzas/stackledger@0.5.1 mcp /path/to/catalogue` starts the server from npm. From a clone:
 
 ```sh
 npm ci
