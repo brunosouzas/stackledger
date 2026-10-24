@@ -6,6 +6,7 @@ The diagram has one source, its spec, and one output, `docs/images/how-it-works.
 
 Chosen: `scripts/how-it-works.json`, drawn by `scripts/site-art.mjs` with the package's `coverTree`, next to `scripts/home-banner.json`.
 
+- `scripts/art.mjs` holds the work as `writeArt(root, specs)`, so a test can run it on a temporary folder: it checks both specs and computes every file before it writes the first one, so a refused spec leaves the repository untouched. `scripts/site-art.mjs` only reads the specs and calls it.
 - After a design system bump, one command (`node scripts/site-art.mjs`) rewrites all the art the package draws, and one test file per kind of art says which file is stale.
 - Rejected: the package's command, `npx brunosouzas-cover scripts/how-it-works.json --out docs/images/how-it-works.svg`, with no script. It needs no code, but a bump would then need two commands, and the banner already set the pattern of a spec plus `site-art.mjs`.
 - Rejected: the spec in `docs/`. Its folder is read by people; the specs of the art the package draws already sit in `scripts/`.

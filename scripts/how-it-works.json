@@ -1,0 +1,40 @@
+{
+  "id": "how-it-works",
+  "format": "diagram",
+  "height": 560,
+  "title": "How stackledger publishes a catalogue",
+  "description": "Flowchart. On your Mac, stackledger discover writes a snapshot that stays on the Mac, and drift --scaffold helps you edit catalog/*.yaml. A git push sends the catalogue to a private GitHub repository. A pull request runs gitleaks, validate and build but never deploys. A push to main runs gitleaks, validate and build with stackledger from the npm registry, then wrangler pages deploy publishes the whole static site to Cloudflare Pages, which never reads GitHub. A reader reaches Pages only through Cloudflare Access, signing in first. Personal mode: the full site only, one Access application for the owner, / leads to /full/. Corporate mode: full and staff sites, finance on /full/*, staff on the rest, / leads to /staff/.",
+  "rings": { "cx": 280, "cy": 280 },
+  "pieces": [
+    { "piece": "taggedContainer", "x": 14, "y": 22, "width": 532, "height": 92, "tag": "Your Mac" },
+    { "piece": "taggedContainer", "x": 14, "y": 156, "width": 382, "height": 168, "tag": "Private GitHub repository, GitHub Actions" },
+    { "piece": "taggedContainer", "x": 120, "y": 366, "width": 426, "height": 92, "tag": "Cloudflare" },
+
+    { "piece": "messageArrow", "from": [246, 70], "to": [312, 70], "curve": "straight", "dashed": true },
+    { "piece": "messageArrow", "from": [420, 98], "to": [290, 182], "controls": [[420, 140], [330, 150]] },
+    { "piece": "messageArrow", "from": [160, 216], "to": [116, 248], "controls": [[140, 228], [120, 236]] },
+    { "piece": "messageArrow", "from": [250, 216], "to": [296, 248], "controls": [[270, 228], [290, 236]] },
+    { "piece": "messageArrow", "from": [480, 232], "to": [386, 276], "controls": [[480, 262], [430, 276]] },
+    { "piece": "messageArrow", "from": [300, 306], "to": [440, 384], "controls": [[300, 350], [440, 340]] },
+    { "piece": "messageArrow", "from": [108, 412], "to": [140, 412], "curve": "straight" },
+    { "piece": "messageArrow", "from": [272, 412], "to": [300, 412], "curve": "straight" },
+
+    { "piece": "diagramBox", "x": 30, "y": 46, "width": 212, "height": 52, "fill": "color.caller", "text": ["`stackledger discover`"], "subtitle": "the snapshot stays here" },
+    { "piece": "diagramBox", "x": 316, "y": 46, "width": 212, "height": 52, "fill": "color.caller", "text": ["You edit catalog/*.yaml"], "subtitle": "drift --scaffold suggests entries" },
+    { "piece": "diagramBox", "x": 116, "y": 178, "width": 172, "height": 38, "fill": "color.white", "text": ["Catalogue repository"] },
+    { "piece": "diagramBox", "x": 26, "y": 250, "width": 180, "height": 58, "fill": "color.blocked", "text": ["Pull request", "never deploys"], "subtitle": "gitleaks, validate, build" },
+    { "piece": "diagramBox", "x": 220, "y": 250, "width": 166, "height": 58, "fill": "color.healthy", "text": ["Push to main"], "subtitle": "gitleaks, validate, build" },
+    { "piece": "diagramBox", "x": 408, "y": 178, "width": 144, "height": 52, "fill": "color.white", "text": ["npm registry"], "subtitle": "@brunosouzas/stackledger" },
+    { "piece": "diagramBox", "x": 14, "y": 388, "width": 94, "height": 48, "fill": "color.caller", "text": ["Reader"], "subtitle": "a browser" },
+    { "piece": "diagramBox", "x": 140, "y": 386, "width": 132, "height": 52, "fill": "color.transitional", "text": ["Cloudflare Access"], "subtitle": "sign-in first" },
+    { "piece": "diagramBox", "x": 302, "y": 380, "width": 230, "height": 64, "fill": "color.backend", "text": ["Cloudflare Pages"], "subtitle": "the whole static site · never reads GitHub" },
+
+    { "piece": "edgeLabel", "x": 279, "y": 62, "lines": ["`drift`"] },
+    { "piece": "edgeLabel", "x": 428, "y": 130, "lines": ["`git push`"], "anchor": "start" },
+    { "piece": "edgeLabel", "x": 474, "y": 272, "lines": ["`npx`"], "anchor": "start" },
+    { "piece": "edgeLabel", "x": 292, "y": 346, "lines": ["`wrangler pages deploy`"], "anchor": "end" },
+
+    { "piece": "diagramBox", "x": 14, "y": 478, "width": 532, "height": 28, "shape": "pill", "fill": "color.healthy", "textSize": 10.5, "text": ["Personal: full site only · one Access application, the owner · / → /full/"] },
+    { "piece": "diagramBox", "x": 14, "y": 518, "width": 532, "height": 28, "shape": "pill", "fill": "color.caller", "textSize": 10.5, "text": ["Corporate: full and staff · finance on /full/*, staff on the rest · / → /staff/"] }
+  ]
+}

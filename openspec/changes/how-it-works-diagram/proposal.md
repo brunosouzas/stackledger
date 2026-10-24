@@ -4,10 +4,10 @@ The diagram of `docs/how-it-works.md` (also shown by the README) is drawn by `sc
 
 ## What Changes
 
-- **A diagram spec instead of a script.** `scripts/how-it-works.json` describes the diagram as a design system body diagram: three tagged containers, nine boxes, eight arrows, four arrow labels and the two mode pills. `scripts/site-art.mjs`, which already writes the site's art from the package, also writes `docs/images/how-it-works.svg` from it with `coverTree`.
-- **A test keeps the file honest.** A unit test fails when the committed SVG differs from what the pinned package draws from the spec, when the spec has a problem, or when a node, subgraph or edge of the Mermaid block in `docs/how-it-works.md` is missing from it.
+- **A diagram spec instead of a script.** `scripts/how-it-works.json` describes the diagram as a design system body diagram: three tagged containers, nine boxes, eight arrows, four arrow labels and the two mode pills. `scripts/site-art.mjs`, which already writes the site's art from the package, also writes `docs/images/how-it-works.svg` from it with `coverTree`, through one function (`scripts/art.mjs`) that checks every spec before it writes any file.
+- **A test keeps the file honest.** Unit tests fail when the committed SVG differs from what the pinned package draws from the spec, when the spec has a problem, or when the spec loses a node, a node's line, a subgraph or an edge (or turns one round) of the Mermaid block in `docs/how-it-works.md`.
 - **The Python script goes.** `scripts/how-it-works-diagram.py` is deleted; `docs/how-it-works.md` names the new command.
-- **Visible change.** The look becomes the design system's body diagram: the containers get a name tab and a solid outline instead of a dashed frame, the hard shadow is 5 instead of 8 at the shown size, the boxes' detail lines are the pieces' subtitle (regular, not bold). The brand colours become existing tokens: the reader `color.caller` (was a dark grey), the npm registry `color.white` (was npm red), Cloudflare Pages `color.backend` (was Cloudflare orange). The image is 800×800 instead of 800×808. The before/after contact sheet is in the pull request.
+- **Visible change.** The look becomes the design system's body diagram: the containers get a name tab and a solid outline instead of a dashed frame, the hard shadow is 5 instead of 8 at the shown size, the boxes' detail lines are the pieces' subtitle (regular, not bold). The brand colours become existing tokens: the reader `color.caller` (was a dark grey), the npm registry `color.white` (was npm red), Cloudflare Pages `color.backend` (was Cloudflare orange). The image is 800×800 instead of 800×808. The owner sees a before/after contact sheet (light and dark page) at gate 1; the pull request shows both images.
 
 Out of scope:
 
@@ -24,11 +24,11 @@ None.
 
 ### Modified Capabilities
 
-- `catalogue-pipeline`: "How it works diagram" and "How it works generation" added (the page documents the path the template publishes).
+- `catalogue-pipeline`: "How it works diagram", "How it works diagram content" and "How it works generation" added (the page documents the path the template publishes).
 
 ## Implicit requirements
 
-- Errors and invalid input: a spec the package refuses (a colour literal, an unknown parameter) fails the test with the package's problem list; `scripts/site-art.mjs` throws on it and writes nothing for that file ("How it works generation").
+- Errors and invalid input: a spec the package refuses (a colour literal, an unknown parameter) fails the test with the package's problem list; `scripts/site-art.mjs` throws on it and writes no file at all ("How it works generation").
 - Limits: n/a; one fixed diagram.
 - Repetition and idempotency: `coverTree` is deterministic, so running the script twice writes the same bytes ("How it works generation").
 - Concurrency: n/a.
