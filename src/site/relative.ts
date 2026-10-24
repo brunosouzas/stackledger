@@ -23,6 +23,7 @@
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, posix, relative, sep } from 'node:path';
 import { POLICY } from './policy.js';
+import { BACKDROP_CREDIT_URL } from '../map/svg.js';
 
 const URL_ATTRIBUTES = new Set(['href', 'src', 'action', 'formaction', 'poster', 'data', 'xlink:href']);
 // Quoted attribute values may hold `>` (Astro escapes only `&` and `"`), so they are matched whole.
@@ -154,8 +155,9 @@ export function relativise(siteDir: string): void {
 }
 
 /** `homeLinks`: the validated URLs of spec.site.home.links, allowed only as the href of an `a` element
- * in the site's root index.html (site-security, No external requests). */
-function scanHtml(file: string, html: string, homeLinks: readonly string[] = []): string[] {
+ * in the site's root index.html; with `mapCredit` (a city backdrop), the OpenStreetMap copyright URL is
+ * allowed only as the href of an `a` element in map/index.html (site-security, No external requests). */
+function scanHtml(file: string, html: string, homeLinks: readonly string[] = [], mapCredit = false): string[] {
   const problems: string[] = [];
   const policies: string[] = [];
   for (const [, rawName, attrText] of html.matchAll(TAG)) {
@@ -168,6 +170,7 @@ function scanHtml(file: string, html: string, homeLinks: readonly string[] = [])
       if (attr.name === 'style') problems.push(`${file}: style attribute`);
       if (attr.name.startsWith('on')) problems.push(`${file}: event-handler attribute ${attr.name}`);
       if (name === 'a' && attr.name === 'href' && file === 'index.html' && isHomeLink(attr, homeLinks)) continue;
+      if (name === 'a' && attr.name === 'href' && file === 'map/index.html' && mapCredit && isHomeLink(attr, [BACKDROP_CREDIT_URL])) continue;
       if (URL_ATTRIBUTES.has(attr.name) || attr.name === 'srcset') problems.push(...urlAttributeProblems(file, attr));
     }
     const equiv = attrs.find(attr => attr.name === 'http-equiv')?.value;
@@ -179,7 +182,7 @@ function scanHtml(file: string, html: string, homeLinks: readonly string[] = [])
   return problems;
 }
 
-/** An anchor's href that is exactly one of the home links once decoded (no unknown references). */
+/** An anchor's href that is exactly one of the given URLs once decoded (no unknown references). */
 function isHomeLink(attr: Attribute, homeLinks: readonly string[]): boolean {
   if (!homeLinks.length) return false;
   const { text, unknown } = decodeAttribute(attr.value ?? '');
@@ -238,12 +241,13 @@ function scanJs(file: string, js: string): string[] {
 
 /** Every problem in a built site; an empty list means it may be published. `buildPaths` are the
  * build's own paths (the staging folder, the working copy): none may appear in an output file.
- * Only these exact paths count, so catalogue text that mentions `.stackledger-tmp-*` is fine. */
-export function scan(siteDir: string, buildPaths: readonly string[] = [], homeLinks: readonly string[] = []): string[] {
+ * Only these exact paths count, so catalogue text that mentions `.stackledger-tmp-*` is fine.
+ * `mapCredit`: the map is drawn over a city, so its page may link the OpenStreetMap copyright page. */
+export function scan(siteDir: string, buildPaths: readonly string[] = [], homeLinks: readonly string[] = [], mapCredit = false): string[] {
   const problems: string[] = [];
   for (const file of listFiles(siteDir)) {
     const text = readFileSync(join(siteDir, file), 'utf8');
-    if (file.endsWith('.html')) problems.push(...scanHtml(file, text, homeLinks));
+    if (file.endsWith('.html')) problems.push(...scanHtml(file, text, homeLinks, mapCredit));
     else if (file.endsWith('.css')) problems.push(...scanCss(file, text));
     else if (file.endsWith('.js') || file.endsWith('.mjs')) problems.push(...scanJs(file, text));
     if (buildPaths.some(path => text.includes(path))) problems.push(`${file}: staging path in the output`);

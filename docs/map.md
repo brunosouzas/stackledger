@@ -41,7 +41,7 @@ The software map sits on a flat panel (`neutral`, the default) or over a city (`
 
 The London shapes ship inside the package as a generated module (`dist/map/backdrops/london.js`, under 16 KB); drawing reads no file and opens no connection. They come from OpenStreetMap, © OpenStreetMap contributors, under the [Open Database License](https://opendatacommons.org/licenses/odbl/); the module's header names the extract date. Maintainers refresh them by hand: `node scripts/backdrops/refresh.mjs` runs the Overpass query in `scripts/backdrops/london.overpassql` (network) and writes `scripts/backdrops/london-extract.json`; `node scripts/backdrops/build.mjs` (offline, pinned `mapshaper`) regenerates `src/map/backdrops/london.ts` from that extract, byte for byte the same on every run. Neither script is published.
 
-The water, park and credit colours are temporary in this pre-release code: they will come from the `backdrop` tokens of the design system (AB#180).
+The colours come from the design system's surface tokens, one set per theme and no opacity: the water is filled with `surface.<theme>.backdropWater` and outlined (2 units) with `backdropWaterEdge`, the parks are filled with `backdropPark`, and the credit is written in `backdropCredit`. On `light` that is `#C9D8FF`, `#B5C7F5`, `#D4F2DF` and `#5A6385`; on `dark` `#1E3175`, `#2A3F8A`, `#183F52` and `#9AA6D6`.
 
 ## Routes and themes
 

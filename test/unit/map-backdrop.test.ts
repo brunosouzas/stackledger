@@ -16,6 +16,7 @@ import { backdropScale, renderSvg, type BackdropName } from '../../src/map/svg.j
 import { inkOf, themes } from '../../src/map/themes.js';
 import { buildSiteData } from '../../src/site/data.js';
 import { london } from '../../src/map/backdrops/london.js';
+import { tokens } from '@brunosouzas/design-system/tokens';
 
 const root = join(import.meta.dirname, '../..');
 const fixtures = join(root, 'test/fixtures/map-0.5.1');
@@ -93,8 +94,19 @@ describe('Backdrop layer', () => {
       expect(children(grid!)[0]!.getAttribute('fill')).toBe('none');
     }
   });
-  // waits on AB#180: the design system release with surface.<theme>.backdrop.{water, waterEdge, park, credit}.
-  it.todo('London colours are the tokens');
+  it('London colours are the tokens', () => {
+    const dark = tokens.surface.dark;
+    for (const chrome of [true, false]) {
+      const [water, park] = children(layers(draw('full', 'dark', 'london', chrome))[1]!);
+      expect(water!.getAttribute('fill')).toBe(dark.backdropWater);
+      expect(water!.getAttribute('stroke')).toBe(dark.backdropWaterEdge);
+      expect(park!.getAttribute('fill')).toBe(dark.backdropPark);
+    }
+    // The light surface takes its own tokens too.
+    const [water, park] = children(layers(draw('full', 'light', 'london'))[1]!);
+    expect([water!.getAttribute('fill'), water!.getAttribute('stroke'), park!.getAttribute('fill')])
+      .toEqual([tokens.surface.light.backdropWater, tokens.surface.light.backdropWaterEdge, tokens.surface.light.backdropPark]);
+  });
   it('Holes without fill-rule', () => {
     for (const name of names) expect(draw('full', name, 'london')).not.toContain('fill-rule');
     for (const rings of [london.water, london.park]) {
@@ -175,8 +187,23 @@ describe('Backdrop credit', () => {
       }
     }
   });
-  // waits on AB#180: the credit's fill must be surface.<theme>.backdrop.credit.
-  it.todo('Credit colour is the token');
+  it('Credit colour is the token', () => {
+    for (const name of names) for (const chrome of [true, false]) {
+      const text = children(layers(draw('full', name, 'london', chrome)).at(-1)!)[0]!;
+      expect(text.getAttribute('fill'), `${name}`).toBe(tokens.surface[name].backdropCredit);
+    }
+  });
+  it('Site credit flag', () => {
+    // The map page of each view shows its credit line only over a city (catalogue-site, Map backdrop).
+    const settings = { apiVersion: 'stackledger/v1alpha1', kind: 'Settings', metadata: { name: 'settings' }, spec: { map: { backdrop: 'london' } } };
+    const city = { ...catalogue, served: { ...catalogue.served, settings: [settings, ...catalogue.served.settings] } } as typeof catalogue;
+    for (const view of views) {
+      expect(buildSiteData(catalogue, view, '0.5.1', date).data.map.credit, view).toBe(false);
+      const map = buildSiteData(city, view, '0.5.1', date).data.map;
+      expect(map.credit, view).toBe(true);
+      expect(map.light).toContain(CREDIT);
+    }
+  });
   it('No credit on neutral', () => {
     for (const view of views) for (const name of names) for (const chrome of [true, false]) {
       expect(draw(view, name, 'neutral', chrome)).not.toContain('OpenStreetMap');

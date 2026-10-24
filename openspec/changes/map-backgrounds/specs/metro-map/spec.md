@@ -20,7 +20,7 @@ The software map SHALL take a backdrop, `neutral` or `london`, with or without i
 - **THEN** its SVG has no backdrop group and no credit
 
 ### Requirement: Backdrop layer
-With `london` the SVG SHALL hold one more group, right after the background layer and right before the grid layer, with exactly two paths: the water, filled with the surface's `backdrop.water` and outlined with `backdrop.waterEdge`, then the parks, filled with `backdrop.park`, from the theme's surface tokens of `@brunosouzas/design-system` ("Design system tokens"). The writer's allow-list ("Allowed attributes") SHALL stay unchanged: no `fill-rule`, `transform`, `clip-path` or new attribute name.
+With `london` the SVG SHALL hold one more group, right after the background layer and right before the grid layer, with exactly two paths: the water, filled with the surface's `backdropWater` and outlined with `backdropWaterEdge`, then the parks, filled with `backdropPark`, from the theme's surface tokens of `@brunosouzas/design-system` ("Design system tokens"). The writer's allow-list ("Allowed attributes") SHALL stay unchanged: no `fill-rule`, `transform`, `clip-path` or new attribute name.
 
 #### Scenario: London layer order
 - **WHEN** the example catalogue is drawn with `london` in either theme, with and without its header and legend
@@ -28,7 +28,7 @@ With `london` the SVG SHALL hold one more group, right after the background laye
 
 #### Scenario: London colours are the tokens
 - **WHEN** the example catalogue is drawn with `london` in the `dark` theme
-- **THEN** the water fill equals `surface.dark.backdrop.water`, its stroke `surface.dark.backdrop.waterEdge` and the park fill `surface.dark.backdrop.park`
+- **THEN** the water fill equals `surface.dark.backdropWater`, its stroke `surface.dark.backdropWaterEdge` and the park fill `surface.dark.backdropPark`
 
 #### Scenario: Holes without fill-rule
 - **WHEN** the London data is drawn in either theme
@@ -60,7 +60,7 @@ A maintainer script, not published, SHALL make the London module from a committe
 - **THEN** the generated module equals the committed one byte for byte
 
 ### Requirement: Backdrop credit
-A software map drawn with a city backdrop SHALL end, before the closing tag, with the text `© OpenStreetMap contributors`, right-aligned near the bottom-right corner of the viewBox, in the surface's `backdrop.credit` colour, inside the viewBox and, when the legend is drawn, clear of it. A map drawn with `neutral` SHALL NOT carry it.
+A software map drawn with a city backdrop SHALL end, before the closing tag, with the text `© OpenStreetMap contributors`, right-aligned near the bottom-right corner of the viewBox, in the surface's `backdropCredit` colour, inside the viewBox and, when the legend is drawn, clear of it. A map drawn with `neutral` SHALL NOT carry it.
 
 #### Scenario: Credit on London
 - **WHEN** the example catalogue is drawn with `london` in either theme, with and without its header and legend

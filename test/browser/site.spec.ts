@@ -479,10 +479,50 @@ test.describe('Map backdrop', () => {
     await page.goto('/extra/skill-map/');
     expect(await page.content()).not.toContain('OpenStreetMap');
   });
-  // waits on task 2.5 (the credit line under the map frame), done with AB#180 (its colour).
-  test.fixme('London credit on the page', async () => {});
-  // waits on task 2.5 (the credit line under the map frame), done with AB#180 (its colour).
-  test.fixme('Credit readable on a phone', async () => {});
+  test('London credit on the page', async ({ page }) => {
+    // The policy holds on the page with the credit too (regression "Pages work under the policy").
+    const watched = await watch(page, '/extra/');
+    await page.goto('/extra/map/');
+    await page.waitForLoadState('networkidle');
+    expect(await violations(page)).toEqual([]);
+    const credit = page.locator('.map-credit');
+    await expect(credit).toHaveCount(1);
+    await expect(credit).toHaveText('Map data © OpenStreetMap contributors');
+    const link = credit.getByRole('link', { name: 'OpenStreetMap contributors' });
+    await expect(link).toHaveAttribute('href', 'https://www.openstreetmap.org/copyright');
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(await link.getAttribute('target')).toBeNull();
+    // Right under the map frame: the next element, starting below the frame's bottom edge.
+    expect(await page.locator('[data-map] + .map-credit').count()).toBe(1);
+    const frame = (await page.locator('[data-map]').boundingBox())!;
+    const box = (await credit.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(frame.y + frame.height - 1);
+    expect(box.y - (frame.y + frame.height)).toBeLessThan(24);
+    // In the backdrop credit token of each theme.
+    for (const [theme, token] of [['light', '--ds-surface-light-backdrop-credit'], ['dark', '--ds-surface-dark-backdrop-credit']] as const) {
+      await page.evaluate(name => document.documentElement.setAttribute('data-theme', name), theme);
+      const [colour, expected] = await credit.evaluate((node, name) => {
+        const probe = document.createElement('span');
+        probe.style.color = getComputedStyle(document.documentElement).getPropertyValue(name);
+        document.body.append(probe);
+        const value = getComputedStyle(probe).color;
+        probe.remove();
+        return [getComputedStyle(node).color, value];
+      }, token);
+      expect(colour, theme).toBe(expected);
+    }
+    expect(watched.problems).toEqual([]);
+  });
+  test('Credit readable on a phone', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/extra/map/');
+    const credit = page.locator('.map-credit');
+    await expect(credit).toBeVisible();
+    expect(await credit.evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(12);
+    const box = (await credit.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+  });
   test('No credit without a city', async ({ page }) => {
     for (const path of ['/full/', '/full/map/', '/staff/map/', '/full/software/', '/full/skill-map/']) {
       await page.goto(path);

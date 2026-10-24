@@ -1,7 +1,7 @@
 /** The two themes, built from the tokens of @brunosouzas/design-system (metro-map: Design system
  * tokens): each `surface.<theme>`, the `map` measures and the `color` meanings of brunosouzas.com.
  * Ink outlines, pipe lines with an ink casing, hard offset shadows (indigo with a light rim on the
- * dark navy) and the Lato font stack. The pieces paint a surface's ink, the licence and renewal colours
+ * dark navy), the city backdrop colours and the Lato font stack. The pieces paint a surface's ink, the licence and renewal colours
  * and the zone opacity and title tint from the same tokens, so the renderers refuse a theme whose value
  * for any of them differs (checkInk). No fonts or other assets are fetched at render time: the stack names Lato, which the site
  * ships, then system fonts (unquoted, so no quote character reaches an SVG attribute).
@@ -49,13 +49,6 @@ const C = tokens.color;
 // The families of the design system's font.sans, without quotes.
 const FONT = 'Lato, Helvetica Neue, Helvetica, Arial, sans-serif';
 
-// TODO AB#180: replace with backdrop.* tokens. A temporary placeholder built from existing surface tokens,
-// so the geometry can land before the design system release with surface.<theme>.backdrop.{water,
-// waterEdge, park, credit}; the spec requires those tokens, and the tests that check them wait on AB#180.
-function placeholderBackdrop(s: Readonly<Record<'grid' | 'muted' | 'panel', string>>): Theme['backdrop'] {
-  return { water: s.grid, waterEdge: s.muted, park: s.panel, credit: s.muted };
-}
-
 function fromTokens(surface: 'light' | 'dark'): Theme {
   const s = tokens.surface[surface];
   return {
@@ -83,7 +76,7 @@ function fromTokens(surface: 'light' | 'dark'): Theme {
     casing: { enabled: M.casing > 0, color: C.ink, extraWidth: M.casing },
     shadow: { enabled: true, color: s.shadow, dx: M.shadow, dy: M.shadow },
     rim: { enabled: s.rimWidth > 0, color: s.rim, width: s.rimWidth },
-    backdrop: placeholderBackdrop(s),
+    backdrop: { water: s.backdropWater, waterEdge: s.backdropWaterEdge, park: s.backdropPark, credit: s.backdropCredit },
   };
 }
 

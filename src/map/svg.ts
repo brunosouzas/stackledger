@@ -206,6 +206,8 @@ export type BackdropName = typeof backdropNames[number];
 const cities: Readonly<Record<Exclude<BackdropName, 'neutral'>, Backdrop>> = { london };
 
 export const BACKDROP_CREDIT = '© OpenStreetMap contributors';
+/** Where the site's credit line under a city map links (catalogue-site: Map backdrop). */
+export const BACKDROP_CREDIT_URL = 'https://www.openstreetmap.org/copyright';
 
 /** One decimal, for backdrop points (metro-map: Backdrop scale); throws on a non-finite value. */
 function tenth(value: number): string {

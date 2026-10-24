@@ -20,6 +20,9 @@ Levels: U unit (vitest, `npm test`), B browser (Playwright, `npm run test:browse
 | catalogue-site, Map backdrop | No credit without a city | `test/browser/site.spec.ts` | B | kept |
 | regression | "Safe SVG structure", "Allowed attributes", "Allowed attribute values", "Deterministic output", "Software map unchanged" | as today | U | kept |
 | regression | "Pages work under the policy" | as today | B | kept |
+| site-security, No external requests (modified) | Map credit is the only other external URL | `test/integration/site.test.ts` | U | new |
+| site-security, No external requests (modified) | Credit URL outside the map page | `test/unit/site-relative.test.ts` | U | new |
+| site-security, No external requests (modified) | Only local URLs; Home links are the only external URLs; Link URL outside the home | as today | U | kept |
 | regression | "Size and speed", Large catalogue with `neutral` | `test/unit/map-performance.test.ts` | U | kept |
 | metro-map, Size and speed (no change to the requirement) | Large catalogue drawn with `london`, same 5-second budget | `test/unit/map-performance.test.ts` | U | new |
 
@@ -27,20 +30,20 @@ Levels: U unit (vitest, `npm test`), B browser (Playwright, `npm run test:browse
 
 - [x] 0.1 Spike outside the repository (`~/.hermes/spikes/stackledger/map-backgrounds/`): data source, size per simplification, prototype in both themes at 1200 and 390 pixels, contact sheet.
 - [x] 0.2 Gate 1: the owner approves the spec (2026-10-24).
-- [ ] 0.3 Design system release with the `backdrop` tokens for both surfaces (AB#180). Bump the exact pin in `package.json` and `npm-shrinkwrap.json`. Verify: the maps of the example catalogue stay byte-identical after the bump.
+- [x] 0.3 Design system release with the `backdrop` tokens for both surfaces (AB#180). Bump the exact pin in `package.json` and `npm-shrinkwrap.json`. Verify: the maps of the example catalogue stay byte-identical after the bump. Done: 0.5.3, whose tokens are flat (`surface.<theme>.backdropWater`, `backdropWaterEdge`, `backdropPark`, `backdropCredit`); the specs name them so. "Neutral is today's map" and "Neutral site map is today's map" pass unchanged after the bump.
 
 ## 1. Tests first
 
-- [x] 1.1 Record from 0.5.1 the `staff` SVGs of the example catalogue and the site-style SVGs without header and legend of both views (both themes, map date 2027-06-01) into `test/fixtures/`. Write the tests of the table. Verify: every "new" test fails on the current code and every "kept" one passes. Done: fixtures in `test/fixtures/map-0.5.1/` (`record.mjs`), recorded and committed before any code change. "London colours are the tokens" and "Credit colour is the token" are `it.todo` and "London credit on the page" and "Credit readable on a phone" are `test.fixme`, waiting on AB#180 and 2.5. "Reproducible data" runs only with `STACKLEDGER_BACKDROP_BUILD=1` (it runs mapshaper through npx).
+- [x] 1.1 Record from 0.5.1 the `staff` SVGs of the example catalogue and the site-style SVGs without header and legend of both views (both themes, map date 2027-06-01) into `test/fixtures/`. Write the tests of the table. Verify: every "new" test fails on the current code and every "kept" one passes. Done: fixtures in `test/fixtures/map-0.5.1/` (`record.mjs`), recorded and committed before any code change. "London colours are the tokens" and "Credit colour is the token" were `it.todo` and "London credit on the page" and "Credit readable on a phone" `test.fixme` until AB#180 and 2.5; all four are real tests now. "Reproducible data" runs only with `STACKLEDGER_BACKDROP_BUILD=1` (it runs mapshaper through npx).
 
 ## 2. Code
 
 - [x] 2.1 `scripts/backdrops/london.overpassql`, `refresh.mjs` (network, by hand) and `build.mjs` (offline, pinned tool versions); commit `london-extract.json` and the generated `src/map/backdrops/london.ts`. Verify: `build.mjs` twice gives the same module; under 16 KB.
 - [x] 2.2 `spec.map.backdrop` in the Settings schema.
-- [ ] 2.3 Backdrop paths and credit in `src/map/svg.ts` through the writer, colours in `src/map/themes.ts`. Partial: geometry, layer order and SVG credit done; the colours are a placeholder from existing surface tokens (`placeholderBackdrop`, `TODO AB#180`) until the `backdrop` tokens ship.
+- [x] 2.3 Backdrop paths and credit in `src/map/svg.ts` through the writer, colours in `src/map/themes.ts` (from the design system's `backdrop` tokens).
 - [x] 2.4 `--backdrop` in `src/map/command.ts`; the build passes the setting to the software map only.
-- [ ] 2.5 Credit line under the map frame in the site.
-- [ ] 2.6 Docs: `docs/map.md`, `docs/site.md`, `README.md` (ODbL attribution for the bundled data). Partial: done for 2.1 to 2.4 (and `docs/catalogue-format.md`); the site credit line (2.5) and the final colour note wait on AB#180.
+- [x] 2.5 Credit line under the map frame in the site; the build's URL scan lets its anchor through on the map page of a city map only (`site-security` delta, added with this task: the credit is the first external link off the home) (`site/src/pages/map/index.astro`, `SiteData.map.credit`, colour `--color-map-credit` from the `backdrop-credit` CSS variable of each theme).
+- [x] 2.6 Docs: `docs/map.md`, `docs/site.md`, `README.md` (ODbL attribution for the bundled data), `docs/catalogue-format.md`, `docs/roadmap.md`, `AGENTS.md`.
 
 ## 3. Close
 
