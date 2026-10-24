@@ -1,4 +1,6 @@
-// Maintainer only, offline (metro-map: Backdrop data generation). Not published. Reads only the committed
+// Maintainer only, offline (metro-map: Backdrop data generation). Not published. Provision the pinned tool
+// once, with network: `npx --yes mapshaper@0.7.98 -v`; this script then runs it with `npx --offline`, so it
+// opens no connection and fails instead of downloading when the tool is not in the npm cache. Reads only the committed
 // london-extract.json (see refresh.mjs), simplifies it with mapshaper (2%, keep-shapes), drops slivers under
 // 2 ha, rounds to whole metres, winds every outer ring counter-clockwise and every hole clockwise (y up), so
 // the default non-zero fill rule leaves holes empty, and writes src/map/backdrops/london.ts. The tool version
@@ -17,7 +19,7 @@ const source = JSON.parse(readFileSync(join(here, 'london-extract.json'), 'utf8'
 const work = mkdtempSync(join(tmpdir(), 'stackledger-backdrop-'));
 let simplified;
 try {
-  execFileSync('npx', ['--yes', MAPSHAPER, join(here, 'london-extract.json'),
+  execFileSync('npx', ['--offline', '--yes', MAPSHAPER, join(here, 'london-extract.json'),
     '-simplify', '2%', 'keep-shapes',
     '-filter-slivers', 'min-area=20000',
     '-o', join(work, 'out.json'), 'format=geojson', 'precision=1'], { stdio: ['ignore', 'ignore', 'inherit'] });

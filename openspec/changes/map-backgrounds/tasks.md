@@ -34,7 +34,7 @@ Levels: U unit (vitest, `npm test`), B browser (Playwright, `npm run test:browse
 
 ## 1. Tests first
 
-- [x] 1.1 Record from 0.5.1 the `staff` SVGs of the example catalogue and the site-style SVGs without header and legend of both views (both themes, map date 2027-06-01) into `test/fixtures/`. Write the tests of the table. Verify: every "new" test fails on the current code and every "kept" one passes. Done: fixtures in `test/fixtures/map-0.5.1/` (`record.mjs`), recorded and committed before any code change. "London colours are the tokens" and "Credit colour is the token" were `it.todo` and "London credit on the page" and "Credit readable on a phone" `test.fixme` until AB#180 and 2.5; all four are real tests now. "Reproducible data" runs only with `STACKLEDGER_BACKDROP_BUILD=1` (it runs mapshaper through npx).
+- [x] 1.1 Record from 0.5.1 the `staff` SVGs of the example catalogue and the site-style SVGs without header and legend of both views (both themes, map date 2027-06-01) into `test/fixtures/`. Write the tests of the table. Verify: every "new" test fails on the current code and every "kept" one passes. Done: fixtures in `test/fixtures/map-0.5.1/` (`record.mjs`), recorded and committed before any code change. "London colours are the tokens" and "Credit colour is the token" were `it.todo` and "London credit on the page" and "Credit readable on a phone" `test.fixme` until AB#180 and 2.5; all four are real tests now. "Reproducible data" runs only with `STACKLEDGER_BACKDROP_BUILD=1` (it runs the pinned mapshaper from the npm cache with `npx --offline`).
 
 ## 2. Code
 

@@ -2,7 +2,7 @@
  * built CLI into a new temporary folder, then serves its `full/` and `staff/` sites under /full/ and
  * /staff/ of one origin, as a host behind the proxy would. The example is built with its skill set,
  * examples/northwind-skills (skills-site). A second, small catalogue (a zone named `Team tools`, a skill
- * set with one line, no zones and no rules, `spec.map.backdrop: london`) is built too and its full site served under /extra/.
+ * set with one line, no zones and no rules, `spec.map.backdrop: london`) is built too, its full site served under /extra/ and its staff site under /extra-staff/.
  *
  * Run through `npm run test:browser` (Playwright starts it as its webServer); needs `npm run build`
  * first. Port: STACKLEDGER_BROWSER_PORT, default 4410. Like the hosts in docs/site.md it redirects a
@@ -62,10 +62,11 @@ function isFolder(path) {
 const server = createServer((request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
   const path = decodeURIComponent(url.pathname);
-  const site = /^\/(full|staff|extra)(\/|$)/.exec(path)?.[1];
-  // /extra/ is the small catalogue's full site.
-  const top = site === 'extra' ? join(extra, 'out', 'full') : join(out, site ?? '');
-  const file = site === 'extra' ? normalize(join(top, path.slice('/extra'.length))) : normalize(join(out, path));
+  const site = /^\/(full|staff|extra-staff|extra)(\/|$)/.exec(path)?.[1];
+  // /extra/ and /extra-staff/ are the small catalogue's full and staff sites.
+  const small = { extra: 'full', 'extra-staff': 'staff' }[site];
+  const top = small ? join(extra, 'out', small) : join(out, site ?? '');
+  const file = small ? normalize(join(top, path.slice(site.length + 1))) : normalize(join(out, path));
   if (!site || !file.startsWith(top) || file.includes(`${sep}.`)) {
     response.writeHead(404).end('Not found');
     return;

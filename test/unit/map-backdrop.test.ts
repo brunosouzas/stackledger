@@ -156,7 +156,8 @@ describe('Backdrop data', () => {
     }
     expect(london.extractDate).toBe(extract.extractDate);
   });
-  // Runs mapshaper through npx (a download on a cold cache), so only on request:
+  // Runs the pinned mapshaper from the npm cache (npx --offline; provision it once with
+  // `npx --yes mapshaper@0.7.98 -v`), so only on request:
   // STACKLEDGER_BACKDROP_BUILD=1 npx vitest run test/unit/map-backdrop.test.ts
   it.runIf(process.env.STACKLEDGER_BACKDROP_BUILD === '1')('Reproducible data', () => {
     const out = join(mkdtempSync(join(tmpdir(), 'stackledger-backdrop-test-')), 'london.ts');
