@@ -2,9 +2,10 @@
  * Text has one escaping path; geometry has no external resources, IDs, links or CSS.
  * Every visual choice comes from Theme data. Invalid colours/nonfinite geometry throw.
  * Ink style: stations, interchanges, lines, terminal and legend badges and rule counts are drawn by
- * the design system's pieces (stationMarker, pipe, lineBadge, countBadge) through src/map/pieces.ts,
- * so the allow-lists and escaping of src/map/xml.ts apply to them; licence markers, renewal rings,
- * the suggested halo, zones and the legend panel keep this file's drawing with the same token values.
+ * the design system's pieces (stationMarker, pipe, lineBadge, countBadge), and licence markers,
+ * renewal rings, suggested halos and zones by licenceMark, renewalRing, suggestedHalo and zone, all
+ * written through src/map/pieces.ts, so the allow-lists and escaping of
+ * src/map/xml.ts apply to them; the legend panel keeps this file's drawing with the same token values.
  * A theme whose ink differs from its surface's tokens is refused (checkInk).
  * Strokes, stations, labels, terminal badges and legend entries carry data-line (and stations
  * and labels data-zone) for the site's map script; those values are escaped like text.
@@ -19,17 +20,18 @@ import type { Box } from './labels.js';
 import type { ZoneGeometry } from './zones.js';
 import type { Stroke } from './parallel.js';
 import { badgeWidth } from './badges.js';
-import { countBadge, lineBadge, pipe as pipePiece, stationMarker } from '@brunosouzas/design-system';
+import { countBadge, licenceMark, lineBadge, pipe as pipePiece, renewalRing, stationMarker, suggestedHalo, zone as zonePiece } from '@brunosouzas/design-system';
 import { sticker } from './ink.js';
 import { writePiece } from './pieces.js';
-import { tag, escapeXml, number, color, tint, SVG_NAMESPACE, type Attributes } from './xml.js';
+import { tag, escapeXml, number, SVG_NAMESPACE, type Attributes } from './xml.js';
 
 export { escapeXml } from './xml.js';
 
 const HEADER_HEIGHT = 64;
 const FRAME_MARGIN = 16;
 
-/** Element builders bound to one theme. Catalogue text only ever passes through `text` or `title`. */
+/** Element builders bound to one theme. Catalogue text only ever passes through `text`, `title` or a
+ * piece written by writePiece (zone titles), which escapes it the same way. */
 function painter(theme: Theme) {
   const text = (value: string, x: number, y: number, attrs: Attributes = {}): string =>
     tag('text', { x, y, fill: theme.text, 'font-size': 13, ...attrs }, escapeXml(value));
@@ -38,28 +40,9 @@ function painter(theme: Theme) {
     tag('rect', { x: box.x, y: box.y, width: box.w, height: box.h, ...attrs });
   const line = (a: Point, b: Point, attrs: Attributes): string =>
     tag('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], ...attrs });
-  const circle = (centre: Point, r: number, attrs: Attributes): string =>
-    tag('circle', { cx: centre[0], cy: centre[1], r, ...attrs });
-  const add = (point: Point, by: Point, scale = 1): Point => [point[0] + by[0] * scale, point[1] + by[1] * scale];
-  const rimmed = (width: number): number => width + (theme.rim.enabled ? theme.rim.width * 2 : 0);
 
   const boxSticker = (box: Box, rx: number, fill: string): string =>
     sticker(theme, (by, attrs) => rect({ ...box, x: box.x + by[0], y: box.y + by[1] }, { ...attrs, rx }), fill);
-  const discSticker = (centre: Point, r: number, fill: string): string =>
-    sticker(theme, (by, attrs) => circle(add(centre, by), r, attrs), fill);
-
-  /** A ring (renewal) drawn like a pipe bent round: rim and ink bands, then its colour. No shadow:
-   * around an interchange and its licence marker a second shadow only darkens the station. */
-  const ring = (centre: Point, r: number, colour: string, width: number): string => {
-    const ink = width + theme.outlineWidth;
-    const band = (stroke: string, strokeWidth: number) => circle(centre, r, { fill: 'none', stroke, 'stroke-width': strokeWidth });
-    return [
-      theme.rim.enabled ? band(theme.rim.color, rimmed(ink)) : '',
-      band(theme.outline, ink),
-      band(colour, width),
-    ].join('');
-  };
-
   const surface = theme.surface;
   /** Terminal badges: the design system's lineBadge, centred on the badge box. */
   const badge = (item: Omit<Badge, 'line'>): string => writePiece(lineBadge({
@@ -73,7 +56,7 @@ function painter(theme: Theme) {
     return writePiece(stationMarker({ cx: a[0], cy: a[1], ...(length < 1e-9 ? {} : { to: b }), r: item.radius, state: muted ? 'deprecated' : 'normal', surface }));
   };
 
-  const licence = (centre: Point, hollow: boolean): string => discSticker(centre, 5, hollow ? theme.station : theme.licence);
+  const licence = (centre: Point, hollow: boolean): string => writePiece(licenceMark({ cx: centre[0], cy: centre[1], state: hollow ? 'toBuy' : 'owned', surface }));
 
   /** A rule count: a circle for one digit, a pill for more, in the panel colour, with the number. */
   const ruleCount = (item: RuleCount): string => {
@@ -89,7 +72,7 @@ function painter(theme: Theme) {
   const interchangeSymbol = (centre: Point): string =>
     writePiece(stationMarker({ cx: centre[0], cy: centre[1] - 1.5, to: [centre[0], centre[1] + 1.5], r: 6, surface }));
 
-  return { text, title, rect, line, circle, boxSticker, discSticker, ring, badge, marker, licence, ruleCount, pipe, interchangeSymbol };
+  return { text, title, rect, line, boxSticker, badge, marker, licence, ruleCount, pipe, interchangeSymbol };
 }
 
 type Painter = ReturnType<typeof painter>;
@@ -107,21 +90,11 @@ function gridLayer(frame: Box, theme: Theme, paint: Painter): string {
   return parts.join('');
 }
 
-function zoneShape(zone: ZoneGeometry, paint: Painter): string {
-  color(zone.color);
-  if (zone.hull.length === 1) return paint.circle(zone.hull[0]!, zone.padding, { fill: zone.color });
-  if (zone.hull.length === 2) {
-    return paint.line(zone.hull[0]!, zone.hull[1]!, { stroke: zone.color, 'stroke-width': zone.padding * 2, 'stroke-linecap': 'round' });
-  }
-  const points = zone.hull.map(point => point.map(number).join(',')).join(' ');
-  return tag('polygon', { points, fill: zone.color, stroke: zone.color, 'stroke-width': zone.padding * 2, 'stroke-linejoin': 'round' });
-}
-
-function zonesLayer(zones: ZoneGeometry[], theme: Theme, paint: Painter): string {
+function zonesLayer(zones: ZoneGeometry[], theme: Theme): string {
   return zones.map(zone => {
-    const titleColor = tint(zone.color, theme.zoneTitleTint);
-    const title = paint.text(zone.title, zone.titleBox.x, zone.titleBox.y + 13, { fill: titleColor, 'font-weight': 700 });
-    return tag('g', { opacity: theme.zoneOpacity }, zoneShape(zone, paint)) + title;
+    // The piece refuses a blank label; a whitespace-only title (which the catalogue accepts) draws the area alone.
+    const title = zone.title.trim() === '' ? {} : { title: zone.title, titleAt: [zone.titleBox.x, zone.titleBox.y] as Point };
+    return writePiece(zonePiece({ points: zone.hull, fill: zone.color, ...title, surface: theme.surface }));
   }).join('');
 }
 
@@ -144,9 +117,9 @@ function stationGroup(station: StationGeometry, data: Attributes, theme: Theme, 
   const centre: Point = [box.x + box.w / 2, box.y + box.h / 2];
   const mark = paint.marker(station.marker, station.deprecated);
   const suggested = station.suggested
-    ? paint.circle(centre, halo + 3, { fill: 'none', stroke: theme.muted, 'stroke-width': 1.5, 'stroke-dasharray': '4 3' })
+    ? writePiece(suggestedHalo({ cx: centre[0], cy: centre[1], r: halo + 3, surface: theme.surface }))
     : '';
-  const ring = station.renewal ? paint.ring(centre, halo, theme.renewal, 3) : '';
+  const ring = station.renewal ? writePiece(renewalRing({ cx: centre[0], cy: centre[1], r: halo, surface: theme.surface })) : '';
   const licence = station.licencePoint ? paint.licence(station.licencePoint, station.licence === 'hollow') : '';
   const rules = station.ruleCount ? paint.ruleCount(station.ruleCount) : '';
   return tag('g', { 'data-ref': station.ref, ...data }, paint.title(station.title) + suggested + ring + mark + licence + rules);
@@ -180,9 +153,9 @@ function legendSymbol(symbol: string, centre: Point, theme: Theme, paint: Painte
   // A little smaller than on the map, so the dark theme's rim and shadow stay inside the 24 x 24 symbol.
   if (symbol === 'number of rules') return paint.ruleCount({ text: '3', box: { x: centre[0] - 7.5, y: centre[1] - 7.5, w: 15, h: 15 } });
   if (symbol === 'suggested position') {
-    return paint.circle(centre, 9, { fill: 'none', stroke: theme.muted, 'stroke-width': 1.5, 'stroke-dasharray': '4 3' });
+    return writePiece(suggestedHalo({ cx: centre[0], cy: centre[1], r: 9, surface: theme.surface }));
   }
-  return paint.ring(centre, 6.5, theme.renewal, 3);
+  return writePiece(renewalRing({ cx: centre[0], cy: centre[1], r: 6.5, surface: theme.surface }));
 }
 
 function legendLayer(geometry: MapGeometry, theme: Theme, paint: Painter): string {
@@ -247,7 +220,7 @@ export function renderSvg(geometry: MapGeometry, theme: Theme, options: RenderOp
   const layers = [
     background,
     gridLayer(geometry.frame, theme, paint),
-    zonesLayer(geometry.zones, theme, paint),
+    zonesLayer(geometry.zones, theme),
     lines,
     stations,
     labelsLayer(geometry, drawnZones, theme, paint) + empty,

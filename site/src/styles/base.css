@@ -311,8 +311,13 @@ code {
   color: var(--color-on-primary);
 }
 
-.btn svg {
+.btn svg,
+.theme-switch svg {
   display: block;
+}
+
+.btn .icon {
+  display: inline-flex;
 }
 
 input[type="search"],

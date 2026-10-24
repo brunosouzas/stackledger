@@ -270,11 +270,33 @@ test('Resource without a shadow', () => {
     expect(rects).toHaveLength(1);
     expect(rects[0]!.getAttribute('stroke-dasharray')).toBe('5 4');
     expect(rects[0]!.getAttribute('fill')).not.toBe(theme.shadow.color);
-    // The title is centred in the box.
-    const title = Array.from(group.getElementsByTagName('text')).find(text => text.textContent === 'orders-db')!;
-    expect(title.getAttribute('text-anchor')).toBe('middle');
-    expect(Number(title.getAttribute('x'))).toBe(Number(rects[0]!.getAttribute('x')) + Number(rects[0]!.getAttribute('width')) / 2);
+    // The title starts at the box's inset, with the item's kind under it, both muted (Neighbourhood placeholder box).
+    const texts = Array.from(group.getElementsByTagName('text'));
+    const title = texts.find(text => text.textContent === 'orders-db')!, kind = texts.find(text => text.textContent === 'resource')!;
+    expect(title.getAttribute('text-anchor')).toBe('start');
+    expect(Number(title.getAttribute('x'))).toBe(Number(rects[0]!.getAttribute('x')) + 12);
+    expect(Number(kind.getAttribute('x'))).toBe(Number(title.getAttribute('x')));
+    expect(Number(kind.getAttribute('y'))).toBeGreaterThan(Number(title.getAttribute('y')));
+    expect([title.getAttribute('fill'), kind.getAttribute('fill')]).toEqual([theme.muted, theme.muted]);
   }
+});
+
+test('Empty column keeps no subtitle', () => {
+  const graph = graphOf([depends('forge', ['component:vault']), component('vault')]);
+  for (const theme of Object.values(themes)) {
+    const doc = safe(renderNeighbourhood(neighbourhood(graph, graph.items.get('component:forge')!), theme));
+    const nothing = Array.from(doc.getElementsByTagName('text')).find(text => text.textContent === 'Nothing')!;
+    expect(nothing.getAttribute('text-anchor')).toBe('middle');
+    const rect = Array.from(doc.getElementsByTagName('rect')).filter(item => item.getAttribute('stroke-dasharray') === '5 4').at(-1)!;
+    expect(Number(nothing.getAttribute('x'))).toBe(Number(rect.getAttribute('x')) + Number(rect.getAttribute('width')) / 2);
+    expect(Array.from(doc.getElementsByTagName('text')).filter(text => text.getAttribute('font-size') === '11' && Number(text.getAttribute('x')) >= Number(rect.getAttribute('x')))).toHaveLength(0);
+  }
+});
+
+test('Custom piece colour is refused (diagrams)', () => {
+  const graph = graphOf([depends('forge', ['component:vault']), component('vault')]);
+  const opaque = structuredClone(themes.light); opaque.zoneOpacity = 0.5;
+  expect(() => renderNeighbourhood(neighbourhood(graph, graph.items.get('component:forge')!), opaque)).toThrow(/zoneOpacity/);
 });
 
 test('Strip terminal badges clear an interchange at the end', () => {

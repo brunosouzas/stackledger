@@ -27,7 +27,7 @@ const renewalTables = [
       Licence costs and renewals on {report.date}, with renewals up to {report.to} ({report.days} days). Each
       currency has its own totals: amounts are never converted.
     </p>
-    <p><a class="btn" href={href(root, report.calendar)} download="renewals.ics">Download the renewal calendar (renewals.ics)</a></p>
+    <p><a class="btn" href={href(root, report.calendar)} download="renewals.ics"><span class="icon" set:html={site.icons.download} />Download the renewal calendar (renewals.ics)</a></p>
     {
       report.empty ? (
         <p class="lead" data-empty-report>There are no licences.</p>

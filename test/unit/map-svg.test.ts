@@ -50,7 +50,15 @@ test('Theme values are the tokens',()=>{
  expect(t.outlineWidth).toBe(tokens.map.outline);expect(t.lineWidth).toBe(tokens.map.lineWidth);
  expect([t.text,t.muted,t.grid,t.panel,t.rim.color]).toEqual([d.text,d.muted,d.grid,d.panel,d.rim]);
  expect([t.casing.extraWidth,t.shadow.dx,t.shadow.dy]).toEqual([tokens.map.casing,tokens.map.shadow,tokens.map.shadow]);
- expect([t.outline,t.station,t.badgeText,t.licence,t.renewal,t.accent]).toEqual([tokens.color.ink,tokens.color.white,tokens.color.white,tokens.color.transitional,tokens.color.blocked,tokens.color.caller]);
+ expect([t.outline,t.station,t.badgeText,t.licence,t.renewal,t.accent]).toEqual([tokens.color.ink,tokens.color.white,tokens.color.white,tokens.color.healthy,tokens.color.blocked,tokens.color.caller]);
+});
+// metro-map "Piece colours in the themes".
+test('Piece colours are the tokens',()=>{
+ const t=themes.dark;
+ expect([t.licence,t.renewal,t.zoneOpacity,t.zoneTitleTint]).toEqual([tokens.color.healthy,tokens.color.blocked,tokens.surface.dark.zoneOpacity,tokens.map.zoneTitleTint]);
+});
+test('Light zone titles are not tinted',()=>{
+ expect(themes.light.zoneTitleTint).toBe(0);expect(themes.light.zoneOpacity).toBe(tokens.surface.light.zoneOpacity);
 });
 test('Light theme has no rim',()=>{
  expect(tokens.surface.light.rimWidth).toBe(0);expect(themes.light.rim.enabled).toBe(false);expect(inkOf(themes.light).outline).toBe(tokens.map.outline);
@@ -66,10 +74,17 @@ test('Custom ink is refused',()=>{
  expect(()=>renderSvg(geometry(),reordered)).not.toThrow();
  expect(()=>renderSvg(geometry(),{...reordered,shadow:{...reordered.shadow,color:'#4C5CB9'}})).toThrow(/shadow/);
 });
-test('Other theme fields stay free',()=>{
- const t=structuredClone(themes.light);t.zoneOpacity=0.5;
+test('Custom piece colour is refused',()=>{
  const g=geometry([set(component('a'),'metadata.labels',{'stackledger/zone':'finance'}),component('b'),journey('ship',['a','b']),set(positions({a:[0,0],b:[4,0]}),'spec.zones',[{name:'finance',title:'Finance',color:'#9B0056'}])]);
- expect(renderSvg(g,t)).toContain('opacity="0.5"');
+ const opaque=structuredClone(themes.light);opaque.zoneOpacity=0.5;
+ const amber=structuredClone(themes.light);amber.licence='#FFD25A';
+ expect(()=>renderSvg(g,opaque)).toThrow(/zoneOpacity/);expect(()=>renderSymbol('licence',opaque)).toThrow(/zoneOpacity/);
+ expect(()=>renderSvg(g,amber)).toThrow(/licence/);expect(()=>renderSymbol('licence',amber)).toThrow(/licence/);
+ for(const field of ['renewal','zoneTitleTint'] as const){const t=structuredClone(themes.dark) as any;t[field]=field==='renewal'?'#000000':0;expect(()=>renderSvg(g,t)).toThrow(new RegExp(field));}
+});
+test('Other theme fields stay free',()=>{
+ const t=structuredClone(themes.light);t.background='#FFFFFF';
+ expect(renderSvg(geometry(),t)).toContain('fill="#FFFFFF"');expect(renderSvg(geometry(),t)).not.toContain(`fill="${themes.light.background}"`);
 });
 const INK='#0A1033';
 // Two lines through `slack` make it an interchange; `a` and `b` stay ticks.

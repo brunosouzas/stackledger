@@ -9,6 +9,7 @@
  * Data is the fictitious example in examples/northwind.
  */
 import { expect, test, type Page } from '@playwright/test';
+import { siteIcons } from '../../src/site/ui-icons.js';
 
 declare global {
   interface Window { cspViolations: string[] }
@@ -378,4 +379,41 @@ test.describe('Without JavaScript', () => {
     await expect(page.locator('[data-software] tbody tr:visible')).toHaveCount(await rows.count());
     await expect(page.locator('[data-list-tools]')).toBeHidden();
   });
+});
+
+// catalogue-site "Interface icons": the zoom icon follows its button's text colour, at rest and on hover.
+test('Icon follows the button colour', async ({ page }) => {
+  for (const scheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto('/full/map/');
+    const button = page.getByRole('button', { name: 'Zoom in' });
+    const paint = () => button.evaluate(element => {
+      const path = element.querySelector('svg path')!;
+      return { text: getComputedStyle(element).color, stroke: getComputedStyle(path).stroke, fill: getComputedStyle(path).fill };
+    });
+    const rest = await paint();
+    expect(rest.stroke, scheme).toBe(rest.text);expect(rest.fill, scheme).toBe('none');
+    await button.hover();
+    // The button's colour transition is 0.2s; wait until the text colour has settled.
+    await expect.poll(async () => (await paint()).text).not.toBe(rest.text);
+    await page.waitForTimeout(300);
+    const hover = await paint();
+    expect(hover.stroke, scheme).toBe(hover.text);expect(hover.fill, scheme).toBe('none');
+  }
+});
+
+// catalogue-site "Interface icons": the theme switch shows the sun in light and the moon in dark.
+test('Theme switch icons', async ({ page }) => {
+  for (const scheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto('/full/');
+    const shown = await page.locator('[data-theme-switch] svg').evaluateAll(icons => icons
+      .filter(icon => icon.getBoundingClientRect().width > 0)
+      .map(icon => icon.parentElement!.className));
+    expect(shown, scheme).toEqual([scheme === 'light' ? 'icon-sun' : 'icon-moon']);
+  }
+  // Each wrapper holds its own icon, as the build wrote it (not swapped).
+  const html = await (await page.request.get('/full/')).text();
+  expect(html).toContain(`<span class="icon-sun">${siteIcons().sun}</span>`);
+  expect(html).toContain(`<span class="icon-moon">${siteIcons().moon}</span>`);
 });

@@ -1,0 +1,49 @@
+## Context
+
+- `src/map/pieces.ts` writes a piece's output through `tag()` of `src/map/xml.ts` (allow-lists, paint check, escaping). Stations, lines, badges and rule counts already go through it (AB#164).
+- `src/map/svg.ts` still draws the licence disc (`discSticker`, radius 5, `theme.licence`), the renewal ring (`ring`, width 3, `theme.renewal`), the dashed halo (radius `halo + 3` on the map, 9 in the legend) and the zones (`zoneShape`, `zonesLayer`, `theme.zoneOpacity`, `theme.zoneTitleTint`).
+- In 0.3.1: `renewalRing({ cx, cy, r, surface })` (width `map.ringWidth` 3, `color.blocked`), `suggestedHalo({ cx, cy, r, surface })` (`map.haloWidth` 1.5, dash `4 3`, muted), `licenceMark({ cx, cy, state, surface })` (`map.licenceSize` 10; `owned` is `color.healthy`, `toBuy` white), `zone({ points, fill, title, titleAt, surface })` (`map.zonePadding` 32, `surface.*.zoneOpacity`, title tinted by `map.zoneTitleTint` on dark only), `nodeBlock` `placeholder` with `subtitle`, and `uiIcon({ name, x, y, size, colour })` with `colour: "currentColor"`.
+- A prototype (outside the branch) showed that, with the pieces, the Northwind maps differ from today's only in the licence fill, plus attributes that do not change the drawing (`stroke-linejoin` on circles, `text-anchor="start"`, `stroke="none"` on the zone group).
+
+## Decisions
+
+### 1. Map pieces at today's sizes
+
+| Today | Piece call |
+| --- | --- |
+| `paint.licence(centre, hollow)` | `licenceMark({ cx, cy, state: hollow ? 'toBuy' : 'owned', surface })` |
+| `paint.ring(centre, halo, theme.renewal, 3)` | `renewalRing({ cx, cy, r: halo, surface })` |
+| legend ring, radius 6.5 | `renewalRing({ cx, cy, r: 6.5, surface })` |
+| halo, radius `halo + 3` / legend 9 | `suggestedHalo({ cx, cy, r, surface })` |
+| `zonesLayer` | per zone, `zone({ points: hull, fill: color, title, titleAt: [titleBox.x, titleBox.y], surface })` |
+
+A zone whose title is only whitespace (`title.trim() === ''`) is drawn with `zone({ points, fill, surface })`, without `title` and `titleAt`: the piece refuses a blank label, and today's output for such a title is an invisible text. Each output goes through `writePiece`. The layout's obstacles do not change: the pieces have the same radii and widths as today's drawing. `discSticker`, `ring`, `zoneShape` and the `tint` import are removed when nothing else uses them.
+
+### 2. Theme fields join `checkInk`
+
+`fromTokens` takes `licence` from `color.healthy`, `renewal` from `color.blocked`, `zoneOpacity` from `surface.<theme>.zoneOpacity` and `zoneTitleTint` from `map.zoneTitleTint` on dark and 0 on light. `checkInk` compares those four fields too. The `Theme` type keeps them, so code that builds a theme in TypeScript still compiles; a theme with another value is refused with the field's name instead of being silently ignored.
+
+Rejected: removing the fields from `Theme`. It breaks the type for any caller who builds a theme, for no gain over a clear error.
+
+### 3. Neighbourhood placeholder
+
+`box()` passes `subtitle: node.kind` to the placeholder `nodeBlock`, as it does for linked boxes. The "Nothing" placeholder of an empty column keeps no subtitle.
+
+### 4. Interface icons inline
+
+`src/site/ui-icons.ts` exports `iconSvg(name)`: `toSvg(el('svg', { xmlns, viewBox: '0 0 24 24', width: 16, height: 16, 'aria-hidden': 'true', focusable: 'false' }, ...uiIcon({ name, x: 0, y: 0, colour }).body))`, with `colour` `currentColor` for `zoomIn`, `zoomOut`, `reset` and `download`, `color.white` for `sun` and `color.ink` for `moon`. `buildSiteData` adds `icons` (the six strings) to the site data, and the pages write each one with `set:html` inside a `span` (`class="icon"` in buttons, `icon-sun` and `icon-moon` in the switch), the same path as the line badges (strings built by stackledger from the package, never from catalogue text).
+
+Why inline: `currentColor` is resolved in the document that holds the SVG. In an `img` or a CSS background the SVG is a separate document and would keep the default colour when the button inverts. Inline SVG with presentation attributes needs no `style` attribute or element, so `style-src 'self'` and "No inline code" are unaffected; site-security "Escaped catalogue text" names the icons as a third raw insertion, built only from the package's fixed shapes, and it is not an `img`, so "Brand mark"'s list of `img` elements stays as it is.
+
+Accessibility: the zoom in and zoom out buttons keep their `aria-label`; reset keeps its text; the calendar link keeps its text. The icons are `aria-hidden`.
+
+## Test changes
+
+- `test/unit/map-svg.test.ts` "Other theme fields stay free": becomes a custom `zoneOpacity` refused, plus another free field (`background`) still honoured.
+- `test/unit/map-diagrams.test.ts` "Resource without a shadow" (catalogue-site "Diagram style", modified): the title is no longer centred; it starts at the box inset with the kind below it.
+- `test/integration/map-example.test.ts` "SVG heroes are generated by stackledger map at the documented date": passes after `docs/images/map-{light,dark}.svg` are regenerated.
+- Any test that reads `+`, `−` or the licence colour from a page or SVG is updated to the icon or the green fill, each explained in the pull request.
+
+## Risks
+
+- A later design-system version that redraws a piece changes the map. Mitigation: the exact pin and the "drawn by the piece" tests, which compare with the installed piece.
