@@ -9,7 +9,7 @@ Scenarios carried unchanged keep their tests (unit):
 
 ## 1. Detection
 
-- [ ] 1.1 Tests first in `test/unit/release-detect.test.ts`: "The version merge releases", "A later merge with the same version" (detector output), "Version whose tag exists", "Several commits in one push", "Forced or rewritten main", "Pushed tag and other refs", "Unreadable version", "Wrong arguments". Then `scripts/release-detect.mjs` (design: ported from the sibling, with the error rules of "Detection errors"). Check: the eight pass.
+- [ ] 1.1 Tests first in `test/unit/release-detect.test.ts`: "The version merge releases", "A later merge with the same version" (detector output), "Version whose tag exists", "Several commits in one push", "Forced or rewritten main", "Pushed tag and other refs", "Unreadable version", "Forced push wins over an unreadable version", "Previous version missing or unreadable", "Git fails", "Wrong arguments". Then `scripts/release-detect.mjs` (design: ported from the sibling, with the error rules of "Detection errors"). Check: the eleven pass.
 
 ## 2. Tag check
 
@@ -25,4 +25,4 @@ Scenarios carried unchanged keep their tests (unit):
 
 ## 5. Documentation
 
-- [ ] 5.1 `docs/release.md` (what the workflow does, releasing a version with "Re-run failed jobs" as recovery, who can release, the tag ruleset, "Moving to release on merge") and `AGENTS.md`. Vault notes on the vault's `main` after the pull request is ready. Check: `npm run build && npm test` exits 0 and `openspec validate --all --strict` passes.
+- [ ] 5.1 `docs/release.md` (what the workflow does, releasing a version with "Re-run failed jobs" as recovery and the tag recovery of the proposal, who can release, the tag ruleset, "Moving to release on merge") and `AGENTS.md`. Vault notes on the vault's `main` after the pull request is ready. Check: `npm run build && npm test` exits 0 and `openspec validate --all --strict` passes.

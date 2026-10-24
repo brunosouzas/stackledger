@@ -98,11 +98,23 @@ After `Tag reserved before publishing`, the script SHALL ask npm: a 404 publishe
 - **THEN** the tag goes on with `tag=v0.2.0`; the others answer `release=false`
 
 ### Requirement: Detection errors
-The detection SHALL exit 1, so no later job runs, when it gets fewer than four arguments, when `package.json` at the pushed commit is missing, not JSON or has no string `version`, or when a Git command fails other than with its "not an ancestor" or "not found" answer. `package.json` missing or without a version at the previous commit counts as a changed version.
+The detection SHALL decide in this order, the first match winning: fewer than four arguments exit 1; a tag or another branch answers; a forced push answers `release=false`; an all-zero or missing previous commit answers `release=false`; a non-fast-forward answers `release=false`; `package.json` at the pushed commit missing, not JSON or without a string `version` exits 1; at the previous commit, missing or without a string `version` counts as changed, not JSON exits 1. A Git failure exits 1.
 
 #### Scenario: Unreadable version
-- **WHEN** the pushed commit of `main` has no `package.json`, one that is not JSON, or one without `version`
+- **WHEN** the pushed commit of `main` has no `package.json`, one that is not JSON, or one without `version`, on a fast-forward push
 - **THEN** the detection exits 1 with one line naming the commit
+
+#### Scenario: Forced push wins over an unreadable version
+- **WHEN** a forced push to `main` has a pushed commit without `package.json`
+- **THEN** the detection answers `release=false`
+
+#### Scenario: Previous version missing or unreadable
+- **WHEN** the previous commit has no `package.json` or one without `version`, and the pushed one says `0.2.0` with no tag `v0.2.0`
+- **THEN** the detection answers `release=true`; when the previous `package.json` is not JSON it exits 1
+
+#### Scenario: Git fails
+- **WHEN** the detection runs outside a Git repository
+- **THEN** it exits 1 with Git's message, not as a missing file
 
 #### Scenario: Wrong arguments
 - **WHEN** the detection runs with fewer than four arguments
