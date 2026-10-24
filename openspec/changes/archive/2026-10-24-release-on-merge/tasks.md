@@ -25,4 +25,4 @@ Scenarios carried unchanged keep their tests (unit):
 
 ## 5. Documentation
 
-- [ ] 5.1 `docs/release.md` (what the workflow does, releasing a version with "Re-run failed jobs" as recovery and the tag recovery of the proposal, who can release, the tag ruleset, "Moving to release on merge") and `AGENTS.md`. Vault notes on the vault's `main` after the pull request is ready. Check: `npm run build && npm test` exits 0 and `openspec validate --all --strict` passes.
+- [x] 5.1 `docs/release.md` (what the workflow does, releasing a version with "Re-run failed jobs" as recovery and the tag recovery of the proposal, who can release, the tag ruleset, "Moving to release on merge") and `AGENTS.md`. Vault notes on the vault's `main` after the pull request is ready. Check: `npm run build && npm test` exits 0 and `openspec validate --all --strict` passes.
