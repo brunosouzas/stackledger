@@ -1,50 +1,54 @@
 # Releasing stackledger
 
-A version reaches npm only one way: the owner pushes a tag `v<major>.<minor>.<patch>` on a commit already on `main`, and approves the publishing job. The workflow is [`.github/workflows/release.yml`](../.github/workflows/release.yml). This page says how to release, how the very first version is set up, and how to check what was published.
+A version reaches npm when a commit on `main` changes the `version` in `package.json` (the version pull request is merged) and the owner approves the publishing job; the workflow then creates the tag `v<major>.<minor>.<patch>` and the GitHub release. The owner can also push the tag by hand (to retry, or to release a version whose run he rejected). The workflow is [`.github/workflows/release.yml`](../.github/workflows/release.yml). This page says how to release, how the very first version is set up, and how to check what was published.
 
 ## What the workflow does
 
-Two jobs, so the identity that can publish never exists while dependencies install or run their scripts.
+The workflow runs on every push to `main` and on every pushed tag `v*`, in three jobs, so the identity that can publish never exists while dependencies install or run their scripts.
 
-1. **`check`** has only read access to the repository. It runs [`scripts/check-release-tag.mjs`](../scripts/check-release-tag.mjs) first: the tag must be `v` plus the `version` in `package.json`, digits only (no `-beta`), on a commit that is on `origin/main`. Then `npm ci`, the build, the full test suite and `npm audit` (any vulnerability, or an audit that cannot run, stops the release). Then `node scripts/pack-production.mjs "$RUNNER_TEMP/release"` packs a temporary copy of the built package files with a production-only shrinkwrap derived from the repository lock. It does not mutate the repository lock (which retains dev dependencies for `npm ci`); the staged manifest omits dev dependencies and `prepack`, because the build already ran. The CycloneDX SBOM is generated with `npm sbom --package-lock-only --sbom-format cyclonedx` from the manifest and production shrinkwrap extracted from that exact tarball (not from the development checkout). Two clean registry-stand-in installs test that no dev-only or untracked packages ship (npm 10 may classify locked optional WASM packages as extraneous). The exact staged tarball, its integrity and the SBOM go to the next job as an artifact.
-2. **`publish`** runs in the GitHub environment `npm`, which waits for the owner's approval. It installs nothing and builds nothing. It checks out the tagged commit only to run [`scripts/release-publish.sh`](../scripts/release-publish.sh) on the downloaded files. The script asks npm whether the version exists:
+0. **`detect`** has only read access. [`scripts/release-detect.mjs`](../scripts/release-detect.mjs) decides whether the push releases anything, and prints one line saying why:
+   - a push to `main` releases only when it moves `main` forward (a merge; never a forced push), changes the `version` in `package.json` against the commit before the push, and the tag `v<version>` does not exist yet. A README fix merged later, while the version still waits for approval, releases nothing;
+   - a pushed tag always goes on to `check`;
+   - anything else stops here, in seconds, and the run is green. An unreadable `package.json` or a Git failure fails the run.
+1. **`check`** has only read access to the repository. It runs [`scripts/check-release-tag.mjs`](../scripts/check-release-tag.mjs) first: the tag must be `v` plus the `version` in `package.json`, digits only (no `-beta`), on a commit that is on `origin/main` (from `main`: the pushed commit, and if the tag already exists it must name that commit). Then `npm ci`, the build, the full test suite and `npm audit` (any vulnerability, or an audit that cannot run, stops the release). Then `node scripts/pack-production.mjs "$RUNNER_TEMP/release"` packs a temporary copy of the built package files with a production-only shrinkwrap derived from the repository lock. It does not mutate the repository lock (which retains dev dependencies for `npm ci`); the staged manifest omits dev dependencies and `prepack`, because the build already ran. The CycloneDX SBOM is generated with `npm sbom --package-lock-only --sbom-format cyclonedx` from the manifest and production shrinkwrap extracted from that exact tarball (not from the development checkout). Two clean registry-stand-in installs test that no dev-only or untracked packages ship (npm 10 may classify locked optional WASM packages as extraneous). The exact staged tarball, its integrity and the SBOM go to the next job as an artifact.
+2. **`publish`** runs in the GitHub environment `npm`, which waits for the owner's approval. It installs nothing and builds nothing. It checks out the released commit only to run [`scripts/release-publish.sh`](../scripts/release-publish.sh) on the downloaded files. From `main`, the script first reserves the tag: it creates `v<version>` on the released commit through the GitHub API, which either creates it or answers that it exists. The owner may push the same tag by hand meanwhile; an existing tag must name the released commit, or the script stops and nothing is published. Then it asks npm whether the version exists:
    - absent: it publishes the tarball with `npm publish --provenance --access public --ignore-scripts`;
    - present with the same integrity and a provenance attestation: it skips publishing;
-   - present with other bytes, or without provenance, or npm cannot answer: it stops with exit 1 and changes nothing.
+   - present with other bytes, or without provenance, or npm cannot answer: it stops with exit 1 and publishes nothing (a tag reserved before stays).
 
-   Then it creates the GitHub release for the tag with the SBOM attached, or replaces the SBOM of an existing release.
+   Then it creates the GitHub release on the tag (`--verify-tag`) with the SBOM attached, or replaces the SBOM of an existing release. A tag created by the workflow does not start the workflow again (GitHub runs no workflow for events of its own token).
 
-If a run fails after npm publishing (for example while creating the GitHub release), use "Re-run failed jobs". The script sees the same bytes on npm and only finishes the release.
+If a run fails part way (npm down after the tag was reserved, or the GitHub release after npm), use "Re-run failed jobs": GitHub keeps the successful `detect` and `check` with their outputs and artifact, and the script finds its own tag on the same commit and the same bytes on npm, and only finishes what is missing. Do not use "Re-run all jobs": `detect` then sees the tag and stops. If the failed run can no longer be re-run (its artifact expires after 7 days), delete the tag (`git push origin :refs/tags/v0.2.0`) and push it again: the tag path releases it.
 
 For release candidates, run `node scripts/pack-production.mjs <destination>` after `npm ci`. Plain `npm pack` at the repository root still runs `prepack` and builds `dist/`, but includes the development shrinkwrap and **must not** be published. Only the staging packer supplies the production-only shrinkwrap. The release workflow uploads precisely its output, not a subsequent root pack.
 
 ## Releasing a version
 
-1. In a pull request, set the new version: `npm version 0.2.0 --no-git-tag-version` (it updates `package.json` and `npm-shrinkwrap.json`). Merge it.
-2. Tag the merge commit on `main` and push the tag:
+1. In a pull request, set the new version: `npm version 0.2.0 --no-git-tag-version` (it updates `package.json` and `npm-shrinkwrap.json`). The diff shows the line `"version": "0.2.0"`, and that line is what releases. Before the merge, check the trusted publisher (below).
+2. Merge it. The run of that merge in the Actions tab goes through `detect` and `check`, then the `publish` job waits for you: review it and approve. To not release it, reject the run; nothing is published and no tag is created.
 
-   ```sh
-   git switch main && git pull --ff-only
-   git tag v0.2.0
-   git push origin v0.2.0
-   ```
+   Before the first release after the trusted publisher was set up, check its status on npmjs.com (package → Settings → Trusted Publisher). npm marks a new configuration "Pending validation" until a publish uses it, and expires it 48 hours after creation ([GitHub changelog](https://github.blog/changelog/2026-10-02-unvalidated-npm-trusted-publishing-configurations-now-expire/)). An expired configuration no longer authorises publishing, and with no token left the job fails. If it is pending or expired, delete it and add it again with the same values (step 5.1 below) just before merging the version (or pushing the tag): the release then validates it.
+3. Check the result (see [Checking a release](#checking-a-release)).
 
-3. Open the run in the Actions tab. When `check` has passed, the `publish` job waits for you: review it and approve.
+**By hand, or to retry.** Tag the commit on `main` and push the tag:
 
-   Before the first release after the trusted publisher was set up, check its status on npmjs.com (package → Settings → Trusted Publisher). npm marks a new configuration "Pending validation" until a publish uses it, and expires it 48 hours after creation ([GitHub changelog](https://github.blog/changelog/2026-10-02-unvalidated-npm-trusted-publishing-configurations-now-expire/)). An expired configuration no longer authorises publishing, and with no token left the job fails. If it is pending or expired, delete it and add it again with the same values (step 5.1 below) just before pushing the tag: the release then validates it.
-4. Check the result (see [Checking a release](#checking-a-release)).
+```sh
+git switch main && git pull --ff-only
+git tag v0.2.0
+git push origin v0.2.0
+```
 
 A tag that does not match the version, or a tag on a commit that is not on `main`, fails in the first step of `check`. Delete the tag (`git push origin :refs/tags/v0.2.0`), fix, and tag again.
 
 ## Who can release
 
-Three controls, so a pushed tag alone never publishes:
+Three controls, so neither a merge nor a pushed tag alone publishes:
 
-- **The tag check.** Only a commit on `main`, so only merged and reviewed code, is released.
+- **The tag check.** Only a commit on `main`, so only merged and reviewed code, is released, and only when its version is the tag's.
 - **The environment `npm`.** Its required reviewer is the owner, so every publishing run waits for his approval.
 - **The trusted publisher on npm** (after the first version). npm accepts a publication only from the workflow `release.yml` of `brunosouzas/stackledger`, running in the environment `npm`.
 
-The owner also adds a tag ruleset, so only he can create `v*` tags.
+The owner also adds a tag ruleset, so a `v*` tag cannot be moved or deleted except by him.
 
 ## Setting up the first version
 
@@ -71,7 +75,7 @@ If the publishing job later fails with 403, or with `E404 Not Found - PUT`, the 
 For 0.4.1 the environment and the tag ruleset (step 3) already exist from 0.1.0: only the `NPM_TOKEN` environment secret is added again. For a new repository: Settings → Environments → New environment, named `npm` ([GitHub docs](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)).
 
 - **Required reviewers:** the owner. Leave "Prevent self-review" off: the owner pushes the tag and approves his own run.
-- **Deployment branches and tags:** "Selected branches and tags", with the tag rule `v*`.
+- **Deployment branches and tags:** "Selected branches and tags", with the branch rule `main` and the tag rule `v*`.
 - **Environment secrets:** add `NPM_TOKEN` with the token from step 1. It is an environment secret, not a repository secret, so only the approved `publish` job can read it.
 
 ### 3. The tag ruleset
@@ -80,7 +84,7 @@ Settings → Rules → Rulesets → New ruleset → New tag ruleset ([GitHub doc
 
 - Name: `release tags`; enforcement: Active.
 - Target tags: include by pattern `v*`.
-- Rules: restrict creations, restrict updates, restrict deletions.
+- Rules: restrict updates, restrict deletions. Not "restrict creations": the `publish` job creates the tag with the workflow's own token, which the bypass list cannot name (it lists only installed apps).
 - Bypass list: Repository admin (the owner), always allowed.
 
 ### 4. Release the first version
@@ -116,6 +120,15 @@ npm deprecate stackledger "Moved to @brunosouzas/stackledger"
 ```
 
 Without a version range the message applies to every version. They stay installable; `npm install stackledger` and `npx stackledger` show the message.
+
+## Moving to release on merge
+
+Done once, before the first version that should release on merge (AB#172):
+
+1. Settings → Environments → `npm` → Deployment branches and tags: add the branch rule `main` (keep `v*`). Without it the `publish` job of a push to `main` cannot enter the environment.
+2. Settings → Rules → Rulesets → `release tags`: untick "Restrict creations" (keep updates and deletions restricted). Without it the reservation fails and nothing is published; after the fix, "Re-run failed jobs".
+
+The trusted publisher on npm does not change: it names the workflow file `release.yml` and the environment `npm`, not the trigger. A GitHub App in the bypass list could keep "Restrict creations", but it adds a long-lived private key to the environment (the release holds no secret today) and its tag push starts the workflow again; revisit it when the repository has other writers.
 
 ## Checking a release
 

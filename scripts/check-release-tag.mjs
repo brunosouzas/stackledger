@@ -6,7 +6,10 @@
  * origin/main (merged and reviewed), may go on. Anything else stops the release before it builds.
  *
  * Run from the repository root, after a checkout with the full history (fetch-depth: 0):
- *   node scripts/check-release-tag.mjs "$GITHUB_REF_NAME"
+ *   node scripts/check-release-tag.mjs <tag> [<commit>]
+ * With a commit (a release from a push to main, scripts/release-detect.mjs), the tag does not exist
+ * yet: the publishing job reserves it on that commit before npm. If the tag exists, it must name that
+ * commit. Without a commit (a pushed tag), the commit is the one the tag names.
  * Exit 0: the tag may be released. Exit 1: one line on stderr says why not. Git must be on PATH;
  * a Git failure other than "not an ancestor" also exits 1, with Git's message.
  */
@@ -36,9 +39,18 @@ try {
 }
 if (`v${version}` !== tag) fail(`tag ${tag} does not match package.json version ${version}`);
 
-const commit = git('rev-parse', '--verify', '--quiet', `refs/tags/${tag}^{commit}`);
-if (commit.status !== 0) fail(`tag ${tag} does not name a commit in this checkout`);
-const sha = commit.stdout.trim();
+const given = process.argv[3];
+const tagged = git('rev-parse', '--verify', '--quiet', `refs/tags/${tag}^{commit}`);
+let sha;
+if (given === undefined) {
+  if (tagged.status !== 0) fail(`tag ${tag} does not name a commit in this checkout`);
+  sha = tagged.stdout.trim();
+} else {
+  const resolved = git('rev-parse', '--verify', '--quiet', `${given}^{commit}`);
+  if (resolved.status !== 0) fail(`${JSON.stringify(given)} does not name a commit in this checkout`);
+  sha = resolved.stdout.trim();
+  if (tagged.status === 0 && tagged.stdout.trim() !== sha) fail(`tag ${tag} already exists on ${tagged.stdout.trim()}, not on ${sha}`);
+}
 
 // --is-ancestor exits 0 when the commit is on origin/main, 1 when it is not, anything else on error.
 const merged = git('merge-base', '--is-ancestor', sha, 'refs/remotes/origin/main');

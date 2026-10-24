@@ -9,19 +9,19 @@ Scenarios carried unchanged keep their tests (unit):
 
 ## 1. Detection
 
-- [ ] 1.1 Tests first in `test/unit/release-detect.test.ts`: "The version merge releases", "A later merge with the same version" (detector output), "Version whose tag exists", "Several commits in one push", "Forced or rewritten main", "Pushed tag and other refs", "Unreadable version", "Forced push wins over an unreadable version", "Previous version missing or unreadable", "Git fails", "Wrong arguments". Then `scripts/release-detect.mjs` (design: ported from the sibling, with the error rules of "Detection errors"). Check: the eleven pass.
+- [x] 1.1 Tests first in `test/unit/release-detect.test.ts`: "The version merge releases", "A later merge with the same version" (detector output), "Version whose tag exists", "Several commits in one push", "Forced or rewritten main", "Pushed tag and other refs", "Unreadable version", "Forced push wins over an unreadable version", "Previous version missing or unreadable", "Git fails", "Wrong arguments". Then `scripts/release-detect.mjs` (design: ported from the sibling, with the error rules of "Detection errors"). Check: the eleven pass.
 
 ## 2. Tag check
 
-- [ ] 2.1 Tests first in `test/unit/release-tag.test.ts`: "From main before the tag exists", "From main with the tag on another commit". Then the `[<commit>]` argument in `scripts/check-release-tag.mjs`. Check: the five tag tests pass.
+- [x] 2.1 Tests first in `test/unit/release-tag.test.ts`: "From main before the tag exists", "From main with the tag on another commit". Then the `[<commit>]` argument in `scripts/check-release-tag.mjs`. Check: the five tag tests pass.
 
 ## 3. Publishing script
 
-- [ ] 3.1 Tests first in `test/unit/release-publish.test.ts`, with a `gh` fake that keeps the tag and the release in files: "Reserve, publish, release", "Tag pushed meanwhile on another commit", "Tag already on the released commit", "GitHub cannot answer for the tag", "Registry fails after the reservation". Then the reservation in `scripts/release-publish.sh` (`RELEASE_TAG`, `RELEASE_COMMIT`). Check: all publish tests pass and `shellcheck` is clean.
+- [x] 3.1 Tests first in `test/unit/release-publish.test.ts`, with a `gh` fake that keeps the tag and the release in files: "Reserve, publish, release", "Tag pushed meanwhile on another commit", "Tag already on the released commit", "GitHub cannot answer for the tag", "Registry fails after the reservation". Then the reservation in `scripts/release-publish.sh` (`RELEASE_TAG`, `RELEASE_COMMIT`). Check: all publish tests pass and `shellcheck` is clean.
 
 ## 4. Workflow
 
-- [ ] 4.1 Tests first in `test/unit/release-workflow.test.ts`: "Release on the version merge" (`on` is `main` and `v*`; the detect job has `contents: read`, gets `ref_type`, `ref_name`, `event.before`, `event.forced` only through `env`, outputs `release` and `tag`); "A later merge with the same version" (workflow side: `check` needs `detect` with `if: needs.detect.outputs.release == 'true'`, `publish` needs `detect` and `check`); "Checks job" and "Publishing job" with the new graph; "Concurrency groups"; the SBOM and publish steps read the tag from `detect`, never `GITHUB_REF_NAME`. Then `.github/workflows/release.yml`. Check: workflow tests pass, `actionlint` reports nothing.
+- [x] 4.1 Tests first in `test/unit/release-workflow.test.ts`: "Release on the version merge" (`on` is `main` and `v*`; the detect job has `contents: read`, gets `ref_type`, `ref_name`, `event.before`, `event.forced` only through `env`, outputs `release` and `tag`); "A later merge with the same version" (workflow side: `check` needs `detect` with `if: needs.detect.outputs.release == 'true'`, `publish` needs `detect` and `check`); "Checks job" and "Publishing job" with the new graph; "Concurrency groups"; the SBOM and publish steps read the tag from `detect`, never `GITHUB_REF_NAME`. Then `.github/workflows/release.yml`. Check: workflow tests pass, `actionlint` reports nothing.
 
 ## 5. Documentation
 
