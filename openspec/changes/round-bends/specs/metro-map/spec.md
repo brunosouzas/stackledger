@@ -54,12 +54,19 @@ A line SHALL have room for an arc when its setback, its signed radius ("Bend can
 - **THEN** both bends keep the mitred corner for all three lines
 
 #### Scenario: Chained conflicts
-- **WHEN** one line turns at three candidate nodes in a row, one grid edge apart, and every setback is more than half an edge
+- **WHEN** a bundle of two lines turns at three candidate nodes in a row, one grid edge apart, and the outer line's setback at each is more than half an edge
 - **THEN** all three bends keep the mitred corner, in either direction of travel
 
 #### Scenario: Bend next to a connector or an end
 - **WHEN** a line turns at a candidate node one edge after a slot-change connector, and another one edge before its last stop
 - **THEN** each turns round when its setback fits within the whole shared segment, and keeps the mitre otherwise
+
+### Requirement: Arc obstacles
+Each arc of a round bend SHALL be a label and terminal badge obstacle as chords of at most 15 degrees, each a rectangle as wide as the casing plus twice the chord's sagitta and lengthened by half the casing width at each end. A label or badge MAY leave its 0.2.0 position only because of such an obstacle: directly, when it covers its candidate, or in turn, when a label or badge moved that way covers it.
+
+#### Scenario: Label clears the outside of a curve
+- **WHEN** a label candidate would touch only the outer edge of an arc's casing, either midway along a chord or at the joint of two chords or of a chord and a straight part
+- **THEN** that candidate counts as overlapping the line
 
 ## MODIFIED Requirements
 
@@ -98,7 +105,7 @@ When every line on a grid edge continues together onto the next edge, the bundle
 - **THEN** the bend keeps the mitred corner for `ship`
 
 ### Requirement: Label placement
-Labels SHALL be placed interchanges first (more lines first), then by reference, at the first of eight candidates (right, left, above, below, then the four diagonals) with no overlap. Obstacles are other labels, station markers, licence markers, rule counts and terminal badges grown by their outline and shadow, zone titles, and each part of a line's drawn path: each straight part as a rectangle as wide as its casing, and each arc as chords of at most 15 degrees, each a rectangle as wide as the casing plus twice the chord's sagitta and lengthened by half the casing width at each end. When every candidate overlaps, the one with the least intersected area wins, ties to the earlier candidate.
+Labels SHALL be placed interchanges first (more lines first), then by reference, at the first of eight candidates (right, left, above, below, then the four diagonals) with no overlap. Obstacles are other labels, markers, licence markers, rule counts and terminal badges grown by their ink, zone titles, and a line's drawn path: straight parts as rectangles as wide as the casing, arcs as in "Arc obstacles". When all overlap, the least intersected area wins, ties to the earlier candidate.
 
 #### Scenario: Labels do not collide in the example
 - **WHEN** the fictitious example catalogue is laid out
@@ -116,9 +123,6 @@ Labels SHALL be placed interchanges first (more lines first), then by reference,
 - **WHEN** a station's first label candidate is clear of the line's mitred polyline but would cover the inside of the arc that replaces the corner
 - **THEN** the label is placed at a later candidate clear of the arc
 
-#### Scenario: Label clears the outside of a curve
-- **WHEN** a label candidate would touch only the outer edge of an arc's casing, either midway along a chord or at the joint of two chords or of a chord and a straight part
-- **THEN** that candidate counts as overlapping the line
 
 #### Scenario: Terminal badge clears a round bend
 - **WHEN** a terminal badge's first position is clear of the mitred polyline but would cover the arc of a round bend next to the line's end
@@ -136,22 +140,26 @@ The `light` and `dark` themes SHALL take their colours and ink measures from the
 - **THEN** its rim is disabled, because `surface.light.rimWidth` is 0, and `inkOf` gives an outline equal to `map.outline`
 
 ### Requirement: Theme ink comes from the design system
-The map and diagram renderers SHALL refuse, with an error naming the field, a theme whose outline colour or width, shadow, rim, casing, line width or bend radius differs from the tokens of its `surface`, because the pieces paint those from the tokens and the layout must count the same ink and the same arcs.
+The map and diagram renderers SHALL refuse, with an error naming the field, a theme whose outline colour or width, shadow, rim, casing, line width, bend radius, licence colour, renewal colour, zone opacity or zone title tint differs from the tokens of its `surface`, because the pieces paint those from the tokens and the layout must count the same ink and the same arcs. Other theme fields are not checked.
 
 #### Scenario: Custom ink is refused
 - **WHEN** `renderSvg` is given a copy of `themes.light` with `outlineWidth` 9, or with the shadow turned off
 - **THEN** it throws an error naming `outlineWidth`, or `shadow`, and returns no SVG
+
+#### Scenario: Custom piece colour is refused
+- **WHEN** `renderSvg`, `renderSymbol` or `renderNeighbourhood` is given a copy of `themes.light` with `zoneOpacity` 0.5, or with `licence` `#FFD25A`
+- **THEN** it throws an error naming `zoneOpacity`, or `licence`, and returns no SVG
 
 #### Scenario: Custom bend radius is refused
 - **WHEN** `renderSvg` is given a copy of `themes.light` with `bendRadius` 16
 - **THEN** it throws an error naming `bendRadius` and returns no SVG
 
 #### Scenario: Other theme fields stay free
-- **WHEN** `renderSvg` is given a copy of `themes.light` with another `zoneOpacity`
-- **THEN** it draws the map with that zone opacity
+- **WHEN** `renderSvg` is given a copy of `themes.light` with `background` `#FFFFFF`
+- **THEN** it draws the map with that background
 
 ### Requirement: Software map unchanged
-For the same catalogue, view, theme and map date, the software map SHALL place every station marker where stackledger 0.2.0 places it and every line along the 0.2.0 path, unless the catalogue holds a file named `stackledger-skills.yaml`, which is no longer a catalogue file. Labels and terminal badges stay where 0.2.0 places them, except a station label that 0.2.0 cut (one that needs more than two rows or breaks inside a word), and a label or badge moved by a round bend: directly, when an arc's obstacle covers its candidate, or in turn, when another label or badge moved that way covers it. Only the painting may differ, and a corner that "Round bends" turns into an arc.
+For the same catalogue, view, theme and map date, the software map SHALL place every station marker and line where stackledger 0.2.0 places them, unless the catalogue holds a file named `stackledger-skills.yaml`, no longer a catalogue file. Labels and terminal badges stay where 0.2.0 places them, except a label 0.2.0 cut (more than two rows or a break inside a word) and one moved by a round bend ("Arc obstacles"). Only the painting may differ, and a corner that "Round bends" turns into an arc.
 
 #### Scenario: Example map
 - **WHEN** the example catalogue is drawn with `stackledger map` in both views and both themes

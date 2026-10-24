@@ -24,7 +24,7 @@ None.
 
 ### Modified Capabilities
 
-- `metro-map`: "Round bends" and "Room for an arc" added; "Octilinear routing" (arcs are not octilinear segments), "Bundles through bends" (arcs instead of mitres, and when a corner stays mitred), "Label placement" (obstacles follow arcs), "Design system tokens" and "Theme ink comes from the design system" (`map.bendRadius`), and "Software map unchanged" (line paths may differ at bends away from stations) modified.
+- `metro-map`: "Round bends", "Bend candidates", "Room for an arc" and "Arc obstacles" added; "Octilinear routing" (arcs are not octilinear segments), "Bundles through bends" (arcs instead of mitres, and when a corner stays mitred), "Label placement" (obstacles follow arcs), "Design system tokens" and "Theme ink comes from the design system" (`map.bendRadius`), and "Software map unchanged" (line paths may differ at bends away from stations) modified.
 
 ## Impact
 

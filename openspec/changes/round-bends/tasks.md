@@ -5,7 +5,7 @@ Levels: U unit, I integration. Every scenario has one test named after it. Tests
 | Spec | Scenarios | File | Level |
 | --- | --- | --- | --- |
 | metro-map | Single line turns round; 45-degree turn; Offset line is tangent (90 and 45 degrees); Mirrored turns (sweep and large-arc flags of the written `A`); Bundle turns around one centre; Reversed travel draws the same bends | `test/unit/map-layout.test.ts` | U |
-| metro-map | Three lines turn round; Wide bundle stays mitred; Middle line goes straight on; Arcs with no room stay mitred; Chained conflicts (both directions of travel); Bend next to a connector or an end | `test/unit/map-layout.test.ts` | U |
+| metro-map | Three lines turn round; Wide bundle stays mitred; Middle line goes straight on; Arcs with no room stay mitred; Chained conflicts (a two-line bundle, both directions of travel); Bend next to a connector or an end | `test/unit/map-layout.test.ts` | U |
 | metro-map | Bundle keeps its sides through a bend (renamed from "…: bends are mitred"); Bend at a station stays mitred; Bundle splits at a bend (middle line straight on); Bundles merge at a bend | `test/unit/map-layout.test.ts` | U |
 | metro-map | Station in the way and Straight when nothing is in the way (unchanged); Angles (reads `path`) | `test/unit/map-layout.test.ts` | U |
 | metro-map | Skills map turns round | `test/unit/skills-metro.test.ts` | U |
@@ -21,7 +21,7 @@ Levels: U unit, I integration. Every scenario has one test named after it. Tests
 
 ## 1. Dependency and token
 
-- [ ] 1.1 Pin the design system version that adds `map.bendRadius`, exact, production; refresh `npm-shrinkwrap.json`. Verify: `npm ls @brunosouzas/design-system`; the token reads 32.
+- [x] 1.1 Pin the design system version that adds `map.bendRadius`, exact, production; refresh `npm-shrinkwrap.json`. Verify: `npm ls @brunosouzas/design-system`; the token reads 32. Done by the rebase: `main` pins 0.3.1 since AB#169 (#32).
 - [ ] 1.2 Tests first: "Theme values are the tokens" (bend radius), "Custom bend radius is refused". Verify: they fail.
 - [ ] 1.3 `src/map/themes.ts`: `bendRadius` from the token, in `checkInk`. Verify: `npm test`.
 
