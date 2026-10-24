@@ -2,7 +2,8 @@
  * Staff entities are rebuilt from allow-lists, never by deleting keys, so a misplaced field cannot pass.
  * Broken settings fail closed: every licence field is hidden until they are fixed.
  */
-import { licenceFields, type Component, type Licence, type Line, type MapLayout, type LicenceField, type SiteName } from './schema.js';
+import { licenceFields, type Component, type Licence, type Line, type MapLayout, type LicenceField, type SiteName, type mapBackdrops } from './schema.js';
+export type MapBackdrop = typeof mapBackdrops[number];
 import type { Catalogue, OtherResource, Served } from './validate.js';
 export type ViewName = 'full' | 'staff';
 export const viewNames: readonly ViewName[] = ['full', 'staff'];
@@ -21,6 +22,11 @@ export function resolveHidden(catalogue: Pick<Catalogue, 'problems' | 'served' |
   if (settingsInError(catalogue)) return [...licenceFields];
   const hide = catalogue.served.settings[0]?.spec.views?.staff?.hide;
   return [...(hide ?? defaultHidden)];
+}
+/** The software map's backdrop: the earliest valid Settings `spec.map.backdrop`, or neutral (the default, also when broken). */
+export function resolveBackdrop(catalogue: Pick<Catalogue, 'problems' | 'served' | 'settingsBroken'>): MapBackdrop {
+  if (settingsInError(catalogue)) return 'neutral';
+  return catalogue.served.settings[0]?.spec.map?.backdrop ?? 'neutral';
 }
 /** Sites to build, in build order: the earliest valid Settings `sites`, or both (the default, also when broken). */
 export function resolveSites(catalogue: Pick<Catalogue, 'problems' | 'served' | 'settingsBroken'>): SiteName[] {

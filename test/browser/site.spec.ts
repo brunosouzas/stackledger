@@ -464,3 +464,29 @@ test.describe('Map shown size without JavaScript', () => {
     expect(Math.abs(size.width - size.viewBoxWidth)).toBeLessThanOrEqual(1);
   });
 });
+
+// catalogue-site, Map backdrop: /extra/ is a scratch catalogue with spec.map.backdrop: london (test/browser/serve.mjs).
+test.describe('Map backdrop', () => {
+  test('London map on the page', async ({ page }) => {
+    await page.goto('/extra/map/');
+    for (const theme of ['light', 'dark']) {
+      const svg = page.locator(`.map-canvas.themed-${theme} svg`);
+      // The group right after the background holds the water and park paths; the credit ends the SVG.
+      expect(await svg.locator(':scope > g:nth-of-type(2) > path').count()).toBe(2);
+      await expect(svg.locator(':scope > g:last-of-type > text')).toHaveText('© OpenStreetMap contributors');
+    }
+    // The skills map of the same catalogue stays flat (metro-map, Map backdrop).
+    await page.goto('/extra/skill-map/');
+    expect(await page.content()).not.toContain('OpenStreetMap');
+  });
+  // waits on task 2.5 (the credit line under the map frame), done with AB#180 (its colour).
+  test.fixme('London credit on the page', async () => {});
+  // waits on task 2.5 (the credit line under the map frame), done with AB#180 (its colour).
+  test.fixme('Credit readable on a phone', async () => {});
+  test('No credit without a city', async ({ page }) => {
+    for (const path of ['/full/', '/full/map/', '/staff/map/', '/full/software/', '/full/skill-map/']) {
+      await page.goto(path);
+      expect(await page.content(), path).not.toContain('OpenStreetMap');
+    }
+  });
+});

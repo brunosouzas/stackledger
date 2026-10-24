@@ -1,6 +1,11 @@
 /** Settings kind scenarios of the catalogue spec: schema, hide list and one settings document. Run npm test. */
 import { test, expect } from 'vitest';
-import { component, settings, check, checkFiles, errors, set } from './helpers.js';
+import { component, settings, check, checkFiles, errors, set, line, layout } from './helpers.js';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { stringify } from 'yaml';
+import { folder } from '../helpers.js';
+import { run } from '../integration/helpers.js';
 import { resolveSites } from '../../src/views.js';
 const hiding = (hide: unknown, name = 'settings') => settings(name, { views: { staff: { hide } } });
 test('Settings is a supported kind', () => { expect(check(settings()).problems).toEqual([]); });
@@ -121,3 +126,24 @@ test('Empty list', () => { expect(errors(skills({ folders: [] }))).toMatchObject
 test('Too many folders', () => { expect(errors(skills({ folders: Array.from({ length: 21 }, (_, i) => `f${i}`) }))).toMatchObject([{ field: 'spec.skills.folders' }]); expect(check(skills({ folders: Array.from({ length: 20 }, (_, i) => `f${i}`) })).problems).toEqual([]); });
 test('Repeated folder', () => { expect(errors(skills({ folders: ['../kit', '../kit'] }))).toMatchObject([{ field: 'spec.skills.folders[1]' }]); expect(errors(skills({ folders: ['../kit', '../kit'] }))).toHaveLength(1); });
 test('Unknown skills field', () => { expect(errors(skills({ folder: ['../kit'] }))).toMatchObject([{ field: 'spec.skills.folder', message: 'Unlisted field' }]); });
+
+// catalogue, Map settings.
+const map = (value: unknown) => settings('settings', { map: value });
+test('London backdrop', () => { expect(check(map({ backdrop: 'london' })).problems).toEqual([]); expect(check(map({ backdrop: 'neutral' })).problems).toEqual([]); expect(check(map({})).problems).toEqual([]); });
+test('Unknown backdrop', () => {
+  const result = errors(map({ backdrop: 'paris' })); expect(result).toMatchObject([{ field: 'spec.map.backdrop' }]);
+  expect(result[0]!.message).toContain('neutral'); expect(result[0]!.message).toContain('london');
+});
+test('Typo under map', () => { expect(errors(map({ background: 'london' }))).toMatchObject([{ field: 'spec.map.background' }]); });
+test('Invalid backdrop falls back to neutral', () => {
+  const f = folder({ 'catalogue.yaml': [component('a'), component('b'), line(), layout()].map(doc => stringify(doc)).join('---\n'), 'stackledger.yaml': stringify(map({ backdrop: 'paris' })) });
+  const r = run(['map', f, '--date', '2027-06-01']);
+  expect(r.status).toBe(0); expect(r.stderr).toContain('1 error'); expect(r.stdout).not.toContain('OpenStreetMap');
+  const out = join(folder(), 'site');
+  const built = run(['build', f, '--out', out, '--date', '2027-06-01']);
+  expect(built.status, built.stderr).toBe(0);
+  for (const view of ['full', 'staff']) {
+    const page = readFileSync(join(out, view, 'map', 'index.html'), 'utf8');
+    expect(page).toContain('<svg'); expect(page).not.toContain('OpenStreetMap');
+  }
+}, 120_000);

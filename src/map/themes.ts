@@ -40,12 +40,21 @@ export interface Theme {
   shadow: { enabled: boolean; color: string; dx: number; dy: number };
   /** A light band around the ink outline of stickers, so the outline reads on a dark background. */
   rim: { enabled: boolean; color: string; width: number };
+  /** Colours of a city backdrop (metro-map: Backdrop layer, Backdrop credit). */
+  backdrop: { water: string; waterEdge: string; park: string; credit: string };
 }
 
 const M = tokens.map;
 const C = tokens.color;
 // The families of the design system's font.sans, without quotes.
 const FONT = 'Lato, Helvetica Neue, Helvetica, Arial, sans-serif';
+
+// TODO AB#180: replace with backdrop.* tokens. A temporary placeholder built from existing surface tokens,
+// so the geometry can land before the design system release with surface.<theme>.backdrop.{water,
+// waterEdge, park, credit}; the spec requires those tokens, and the tests that check them wait on AB#180.
+function placeholderBackdrop(s: Readonly<Record<'grid' | 'muted' | 'panel', string>>): Theme['backdrop'] {
+  return { water: s.grid, waterEdge: s.muted, park: s.panel, credit: s.muted };
+}
 
 function fromTokens(surface: 'light' | 'dark'): Theme {
   const s = tokens.surface[surface];
@@ -74,6 +83,7 @@ function fromTokens(surface: 'light' | 'dark'): Theme {
     casing: { enabled: M.casing > 0, color: C.ink, extraWidth: M.casing },
     shadow: { enabled: true, color: s.shadow, dx: M.shadow, dy: M.shadow },
     rim: { enabled: s.rimWidth > 0, color: s.rim, width: s.rimWidth },
+    backdrop: placeholderBackdrop(s),
   };
 }
 

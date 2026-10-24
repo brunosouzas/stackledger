@@ -24,7 +24,7 @@ import { renderLineBadge, renderStrip, strip } from '../map/strip.js';
 import { renderSvg, renderSymbol } from '../map/svg.js';
 import { displayOwner } from './owners.js';
 import { inkOf, themes, widestInk, type Theme } from '../map/themes.js';
-import { applyView, resolveHidden, settingsInError, type ViewName } from '../views.js';
+import { applyView, resolveBackdrop, resolveHidden, settingsInError, type ViewName } from '../views.js';
 import type { Catalogue } from '../validate.js';
 import { licenceFields, HOME_LINK_ICONS, type Licence, type LicenceField, type SiteColorName } from '../schema.js';
 import { calendarNamespace, renderCalendar } from '../ics.js';
@@ -277,13 +277,15 @@ export function buildSiteData(catalogue: Catalogue, view: ViewName, version: str
   const licences = items.filter((item): item is Extract<Item, { kind: 'licence' }> => item.kind === 'licence');
   const rows = [...components, ...licences].sort((one, two) => compareRefs(one.ref, two.ref)).map(item => row(item, owners));
   const settings = siteSettings(catalogue);
+  // Only the software map takes the backdrop (catalogue-site: Map backdrop); skills maps stay flat.
+  const backdrop = resolveBackdrop(catalogue);
   const base: SiteBase = {
     icons: siteIcons(),
     version,
     ...settings,
     map: {
-      light: renderSvg(geometry, themes.light, { chrome: false }),
-      dark: renderSvg(darkGeometry, themes.dark, { chrome: false }),
+      light: renderSvg(geometry, themes.light, { chrome: false, backdrop }),
+      dark: renderSvg(darkGeometry, themes.dark, { chrome: false, backdrop }),
       lines: model.lines.map(line => pages.lineSummary(line)),
       zones: geometry.zones.map(zone => ({ name: zone.name.toLowerCase(), title: zone.title })),
       symbols: geometry.legend.symbols.map(symbol => ({ label: symbol[0]!.toUpperCase() + symbol.slice(1), ...themed(theme => renderSymbol(symbol, theme)) })),

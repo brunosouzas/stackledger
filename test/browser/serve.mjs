@@ -2,7 +2,7 @@
  * built CLI into a new temporary folder, then serves its `full/` and `staff/` sites under /full/ and
  * /staff/ of one origin, as a host behind the proxy would. The example is built with its skill set,
  * examples/northwind-skills (skills-site). A second, small catalogue (a zone named `Team tools`, a skill
- * set with one line, no zones and no rules) is built too and its full site served under /extra/.
+ * set with one line, no zones and no rules, `spec.map.backdrop: london`) is built too and its full site served under /extra/.
  *
  * Run through `npm run test:browser` (Playwright starts it as its webServer); needs `npm run build`
  * first. Port: STACKLEDGER_BROWSER_PORT, default 4410. Like the hosts in docs/site.md it redirects a
@@ -34,8 +34,8 @@ write(join(extra, 'catalogue', 'catalog-info.yaml'), [
   doc('Line', 'work', '  color: "#0072CE"\n  stops: ["component:wiki", "component:chat", "component:ledger"]\n'),
   doc('MapLayout', 'layout', '  stations:\n    "component:wiki": [0, 0]\n    "component:chat": [2, 0]\n    "component:ledger": [4, 0]\n  zones:\n    - { name: Team tools, title: Team tools, color: "#F5A623" }\n'),
 ].join('---\n'));
-// A home link with an icon (catalogue-site, Home links).
-write(join(extra, 'catalogue', 'stackledger.yaml'), doc('Settings', 'settings', '  site:\n    home:\n      links:\n        - { title: Source, url: "https://github.example.com/northwind/", icon: github }\n'));
+// A home link with an icon (catalogue-site, Home links) and the london backdrop (catalogue-site, Map backdrop).
+write(join(extra, 'catalogue', 'stackledger.yaml'), doc('Settings', 'settings', '  site:\n    home:\n      links:\n        - { title: Source, url: "https://github.example.com/northwind/", icon: github }\n  map:\n    backdrop: london\n'));
 write(join(extra, 'kit', 'notes', 'SKILL.md'), '---\nname: notes\ndescription: Takes Northwind notes.\n---\n');
 write(join(extra, 'kit', 'summary', 'SKILL.md'), '---\nname: summary\ndescription: Summarises Northwind notes.\n---\n');
 write(join(extra, 'kit', 'stackledger-skills.yaml'), doc('Line', 'notes', '  color: "#E4002B"\n  stops: ["skill:notes", "skill:summary"]\n'));

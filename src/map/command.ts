@@ -7,11 +7,11 @@ import { parseArgs } from 'node:util';
 import { resolve } from 'node:path';
 import { loadFolder, type Loaded } from '../source.js';
 import { validateLoaded, type Catalogue } from '../validate.js';
-import { applyView, resolveHidden, viewNames, type ViewName } from '../views.js';
+import { applyView, resolveBackdrop, resolveHidden, viewNames, type ViewName } from '../views.js';
 import { isDate, localDate } from '../graph.js';
 import { buildMapModel } from './model.js';
 import { layoutMap, type MapGeometry } from './layout.js';
-import { renderSvg } from './svg.js';
+import { backdropNames, renderSvg, type BackdropName } from './svg.js';
 import { inkOf, themes } from './themes.js';
 import { internal } from '../errors.js';
 
@@ -45,7 +45,7 @@ export async function mapCommand(args: string[]): Promise<void> {
     args,
     strict: true,
     allowPositionals: true,
-    options: { view: { type: 'string' }, theme: { type: 'string' }, date: { type: 'string' } },
+    options: { view: { type: 'string' }, theme: { type: 'string' }, backdrop: { type: 'string' }, date: { type: 'string' } },
   });
   const [, folder, ...extra] = positionals;
   if (!folder) throw new Error('A catalogue folder is required');
@@ -55,6 +55,7 @@ export async function mapCommand(args: string[]): Promise<void> {
   const date = values.date ?? localDate();
   if (!viewNames.includes(view as ViewName)) throw new Error(`Unknown view; allowed views: ${viewNames.join(', ')}`);
   if (themeName !== 'light' && themeName !== 'dark') throw new Error('Unknown theme; allowed themes: light, dark');
+  if (values.backdrop !== undefined && !backdropNames.includes(values.backdrop as BackdropName)) throw new Error(`Unknown backdrop; allowed backdrops: ${backdropNames.join(', ')}`);
   if (!isDate(date)) throw new Error('Map date must be a real YYYY-MM-DD date');
 
   const loaded = await loadFolder(resolve(folder));
@@ -67,7 +68,8 @@ export async function mapCommand(args: string[]): Promise<void> {
   let svg: string;
   try {
     geometry = layoutMap(buildMapModel(served, date), theme.lineWidth, inkOf(theme));
-    svg = renderSvg(geometry, theme);
+    // The option wins; otherwise the settings, or neutral when they have an error (catalogue: Map settings).
+    svg = renderSvg(geometry, theme, { backdrop: (values.backdrop as BackdropName | undefined) ?? resolveBackdrop(catalogue) });
   } catch (error) {
     throw internal('map', error);
   }
