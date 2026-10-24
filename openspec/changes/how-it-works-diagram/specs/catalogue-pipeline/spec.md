@@ -23,7 +23,7 @@
 - **THEN** it has no `script`, `style` or `foreignObject` element, no event, `style` or link attribute, and no reference other than an internal `url(#id)`
 
 ### Requirement: How it works diagram content
-The spec SHALL draw the Mermaid block of `docs/how-it-works.md`: one `diagramBox` per node whose first `text` line (backticks removed) is the node's first line and whose text and subtitle hold each of its other lines; one `taggedContainer` per subgraph, tagged with its title, holding exactly its nodes' boxes; and one `messageArrow` per edge, `from` and `to` within 8 units of only the source and the target box, dashed only for the dotted edge.
+The spec SHALL draw the Mermaid block of `docs/how-it-works.md`: one `diagramBox` per node whose first `text` line (backticks removed) is the node's first line and whose text and subtitle hold each of its other lines; one `taggedContainer` per subgraph, tagged with its title, holding exactly its nodes' boxes; and one `messageArrow` per edge, `from` and `to` within 8 units of only the source and the target box, one head at `to` only, dashed only for the dotted edge.
 
 #### Scenario: Mermaid content kept
 - **GIVEN** the Mermaid block of `docs/how-it-works.md` and `scripts/how-it-works.json`
@@ -31,7 +31,7 @@ The spec SHALL draw the Mermaid block of `docs/how-it-works.md`: one `diagramBox
 - **THEN** every node, subgraph and edge has its piece, and the spec has no other box, container or arrow apart from the two mode pills
 
 #### Scenario: Reversed edge
-- **GIVEN** the spec with the `from` and `to` of one arrow swapped
+- **GIVEN** the spec with the `from` and `to` of one arrow swapped, or with one arrow's head off (`head: false`) or at its start (`heads: "start"` or `"both"`)
 - **WHEN** it is compared with the Mermaid block
 - **THEN** the comparison fails naming that edge
 

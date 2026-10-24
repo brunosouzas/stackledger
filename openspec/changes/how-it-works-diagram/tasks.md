@@ -1,21 +1,21 @@
 ## Scenario to test map
 
-Level U: unit (vitest, `npm test`). Every scenario has one test named after it in `test/unit/how-it-works.test.ts`. "New" tests must fail before the code.
+Level U: unit (vitest, `npm test`). Every scenario has one test named after it in `test/unit/how-it-works.test.ts`. Kind "fails first": the test must fail before the code, each for its own missing behaviour (the import of `scripts/art.mjs` is dynamic, inside the two tests that need it, so its absence fails only them). Kind "guard": the test passes from the start, because the candidate spec is already committed or the behaviour already holds; it protects the result.
 
 | Spec | Scenario | Test | Level | Kind |
 | --- | --- | --- | --- | --- |
-| How it works diagram | Diagram file is the design system's drawing | `Diagram file is the design system's drawing` | U | new |
-| How it works diagram | Stale diagram file | `Stale diagram file` | U | new |
-| How it works diagram | Colour literal refused | `Colour literal refused` | U | new (passes once the spec exists: the package refuses literals) |
-| How it works diagram | Diagram is inert | `Diagram is inert` | U | kept guard (passes on today's file) |
-| How it works diagram content | Mermaid content kept | `Mermaid content kept` | U | new |
-| How it works diagram content | Reversed edge | `Reversed edge` | U | new |
-| How it works diagram content | Missing edge or node line | `Missing edge or node line` | U | new |
-| How it works diagram content | Box outside its subgraph | `Box outside its subgraph` | U | new |
-| How it works generation | Art written to its places | `Art written to its places` | U | new |
-| How it works generation | Invalid spec writes nothing | `Invalid spec writes nothing` | U | new |
-| How it works generation | No hand-drawn generator | `No hand-drawn generator` | U | new |
-| How it works generation | Diagram sources not published | `Diagram sources not published` | U | kept guard (passes today) |
+| How it works diagram | Diagram file is the design system's drawing | `Diagram file is the design system's drawing` | U | fails first (the file is the Python drawing) |
+| How it works diagram | Stale diagram file | `Stale diagram file` | U | guard (checks the comparison itself) |
+| How it works diagram | Colour literal refused | `Colour literal refused` | U | guard |
+| How it works diagram | Diagram is inert | `Diagram is inert` | U | guard |
+| How it works diagram content | Mermaid content kept | `Mermaid content kept` | U | guard |
+| How it works diagram content | Reversed edge | `Reversed edge` | U | guard |
+| How it works diagram content | Missing edge or node line | `Missing edge or node line` | U | guard |
+| How it works diagram content | Box outside its subgraph | `Box outside its subgraph` | U | guard |
+| How it works generation | Art written to its places | `Art written to its places` | U | fails first (no `scripts/art.mjs`) |
+| How it works generation | Invalid spec writes nothing | `Invalid spec writes nothing` | U | fails first (no `scripts/art.mjs`) |
+| How it works generation | No hand-drawn generator | `No hand-drawn generator` | U | fails first (the `.py` is there) |
+| How it works generation | Diagram sources not published | `Diagram sources not published` | U | guard |
 | regression | the tests of `test/unit/site-brand.test.ts` ("Banner file is the design system's banner", the link icons, "Site art is inert") | as today | U | kept |
 
 The comparison with the Mermaid block is one function in the test file (`mermaidProblems(mermaid, spec)`), which returns the list of problems; the four content scenarios call it on the real spec and on mutated copies.
@@ -27,7 +27,7 @@ The comparison with the Mermaid block is one function in the test file (`mermaid
 
 ## 1. Tests first
 
-- [ ] 1.1 Write `test/unit/how-it-works.test.ts` with the tests of the table. Verify: `npx vitest run test/unit/how-it-works.test.ts` shows every "new" test failing (the SVG is still the Python drawing, `scripts/art.mjs` does not exist, the `.py` is still there); the "kept guard" tests pass.
+- [ ] 1.1 Write `test/unit/how-it-works.test.ts` with the tests of the table. Verify: `npx vitest run test/unit/how-it-works.test.ts` shows the four "fails first" tests failing, each for the reason in the table, and every "guard" passing; the mutation tests expect a problem naming the mutated edge or node, so a checker that finds nothing fails them.
 
 ## 2. Code
 
