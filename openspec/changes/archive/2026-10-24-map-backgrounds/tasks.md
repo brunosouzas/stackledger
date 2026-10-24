@@ -20,8 +20,8 @@ Levels: U unit (vitest, `npm test`), B browser (Playwright, `npm run test:browse
 | catalogue-site, Map backdrop | No credit without a city | `test/browser/site.spec.ts` | B | kept |
 | regression | "Safe SVG structure", "Allowed attributes", "Allowed attribute values", "Deterministic output", "Software map unchanged" | as today | U | kept |
 | regression | "Pages work under the policy" | as today | B | kept |
-| site-security, No external requests (modified) | Map credit is the only other external URL | `test/integration/site.test.ts` | U | new |
-| site-security, No external requests (modified) | Credit URL outside the map page | `test/unit/site-relative.test.ts` | U | new |
+| site-security, Map credit link | Map credit is the only other external URL | `test/integration/site.test.ts` | U | new |
+| site-security, Map credit link | Credit URL outside the map page | `test/unit/site-relative.test.ts` | U | new |
 | site-security, No external requests (modified) | Only local URLs; Home links are the only external URLs; Link URL outside the home | as today | U | kept |
 | regression | "Size and speed", Large catalogue with `neutral` | `test/unit/map-performance.test.ts` | U | kept |
 | metro-map, Size and speed (no change to the requirement) | Large catalogue drawn with `london`, same 5-second budget | `test/unit/map-performance.test.ts` | U | new |
@@ -47,4 +47,4 @@ Levels: U unit (vitest, `npm test`), B browser (Playwright, `npm run test:browse
 
 ## 3. Close
 
-- [ ] 3.1 `npm test` (in the background), `npm run test:browser` and `npm run test:perf` green; Codex code review; archive the change.
+- [x] 3.1 `npm test` (in the background), `npm run test:browser` and `npm run test:perf` green; Codex code review; archive the change. Done: Codex review in three rounds (round 1: staff view missing from the backdrop browser tests, fixed; `build.mjs` could download mapshaper, now `npx --offline`; round 2: "London backdrop offline" did not prove the network denied, now a probe on Node 25+ and an import inspection; a stale "only links" sentence in the catalogue format, fixed; round 3: no findings). On archive, "Map credit link" was split out of "No external requests" to keep requirement texts under the 500-character limit of `openspec validate --strict`.

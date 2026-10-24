@@ -456,7 +456,7 @@ test('Home links are the only external URLs', () => {
   }
 });
 
-// site-security, No external requests: over a city backdrop, the map page's credit anchor is the only other absolute URL.
+// site-security, Map credit link: over a city backdrop, the map page's credit anchor is the only other absolute URL.
 test('Map credit is the only other external URL', () => {
   const external = /^(?:[A-Za-z][A-Za-z0-9+.-]*:|\/\/)/;
   for (const site of [city.full, city.staff]) {

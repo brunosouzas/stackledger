@@ -156,7 +156,7 @@ export function relativise(siteDir: string): void {
 
 /** `homeLinks`: the validated URLs of spec.site.home.links, allowed only as the href of an `a` element
  * in the site's root index.html; with `mapCredit` (a city backdrop), the OpenStreetMap copyright URL is
- * allowed only as the href of an `a` element in map/index.html (site-security, No external requests). */
+ * allowed only as the href of an `a` element in map/index.html (site-security, No external requests and Map credit link). */
 function scanHtml(file: string, html: string, homeLinks: readonly string[] = [], mapCredit = false): string[] {
   const problems: string[] = [];
   const policies: string[] = [];

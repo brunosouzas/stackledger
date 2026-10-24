@@ -30,7 +30,7 @@ None.
 - `metro-map`: "Map backdrop", "Backdrop layer", "Backdrop scale", "Backdrop data", "Backdrop data generation" and "Backdrop credit" added.
 - `map-command`: "Command" and "Usage errors" modified (`--backdrop`).
 - `catalogue-site`: "Map backdrop" added (the build follows the setting; the credit line under the map).
-- `site-security`: "No external requests" modified (the credit anchor to the OpenStreetMap copyright page on the map page of a city map is exempt).
+- `site-security`: "No external requests" modified and "Map credit link" added (the credit anchor to the OpenStreetMap copyright page on the map page of a city map is exempt).
 
 `package-release` is unchanged: the data lives in `dist/`, already shipped.
 

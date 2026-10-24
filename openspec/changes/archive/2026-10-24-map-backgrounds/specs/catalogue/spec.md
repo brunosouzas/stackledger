@@ -26,7 +26,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Settings
-A `Settings` document SHALL have `metadata.name` and MAY have `metadata.namespace` and `metadata.title`. It SHALL have `spec`, a mapping, possibly empty. `spec.views.staff.hide` MAY be a list of licence field names without repeats, each one of `vendor`, `status`, `cycle`, `cost`, `currency`, `renewsOn`, `seats`, `paidBy`, `vaultItem` and `note`. It MAY have `spec.site` ("Site settings"), `spec.skills` ("Skills settings") and `spec.map` ("Map settings"). By convention it is in `stackledger.yaml`; any file name works.
+A `Settings` document SHALL have `metadata.name` and MAY have `metadata.namespace` and `metadata.title`. It SHALL have `spec`, a mapping, possibly empty. `spec.views.staff.hide` MAY be a list of licence field names without repeats, each one of `vendor`, `status`, `cycle`, `cost`, `currency`, `renewsOn`, `seats`, `paidBy`, `vaultItem` and `note`. It MAY have `spec.site`, `spec.skills` and `spec.map`, each with its own requirement. By convention it is in `stackledger.yaml`; any file name works.
 
 #### Scenario: Staff hide list
 - **WHEN** a `Settings` document has `spec.views.staff.hide: [cost, renewsOn]`

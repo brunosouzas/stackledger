@@ -30,7 +30,7 @@ test('Link URL outside the home', () => {
   const other = folder({ 'index.html': page('<a href="https://other.example/">x</a>') });
   expect(scan(other, [], [url])).toEqual(['index.html: href="https://other.example/"']);
 });
-// site-security, No external requests: over a city backdrop, the OpenStreetMap copyright URL passes only
+// site-security, Map credit link: over a city backdrop, the OpenStreetMap copyright URL passes only
 // as an a href of map/index.html.
 test('Credit URL outside the map page', () => {
   const url = 'https://www.openstreetmap.org/copyright';
