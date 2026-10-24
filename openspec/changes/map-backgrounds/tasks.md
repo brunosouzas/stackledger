@@ -26,7 +26,7 @@ Levels: U unit (vitest, `npm test`), B browser (Playwright, `npm run test:browse
 ## 0. Evidence and dependency
 
 - [x] 0.1 Spike outside the repository (`~/.hermes/spikes/stackledger/map-backgrounds/`): data source, size per simplification, prototype in both themes at 1200 and 390 pixels, contact sheet.
-- [ ] 0.2 Gate 1: the owner approves the spec.
+- [x] 0.2 Gate 1: the owner approves the spec (2026-10-24).
 - [ ] 0.3 Design system release with the `backdrop` tokens for both surfaces (AB#180). Bump the exact pin in `package.json` and `npm-shrinkwrap.json`. Verify: the maps of the example catalogue stay byte-identical after the bump.
 
 ## 1. Tests first
