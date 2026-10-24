@@ -19,7 +19,7 @@ Layout: `src/` the CLI and its modules (`src/map/` map engine and diagrams, `src
 ## Rules for this repository
 
 - Integration branch: `main`.
-- Releases only via a version tag and an owner-approved environment (`npm`); see `docs/release.md`. Never publish from a local agent session.
+- Releases only via `release.yml`: the merge of a pull request that changes `version` in `package.json` (or a version tag pushed by the owner), then the owner-approved environment (`npm`); see `docs/release.md`. Never publish from a local agent session.
 - Board area: `setup` (Azure Boards, project `brunosouzas`).
 - OpenSpec: yes, see `openspec/`. The order of the planned changes is in `docs/roadmap.md`.
 - Project-wide decisions are ADRs in `docs/adr/` (index in `docs/adr/README.md`). Read them before a design; a change that contradicts one needs a new ADR that supersedes it, and the README's short explanation of that decision is updated in the same pull request.

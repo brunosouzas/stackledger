@@ -3,7 +3,14 @@ name: Release
 # Publishes one version of stackledger to npm, with provenance, and attaches its CycloneDX SBOM to a
 # GitHub release. How to release, the first-version bootstrap and the checks: docs/release.md.
 #
-# Two jobs, so the publishing identity never exists while dependencies install or their scripts run:
+# Two ways in (package-release spec, Release on the version merge):
+# - a push to main that changes the version in package.json (the version pull request was merged)
+#   while the tag v<version> does not exist: the publish job reserves the tag on that commit, then publishes;
+# - a pushed tag v* (by hand, or to retry): as before.
+# Every other push to main stops in detect, in seconds.
+#
+# Three jobs, so the publishing identity never exists while dependencies install or their scripts run:
+# - detect: read only. scripts/release-detect.mjs says whether this push releases, and which tag.
 # - check: no publishing rights. Tag check (shape, version, on origin/main), npm ci, build, tests,
 #   audit, production staging pack and SBOM; hands the tarball, its integrity and the SBOM on as an artifact.
 # - publish: in the environment npm, which needs the owner's approval. It installs and builds
@@ -14,17 +21,42 @@ name: Release
 
 on:
   push:
+    branches: [main]
     tags: ["v*"]
 
 permissions: {}
 
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
-  check:
+  detect:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      release: ${{ steps.detect.outputs.release }}
+      tag: ${{ steps.detect.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Full history and tags: the previous commit's version and the existing tags.
+          fetch-depth: 0
+      - name: Does this push release a version?
+        id: detect
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          BEFORE: ${{ github.event.before }}
+          FORCED: ${{ github.event.forced }}
+        run: node scripts/release-detect.mjs "$REF_TYPE" "$REF_NAME" "$BEFORE" "$GITHUB_SHA" "$FORCED" >> "$GITHUB_OUTPUT"
+
+  check:
+    needs: detect
+    if: needs.detect.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    # One release of a version at a time, whichever way it came in.
+    concurrency:
+      group: release-${{ needs.detect.outputs.tag }}
+      cancel-in-progress: false
     permissions:
       contents: read
     steps:
@@ -38,7 +70,16 @@ jobs:
           node-version: 24
           package-manager-cache: false
       - name: Check the tag
-        run: node scripts/check-release-tag.mjs "$GITHUB_REF_NAME"
+        env:
+          RELEASE_TAG: ${{ needs.detect.outputs.tag }}
+          REF_TYPE: ${{ github.ref_type }}
+        # A pushed tag names its commit; from main the tag does not exist yet and the commit is this push.
+        run: |
+          if [ "$REF_TYPE" = tag ]; then
+            node scripts/check-release-tag.mjs "$RELEASE_TAG"
+          else
+            node scripts/check-release-tag.mjs "$RELEASE_TAG" "$GITHUB_SHA"
+          fi
       - run: npm ci
       - run: npm run build
       - run: npm test
@@ -54,15 +95,17 @@ jobs:
             console.log(packed.filename, packed.integrity);
           ' "$RUNNER_TEMP/pack.json" "$RUNNER_TEMP/release/integrity"
       - name: Software bill of materials from the packed production lock
+        env:
+          RELEASE_TAG: ${{ needs.detect.outputs.tag }}
         run: |
           # npm sbom names the product after the folder, so the folder carries the scoped name.
           mkdir -p "$RUNNER_TEMP/sbom/@brunosouzas/stackledger"
-          tar -xzf "$RUNNER_TEMP/release/brunosouzas-stackledger-${GITHUB_REF_NAME#v}.tgz" \
+          tar -xzf "$RUNNER_TEMP/release/brunosouzas-stackledger-${RELEASE_TAG#v}.tgz" \
             --strip-components=1 -C "$RUNNER_TEMP/sbom/@brunosouzas/stackledger" \
             package/package.json package/npm-shrinkwrap.json
           (cd "$RUNNER_TEMP/sbom/@brunosouzas/stackledger" && \
             npm sbom --package-lock-only --sbom-format cyclonedx) \
-            > "$RUNNER_TEMP/release/stackledger-${GITHUB_REF_NAME#v}.cdx.json"
+            > "$RUNNER_TEMP/release/stackledger-${RELEASE_TAG#v}.cdx.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release
@@ -71,14 +114,17 @@ jobs:
           retention-days: 7
 
   publish:
-    needs: check
+    needs: [detect, check]
     runs-on: ubuntu-latest
     environment: npm
+    concurrency:
+      group: release-${{ needs.detect.outputs.tag }}-publish
+      cancel-in-progress: false
     permissions:
       contents: write
       id-token: write
     steps:
-      # Only to run scripts/release-publish.sh from the reviewed, tagged commit.
+      # Only to run scripts/release-publish.sh from the reviewed commit (the tagged one, or this push).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -98,7 +144,10 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.detect.outputs.tag }}
+          # From main the script reserves the tag on this commit before npm; a pushed tag already exists.
+          RELEASE_COMMIT: ${{ github.ref_type == 'branch' && github.sha || '' }}
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${RELEASE_TAG#v}"
           scripts/release-publish.sh "$RUNNER_TEMP/release/brunosouzas-stackledger-$version.tgz" \
             "$RUNNER_TEMP/release/integrity" "$RUNNER_TEMP/release/stackledger-$version.cdx.json"

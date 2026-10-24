@@ -64,3 +64,31 @@ test('Tag of another shape: exit 1 saying the tag must be v<major>.<minor>.<patc
     expect(result.stderr, tag).toContain('v<major>.<minor>.<patch>');
   }
 });
+
+// From a push to main (package-release spec, Release tags, change release-on-merge): the tag does
+// not exist yet and the commit is the pushed one.
+function checkCommit(cwd: string, tag: string, commit: string) {
+  return spawnSync(process.execPath, [script, tag, commit], { cwd, encoding: 'utf8', env: gitEnv });
+}
+
+test('From main before the tag exists: exit 0; a commit not on main exits 1', () => {
+  const cwd = repository('0.1.0', 'v0.1.0', false);
+  git(cwd, 'tag', '-d', 'v0.1.0');
+  const main = git(cwd, 'rev-parse', 'refs/remotes/origin/main');
+  const pass = checkCommit(cwd, 'v0.1.0', main);
+  expect(pass.stderr).toBe('');
+  expect(pass.status).toBe(0);
+  const unmerged = checkCommit(cwd, 'v0.1.0', 'HEAD');
+  expect(unmerged.status).toBe(1);
+  expect(unmerged.stderr).toMatch(/must be on main/);
+});
+
+test('From main with the tag on another commit: exit 1 saying the tag already exists there', () => {
+  const cwd = repository('0.1.0', 'v0.1.0', false);
+  const main = git(cwd, 'rev-parse', 'refs/remotes/origin/main');
+  git(cwd, 'tag', '-f', 'v0.1.0', 'HEAD');
+  const other = git(cwd, 'rev-parse', 'HEAD');
+  const result = checkCommit(cwd, 'v0.1.0', main);
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain(`already exists on ${other}`);
+});
