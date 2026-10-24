@@ -24,7 +24,7 @@ The package is installed into a temporary folder because, inside this repository
   [ "$commit" = "$(git rev-parse origin/main)" ] || { echo "HEAD is not origin/main" >&2; exit 1; }
   date=$(date -u +%F)
   out=$(mktemp -d)
-  npm install --prefix "$out/tool" --ignore-scripts --no-audit --no-fund @brunosouzas/stackledger@0.5.0 wrangler@4.151.3
+  npm install --prefix "$out/tool" --ignore-scripts --no-audit --no-fund @brunosouzas/stackledger@0.5.1 wrangler@4.151.3
   bin="$out/tool/node_modules/.bin"
   "$bin/stackledger" validate examples/northwind
   "$bin/stackledger" skills validate examples/northwind-skills

@@ -18,6 +18,7 @@ The first version (v1) is split into OpenSpec changes, delivered in this order. 
 | 10 | `home-banner` | The home's banner from the design system's banner format (a short metro on navy, badges without letters), an optional `icon` on each home link (`github`, `website`, `linkedin`, `email`) and the dark-surface mark in the dark header | Delivered ([#31](https://github.com/brunosouzas/stackledger/pull/31), AB#168); released in 0.5.0 |
 | 10a | `design-system-pieces` | Renewal ring, suggested halo, licence marker (now green), zones and the placeholder subtitle drawn by the design system's pieces; interface icons on the zoom, calendar and theme buttons | Delivered ([#32](https://github.com/brunosouzas/stackledger/pull/32), AB#169); released in 0.5.0 |
 | 11 | `round-bends` | Round corners on the metro maps: concentric arcs per bundle (radius `map.bendRadius`), mitred at stations, splits and wide bundles | Delivered ([#30](https://github.com/brunosouzas/stackledger/pull/30), AB#166); released in 0.5.0 |
+| 12 | `map-scale` | A map page never shows a map larger than drawn (one map unit per pixel, smaller only on a narrower page), in a frame as wide as the map, so the software and skills maps show the same line thickness; `@brunosouzas/design-system` 0.4.0 (no visible change) | Delivered ([#37](https://github.com/brunosouzas/stackledger/pull/37), AB#178; [#36](https://github.com/brunosouzas/stackledger/pull/36), AB#177); released in 0.5.1 |
 
 ## v2: agent skills
 
