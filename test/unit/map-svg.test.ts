@@ -47,7 +47,7 @@ test('Themes are data, with casing and offset shadows on in both themes',()=>{
 test('Theme values are the tokens',()=>{
  const d=tokens.surface.dark,t=themes.dark;
  expect(t.surface).toBe('dark');expect(t.background).toBe(d.background);expect(t.shadow.color).toBe(d.shadow);expect(t.rim.width).toBe(d.rimWidth);
- expect(t.outlineWidth).toBe(tokens.map.outline);expect(t.lineWidth).toBe(tokens.map.lineWidth);
+ expect(t.outlineWidth).toBe(tokens.map.outline);expect(t.lineWidth).toBe(tokens.map.lineWidth);expect(t.bendRadius).toBe(tokens.map.bendRadius);
  expect([t.text,t.muted,t.grid,t.panel,t.rim.color]).toEqual([d.text,d.muted,d.grid,d.panel,d.rim]);
  expect([t.casing.extraWidth,t.shadow.dx,t.shadow.dy]).toEqual([tokens.map.casing,tokens.map.shadow,tokens.map.shadow]);
  expect([t.outline,t.station,t.badgeText,t.licence,t.renewal,t.accent]).toEqual([tokens.color.ink,tokens.color.white,tokens.color.white,tokens.color.healthy,tokens.color.blocked,tokens.color.caller]);
@@ -81,6 +81,10 @@ test('Custom piece colour is refused',()=>{
  expect(()=>renderSvg(g,opaque)).toThrow(/zoneOpacity/);expect(()=>renderSymbol('licence',opaque)).toThrow(/zoneOpacity/);
  expect(()=>renderSvg(g,amber)).toThrow(/licence/);expect(()=>renderSymbol('licence',amber)).toThrow(/licence/);
  for(const field of ['renewal','zoneTitleTint'] as const){const t=structuredClone(themes.dark) as any;t[field]=field==='renewal'?'#000000':0;expect(()=>renderSvg(g,t)).toThrow(new RegExp(field));}
+});
+test('Custom bend radius is refused',()=>{
+ const t=structuredClone(themes.light);t.bendRadius=16;
+ expect(()=>renderSvg(geometry(),t)).toThrow(/bendRadius/);
 });
 test('Other theme fields stay free',()=>{
  const t=structuredClone(themes.light);t.background='#FFFFFF';
@@ -380,10 +384,37 @@ test('Legend interchange is a capsule', () => {
 // metro-map "Software map unchanged": the example's SVGs must place lines, station markers and labels where the
 // 0.2.0 engine did (recorded by test/fixtures/map-0.2.0/record.mjs from the 0.2.0 code), as `stackledger map` and
 // the site draw them. Only the painting may differ, so geometry is compared, not bytes.
+/** A path `d` with each round bend read back to its corner (metro-map "Software map unchanged"): the two
+ * tangent points of an arc are replaced by the intersection of the segment that ends at the first and
+ * the segment that starts at the second, written with two decimals as the map writes numbers. */
+function unround(d:string):string{
+ const parts=[...d.matchAll(/([MLA])([^MLA]*)/g)].map(m=>({op:m[1]!,nums:m[2]!.trim().split(/[ ,]+/).map(Number)}));
+ const out:number[][]=[];
+ for(let i=0;i<parts.length;i++){
+  const next=parts[i+1];
+  if(next?.op==='A'){
+   const a=out.at(-1)!,t1=parts[i]!.nums.slice(-2),t2=next.nums.slice(-2),b=parts[i+2]!.nums.slice(-2);
+   const [rx,ry,rotation,large,sweep]=next.nums;
+   expect([rx,rotation,large],d).toEqual([ry,0,0]);
+   const len=(x:number,y:number)=>Math.hypot(x,y)||1;
+   const u=[(t1[0]!-a[0]!)/len(t1[0]!-a[0]!,t1[1]!-a[1]!),(t1[1]!-a[1]!)/len(t1[0]!-a[0]!,t1[1]!-a[1]!)];
+   const v=[(b[0]!-t2[0]!)/len(b[0]!-t2[0]!,b[1]!-t2[1]!),(b[1]!-t2[1]!)/len(b[0]!-t2[0]!,b[1]!-t2[1]!)];
+   // The arc is tangent to both segments: the centre found from each tangent point, on the side the sweep flag names, is the same.
+   const side=sweep===1?1:-1;
+   const c1=[t1[0]!-u[1]!*rx!*side,t1[1]!+u[0]!*rx!*side],c2=[t2[0]!-v[1]!*rx!*side,t2[1]!+v[0]!*rx!*side];
+   expect(Math.hypot(c1[0]!-c2[0]!,c1[1]!-c2[1]!),d).toBeLessThan(0.05);
+   const den=u[0]!*v[1]!-u[1]!*v[0]!,k=((t2[0]!-a[0]!)*v[1]!-(t2[1]!-a[1]!)*v[0]!)/den;
+   out.push([a[0]!+u[0]!*k,a[1]!+u[1]!*k]);i++;continue;
+  }
+  out.push(parts[i]!.nums.slice(-2));
+ }
+ const n=(x:number)=>String(Math.round(x*100)/100);
+ return out.map((p,i)=>`${i?'L':'M'}${n(p[0]!)},${n(p[1]!)}`).join(' ');
+}
 function placement(svg:string){
  const doc=parseSvg(svg),groups=Array.from(doc.getElementsByTagName('g'));
  // Every path of a line: its casing and its colour.
- const lines=groups.filter(g=>g.getAttribute('data-ref')?.startsWith('line:')).map(g=>[g.getAttribute('data-ref'),Array.from(g.getElementsByTagName('path')).map(p=>p.getAttribute('d'))]);
+ const lines=groups.filter(g=>g.getAttribute('data-ref')?.startsWith('line:')).map(g=>[g.getAttribute('data-ref'),Array.from(g.getElementsByTagName('path')).map(p=>unround(p.getAttribute('d')!))]);
  // A station's outlined face is its last white-or-muted shape with an ink stroke; its centre is cx,cy or the capsule's start.
  const stations=groups.filter(g=>g.getAttribute('data-ref')?.startsWith('component:')).map(g=>{
   // Licence markers (radius 5) and renewal rings (no fill) share the group; they are not the marker.

@@ -6,7 +6,7 @@
 import type { MapModel, MapStation, MapLine, Point } from './model.js';
 import { suggestPositions, type Suggestion } from './suggest.js';
 import { routeMap, type RoutedHop } from './route.js';
-import { parallelLines, GRID, type Stroke } from './parallel.js';
+import { parallelLines, GRID, type PathPart, type Stroke } from './parallel.js';
 import { chooseLabel, labelCandidates, placeLabels, segmentObstacle, textWidth, type Box, type Label, type Obstacle } from './labels.js';
 import { stackCornerTitles, zoneGeometry, type ZoneGeometry } from './zones.js';
 import { badgeWidth, placeBadges, type Badge } from './badges.js';
@@ -144,20 +144,47 @@ function placeZoneTitles(zones: ZoneGeometry[], stations: StationGeometry[], tak
   stackCornerTitles(zones, corner);
 }
 
-export function layoutMap(model: MapModel, lineWidth = themes.light.lineWidth, ink: Ink = inkOf(themes.light)): MapGeometry {
+/** Obstacles of a drawn path (metro-map: Label placement, Arc obstacles): each straight part a
+ * rectangle as wide as the casing; each arc as chords of at most 15 degrees, each widened by twice
+ * its sagitta and lengthened by half the casing width at both ends, so the painted curve, its outer
+ * edge and its joints stay inside. */
+export function pathObstacles(path: PathPart[], width: number): Obstacle[] {
+  const obstacles: Obstacle[] = [];
+  for (let i = 1; i < path.length; i++) {
+    const from = path[i - 1]!.to;
+    const { to, arc } = path[i]!;
+    if (!arc) { obstacles.push(segmentObstacle(from, to, width)); continue; }
+    const [cx, cy] = arc.centre;
+    const start = Math.atan2(from[1] - cy, from[0] - cx);
+    let sweep = Math.atan2(to[1] - cy, to[0] - cx) - start;
+    if (sweep > Math.PI) sweep -= 2 * Math.PI;
+    if (sweep < -Math.PI) sweep += 2 * Math.PI;
+    const steps = Math.max(1, Math.ceil(Math.abs(sweep) / (Math.PI / 12) - 1e-9));
+    const step = sweep / steps;
+    const sagitta = arc.radius * (1 - Math.cos(step / 2));
+    const at = (k: number): Point => [cx + arc.radius * Math.cos(start + step * k), cy + arc.radius * Math.sin(start + step * k)];
+    for (let k = 0; k < steps; k++) {
+      const a = at(k), b = at(k + 1);
+      const length = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const along: Point = [(b[0] - a[0]) / length * width / 2, (b[1] - a[1]) / length * width / 2];
+      obstacles.push(segmentObstacle([a[0] - along[0], a[1] - along[1]], [b[0] + along[0], b[1] + along[1]], width + 2 * sagitta));
+    }
+  }
+  return obstacles;
+}
+
+export function layoutMap(model: MapModel, lineWidth = themes.light.lineWidth, ink: Ink = inkOf(themes.light), bendRadius = themes.light.bendRadius): MapGeometry {
   const { positions, suggestions } = suggestPositions(model);
   const routes = routeMap(model, positions);
   // Bundled pipes sit so that each casing just meets its neighbour's colour: no overlap, ink between.
-  const lines = parallelLines(model, routes, lineWidth + ink.casing / 2);
+  const lines = parallelLines(model, routes, lineWidth + ink.casing / 2, { radius: bendRadius, outer: lineWidth + ink.casing, stations: [...positions.values()] });
   const pointMap = new Map([...positions].map(([ref, cell]) => [ref, [cell[0] * GRID, cell[1] * GRID] as Point]));
   const radius = stopRadius(lineWidth, ink);
   const stations = model.stations.map(station =>
     stationGeometry(station, pointMap.get(station.ref)!, lines, suggestions.some(item => item.ref === station.ref), radius));
 
   const segments: Obstacle[] = [];
-  for (const line of lines) {
-    for (let i = 1; i < line.points.length; i++) segments.push(segmentObstacle(line.points[i - 1]!, line.points[i]!, lineWidth + ink.casing));
-  }
+  for (const line of lines) segments.push(...pathObstacles(line.path, lineWidth + ink.casing));
   const licenceBoxes: Box[] = stations.flatMap(station => {
     const centre = station.licencePoint;
     if (!centre) return [];
