@@ -17,7 +17,7 @@ A version reaches npm only when the owner, after merging the pull request that b
 
 ### Modified Capabilities
 
-- `package-release`: how a release starts, the tag check, the publishing job's first step, and the partial-release rules.
+- `package-release`: how a release starts (detection and its errors), the tag check, the job graph of the checks and publishing jobs, the tag reservation, the partial-release rules after it, and concurrency per version.
 
 ## Out of scope
 
@@ -28,9 +28,9 @@ A version reaches npm only when the owner, after merging the pull request that b
 
 ## Implicit requirements
 
-- **Errors and invalid input:** requirement. A forced or non-fast-forward push releases nothing; an unreadable `package.json` or a Git failure stops `detect`; a tag on another commit stops the release before npm.
+- **Errors and invalid input:** requirement ("Detection errors"). A forced or non-fast-forward push releases nothing; an unreadable `package.json` at the pushed commit, wrong arguments or a Git failure exit 1 in `detect`; a tag on another commit stops the release before npm. A previous commit that is all zeros or missing from the checkout releases nothing.
 - **Limits:** n/a. One version per push.
-- **Repetition and idempotency:** requirement. A later push with the same version releases nothing; a re-run finds its own tag on the same commit and the same bytes on npm and only finishes what is missing.
+- **Repetition and idempotency:** requirement. A later push with the same version releases nothing. Recovery is "Re-run failed jobs": GitHub keeps the successful `detect` and `check` jobs with their outputs and artifact, and the publishing script finds its own tag on the same commit and the same bytes on npm and only finishes what is missing. "Re-run all jobs" would stop in `detect` (the tag exists); then push the tag by hand.
 - **Concurrency:** requirement. Runs of the same version (from `main` and from a pushed tag) share one concurrency group per job; a tag pushed by hand meanwhile is caught by the atomic reservation.
 - **Security:** requirement. Untrusted event values reach scripts only through environment variables; `detect` and the checks keep read-only permissions; the publishing job keeps the owner's approval.
 - **Logs and observability:** requirement. `detect` prints one line saying why it releases or not.
