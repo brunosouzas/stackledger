@@ -23,7 +23,7 @@
 - **THEN** it has no `script`, `style` or `foreignObject` element, no event, `style` or link attribute, and no reference other than an internal `url(#id)`
 
 ### Requirement: How it works diagram content
-The spec SHALL draw the Mermaid block of `docs/how-it-works.md` and nothing else, with these four pieces only: per node a `diagramBox` with its lines (backticks removed), inside only its subgraph's `taggedContainer`; per edge a `messageArrow` whose ends are within 8 units of only its source and target boxes, head at the target, dashed only if dotted; per edge label an `edgeLabel` with its words. A Mermaid line the comparison does not understand is a problem.
+The spec SHALL draw the Mermaid block of `docs/how-it-works.md` and nothing else, with these four pieces only and no `custom`: per node a `diagramBox` with its lines (backticks removed), inside only its subgraph's `taggedContainer`; per edge a `messageArrow` whose ends are within 8 units of only its source and target boxes, head at the target, dashed only if dotted; per edge label an `edgeLabel` with its words. A Mermaid line the comparison does not understand is a problem.
 
 #### Scenario: Mermaid content kept
 - **GIVEN** the Mermaid block of `docs/how-it-works.md` and `scripts/how-it-works.json`
@@ -36,9 +36,9 @@ The spec SHALL draw the Mermaid block of `docs/how-it-works.md` and nothing else
 - **THEN** the comparison reports a problem naming that node, that edge, that edge label or that box
 
 #### Scenario: Rewired edge
-- **GIVEN** the spec with one arrow reversed, sent to another box, with its head off or at its start, or dashed instead of the dotted edge's arrow; or one box moved out of its container; or a piece of another kind added
+- **GIVEN** the spec with one arrow reversed, sent to another box, with its head off or at its start, of another `kind`, or dashed instead of the dotted edge's arrow; or one box moved out of its container; or a piece of another kind or a `custom` drawing added; or an edge label's words run together
 - **WHEN** it is compared with the Mermaid block
-- **THEN** the comparison reports a problem naming that edge, that node or that piece
+- **THEN** the comparison reports a problem naming that edge, that node, that piece, `custom` or that edge label
 
 #### Scenario: Unknown Mermaid line
 - **GIVEN** the Mermaid block with one more line in a syntax the comparison does not read (a node without quotes, a thick arrow, a `click`)
@@ -46,7 +46,12 @@ The spec SHALL draw the Mermaid block of `docs/how-it-works.md` and nothing else
 - **THEN** the comparison reports that line as not understood
 
 ### Requirement: How it works generation
-`scripts/site-art.mjs` SHALL write `docs/images/how-it-works.svg` from `scripts/how-it-works.json`, with the site art, after checking every spec it reads with `validateCoverSpec`. `scripts/how-it-works-diagram.py` is removed and `docs/how-it-works.md` names `node scripts/site-art.mjs`. The spec and the SVG SHALL stay out of the npm package.
+`scripts/site-art.mjs` SHALL write `docs/images/how-it-works.svg` from `scripts/how-it-works.json`, with the site art, after checking every spec it reads with `validateCoverSpec`; when one is refused it SHALL fail naming that spec and write no file. `scripts/how-it-works-diagram.py` is removed and `docs/how-it-works.md` names `node scripts/site-art.mjs`. The spec and the SVG SHALL stay out of the npm package.
+
+#### Scenario: Invalid spec writes nothing
+- **GIVEN** a copy of the script in an empty repository whose diagram spec, or whose banner spec, the package refuses
+- **WHEN** the script runs
+- **THEN** it exits with an error naming that spec file and the problem's path, and the repository holds no `docs` or `site` folder; with both specs valid it writes both
 
 #### Scenario: No hand-drawn generator
 - **WHEN** `scripts/` is listed and `docs/how-it-works.md` read

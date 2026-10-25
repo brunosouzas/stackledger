@@ -29,13 +29,12 @@ None.
 
 ## Implicit requirements
 
-- Errors and invalid input: a spec the package refuses (a colour literal, an unknown parameter) fails the test with the package's problem list, and `scripts/site-art.mjs` throws before writing any file.
+- Errors and invalid input: a spec the package refuses (a colour literal, an unknown parameter) fails the test with the package's problem list, and `scripts/site-art.mjs` fails before writing any file ("Invalid spec writes nothing").
 - Limits: n/a; one fixed diagram.
 - Repetition and idempotency: `coverTree` is deterministic; the committed-file test proves the output.
 - Concurrency: n/a.
 - Security: the SVG is inert, checked like the site art ("How it works diagram").
 - Logs and observability: n/a; the script prints one line, as today.
-- "How it works generation" has no error scenario: its failure mode is the invalid spec, covered by "Colour literal refused" and the committed-file test.
 
 ## Documentation
 

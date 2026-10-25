@@ -2,8 +2,10 @@
  * draws the page's Mermaid block (catalogue-pipeline: How it works diagram, How it works diagram content,
  * How it works generation). The file is written by scripts/site-art.mjs. Run npm test. */
 import { test, expect } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { XMLSerializer } from '@xmldom/xmldom';
 import { coverTree, toSvg, validateCoverSpec } from '@brunosouzas/design-system';
 import { activeParts, parseSvg } from './svg-helpers.js';
@@ -45,7 +47,9 @@ export function mermaidGraph(block: string) {
 }
 
 const plain = (text: string) => text.replace(/`/g, '');
-const squash = (text: string) => plain(text).replace(/\s+/g, '');
+const words = (text: string) => plain(text).replace(/\s+/g, ' ').trim();
+/** A label split over lines reads as its lines joined with a space, or with nothing after a line ending in `/` or `-`. */
+const labelWords = (lines: string[]) => words(lines.map(plain).reduce((text, line) => (/[/-]$/.test(text) ? `${text}${line}` : `${text} ${line}`)));
 const DRAWN = ['taggedContainer', 'diagramBox', 'messageArrow', 'edgeLabel'];
 type Rect = { x: number; y: number; width: number; height: number };
 const rectOf = (piece: Piece): Rect => ({ x: piece.x, y: piece.y, width: piece.width, height: piece.height ?? 46 });
@@ -53,11 +57,12 @@ const gap = ([x, y]: [number, number], r: Rect) => Math.hypot(Math.max(r.x - x, 
 const inside = (a: Rect, b: Rect) => a.x >= b.x && a.y >= b.y && a.x + a.width <= b.x + b.width && a.y + a.height <= b.y + b.height;
 
 /** Every way the spec differs from the Mermaid block, as the requirement "How it works diagram content" reads it. */
-export function mermaidProblems(block: string, diagram: { pieces: Piece[] }): string[] {
+export function mermaidProblems(block: string, diagram: { pieces: Piece[]; custom?: unknown }): string[] {
   const { nodes, subgraphs, edges, unknown } = mermaidGraph(block);
   const of = (name: string) => diagram.pieces.filter(piece => piece.piece === name);
   const problems = unknown.map(line => `Mermaid ${line}: not understood`);
   for (const piece of diagram.pieces) if (!DRAWN.includes(piece.piece)) problems.push(`piece ${piece.piece}: not part of the Mermaid block`);
+  if (diagram.custom !== undefined) problems.push('custom: a free-form drawing is not part of the Mermaid block');
   // Nodes and their boxes.
   const free = of('diagramBox');
   const boxOf = new Map<string, Rect>();
@@ -81,7 +86,10 @@ export function mermaidProblems(block: string, diagram: { pieces: Piece[] }): st
   const drawn = of('messageArrow').map(arrow => {
     const [from, to] = [near(arrow.from), near(arrow.to)];
     const head = arrow.head !== false && (arrow.heads ?? 'end') === 'end';
-    return from.length === 1 && to.length === 1 && head ? `${from[0]} -> ${to[0]}${arrow.dashed === true ? ' dashed' : ''}` : `arrow from ${JSON.stringify(arrow.from)} to ${JSON.stringify(arrow.to)}`;
+    // The piece dashes every kind but `message` unless `dashed` says otherwise; only a plain message arrow is an edge.
+    const kind = arrow.kind ?? 'message';
+    const dashed = arrow.dashed ?? kind !== 'message';
+    return from.length === 1 && to.length === 1 && head && kind === 'message' ? `${from[0]} -> ${to[0]}${dashed ? ' dashed' : ''}` : `arrow from ${JSON.stringify(arrow.from)} to ${JSON.stringify(arrow.to)}`;
   });
   for (const edge of edges) {
     const name = `${edge.from} -> ${edge.to}${edge.dotted ? ' dashed' : ''}`;
@@ -91,9 +99,9 @@ export function mermaidProblems(block: string, diagram: { pieces: Piece[] }): st
   }
   for (const arrow of drawn) problems.push(`${arrow.startsWith('arrow') ? arrow : `arrow ${arrow}`}: not an edge of the Mermaid block`);
   // Edge labels, by their words.
-  const labels = of('edgeLabel').map(label => squash((label.lines as string[]).join('')));
+  const labels = of('edgeLabel').map(label => labelWords(label.lines as string[]));
   for (const edge of edges.filter(edge => edge.label !== undefined)) {
-    const at = labels.indexOf(squash(edge.label!));
+    const at = labels.indexOf(words(edge.label!));
     if (at < 0) problems.push(`edge label "${edge.label}" (${edge.from} -> ${edge.to}): no edgeLabel`);
     else labels.splice(at, 1);
   }
@@ -157,12 +165,42 @@ test('Rewired edge', () => {
   expect(changed(diagram => { delete arrowAt(diagram, 0).dashed; arrowAt(diagram, 2).dashed = true; })).toContain('edge discover -> edit dashed: no arrow');
   expect(changed(diagram => { box(diagram, 'Catalogue repository').y = 130; })).toContain('node repo: inside []');
   expect(changed(diagram => { diagram.pieces.push({ piece: 'stateStart', cx: 10, cy: 10 }); })).toContain('piece stateStart');
+  expect(changed(diagram => { arrowAt(diagram, 2).kind = 'reply'; })).toContain('edge repo -> pr: no arrow');
+  expect(changed(diagram => { (diagram as any).custom = { tag: 'text', children: ['Extra'] }; })).toContain('custom:');
+  expect(changed(diagram => { const label = diagram.pieces.find(piece => piece.piece === 'edgeLabel' && plain(piece.lines[0]) === 'git push')!; label.lines = ['`gitpush`']; })).toContain('edge label "git push"');
 });
 
 test('Unknown Mermaid line', () => {
   for (const extra of ['  extra[Extra node]', '  pages ==> reader', '  click pages "https://example.org"']) {
     expect(changed(() => {}, `${mermaid()}${extra}\n`), extra).toContain(`not understood`);
   }
+});
+
+/** Runs a copy of scripts/site-art.mjs in a temporary repository whose specs are `specs`; returns what it did. */
+function runArt(specs: Record<string, unknown>) {
+  const root = mkdtempSync(join(tmpdir(), 'stackledger-art-'));
+  try {
+    mkdirSync(join(root, 'scripts'));
+    copyFileSync(join(repo, 'scripts/site-art.mjs'), join(root, 'scripts/site-art.mjs'));
+    for (const [name, value] of Object.entries(specs)) writeFileSync(join(root, 'scripts', name), JSON.stringify(value));
+    symlinkSync(join(repo, 'node_modules'), join(root, 'node_modules'), 'dir');
+    const run = spawnSync(process.execPath, [join(root, 'scripts/site-art.mjs')], { encoding: 'utf8' });
+    return { status: run.status, stderr: run.stderr, entries: readdirSync(root).sort() };
+  } finally { rmSync(root, { recursive: true, force: true }); }
+}
+
+test('Invalid spec writes nothing', () => {
+  const banner = JSON.parse(read('scripts/home-banner.json'));
+  const bad = (value: any) => ({ ...value, pieces: value.pieces.map((piece: Piece, i: number) => (i === 0 ? { ...piece, unknownParameter: 1 } : piece)) });
+  for (const [name, specs] of [['how-it-works.json', { 'home-banner.json': banner, 'how-it-works.json': bad(spec()) }], ['home-banner.json', { 'home-banner.json': bad(banner), 'how-it-works.json': spec() }]] as const) {
+    const run = runArt(specs);
+    expect(run.status, name).not.toBe(0);
+    expect(run.stderr, name).toContain(`scripts/${name}: pieces[0]`);
+    expect(run.entries, name).toEqual(['node_modules', 'scripts']);
+  }
+  const good = runArt({ 'home-banner.json': banner, 'how-it-works.json': spec() });
+  expect(good.status).toBe(0);
+  expect(good.entries).toEqual(['docs', 'node_modules', 'scripts', 'site']);
 });
 
 test('No hand-drawn generator', () => {
