@@ -19,6 +19,8 @@ The first version (v1) is split into OpenSpec changes, delivered in this order. 
 | 10a | `design-system-pieces` | Renewal ring, suggested halo, licence marker (now green), zones and the placeholder subtitle drawn by the design system's pieces; interface icons on the zoom, calendar and theme buttons | Delivered ([#32](https://github.com/brunosouzas/stackledger/pull/32), AB#169); released in 0.5.0 |
 | 11 | `round-bends` | Round corners on the metro maps: concentric arcs per bundle (radius `map.bendRadius`), mitred at stations, splits and wide bundles | Delivered ([#30](https://github.com/brunosouzas/stackledger/pull/30), AB#166); released in 0.5.0 |
 | 12 | `map-scale` | A map page never shows a map larger than drawn (one map unit per pixel, smaller only on a narrower page), in a frame as wide as the map, so the software and skills maps show the same line thickness; `@brunosouzas/design-system` 0.4.0 (no visible change) | Delivered ([#37](https://github.com/brunosouzas/stackledger/pull/37), AB#178; [#36](https://github.com/brunosouzas/stackledger/pull/36), AB#177); released in 0.5.1 |
+| 13 | `release-on-merge` | A version reaches npm when the pull request that changes `version` in `package.json` is merged and the owner approves the publishing job; the workflow creates the tag and the GitHub release ([release guide](release.md)) | Delivered ([#33](https://github.com/brunosouzas/stackledger/pull/33), AB#172); first used for 0.5.0 |
+| 14 | `how-it-works-diagram` | The diagram of [How it works](how-it-works.md) drawn by the design system from `scripts/how-it-works.json`, which follows the page's Mermaid block, instead of a hand-written Python script | Delivered ([#41](https://github.com/brunosouzas/stackledger/pull/41), AB#181); documentation only, not in the package |
 
 ## v2: agent skills
 
@@ -40,8 +42,6 @@ The skills, agents, playbooks and rules that AI coding agents use, as a second l
 
 - `site-home` (AB#137, delivered in [#25](https://github.com/brunosouzas/stackledger/pull/25), released as 0.4.0): the site title `stackledger` opens a home page at `/` with a banner, the division cards and links set in `Settings`; the software map moves to `/map/`.
 - `map-backgrounds` (AB#134, delivered in [#39](https://github.com/brunosouzas/stackledger/pull/39), released as 0.6.0): a city backdrop behind the software map, `neutral` (the default, byte for byte the 0.5.1 map) or `london` (the Thames, docks, lakes and large parks of central London from OpenStreetMap data, simplified and attributed, in the `backdrop` colours of `@brunosouzas/design-system` 0.5.3), chosen with `spec.map.backdrop` or `stackledger map --backdrop`; the skills map stays flat. `sao-paulo` later. Never drawn from official metro maps, which are copyrighted.
-
-- Icons and line badges drawn with the designer style of brunosouzas.com.
 
 - Build from a Git URL as well as a local folder.
 - Merge catalogues from several repositories (for example, one per team), like Backstage catalogue locations.
