@@ -5,7 +5,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { coverTree, ledgerMark, linkIcon, LINK_ICON_NAMES, toSvg, validateCoverSpec } from '@brunosouzas/design-system';
 import { HOME_LINK_ICONS } from '../../src/schema.js';
-import { parseSvg } from './svg-helpers.js';
+import { activeParts, parseSvg } from './svg-helpers.js';
 
 const repo = join(import.meta.dirname, '../..');
 const read = (path: string) => readFileSync(join(repo, path), 'utf8');
@@ -50,22 +50,6 @@ test("Link icon files are the design system's", () => {
     expect(shapes(file), `${icon}-${surface}`).toEqual(shapes(body(linkIcon({ icon, x: 0, y: 0, surface }))));
   }
 });
-
-/** Problems that make an SVG not inert: active or styling elements, event, style or link attributes, and any
- * reference other than an internal url(#id) (any case, escapes refused). Checks the root too. */
-function activeParts(svg: string): string[] {
-  const found: string[] = [];
-  for (const element of elements(svg)) {
-    if (['script', 'foreignobject', 'style'].includes(element.tagName.toLowerCase())) found.push(element.tagName);
-    for (const attr of Array.from(element.attributes)) {
-      if (/^on|^style$|href$/i.test(attr.name)) found.push(attr.name);
-      // No backslash anywhere: CSS escapes could spell url( in a way the pattern below does not see.
-      if (attr.value.includes('\\')) found.push(`${attr.name}: escape`);
-      for (const ref of attr.value.matchAll(/url\s*\(([^)]*)\)/gi)) if (!/^#[\w-]+$/.test(ref[1]!.trim())) found.push(`${attr.name}: ${ref[0]}`);
-    }
-  }
-  return found;
-}
 
 test('Site art is inert: the check itself', () => {
   const mark = read('site/public/brand-mark-dark.svg');

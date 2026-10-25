@@ -1,0 +1,37 @@
+{
+  "id": "how-it-works",
+  "format": "diagram",
+  "height": 500,
+  "title": "How stackledger publishes a catalogue",
+  "description": "Flowchart. On your Mac, stackledger discover writes a snapshot that stays there, and drift --scaffold suggests entries as you edit catalog/*.yaml. A git push sends the catalogue to the catalogue repository, a private GitHub repository with GitHub Actions. From the repository, a pull request runs gitleaks, validate and build and never deploys; a push to main runs gitleaks, validate and build, with stackledger taken from the npm registry by npx @brunosouzas/stackledger. wrangler pages deploy sends the whole static site to Cloudflare Pages, which never reads GitHub. A reader goes through Cloudflare Access, signing in first, to reach Pages.",
+  "rings": { "cx": 280, "cy": 250 },
+  "pieces": [
+    { "piece": "taggedContainer", "x": 14, "y": 22, "width": 532, "height": 96, "tag": "Your Mac" },
+    { "piece": "taggedContainer", "x": 14, "y": 164, "width": 362, "height": 184, "tag": "Private GitHub repository, GitHub Actions" },
+    { "piece": "taggedContainer", "x": 128, "y": 398, "width": 418, "height": 86, "tag": "Cloudflare" },
+
+    { "piece": "messageArrow", "from": [212, 71], "to": [346, 71], "curve": "straight", "dashed": true },
+    { "piece": "messageArrow", "from": [354, 96], "to": [354, 190], "curve": "straight" },
+    { "piece": "messageArrow", "from": [200, 208], "to": [107, 262], "controls": [[140, 208], [107, 230]] },
+    { "piece": "messageArrow", "from": [280, 226], "to": [280, 262], "curve": "straight" },
+    { "piece": "messageArrow", "from": [467, 236], "to": [360, 289], "controls": [[467, 274], [410, 289]] },
+    { "piece": "messageArrow", "from": [280, 316], "to": [430, 412], "controls": [[280, 372], [430, 360]] },
+    { "piece": "messageArrow", "from": [110, 441], "to": [144, 441], "curve": "straight" },
+    { "piece": "messageArrow", "from": [292, 441], "to": [330, 441], "curve": "straight" },
+
+    { "piece": "diagramBox", "x": 32, "y": 46, "width": 180, "height": 50, "fill": "color.white", "text": ["`stackledger discover`", "the snapshot stays here"] },
+    { "piece": "diagramBox", "x": 346, "y": 46, "width": 180, "height": 50, "fill": "color.caller", "text": ["You edit `catalog/*.yaml`"] },
+    { "piece": "diagramBox", "x": 200, "y": 190, "width": 160, "height": 36, "fill": "color.white", "text": ["Catalogue repository"] },
+    { "piece": "diagramBox", "x": 26, "y": 262, "width": 162, "height": 62, "fill": "color.transitional", "textSize": 12, "text": ["Pull request", "gitleaks, validate, build", "never deploys"] },
+    { "piece": "diagramBox", "x": 200, "y": 262, "width": 160, "height": 54, "fill": "color.healthy", "textSize": 12, "text": ["Push to main", "gitleaks, validate, build"] },
+    { "piece": "diagramBox", "x": 388, "y": 190, "width": 158, "height": 46, "fill": "color.white", "textSize": 10.5, "text": ["npm registry", "@brunosouzas/stackledger"] },
+    { "piece": "diagramBox", "x": 14, "y": 420, "width": 96, "height": 42, "fill": "color.caller", "text": ["Reader"] },
+    { "piece": "diagramBox", "x": 144, "y": 418, "width": 148, "height": 46, "fill": "color.transitional", "text": ["Cloudflare Access", "sign-in first"] },
+    { "piece": "diagramBox", "x": 330, "y": 412, "width": 200, "height": 58, "fill": "color.backend", "text": ["Cloudflare Pages", "the whole static site", "never reads GitHub"] },
+
+    { "piece": "edgeLabel", "x": 279, "y": 64, "lines": ["`drift --scaffold`"] },
+    { "piece": "edgeLabel", "x": 362, "y": 146, "lines": ["`git push`"], "anchor": "start" },
+    { "piece": "edgeLabel", "x": 540, "y": 268, "lines": ["`npx @brunosouzas/`", "`stackledger`"], "anchor": "end" },
+    { "piece": "edgeLabel", "x": 324, "y": 378, "lines": ["`wrangler pages deploy`"], "anchor": "end" }
+  ]
+}

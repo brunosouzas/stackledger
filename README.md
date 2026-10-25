@@ -38,7 +38,7 @@ For a separate catalogue repository, copy the [pipeline template](examples/catal
 
 ## Features
 
-Planned for the first version:
+What it does:
 
 - **A metro map of your software.** Each line is a journey, such as "ship a feature" or "send an invoice", and each station is a piece of software. Interchanges are the tools several journeys depend on. Stations stay where you put them, so the map does not reshuffle when the catalogue changes.
 - **A software list with one page per item.** Owner, lifecycle, licence, the journeys it serves, a diagram of what it depends on and what depends on it, and what breaks if you remove it.
@@ -62,7 +62,7 @@ The diagram as Mermaid, and the personal and corporate modes: [docs/how-it-works
 6. **Agent skills are a second ledger in the same tool.** The skills, agents, playbooks and rules your AI agents use are read from their own folders, never copied into YAML. `stackledger skills validate` checks them, `stackledger skills map` draws them in the skills repository, and since 0.3.0 the site has a Skills section next to Software; linking each skill to the software it needs is planned. Why: [ADR 10](docs/adr/0010-agent-skills-are-a-second-ledger-read-from-their-folders.md).
 7. **It looks like brunosouzas.com.** The map, the diagrams, the favicon and the site's colours and fonts come from [`@brunosouzas/design-system`](https://www.npmjs.com/package/@brunosouzas/design-system), a dependency of the published package with no dependencies of its own; stackledger keeps the layout and writes every piece through its own SVG writer. See [the map](docs/map.md#routes-and-themes) and [the site](docs/site.md).
 
-[How it works, end to end](docs/how-it-works.md) draws the publication path: a push to `main` of the private catalogue repository, GitHub Actions, Cloudflare Pages behind Cloudflare Access, and the personal (one site, one reader) and corporate (two sites) modes.
+[How it works, end to end](docs/how-it-works.md) draws the publication path (a push to `main` of the private catalogue repository, GitHub Actions, Cloudflare Pages behind Cloudflare Access) and explains the personal (one site, one reader) and corporate (two sites) modes.
 
 ## Security
 
@@ -85,7 +85,7 @@ stackledger does not call any AI model. Instead, a read-only [MCP](https://model
 
 ## Usage
 
-Use npm with Node.js 22.12 or later. The package is `@brunosouzas/stackledger` from 0.4.1, the same code as 0.4.0; versions up to 0.4.0 were published as `stackledger`, now deprecated, and the command is `stackledger` in both. Version 0.4.0 adds the home page (the map moves to `/map/`, the default title becomes `stackledger`, `spec.site.home`), whole station names on both maps and rule counts on the skills map, and skips hidden folders in a catalogue; 0.3.0 added the Skills section of `stackledger build` (`--skills`, `spec.skills.folders`, `stackledger-skills.yaml`); 0.2.0 added the agent skills commands (`skills validate`, `.stackledgerignore`, `skills map`); 0.1.0 has the catalogue commands only.
+Use npm with Node.js 22.12 or later. The package is `@brunosouzas/stackledger` from 0.4.1, the same code as 0.4.0; versions up to 0.4.0 were published as `stackledger`, now deprecated, and the command is `stackledger` in both. Version 0.6.0 adds the city backdrop of the software map (`spec.map.backdrop`, `stackledger map --backdrop`); 0.5.1 never shows a map larger than it is drawn; 0.5.0 draws the maps, the diagrams and the site with `@brunosouzas/design-system` (home banner, link icons, round bends); 0.4.0 added the home page (the map moves to `/map/`, the default title becomes `stackledger`, `spec.site.home`), whole station names on both maps and rule counts on the skills map, and skips hidden folders in a catalogue; 0.3.0 added the Skills section of `stackledger build` (`--skills`, `spec.skills.folders`, `stackledger-skills.yaml`); 0.2.0 added the agent skills commands (`skills validate`, `.stackledgerignore`, `skills map`); 0.1.0 has the catalogue commands only.
 
 ```sh
 npx @brunosouzas/stackledger@0.6.0 --help
