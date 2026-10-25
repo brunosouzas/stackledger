@@ -23,7 +23,7 @@
 - **THEN** it has no `script`, `style` or `foreignObject` element, no event, `style` or link attribute, and no reference other than an internal `url(#id)`
 
 ### Requirement: How it works diagram content
-The spec SHALL draw the Mermaid block of `docs/how-it-works.md` and nothing else: one `diagramBox` per node whose `text` lines, backticks removed, are the node's lines; one `taggedContainer` per subgraph, tagged with its title; one `messageArrow` per edge, dashed only for the dotted edge; and one `edgeLabel` per edge label whose lines, joined and backticks removed, are the label.
+The spec SHALL draw the Mermaid block of `docs/how-it-works.md` and nothing else, with these four pieces only: per node a `diagramBox` with its lines (backticks removed), inside only its subgraph's `taggedContainer`; per edge a `messageArrow` whose ends are within 8 units of only its source and target boxes, head at the target, dashed only if dotted; per edge label an `edgeLabel` with its words. A Mermaid line the comparison does not understand is a problem.
 
 #### Scenario: Mermaid content kept
 - **GIVEN** the Mermaid block of `docs/how-it-works.md` and `scripts/how-it-works.json`
@@ -33,7 +33,17 @@ The spec SHALL draw the Mermaid block of `docs/how-it-works.md` and nothing else
 #### Scenario: Lost line or edge
 - **GIVEN** the spec with one line removed from one box, or one arrow or edge label removed, or one box added
 - **WHEN** it is compared with the Mermaid block
-- **THEN** the comparison reports a problem naming that node, that edge label, that box, or the arrows
+- **THEN** the comparison reports a problem naming that node, that edge, that edge label or that box
+
+#### Scenario: Rewired edge
+- **GIVEN** the spec with one arrow reversed, sent to another box, with its head off or at its start, or dashed instead of the dotted edge's arrow; or one box moved out of its container; or a piece of another kind added
+- **WHEN** it is compared with the Mermaid block
+- **THEN** the comparison reports a problem naming that edge, that node or that piece
+
+#### Scenario: Unknown Mermaid line
+- **GIVEN** the Mermaid block with one more line in a syntax the comparison does not read (a node without quotes, a thick arrow, a `click`)
+- **WHEN** it is compared with the spec
+- **THEN** the comparison reports that line as not understood
 
 ### Requirement: How it works generation
 `scripts/site-art.mjs` SHALL write `docs/images/how-it-works.svg` from `scripts/how-it-works.json`, with the site art, after checking every spec it reads with `validateCoverSpec`. `scripts/how-it-works-diagram.py` is removed and `docs/how-it-works.md` names `node scripts/site-art.mjs`. The spec and the SVG SHALL stay out of the npm package.

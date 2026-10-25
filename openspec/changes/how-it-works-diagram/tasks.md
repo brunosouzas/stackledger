@@ -10,6 +10,8 @@ Level U: unit (vitest, `npm test`). Every scenario has one test named after it i
 | How it works diagram | Diagram is inert | guard |
 | How it works diagram content | Mermaid content kept | guard |
 | How it works diagram content | Lost line or edge | guard (expects a problem naming the mutated node, edge or box, so a checker that finds nothing fails) |
+| How it works diagram content | Rewired edge | guard (added after code review round 1; same kind of check) |
+| How it works diagram content | Unknown Mermaid line | guard (added after code review round 1) |
 | How it works generation | No hand-drawn generator | fails first (the `.py` is there) |
 | How it works generation | Diagram sources not published | guard |
 | regression | the tests of `test/unit/site-brand.test.ts` | kept |
