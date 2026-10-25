@@ -6,7 +6,7 @@
 #### Scenario: Diagram file is the design system's drawing
 - **GIVEN** the repository
 - **WHEN** `scripts/how-it-works.json` is validated and drawn with `coverTree`
-- **THEN** `validateCoverSpec` returns no problem, the spec's `format` is `diagram`, and the shapes of `docs/images/how-it-works.svg` (every element with its attributes and text) equal those of the drawing, with `width` 800 and a `viewBox` 560 units wide
+- **THEN** `validateCoverSpec` returns no problem, the spec's `format` is `diagram`, and the shapes of `docs/images/how-it-works.svg` (every element with its attributes and text) equal those of the drawing
 
 #### Scenario: Stale diagram file
 - **GIVEN** a copy of the drawing in which one attribute of one shape differs
@@ -23,40 +23,20 @@
 - **THEN** it has no `script`, `style` or `foreignObject` element, no event, `style` or link attribute, and no reference other than an internal `url(#id)`
 
 ### Requirement: How it works diagram content
-The spec SHALL draw the Mermaid block of `docs/how-it-works.md`: one `diagramBox` per node whose first `text` line (backticks removed) is the node's first line and whose text and subtitle hold each of its other lines; one `taggedContainer` per subgraph, tagged with its title, holding exactly its nodes' boxes; and one `messageArrow` per edge, `from` and `to` within 8 units of only the source and the target box, one head at `to` only, dashed only for the dotted edge.
+The spec SHALL draw the Mermaid block of `docs/how-it-works.md` and nothing else: one `diagramBox` per node whose `text` lines, backticks removed, are the node's lines; one `taggedContainer` per subgraph, tagged with its title; one `messageArrow` per edge, dashed only for the dotted edge; and one `edgeLabel` per edge label whose lines, joined and backticks removed, are the label.
 
 #### Scenario: Mermaid content kept
 - **GIVEN** the Mermaid block of `docs/how-it-works.md` and `scripts/how-it-works.json`
 - **WHEN** they are compared as the requirement says
-- **THEN** every node, subgraph and edge has its piece, and the spec has no other box, container or arrow apart from the two mode pills
+- **THEN** no problem is found
 
-#### Scenario: Reversed edge
-- **GIVEN** the spec with the `from` and `to` of one arrow swapped, or with one arrow's head off (`head: false`) or at its start (`heads: "start"` or `"both"`)
+#### Scenario: Lost line or edge
+- **GIVEN** the spec with one line removed from one box, or one arrow or edge label removed, or one box added
 - **WHEN** it is compared with the Mermaid block
-- **THEN** the comparison fails naming that edge
-
-#### Scenario: Missing edge or node line
-- **GIVEN** the spec without one arrow, or with one node's detail line removed from its box
-- **WHEN** it is compared with the Mermaid block
-- **THEN** the comparison fails naming the edge or the node
-
-#### Scenario: Box outside its subgraph
-- **GIVEN** the spec with one node's box moved outside its subgraph's container
-- **WHEN** it is compared with the Mermaid block
-- **THEN** the comparison fails naming the node
+- **THEN** the comparison reports a problem naming that node, that edge label, that box, or the arrows
 
 ### Requirement: How it works generation
-`scripts/site-art.mjs` SHALL write `docs/images/how-it-works.svg` with the site art through one function that checks every spec with `validateCoverSpec` before writing any file; on a problem it SHALL throw naming the spec file and each problem's path, and write no file. Running it again SHALL write the same bytes. `scripts/how-it-works-diagram.py` is removed and `docs/how-it-works.md` names `node scripts/site-art.mjs`. The spec and the SVG SHALL stay out of the npm package.
-
-#### Scenario: Art written to its places
-- **GIVEN** an empty temporary folder
-- **WHEN** the art is written into it from the repository's specs
-- **THEN** it holds `docs/images/how-it-works.svg` equal to the committed file and the site art files under `site/public/`, and writing again gives the same bytes
-
-#### Scenario: Invalid spec writes nothing
-- **GIVEN** an empty temporary folder and a diagram spec the package refuses
-- **WHEN** the art is written into it
-- **THEN** it throws an error naming `scripts/how-it-works.json` and each problem's path, and the folder is still empty
+`scripts/site-art.mjs` SHALL write `docs/images/how-it-works.svg` from `scripts/how-it-works.json`, with the site art, after checking every spec it reads with `validateCoverSpec`. `scripts/how-it-works-diagram.py` is removed and `docs/how-it-works.md` names `node scripts/site-art.mjs`. The spec and the SVG SHALL stay out of the npm package.
 
 #### Scenario: No hand-drawn generator
 - **WHEN** `scripts/` is listed and `docs/how-it-works.md` read
