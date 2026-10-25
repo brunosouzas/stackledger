@@ -1,72 +1,109 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="808" viewBox="0 0 800 808" role="img" aria-labelledby="hiw-t hiw-d" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">
-  <title id="hiw-t">How stackledger publishes a catalogue</title>
-  <desc id="hiw-d">Flowchart. On your Mac, stackledger discover writes a snapshot that stays on the Mac, and drift --scaffold helps you edit catalog/*.yaml. A git push sends the catalogue to a private GitHub repository. A pull request runs gitleaks, validate and build but never deploys. A push to main runs gitleaks, validate and build with stackledger from the npm registry, then wrangler pages deploy publishes the whole static site to Cloudflare Pages, which never reads GitHub. A reader reaches Pages only through Cloudflare Access, signing in first. Personal mode: the full site only, one Access application for the owner, / leads to /full/. Corporate mode: full and staff sites, finance on /full/*, staff on the rest, / leads to /staff/.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="714.29" viewBox="0 0 560 500" role="img" aria-labelledby="how-it-works-title how-it-works-desc" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <title id="how-it-works-title">How stackledger publishes a catalogue</title>
+  <desc id="how-it-works-desc">Flowchart. On your Mac, stackledger discover writes a snapshot that stays there, and drift --scaffold suggests entries as you edit catalog/*.yaml. A git push sends the catalogue to the catalogue repository, a private GitHub repository with GitHub Actions. From the repository, a pull request runs gitleaks, validate and build and never deploys; a push to main runs gitleaks, validate and build, with stackledger taken from the npm registry by npx @brunosouzas/stackledger. wrangler pages deploy sends the whole static site to Cloudflare Pages, which never reads GitHub. A reader goes through Cloudflare Access, signing in first, to reach Pages.</desc>
   <defs>
-    <clipPath id="hiw-f"><rect width="800" height="808" rx="14"/></clipPath>
-    <marker id="hiw-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="13" markerHeight="13" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0.5 L10,5 L0,9.5 L3,5 Z" fill="#0A1033"/></marker>
+    <clipPath id="how-it-works-frame">
+      <rect width="560" height="500" rx="9.8"/>
+    </clipPath>
   </defs>
-  <rect width="800" height="808" rx="14" fill="#EEF2FF"/>
-  <g clip-path="url(#hiw-f)" fill="none" stroke="#E0E7FB" stroke-width="2"><circle cx="400" cy="400" r="70"/><circle cx="400" cy="400" r="98"/><circle cx="400" cy="400" r="126"/><circle cx="400" cy="400" r="154"/><circle cx="400" cy="400" r="182"/><circle cx="400" cy="400" r="210"/><circle cx="400" cy="400" r="238"/><circle cx="400" cy="400" r="266"/><circle cx="400" cy="400" r="294"/><circle cx="400" cy="400" r="322"/><circle cx="400" cy="400" r="350"/><circle cx="400" cy="400" r="378"/><circle cx="400" cy="400" r="406"/><circle cx="400" cy="400" r="434"/><circle cx="400" cy="400" r="462"/><circle cx="400" cy="400" r="490"/><circle cx="400" cy="400" r="518"/><circle cx="400" cy="400" r="546"/><circle cx="400" cy="400" r="574"/><circle cx="400" cy="400" r="602"/><circle cx="400" cy="400" r="630"/><circle cx="400" cy="400" r="658"/><circle cx="400" cy="400" r="686"/><circle cx="400" cy="400" r="714"/><circle cx="400" cy="400" r="742"/><circle cx="400" cy="400" r="770"/><circle cx="400" cy="400" r="798"/><circle cx="400" cy="400" r="826"/><circle cx="400" cy="400" r="854"/><circle cx="400" cy="400" r="882"/></g>
-  <rect x="24" y="20" width="752" height="150" rx="18" fill="#FFFFFF" fill-opacity="0.55" stroke="#0A1033" stroke-width="3" stroke-dasharray="10 7"/>
-  <text x="42" y="46" font-size="16" font-weight="800" fill="#0A1033" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Your Mac</text>
-  <rect x="24" y="214" width="570" height="230" rx="18" fill="#FFFFFF" fill-opacity="0.55" stroke="#0A1033" stroke-width="3" stroke-dasharray="10 7"/>
-  <text x="42" y="240" font-size="16" font-weight="800" fill="#0A1033" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Private GitHub repository, GitHub Actions</text>
-  <rect x="216" y="492" width="560" height="168" rx="18" fill="#FFFFFF" fill-opacity="0.55" stroke="#0A1033" stroke-width="3" stroke-dasharray="10 7"/>
-  <text x="234" y="518" font-size="16" font-weight="800" fill="#0A1033" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Cloudflare</text>
-  <path d="M368,104 L428,104" fill="none" stroke="#0A1033" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 6" marker-end="url(#hiw-a)"/>
-  <path d="M590,154 C590,206 470,206 420,246" fill="none" stroke="#0A1033" stroke-width="3" stroke-linecap="round" marker-end="url(#hiw-a)"/>
-  <path d="M240,312 C200,330 178,340 172,356" fill="none" stroke="#0A1033" stroke-width="3" stroke-linecap="round" marker-end="url(#hiw-a)"/>
-  <path d="M380,312 C420,330 444,340 450,356" fill="none" stroke="#0A1033" stroke-width="3" stroke-linecap="round" marker-end="url(#hiw-a)"/>
-  <path d="M680,322 C680,380 620,396 588,396" fill="none" stroke="#0A1033" stroke-width="3" stroke-linecap="round" marker-end="url(#hiw-a)"/>
-  <path d="M450,436 C450,480 640,474 640,522" fill="none" stroke="#0A1033" stroke-width="3" stroke-linecap="round" marker-end="url(#hiw-a)"/>
-  <path d="M196,580 L246,580" fill="none" stroke="#0A1033" stroke-width="3" stroke-linecap="round" marker-end="url(#hiw-a)"/>
-  <path d="M474,580 L512,580" fill="none" stroke="#0A1033" stroke-width="3" stroke-linecap="round" marker-end="url(#hiw-a)"/>
-  <rect x="56" y="70" width="314" height="84" rx="14" fill="#0A1033"/>
-  <rect x="48" y="62" width="314" height="84" rx="14" fill="#8FB2FF" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
-  <text x="205.0" y="100.5" font-size="15" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">stackledger discover</text>
-  <text x="205.0" y="124.5" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">the snapshot stays here</text>
-  <rect x="444" y="70" width="314" height="84" rx="14" fill="#0A1033"/>
-  <rect x="436" y="62" width="314" height="84" rx="14" fill="#8FB2FF" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
-  <text x="593.0" y="100.5" font-size="19" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">You edit catalog/*.yaml</text>
-  <text x="593.0" y="124.5" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">drift --scaffold suggests entries</text>
-  <rect x="178" y="262" width="260" height="56" rx="14" fill="#0A1033"/>
-  <rect x="170" y="254" width="260" height="56" rx="14" fill="#FFFFFF" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
-  <text x="300.0" y="288.0" font-size="19" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Catalogue repository</text>
-  <rect x="56" y="368" width="252" height="76" rx="14" fill="#0A1033"/>
-  <rect x="48" y="360" width="252" height="76" rx="14" fill="#FF8A3D" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
-  <text x="174.0" y="385.0" font-size="19" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Pull request</text>
-  <text x="174.0" y="409.0" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">gitleaks, validate, build</text>
-  <text x="174.0" y="428.0" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">never deploys</text>
-  <rect x="328" y="368" width="262" height="76" rx="14" fill="#0A1033"/>
-  <rect x="320" y="360" width="262" height="76" rx="14" fill="#3DDC84" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
-  <text x="451.0" y="394.5" font-size="19" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Push to main</text>
-  <text x="451.0" y="418.5" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">gitleaks, validate, build</text>
-  <rect x="620" y="262" width="158" height="66" rx="14" fill="#0A1033"/>
-  <rect x="612" y="254" width="158" height="66" rx="14" fill="#CB3837" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
-  <text x="691.0" y="274.0" font-size="19" font-weight="800" fill="#FFFFFF" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">npm registry</text>
-  <text x="691.0" y="298.0" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">@brunosouzas/</text>
-  <text x="691.0" y="317.0" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">stackledger</text>
-  <rect x="38" y="550" width="160" height="76" rx="14" fill="#0A1033"/>
-  <rect x="30" y="542" width="160" height="76" rx="14" fill="#3B4256" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
-  <text x="110.0" y="576.5" font-size="19" font-weight="800" fill="#FFFFFF" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Reader</text>
-  <text x="110.0" y="600.5" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">a browser</text>
-  <rect x="260" y="546" width="216" height="84" rx="14" fill="#0A1033"/>
-  <rect x="252" y="538" width="216" height="84" rx="14" fill="#FFD25A" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
-  <text x="360.0" y="576.5" font-size="19" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Cloudflare Access</text>
-  <text x="360.0" y="600.5" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">sign-in first</text>
-  <rect x="526" y="538" width="236" height="100" rx="14" fill="#0A1033"/>
-  <rect x="518" y="530" width="236" height="100" rx="14" fill="#F38020" stroke="#0A1033" stroke-width="4" stroke-linejoin="round"/>
-  <text x="636.0" y="567.0" font-size="19" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Cloudflare Pages</text>
-  <text x="636.0" y="591.0" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">the whole static site</text>
-  <text x="636.0" y="610.0" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">never reads GitHub</text>
-  <text x="398" y="94" font-size="14" font-weight="700" fill="#0A1033" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">drift</text>
-  <text x="604" y="200" font-size="15" font-weight="700" fill="#0A1033" text-anchor="start" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">git push</text>
-  <text x="708" y="384" font-size="14" font-weight="700" fill="#0A1033" text-anchor="start" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">npx</text>
-  <text x="436" y="478" font-size="14" font-weight="700" fill="#0A1033" text-anchor="end" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">wrangler pages deploy</text>
-  <rect x="38" y="687" width="728" height="44" rx="22" fill="#0A1033"/>
-  <rect x="34" y="682" width="728" height="44" rx="22" fill="#3DDC84" stroke="#0A1033" stroke-width="3"/>
-  <text x="398" y="710" font-size="15" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Personal: full site only · one Access application, the owner · / → /full/</text>
-  <rect x="38" y="743" width="728" height="44" rx="22" fill="#0A1033"/>
-  <rect x="34" y="738" width="728" height="44" rx="22" fill="#8FB2FF" stroke="#0A1033" stroke-width="3"/>
-  <text x="398" y="766" font-size="15" font-weight="800" fill="#0A1033" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif">Corporate: full and staff · finance on /full/*, staff on the rest · / → /staff/</text>
+  <rect width="560" height="500" rx="9.8" fill="#EEF2FF"/>
+  <g clip-path="url(#how-it-works-frame)">
+    <g fill="none" stroke="#E0E7FB" stroke-width="1.4">
+      <circle cx="280" cy="250" r="49"/>
+      <circle cx="280" cy="250" r="68.6"/>
+      <circle cx="280" cy="250" r="88.2"/>
+      <circle cx="280" cy="250" r="107.8"/>
+      <circle cx="280" cy="250" r="127.4"/>
+      <circle cx="280" cy="250" r="147"/>
+      <circle cx="280" cy="250" r="166.6"/>
+      <circle cx="280" cy="250" r="186.2"/>
+      <circle cx="280" cy="250" r="205.8"/>
+      <circle cx="280" cy="250" r="225.4"/>
+      <circle cx="280" cy="250" r="245"/>
+      <circle cx="280" cy="250" r="264.6"/>
+      <circle cx="280" cy="250" r="284.2"/>
+      <circle cx="280" cy="250" r="303.8"/>
+      <circle cx="280" cy="250" r="323.4"/>
+      <circle cx="280" cy="250" r="343"/>
+      <circle cx="280" cy="250" r="362.6"/>
+      <circle cx="280" cy="250" r="382.2"/>
+    </g>
+  </g>
+  <g clip-path="url(#how-it-works-frame)">
+    <g stroke="#0A1033" stroke-width="3" stroke-linejoin="round">
+      <rect x="17.5" y="25.5" width="532" height="96" rx="10" fill="#0A1033" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="14" y="22" width="532" height="96" rx="10" fill="#FFFFFF" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="31.5" y="13.5" width="81.6" height="24" rx="12" fill="#0A1033" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="28" y="10" width="81.6" height="24" rx="12" fill="#FFD25A" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="17.5" y="167.5" width="362" height="184" rx="10" fill="#0A1033" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="14" y="164" width="362" height="184" rx="10" fill="#FFFFFF" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="31.5" y="155.5" width="319.2" height="24" rx="12" fill="#0A1033" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="28" y="152" width="319.2" height="24" rx="12" fill="#FFD25A" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="131.5" y="401.5" width="418" height="86" rx="10" fill="#0A1033" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="128" y="398" width="418" height="86" rx="10" fill="#FFFFFF" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="145.5" y="389.5" width="96" height="24" rx="12" fill="#0A1033" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="142" y="386" width="96" height="24" rx="12" fill="#FFD25A" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M212,71 L333.5,71" fill="none" stroke="#0A1033" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="6 8"/>
+      <polygon points="346,71 333.5,76 333.5,66" fill="#0A1033" stroke="#0A1033" stroke-width="1" stroke-linejoin="round"/>
+      <path d="M354,96 L354,177.5" fill="none" stroke="#0A1033" stroke-width="2.5" stroke-linecap="round"/>
+      <polygon points="354,190 349,177.5 359,177.5" fill="#0A1033" stroke="#0A1033" stroke-width="1" stroke-linejoin="round"/>
+      <path d="M200,208 C140,208 107,230 107,249.5" fill="none" stroke="#0A1033" stroke-width="2.5" stroke-linecap="round"/>
+      <polygon points="107,262 102,249.5 112,249.5" fill="#0A1033" stroke="#0A1033" stroke-width="1" stroke-linejoin="round"/>
+      <path d="M280,226 L280,249.5" fill="none" stroke="#0A1033" stroke-width="2.5" stroke-linecap="round"/>
+      <polygon points="280,262 275,249.5 285,249.5" fill="#0A1033" stroke="#0A1033" stroke-width="1" stroke-linejoin="round"/>
+      <path d="M467,236 C467,274 410,289 372.5,289" fill="none" stroke="#0A1033" stroke-width="2.5" stroke-linecap="round"/>
+      <polygon points="360,289 372.5,284 372.5,294" fill="#0A1033" stroke="#0A1033" stroke-width="1" stroke-linejoin="round"/>
+      <path d="M280,316 C280,372 430,360 430,399.5" fill="none" stroke="#0A1033" stroke-width="2.5" stroke-linecap="round"/>
+      <polygon points="430,412 425,399.5 435,399.5" fill="#0A1033" stroke="#0A1033" stroke-width="1" stroke-linejoin="round"/>
+      <path d="M110,441 L131.5,441" fill="none" stroke="#0A1033" stroke-width="2.5" stroke-linecap="round"/>
+      <polygon points="144,441 131.5,446 131.5,436" fill="#0A1033" stroke="#0A1033" stroke-width="1" stroke-linejoin="round"/>
+      <path d="M292,441 L317.5,441" fill="none" stroke="#0A1033" stroke-width="2.5" stroke-linecap="round"/>
+      <polygon points="330,441 317.5,446 317.5,436" fill="#0A1033" stroke="#0A1033" stroke-width="1" stroke-linejoin="round"/>
+      <rect x="35.5" y="49.5" width="180" height="50" rx="10" fill="#0A1033" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="32" y="46" width="180" height="50" rx="10" fill="#FFFFFF" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="349.5" y="49.5" width="180" height="50" rx="10" fill="#0A1033" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="346" y="46" width="180" height="50" rx="10" fill="#8FB2FF" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="203.5" y="193.5" width="160" height="36" rx="10" fill="#0A1033" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="200" y="190" width="160" height="36" rx="10" fill="#FFFFFF" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="29.5" y="265.5" width="162" height="62" rx="10" fill="#0A1033" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="26" y="262" width="162" height="62" rx="10" fill="#FFD25A" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="203.5" y="265.5" width="160" height="54" rx="10" fill="#0A1033" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="200" y="262" width="160" height="54" rx="10" fill="#3DDC84" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="391.5" y="193.5" width="158" height="46" rx="10" fill="#0A1033" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="388" y="190" width="158" height="46" rx="10" fill="#FFFFFF" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="17.5" y="423.5" width="96" height="42" rx="10" fill="#0A1033" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="14" y="420" width="96" height="42" rx="10" fill="#8FB2FF" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="147.5" y="421.5" width="148" height="46" rx="10" fill="#0A1033" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="144" y="418" width="148" height="46" rx="10" fill="#FFD25A" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="333.5" y="415.5" width="200" height="58" rx="10" fill="#0A1033" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="330" y="412" width="200" height="58" rx="10" fill="#FF6B6B" stroke="#0A1033" stroke-width="3" stroke-linejoin="round"/>
+    </g>
+    <g font-size="13" font-weight="800" fill="#0A1033" text-anchor="middle">
+      <text x="68.8" y="26.5" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="12" font-weight="700" text-anchor="middle">Your Mac</text>
+      <text x="187.6" y="168.5" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="12" font-weight="700" text-anchor="middle">Private GitHub repository, GitHub Actions</text>
+      <text x="190" y="402.5" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="12" font-weight="700" text-anchor="middle">Cloudflare</text>
+      <text x="122" y="67.38" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="13" font-weight="700" text-anchor="middle"><tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">stackledger discover</tspan></text>
+      <text x="122" y="83.63" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="13" font-weight="700" text-anchor="middle">the snapshot stays here</text>
+      <text x="436" y="75.5" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="13" font-weight="700" text-anchor="middle">You edit <tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">catalog/*.yaml</tspan></text>
+      <text x="280" y="212.5" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="13" font-weight="700" text-anchor="middle">Catalogue repository</text>
+      <text x="107" y="282.15" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="12" font-weight="700" text-anchor="middle">Pull request</text>
+      <text x="107" y="297.15" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="12" font-weight="700" text-anchor="middle">gitleaks, validate, build</text>
+      <text x="107" y="312.15" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="12" font-weight="700" text-anchor="middle">never deploys</text>
+      <text x="280" y="285.65" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="12" font-weight="700" text-anchor="middle">Push to main</text>
+      <text x="280" y="300.65" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="12" font-weight="700" text-anchor="middle">gitleaks, validate, build</text>
+      <text x="467" y="210.07" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="10.5" font-weight="700" text-anchor="middle">npm registry</text>
+      <text x="467" y="223.2" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="10.5" font-weight="700" text-anchor="middle">@brunosouzas/stackledger</text>
+      <text x="62" y="445.5" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="13" font-weight="700" text-anchor="middle">Reader</text>
+      <text x="218" y="437.38" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="13" font-weight="700" text-anchor="middle">Cloudflare Access</text>
+      <text x="218" y="453.63" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="13" font-weight="700" text-anchor="middle">sign-in first</text>
+      <text x="430" y="429.25" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="13" font-weight="700" text-anchor="middle">Cloudflare Pages</text>
+      <text x="430" y="445.5" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="13" font-weight="700" text-anchor="middle">the whole static site</text>
+      <text x="430" y="461.75" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="13" font-weight="700" text-anchor="middle">never reads GitHub</text>
+      <text x="279" y="64" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="11" font-weight="700" text-anchor="middle"><tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">drift --scaffold</tspan></text>
+      <text x="362" y="146" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="11" font-weight="700" text-anchor="start"><tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">git push</tspan></text>
+      <text x="540" y="268" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="11" font-weight="700" text-anchor="end"><tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">npx @brunosouzas/</tspan></text>
+      <text x="540" y="281" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="11" font-weight="700" text-anchor="end"><tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">stackledger</tspan></text>
+      <text x="324" y="378" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" fill="#0A1033" font-size="11" font-weight="700" text-anchor="end"><tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">wrangler pages deploy</tspan></text>
+    </g>
+  </g>
 </svg>
