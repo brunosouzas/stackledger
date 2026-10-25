@@ -21,12 +21,12 @@ Level U: unit (vitest, `npm test`). Every scenario has one test named after it i
 
 ## 1. Tests first
 
-- [ ] 1.1 Write `test/unit/how-it-works.test.ts`. Verify: `npx vitest run test/unit/how-it-works.test.ts` shows the two "fails first" tests failing for their reason and every guard passing.
+- [x] 1.1 Write `test/unit/how-it-works.test.ts`. Verify: `npx vitest run test/unit/how-it-works.test.ts` shows the two "fails first" tests failing for their reason and every guard passing.
 
 ## 2. Code
 
-- [ ] 2.1 `scripts/site-art.mjs` checks both specs, then writes the site art and `docs/images/how-it-works.svg`. Run it and commit the SVG. Verify: the tests pass; `git status site/public` shows no change.
-- [ ] 2.2 Delete `scripts/how-it-works-diagram.py`; update the generation line of `docs/how-it-works.md` and the script's comment. Verify: "No hand-drawn generator" passes.
+- [x] 2.1 `scripts/site-art.mjs` checks both specs, then writes the site art and `docs/images/how-it-works.svg`. Run it and commit the SVG. Verify: the tests pass; `git status site/public` shows no change.
+- [x] 2.2 Delete `scripts/how-it-works-diagram.py`; update the generation line of `docs/how-it-works.md` and the script's comment. Verify: "No hand-drawn generator" passes.
 
 ## 3. Close
 
