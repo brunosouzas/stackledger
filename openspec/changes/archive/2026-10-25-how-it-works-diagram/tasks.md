@@ -33,4 +33,4 @@ Level U: unit (vitest, `npm test`). Every scenario has one test named after it i
 
 ## 3. Close
 
-- [ ] 3.1 `npm test` (in the background) green; Codex code review; archive the change.
+- [x] 3.1 `npm test` (in the background) green; Codex code review in two rounds (round 1: arrows not tied to their boxes, unknown Mermaid lines dropped; round 2: arrow kind, `custom`, label words, no generator test; all fixed); archive the change.
