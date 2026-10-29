@@ -7,7 +7,8 @@
  *
  * - buildScaffold(drift, snapshot, catalogueNames): from the not-declared list, leaving out entries
  *   with suggested components or without annotation, one file per source and identifier (as matching
- *   compares them); an undeclared app a listed cask installs joins the file of the first such cask.
+ *   compares them); an undeclared app a listed cask installs joins the file of the first such cask,
+ *   and a helper an undeclared app declares (scope `app-*`) joins the file holding that app.
  *   Names come from the title (else the id after its last `/`) folded as the machine name is, with
  *   `-2`, `-3` suffixes against every catalogue Component name and earlier file, ignoring case.
  *   `spec.dependsOn` names the catalogue components and other files that match what the file's items
@@ -21,7 +22,7 @@ import { stringify } from 'yaml';
 import { normaliseId, SOURCES } from './discovery/annotations.js';
 import { fold } from './discovery/machine.js';
 import type { Snapshot } from './discovery/snapshot.js';
-import type { Item } from './discovery/types.js';
+import { APP_HELPER_SCOPES, type Item } from './discovery/types.js';
 import { itemKey, itemNeeds, itemRef, type Drift, type NotDeclared } from './drift.js';
 import { compareRefs } from './identity.js';
 import { MAX_FILE_BYTES, parseSource } from './source.js';
@@ -58,9 +59,14 @@ export function buildScaffold(drift: Drift, snapshot: Snapshot, catalogueNames: 
 
   // One group per source and identifier, in not-declared order.
   const groups: NotDeclared[][] = [], bySourceAndId = new Map<string, NotDeclared[]>();
+  const keyOf = (entry: NotDeclared) => `${entry.source}\0${normaliseId(entry.source, entry.id)}`;
+  // A launchd label one entry already suggests a component for (a helper of a declared app) gets no
+  // file, even for another entry with that label (an old agent the app left behind): one id, one component.
+  const suggestedLabels = new Set(drift.notDeclared.filter(entry => entry.source === 'launchd' && entry.suggestedComponents.length).map(keyOf));
   for (const entry of drift.notDeclared) {
     if (entry.annotation === null || entry.suggestedComponents.length) continue;
-    const key = `${entry.source}\0${normaliseId(entry.source, entry.id)}`;
+    const key = keyOf(entry);
+    if (suggestedLabels.has(key)) continue;
     const group = bySourceAndId.get(key);
     if (group) group.push(entry);
     else { const created = [entry]; bySourceAndId.set(key, created); groups.push(created); }
@@ -74,9 +80,21 @@ export function buildScaffold(drift: Drift, snapshot: Snapshot, catalogueNames: 
     if (cask) cask.push(...group);
     return !cask;
   });
+  // A helper of an undeclared app joins the file holding that app's annotation, so the annotation lands
+  // on the app's component (drift spec, Scaffold of app helpers), with every entry of its label.
+  const fileOfApp = (path: string) => files.find(file => file.some(entry => entry.source === 'app' && entry.path !== null && path.startsWith(`${entry.path}/`)));
+  const isHelper = (entry: NotDeclared) => { const item = itemOf(entry); return item.source === 'launchd' && APP_HELPER_SCOPES.includes(item.scope); };
+  const placed = files.filter(group => {
+    // Any helper of the group decides: an old agent with the same label may sort first.
+    const helper = group.find(isHelper);
+    if (helper === undefined) return true;
+    const file = fileOfApp(helper.path!);
+    if (file) file.push(...group);
+    return !file;
+  });
 
   const taken = new Set(catalogueNames.map(name => name.toLowerCase()));
-  const named = files.map(entries => {
+  const named = placed.map(entries => {
     const title = entries.map(entry => entry.title?.replace(CONTROL, '') ?? '').find(text => text !== '');
     const id = entries[0]!.id;
     const name = uniqueName(fold(title ?? id.slice(id.lastIndexOf('/') + 1)) || EMPTY_NAME, taken);

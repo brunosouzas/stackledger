@@ -5,7 +5,7 @@
 import { test, expect } from 'vitest';
 import { buildDrift, itemNeeds } from '../../src/drift.js';
 import { formatDriftText } from '../../src/drift-formats.js';
-import { app, brew, cask, comp, launchd, mas, simple, snapshotOf } from '../drift-helpers.js';
+import { app, brew, cask, comp, helper, launchd, mas, simple, snapshotOf } from '../drift-helpers.js';
 
 const ids = (entries: { source: string; id: string }[]) => entries.map(entry => `${entry.source} ${entry.id}`);
 /** What the launchd item `job` needs, as `source id` texts. */
@@ -204,4 +204,50 @@ test('Program and script without control characters', () => {
   const line = formatDriftText(drift).split('\n').find(text => text.includes('com.northwind.bell'))!;
   expect(line).toContain('runs /usr/bin/python3 /Users/username/bell[31m.py');
   expect(line).not.toMatch(/[\u0000-\u001f]/);
+});
+
+// Helpers suggest their app's components (app-helpers change).
+const UTILS = '/Applications/Northwind Utils.app';
+const FAN = `${UTILS}/Contents/Library/LaunchDaemons/com.northwind.utils.fan.plist`;
+const entryOf = (drift: ReturnType<typeof buildDrift>, id: string) => drift.notDeclared.find(entry => entry.id === id);
+
+test('Helper of a declared app', () => {
+  const drift = buildDrift(snapshotOf([app('com.northwind.utils', UTILS), helper('com.northwind.utils.fan', FAN)]), [comp('utils', { 'stackledger/app': 'com.northwind.utils' })]);
+  expect(entryOf(drift, 'com.northwind.utils.fan')).toMatchObject({ annotation: 'stackledger/launchd: com.northwind.utils.fan', suggestedComponents: ['component:utils'] });
+  expect(formatDriftText(drift)).toContain('-> stackledger/launchd: com.northwind.utils.fan  (probably belongs to component:utils)');
+});
+
+test('Helper of an undeclared app', () => {
+  const drift = buildDrift(snapshotOf([app('com.northwind.utils', UTILS), helper('com.northwind.utils.fan', FAN)]), []);
+  expect(entryOf(drift, 'com.northwind.utils')).toBeDefined();
+  expect(entryOf(drift, 'com.northwind.utils.fan')).toMatchObject({ suggestedComponents: [] });
+});
+
+test('Helper of an app a cask installs', () => {
+  const display = '/Applications/Northwind Display.app';
+  const items = [cask('northwind-display', ['Northwind Display.app']), app('com.northwind.display', display), helper('com.northwind.display.agent', `${display}/Contents/Library/LaunchAgents/a.plist`, 'app-agent')];
+  const drift = buildDrift(snapshotOf(items), [comp('display', { 'stackledger/cask': 'northwind-display' })]);
+  expect(entryOf(drift, 'com.northwind.display')).toMatchObject({ suggestedComponents: ['component:display'] });
+  expect(entryOf(drift, 'com.northwind.display.agent')).toMatchObject({ suggestedComponents: ['component:display'] });
+});
+
+test('App path that only looks alike', () => {
+  const items = [app('com.northwind.sync', '/Applications/Northwind Sync.app'), helper('com.northwind.sync.helper', '/Applications/Northwind Sync Helper.app/Contents/Library/LoginItems/H.app', 'app-login-item')];
+  const drift = buildDrift(snapshotOf(items), [comp('sync', { 'stackledger/app': 'com.northwind.sync' })]);
+  expect(entryOf(drift, 'com.northwind.sync.helper')).toMatchObject({ suggestedComponents: [] });
+});
+
+test('Job outside an app', () => {
+  const items = [app('com.northwind.sync', '/Applications/Northwind Sync.app'), launchd('com.northwind.sync.agent', '/Applications/Northwind Sync.app/Contents/MacOS/sync')];
+  const drift = buildDrift(snapshotOf(items), [comp('sync', { 'stackledger/app': 'com.northwind.sync' })]);
+  expect(entryOf(drift, 'com.northwind.sync.agent')).toMatchObject({ suggestedComponents: [] });
+  expect(drift.proposedRelations).toEqual([]);
+  // It still needs that app ("Inferred needs").
+  const snapshot = snapshotOf(items), job = snapshot.items.find(item => item.id === 'com.northwind.sync.agent')!;
+  expect(itemNeeds(snapshot).get(job)?.map(item => item.id)).toEqual(['com.northwind.sync']);
+});
+
+test('A helper never matches through its app', () => {
+  const drift = buildDrift(snapshotOf([app('com.northwind.utils', UTILS), helper('com.northwind.utils.fan', FAN)]), [comp('utils', { 'stackledger/app': 'com.northwind.utils' })]);
+  expect(drift.counts).toMatchObject({ matched: 1, notDeclared: 1 });
 });

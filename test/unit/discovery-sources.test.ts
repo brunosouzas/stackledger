@@ -310,6 +310,170 @@ test('Card number in a script path', async () => {
   expect(snapshot.sources.find(entry => entry.source === 'launchd')).toMatchObject({ status: 'ok', ignored: 1 });
 });
 
+// App helpers (app-helpers change): what each app declares inside its bundle.
+const DISPLAY = '/Applications/Northwind Display.app';
+const UTILS = '/Applications/Northwind Utils.app';
+const VAULT = '/Applications/Northwind Vault.app';
+const LAUNCHER = `${VAULT}/Contents/Library/LoginItems/Northwind Launcher.app`;
+const bundle = (path: string, id: string): Record<string, Entry> => ({ [`${path}/Contents/Info.plist`]: { CFBundleIdentifier: id, CFBundleName: id } });
+const helpers = (extra: Record<string, Entry>) => virtualHost({ files: machine({
+  ...bundle(DISPLAY, 'com.northwind.display'), ...bundle(UTILS, 'com.northwind.utils'), ...bundle(VAULT, 'com.northwind.vault'), ...extra }) });
+const launchdOf = async (extra: Record<string, Entry>) => readLaunchd(helpers(extra));
+const baseIgnored = async () => (await readLaunchd(virtualHost())).ignored;
+
+test('Agent inside an app', async () => {
+  const path = `${DISPLAY}/Contents/Library/LaunchAgents/com.northwind.display.agent.plist`;
+  const launchd = await launchdOf({ [path]: { Label: 'com.northwind.display.agent', BundleProgram: 'Contents/MacOS/DisplayAgent' } });
+  expect(item(launchd, 'com.northwind.display.agent')).toMatchObject({ scope: 'app-agent', path });
+});
+
+test('Daemon inside an app', async () => {
+  const path = `${UTILS}/Contents/Library/LaunchDaemons/com.northwind.utils.fan.plist`;
+  const launchd = await launchdOf({ [path]: { Label: 'com.northwind.utils.fan', BundleProgram: 'Contents/Library/LaunchServices/com.northwind.utils.fan' } });
+  expect(item(launchd, 'com.northwind.utils.fan')).toMatchObject({ scope: 'app-daemon', path, program: `${UTILS}/Contents/Library/LaunchServices/com.northwind.utils.fan`, script: null });
+});
+
+test('Login item', async () => {
+  const launchd = await launchdOf({ [`${LAUNCHER}/Contents/Info.plist`]: { CFBundleIdentifier: 'com.northwind.vault.launcher', CFBundleExecutable: 'Northwind Launcher' } });
+  expect(item(launchd, 'com.northwind.vault.launcher')).toEqual({ source: 'launchd', id: 'com.northwind.vault.launcher', versions: [], scope: 'app-login-item', path: LAUNCHER,
+    program: `${LAUNCHER}/Contents/MacOS/Northwind Launcher`, script: null });
+});
+
+test('Login item program', async () => {
+  const launchd = await launchdOf({ [`${LAUNCHER}/Contents/Info.plist`]: { CFBundleIdentifier: 'com.northwind.vault.launcher', CFBundleExecutable: 'Northwind Launcher' } });
+  expect(item(launchd, 'com.northwind.vault.launcher')).toMatchObject({ program: '/Applications/Northwind Vault.app/Contents/Library/LoginItems/Northwind Launcher.app/Contents/MacOS/Northwind Launcher', script: null });
+});
+
+test('Login item without identifier', async () => {
+  const launchd = await launchdOf({ [`${LAUNCHER}/Contents/Info.plist`]: { CFBundleExecutable: 'Northwind Launcher' } });
+  expect(launchd).toMatchObject({ status: 'ok', ignored: await baseIgnored() + 1 });
+});
+
+test('Executable name with a slash', async () => {
+  for (const name of ['../northwind', '..', '.']) {
+    const launchd = await launchdOf({ [`${LAUNCHER}/Contents/Info.plist`]: { CFBundleIdentifier: 'com.northwind.vault.launcher', CFBundleExecutable: name } });
+    expect(item(launchd, 'com.northwind.vault.launcher'), name).toMatchObject({ program: null });
+  }
+});
+
+test('Helper of an app in a subfolder', async () => {
+  const suite = '/Applications/Northwind Suite/Northwind Sync.app';
+  const launchd = await launchdOf({ ...bundle(suite, 'com.northwind.suite'), [`${suite}/Contents/Library/LaunchAgents/com.northwind.suite.sync.plist`]: { Label: 'com.northwind.suite.sync' } });
+  expect(item(launchd, 'com.northwind.suite.sync')).toMatchObject({ scope: 'app-agent' });
+});
+
+test('Apps without job folders', async () => {
+  const files: Record<string, Entry> = { ...bundle(UTILS, 'com.northwind.utils'), [`${UTILS}/Contents/Library/LaunchDaemons/com.northwind.utils.fan.plist`]: { Label: 'com.northwind.utils.fan' } };
+  const launchd = await readLaunchd(virtualHost({ files }));
+  expect(launchd).toMatchObject({ status: 'ok', ignored: 0 });
+  expect(ids(launchd)).toEqual(['com.northwind.utils.fan']);
+});
+
+test('Program inside the bundle', async () => {
+  const launchd = await launchdOf({ [`${DISPLAY}/Contents/Library/LaunchAgents/a.plist`]: { Label: 'com.northwind.display.agent', BundleProgram: 'Contents/MacOS/DisplayAgent' } });
+  expect(item(launchd, 'com.northwind.display.agent')).toMatchObject({ program: '/Applications/Northwind Display.app/Contents/MacOS/DisplayAgent' });
+});
+
+test('Bundle program before the arguments', async () => {
+  const launchd = await launchdOf({ [`${DISPLAY}/Contents/Library/LaunchAgents/a.plist`]: { Label: 'com.northwind.display.agent', BundleProgram: 'Contents/MacOS/agent', ProgramArguments: ['agent', '--quiet'] } });
+  expect(item(launchd, 'com.northwind.display.agent')).toMatchObject({ program: `${DISPLAY}/Contents/MacOS/agent` });
+});
+
+test('Bundle program that leaves the bundle', async () => {
+  for (const value of ['../../../../usr/local/bin/northwind', '/usr/local/bin/northwind', 'Contents/../../escape', '.', 'Contents/MacOS/.', 'Contents//MacOS/x']) {
+    const launchd = await launchdOf({ [`${DISPLAY}/Contents/Library/LaunchAgents/a.plist`]: { Label: 'com.northwind.display.agent', BundleProgram: value, ProgramArguments: ['northwind'] } });
+    expect(item(launchd, 'com.northwind.display.agent'), value).toMatchObject({ program: null });
+  }
+});
+
+test('A user agent never reads BundleProgram', async () => {
+  const path = '/Users/username/Library/LaunchAgents/com.northwind.bundled.plist';
+  const host = virtualHost({ files: machine({ [path]: { Label: 'com.northwind.bundled', BundleProgram: 'Contents/MacOS/x', ProgramArguments: ['/usr/local/bin/northwind'] } }) });
+  expect(item(await readLaunchd(host), 'com.northwind.bundled')).toMatchObject({ program: '/usr/local/bin/northwind' });
+  expect(host.calls.filter(call => call.args.at(-1) === path).map(call => call.args[1])).not.toContain('BundleProgram');
+});
+
+test('Linked helper folder', async () => {
+  const launchd = await launchdOf({ [`${DISPLAY}/Contents/Library/LaunchAgents`]: { link: '/Users/username/elsewhere' }, '/Users/username/elsewhere/a.plist': { Label: 'com.northwind.hidden' } });
+  expect(ids(launchd)).not.toContain('com.northwind.hidden');
+  expect(launchd.ignored).toBe(await baseIgnored() + 1);
+});
+
+test('Linked app', async () => {
+  const target = '/Users/username/Apps/Northwind Real.app';
+  const launchd = await launchdOf({ '/Applications/Northwind Link.app': { link: target }, ...bundle(target, 'com.northwind.real'),
+    [`${target}/Contents/Library/LaunchAgents/a.plist`]: { Label: 'com.northwind.real.agent' } });
+  expect(ids(launchd)).not.toContain('com.northwind.real.agent');
+  expect(launchd.ignored).toBe(await baseIgnored() + 1);
+});
+
+test('Linked Contents and Library', async () => {
+  const launchd = await launchdOf({ '/Applications/Northwind Odd.app/Contents': { link: `${DISPLAY}/Contents` }, '/Applications/Northwind Lib.app/Contents/Library': { link: `${DISPLAY}/Contents/Library` },
+    '/Applications/Northwind Lib.app/Contents/Info.plist': { CFBundleIdentifier: 'com.northwind.lib' }, [`${DISPLAY}/Contents/Library/LaunchAgents/a.plist`]: { Label: 'com.northwind.display.agent' } });
+  expect(ids(launchd).filter(id => id === 'com.northwind.display.agent')).toHaveLength(1);
+  expect(launchd.ignored).toBe(await baseIgnored() + 2);
+});
+
+test('Unreadable helper folder', async () => {
+  const launchd = await launchdOf({ [`${UTILS}/Contents/Library/LaunchDaemons`]: { dir: true, unreadable: true } });
+  expect(launchd).toMatchObject({ status: 'ok', ignored: await baseIgnored() + 1 });
+});
+
+test('Unreadable Applications folder', async () => {
+  const files = { '/Applications': { dir: true, unreadable: true }, '/Users/username/Library/LaunchAgents/com.northwind.sync.plist': { Label: 'com.northwind.sync' } } as Record<string, Entry>;
+  const launchd = await readLaunchd(virtualHost({ files }));
+  expect(launchd).toMatchObject({ status: 'ok', ignored: 1 });
+  expect(ids(launchd)).toEqual(['com.northwind.sync']);
+});
+
+test('Linked Applications folder', async () => {
+  const files = { '/Users/username/Applications': { link: '/Applications' }, ...bundle(UTILS, 'com.northwind.utils') } as Record<string, Entry>;
+  const launchd = await readLaunchd(virtualHost({ files }));
+  expect(launchd).toMatchObject({ status: 'ok', ignored: 1 });
+});
+
+test('Linked Info.plist of a login item', async () => {
+  const virtual = helpers({ [`${LAUNCHER}/Contents/Info.plist`]: { link: '/Users/username/secret.plist' }, '/Users/username/secret.plist': { CFBundleIdentifier: 'com.northwind.outside' } });
+  // Simulate a canRead that succeeds (a race, or another host), so only the lstat check stops the read.
+  const host = { ...virtual, canRead: async () => true };
+  const launchd = await readLaunchd(host);
+  expect(ids(launchd)).not.toContain('com.northwind.outside');
+  expect(launchd.ignored).toBe(await baseIgnored() + 1);
+  expect(host.calls.some(call => call.args.at(-1) === `${LAUNCHER}/Contents/Info.plist`)).toBe(false);
+});
+
+test('Unreadable Applications folder fails the app source', async () => {
+  const files = { '/Applications': { dir: true, unreadable: true }, ...bundle('/Users/username/Applications/Northwind Draw.app', 'com.northwind.draw') } as Record<string, Entry>;
+  expect(await readApps(virtualHost({ files }))).toMatchObject({ status: 'failed', reason: 'cannot be read', items: [] });
+});
+
+test('Bundle program that hits a limit', async () => {
+  const plutil = defaultPrograms().plutil!;
+  const path = `${DISPLAY}/Contents/Library/LaunchAgents/a.plist`;
+  const host = virtualHost({ files: machine({ ...bundle(DISPLAY, 'com.northwind.display'), [path]: { Label: 'com.northwind.display.agent', BundleProgram: 'Contents/MacOS/agent', ProgramArguments: ['agent'] } }),
+    programs: { plutil: (args, h) => args[1] === 'BundleProgram' ? { kind: 'time limit' } : plutil(args, h) } });
+  expect(item(await readLaunchd(host), 'com.northwind.display.agent')).toMatchObject({ program: null });
+});
+
+test('Helper arguments are not recorded', async () => {
+  const path = `${DISPLAY}/Contents/Library/LaunchAgents/com.northwind.display.agent.plist`;
+  const host = helpers({ [path]: { Label: 'com.northwind.display.agent', BundleProgram: 'Contents/MacOS/agent', ProgramArguments: ['agent', '--token', 'nw-example-value'], EnvironmentVariables: { NORTHWIND_TOKEN: 'nw-example-other' } } });
+  const text = JSON.stringify(await readSources(host));
+  expect(text).not.toContain('nw-example');
+  expect(text).not.toContain('NORTHWIND_TOKEN');
+  for (const call of host.calls.filter(run => run.args.at(-1) === path)) expect(call.args[1]).toMatch(/^(Label|Program|ProgramArguments\.0|BundleProgram)$/);
+});
+
+test('Keys of a login item', async () => {
+  const plist = `${LAUNCHER}/Contents/Info.plist`;
+  const host = helpers({ [plist]: { CFBundleIdentifier: 'com.northwind.vault.launcher', CFBundleExecutable: 'Northwind Launcher', LSEnvironment: { NORTHWIND_TOKEN: 'nw-example-value' } } });
+  const launchd = await readLaunchd(host);
+  expect(JSON.stringify(launchd)).not.toContain('NORTHWIND_TOKEN');
+  const runs = host.calls.filter(call => call.args.at(-1) === plist);
+  expect(runs.length).toBe(2);
+  for (const call of runs) expect(call.args[1]).toMatch(/^(CFBundleIdentifier|CFBundleExecutable)$/);
+});
+
 // Plist values are data: a value that reads like a reader status is recorded like any other.
 test('Jobs labelled like reader statuses', async () => {
   const jobs = { absent: { Label: 'absent', Program: 'stopped' }, stopped: { Label: 'stopped', ProgramArguments: ['absent'] }, plutil: { Label: 'no plutil', Program: 'no plutil' } };

@@ -99,3 +99,13 @@ test('Launchd item fields in order', async () => {
   const snapshot = await discover(virtualHost(), at('2026-10-21T07:30:00Z'));
   expect(Object.keys(snapshot.items.find(item => item.source === 'launchd')!)).toEqual(['source', 'id', 'versions', 'scope', 'path', 'program', 'script']);
 });
+
+// Snapshot with helper scopes (app-helpers change).
+test('Snapshot with helper scopes', async () => {
+  const snapshot = JSON.parse(serialise(await discover(virtualHost(), at('2026-10-21T07:30:00Z'))));
+  const job = snapshot.items.find((item: { source: string }) => item.source === 'launchd');
+  job.scope = 'app-login-item';
+  expect(checkSnapshot(snapshot)).toHaveProperty('snapshot');
+  job.scope = 'app-service';
+  expect(checkSnapshot(snapshot)).toEqual({ problem: 'shape' });
+});

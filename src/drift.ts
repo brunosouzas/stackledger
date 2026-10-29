@@ -20,7 +20,7 @@
  */
 import { annotationSource, identifiers, normaliseId, SOURCES, type SourceName } from './discovery/annotations.js';
 import { compareItems, type Machine, type Snapshot } from './discovery/snapshot.js';
-import type { Item } from './discovery/types.js';
+import { APP_HELPER_SCOPES, type Item } from './discovery/types.js';
 import { compareRefs, compareText, reference } from './identity.js';
 import type { Component } from './schema.js';
 
@@ -158,16 +158,29 @@ export function buildDrift(snapshot: Snapshot, components: Component[]): Drift {
     if (item.source === 'cask') for (const name of item.apps) casksByApp.set(name, [...(casksByApp.get(name) ?? []), ...refs]);
   }
   matched.sort(compareItemRefs);
+  // A helper an app declares suggests the components matching its app, else what that app's own entry
+  // suggests (the cask's components); it never matches through it (drift spec, Helpers suggest their
+  // app's components). The app is the one whose path plus `/` starts the helper's path.
+  const apps = items.filter((item): item is Extract<Item, { source: 'app' }> => item.source === 'app');
+  const helperSuggestions = (path: string): string[] => {
+    const app = apps.find(candidate => path.startsWith(`${candidate.path}/`));
+    if (!app) return [];
+    const own = componentsOf.get(app);
+    if (own) return sortRefs(own);
+    return sortRefs(casksByApp.get(app.path.slice(app.path.lastIndexOf('/') + 1)) ?? []);
+  };
   for (const item of items) {
     if (componentsOf.has(item)) continue;
     const only = countedOnly(item);
     if (only) { counted[only]++; continue; }
     const canAnnotate = annotatable(item.id);
     const folder = item.source === 'app' ? item.path.slice(item.path.lastIndexOf('/') + 1) : undefined;
+    const suggested = folder !== undefined ? sortRefs(casksByApp.get(folder) ?? [])
+      : item.source === 'launchd' && APP_HELPER_SCOPES.includes(item.scope) ? helperSuggestions(item.path) : [];
     const runs = item.source === 'launchd' ? { program: item.program, script: item.script } : { program: null, script: null };
     notDeclared.push({ ...itemRef(item), ...runs, versions: [...item.versions], title: 'title' in item ? item.title : null,
       annotation: canAnnotate ? `stackledger/${item.source}: ${item.id}` : null, note: canAnnotate ? null : CANNOT_BE_ANNOTATED,
-      suggestedComponents: folder === undefined ? [] : sortRefs(casksByApp.get(folder) ?? []) });
+      suggestedComponents: suggested });
   }
 
   const status = new Map(snapshot.sources.map(source => [source.source, source]));

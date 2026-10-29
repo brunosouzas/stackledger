@@ -39,7 +39,7 @@
       "source": "launchd",
       "status": "ok",
       "reason": null,
-      "items": 4,
+      "items": 5,
       "ignored": 1
     },
     {
@@ -251,6 +251,15 @@
       "title": "Notion",
       "path": "/Applications/Notion.app",
       "appStore": false
+    },
+    {
+      "source": "launchd",
+      "id": "com.1password.1password-launcher",
+      "versions": [],
+      "scope": "app-login-item",
+      "path": "/Applications/1Password.app/Contents/Library/LoginItems/1Password Launcher.app",
+      "program": "/Applications/1Password.app/Contents/Library/LoginItems/1Password Launcher.app/Contents/MacOS/1Password Launcher",
+      "script": null
     },
     {
       "source": "launchd",
