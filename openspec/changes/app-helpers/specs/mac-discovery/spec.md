@@ -32,7 +32,7 @@
 - **THEN** `launchd` is `ok` with that helper
 
 ### Requirement: App helper programs
-A helper plist's `program` SHALL be `Program`, else, when it has `BundleProgram`, `<app path>/<BundleProgram>` if that value does not start with `/` and has no `..` part (null otherwise), else `ProgramArguments.0`, else null. A login item's `program` SHALL be `<login item path>/Contents/MacOS/<CFBundleExecutable>` when that value is not empty and has no `/`, else null; its `script` SHALL be null.
+A helper plist's `program` SHALL be `Program`, else, when it has `BundleProgram`, `<app path>/<BundleProgram>` if that value does not start with `/` and has no empty, `.` or `..` part (null otherwise, and when it cannot be read), else `ProgramArguments.0`, else null. A login item's `program` SHALL be `<login item path>/Contents/MacOS/<CFBundleExecutable>` when that value is not empty, `.` or `..` and has no `/`, else null; its `script` SHALL be null.
 
 #### Scenario: Program inside the bundle
 - **WHEN** the plist of `com.northwind.display.agent` in `/Applications/Northwind Display.app` has only `BundleProgram` `Contents/MacOS/DisplayAgent`
@@ -43,15 +43,19 @@ A helper plist's `program` SHALL be `Program`, else, when it has `BundleProgram`
 - **THEN** its `program` is `/Applications/Northwind Display.app/Contents/MacOS/agent`
 
 #### Scenario: Bundle program that leaves the bundle
-- **WHEN** a helper plist has `BundleProgram` `../../../../usr/local/bin/northwind` or `/usr/local/bin/northwind`, and `ProgramArguments` `["northwind"]`
+- **WHEN** a helper plist has `BundleProgram` `../../../../usr/local/bin/northwind`, `/usr/local/bin/northwind` or `.`, and `ProgramArguments` `["northwind"]`
 - **THEN** its `program` is null (not `northwind`) and the item is recorded
+
+#### Scenario: Bundle program that hits a limit
+- **WHEN** `plutil` hangs on a helper plist's `BundleProgram`, and `ProgramArguments` is `["agent"]`
+- **THEN** after the time limit the item is recorded with `program` null
 
 #### Scenario: Login item program
 - **WHEN** the login item `Northwind Launcher.app` has `CFBundleExecutable` `Northwind Launcher`
 - **THEN** its `program` is `/Applications/Northwind Vault.app/Contents/Library/LoginItems/Northwind Launcher.app/Contents/MacOS/Northwind Launcher` and its `script` is null
 
 #### Scenario: Executable name with a slash
-- **WHEN** a login item's `CFBundleExecutable` is `../northwind`
+- **WHEN** a login item's `CFBundleExecutable` is `../northwind`, `..` or `.`
 - **THEN** its `program` is null and the item is recorded
 
 ### Requirement: App helpers not followed

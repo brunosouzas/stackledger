@@ -24,7 +24,7 @@ The not-declared entry of a `launchd` item whose scope is `app-agent`, `app-daem
 - **THEN** its entry suggests nothing (it still needs that app, "Inferred needs")
 
 ### Requirement: Scaffold of app helpers
-An undeclared helper (scope `app-agent`, `app-daemon` or `app-login-item`) with no suggested components, whose app is not declared either, SHALL go into the scaffold file that holds that app's annotation (the app's own file, or the cask file it joined), not into a file of its own.
+An undeclared helper (scope `app-agent`, `app-daemon` or `app-login-item`) with no suggested components, whose app is not declared either, SHALL go into the scaffold file that holds that app's annotation (the app's own file, or the cask file it joined), not into a file of its own. Entries sharing its identifier go with it; when any of them has suggested components, none gets a file.
 
 #### Scenario: App and its helper in one file
 - **WHEN** the app `com.northwind.utils` and its daemon `com.northwind.utils.fan` are both not declared
@@ -33,3 +33,7 @@ An undeclared helper (scope `app-agent`, `app-daemon` or `app-login-item`) with 
 #### Scenario: Helper of an app with a suggestion
 - **WHEN** the daemon's app is not declared but its entry suggests `component:utils`
 - **THEN** the daemon gets no file, like its app
+
+#### Scenario: Old agent with the helper's label
+- **WHEN** `~/Library/LaunchAgents` holds a job labelled `com.northwind.utils.fan`, the same label as a daemon `Northwind Utils.app` declares, and only the app's component is declared
+- **THEN** no scaffold file holds `stackledger/launchd: com.northwind.utils.fan`

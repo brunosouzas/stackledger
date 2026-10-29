@@ -59,9 +59,14 @@ export function buildScaffold(drift: Drift, snapshot: Snapshot, catalogueNames: 
 
   // One group per source and identifier, in not-declared order.
   const groups: NotDeclared[][] = [], bySourceAndId = new Map<string, NotDeclared[]>();
+  const keyOf = (entry: NotDeclared) => `${entry.source}\0${normaliseId(entry.source, entry.id)}`;
+  // A launchd label one entry already suggests a component for (a helper of a declared app) gets no
+  // file, even for another entry with that label (an old agent the app left behind): one id, one component.
+  const suggestedLabels = new Set(drift.notDeclared.filter(entry => entry.source === 'launchd' && entry.suggestedComponents.length).map(keyOf));
   for (const entry of drift.notDeclared) {
     if (entry.annotation === null || entry.suggestedComponents.length) continue;
-    const key = `${entry.source}\0${normaliseId(entry.source, entry.id)}`;
+    const key = keyOf(entry);
+    if (suggestedLabels.has(key)) continue;
     const group = bySourceAndId.get(key);
     if (group) group.push(entry);
     else { const created = [entry]; bySourceAndId.set(key, created); groups.push(created); }
@@ -76,12 +81,14 @@ export function buildScaffold(drift: Drift, snapshot: Snapshot, catalogueNames: 
     return !cask;
   });
   // A helper of an undeclared app joins the file holding that app's annotation, so the annotation lands
-  // on the app's component (drift spec, Scaffold of app helpers). Helpers with suggestions got no group.
+  // on the app's component (drift spec, Scaffold of app helpers), with every entry of its label.
   const fileOfApp = (path: string) => files.find(file => file.some(entry => entry.source === 'app' && entry.path !== null && path.startsWith(`${entry.path}/`)));
+  const isHelper = (entry: NotDeclared) => { const item = itemOf(entry); return item.source === 'launchd' && APP_HELPER_SCOPES.includes(item.scope); };
   const placed = files.filter(group => {
-    const item = itemOf(group[0]!);
-    if (item.source !== 'launchd' || !APP_HELPER_SCOPES.includes(item.scope)) return true;
-    const file = fileOfApp(item.path);
+    // Any helper of the group decides: an old agent with the same label may sort first.
+    const helper = group.find(isHelper);
+    if (helper === undefined) return true;
+    const file = fileOfApp(helper.path!);
     if (file) file.push(...group);
     return !file;
   });

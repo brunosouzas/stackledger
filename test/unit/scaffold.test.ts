@@ -116,7 +116,8 @@ const UTILS_APP = '/Applications/Northwind Utils.app';
 const FAN_PLIST = `${UTILS_APP}/Contents/Library/LaunchDaemons/com.northwind.utils.fan.plist`;
 
 test('App and its helper in one file', () => {
-  const files = scaffold([app('com.northwind.utils', UTILS_APP, { title: 'Northwind Utils' }), helper('com.northwind.utils.fan', FAN_PLIST)]);
+  // The helper's program is inside its app, so it needs the app: no dependsOn on its own file.
+  const files = scaffold([app('com.northwind.utils', UTILS_APP, { title: 'Northwind Utils' }), helper('com.northwind.utils.fan', FAN_PLIST, 'app-daemon', `${UTILS_APP}/Contents/MacOS/fan`)]);
   expect(files).toHaveLength(1);
   expect(documentOf(files[0]!).metadata.annotations).toEqual({ 'stackledger/app': 'com.northwind.utils', 'stackledger/launchd': 'com.northwind.utils.fan' });
   expect(documentOf(files[0]!).spec).not.toHaveProperty('dependsOn');
@@ -131,4 +132,19 @@ test('Helper of an app with a suggestion', () => {
 test('Helper whose app is declared gets no file', () => {
   const files = scaffold([app('com.northwind.utils', UTILS_APP), helper('com.northwind.utils.fan', FAN_PLIST)], [comp('utils', { 'stackledger/app': 'com.northwind.utils' })]);
   expect(files).toEqual([]);
+});
+
+test('Old agent with the helper\'s label', () => {
+  const items = [app('com.northwind.utils', UTILS_APP), helper('com.northwind.utils.fan', FAN_PLIST), launchd('com.northwind.utils.fan', null, '/Library/LaunchAgents/com.northwind.utils.fan.plist')];
+  const files = scaffold(items, [comp('utils', { 'stackledger/app': 'com.northwind.utils' })]);
+  expect(files.map(file => file.text).join('\n')).not.toContain('stackledger/launchd: com.northwind.utils.fan');
+});
+
+test('Old agent sorting before the helper of an undeclared app', () => {
+  // In ~/Applications the helper's path sorts after /Library/LaunchAgents, so the old agent comes first.
+  const home = '/Users/username/Applications/Northwind Utils.app';
+  const items = [app('com.northwind.utils', home), helper('com.northwind.utils.fan', `${home}/Contents/Library/LaunchDaemons/com.northwind.utils.fan.plist`), launchd('com.northwind.utils.fan', null, '/Library/LaunchAgents/com.northwind.utils.fan.plist')];
+  const files = scaffold(items);
+  expect(files).toHaveLength(1);
+  expect(documentOf(files[0]!).metadata.annotations).toEqual({ 'stackledger/app': 'com.northwind.utils', 'stackledger/launchd': 'com.northwind.utils.fan' });
 });

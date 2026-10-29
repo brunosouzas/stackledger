@@ -350,8 +350,10 @@ test('Login item without identifier', async () => {
 });
 
 test('Executable name with a slash', async () => {
-  const launchd = await launchdOf({ [`${LAUNCHER}/Contents/Info.plist`]: { CFBundleIdentifier: 'com.northwind.vault.launcher', CFBundleExecutable: '../northwind' } });
-  expect(item(launchd, 'com.northwind.vault.launcher')).toMatchObject({ program: null });
+  for (const name of ['../northwind', '..', '.']) {
+    const launchd = await launchdOf({ [`${LAUNCHER}/Contents/Info.plist`]: { CFBundleIdentifier: 'com.northwind.vault.launcher', CFBundleExecutable: name } });
+    expect(item(launchd, 'com.northwind.vault.launcher'), name).toMatchObject({ program: null });
+  }
 });
 
 test('Helper of an app in a subfolder', async () => {
@@ -378,7 +380,7 @@ test('Bundle program before the arguments', async () => {
 });
 
 test('Bundle program that leaves the bundle', async () => {
-  for (const value of ['../../../../usr/local/bin/northwind', '/usr/local/bin/northwind', 'Contents/../../escape']) {
+  for (const value of ['../../../../usr/local/bin/northwind', '/usr/local/bin/northwind', 'Contents/../../escape', '.', 'Contents/MacOS/.', 'Contents//MacOS/x']) {
     const launchd = await launchdOf({ [`${DISPLAY}/Contents/Library/LaunchAgents/a.plist`]: { Label: 'com.northwind.display.agent', BundleProgram: value, ProgramArguments: ['northwind'] } });
     expect(item(launchd, 'com.northwind.display.agent'), value).toMatchObject({ program: null });
   }
@@ -432,12 +434,25 @@ test('Linked Applications folder', async () => {
 
 test('Linked Info.plist of a login item', async () => {
   const virtual = helpers({ [`${LAUNCHER}/Contents/Info.plist`]: { link: '/Users/username/secret.plist' }, '/Users/username/secret.plist': { CFBundleIdentifier: 'com.northwind.outside' } });
-  // A real open() follows the link (the virtual canRead does not), so only the lstat check can stop the read.
+  // Simulate a canRead that succeeds (a race, or another host), so only the lstat check stops the read.
   const host = { ...virtual, canRead: async () => true };
   const launchd = await readLaunchd(host);
   expect(ids(launchd)).not.toContain('com.northwind.outside');
   expect(launchd.ignored).toBe(await baseIgnored() + 1);
   expect(host.calls.some(call => call.args.at(-1) === `${LAUNCHER}/Contents/Info.plist`)).toBe(false);
+});
+
+test('Unreadable Applications folder fails the app source', async () => {
+  const files = { '/Applications': { dir: true, unreadable: true }, ...bundle('/Users/username/Applications/Northwind Draw.app', 'com.northwind.draw') } as Record<string, Entry>;
+  expect(await readApps(virtualHost({ files }))).toMatchObject({ status: 'failed', reason: 'cannot be read', items: [] });
+});
+
+test('Bundle program that hits a limit', async () => {
+  const plutil = defaultPrograms().plutil!;
+  const path = `${DISPLAY}/Contents/Library/LaunchAgents/a.plist`;
+  const host = virtualHost({ files: machine({ ...bundle(DISPLAY, 'com.northwind.display'), [path]: { Label: 'com.northwind.display.agent', BundleProgram: 'Contents/MacOS/agent', ProgramArguments: ['agent'] } }),
+    programs: { plutil: (args, h) => args[1] === 'BundleProgram' ? { kind: 'time limit' } : plutil(args, h) } });
+  expect(item(await readLaunchd(host), 'com.northwind.display.agent')).toMatchObject({ program: null });
 });
 
 test('Helper arguments are not recorded', async () => {

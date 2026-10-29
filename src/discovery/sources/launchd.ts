@@ -51,7 +51,7 @@ type JobRead = { item: LaunchdItem } | { item: null; reason: 'ignored' | 'no plu
 
 /** A helper's `BundleProgram` joined to its app, only when it stays inside the bundle (design D4). */
 const insideBundle = (app: string, value: string): string | null =>
-  value.startsWith('/') || value.split('/').includes('..') ? null : join(app, value);
+  value.startsWith('/') || value.split('/').some(part => part === '' || part === '.' || part === '..') ? null : join(app, value);
 
 /** One job file; `app` is the bundle holding it for a helper plist. The program is `Program`, else,
  * for a helper with `BundleProgram`, that path inside the bundle (null when it leaves it: launchd runs
@@ -65,6 +65,8 @@ async function readJob(host: Host, path: string, scope: LaunchdScope, app: strin
   for (const key of keys) {
     const value = await extractString(host, path, key);
     if (!value.ok && value.reason === 'no plutil') return { item: null, reason: 'no plutil' };
+    // A BundleProgram that could not be read (a limit) is unknown, not absent: argv[0] would mislead.
+    if (!value.ok && value.reason === 'stopped' && key === 'BundleProgram') break;
     if (!value.ok) continue;
     program = key === 'BundleProgram' ? insideBundle(app!, value.value) : value.value;
     break;
@@ -87,7 +89,8 @@ async function readLoginItem(host: Host, path: string): Promise<JobRead> {
   if (!id.ok) return { item: null, reason: id.reason === 'no plutil' ? 'no plutil' : 'ignored' };
   const executable = await extractString(host, plist, 'CFBundleExecutable');
   if (!executable.ok && executable.reason === 'no plutil') return { item: null, reason: 'no plutil' };
-  const program = executable.ok && !executable.value.includes('/') ? join(contents, 'MacOS', executable.value) : null;
+  const name = executable.ok ? executable.value : '';
+  const program = name !== '' && name !== '.' && name !== '..' && !name.includes('/') ? join(contents, 'MacOS', name) : null;
   return { item: { source: 'launchd', id: id.value, versions: [], scope: 'app-login-item', path, program, script: null } };
 }
 
