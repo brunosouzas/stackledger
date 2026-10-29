@@ -250,6 +250,22 @@ test('Plist reader that hangs on the script key', async () => {
   expect(launchd).toMatchObject({ status: 'ok', ignored: 0 });
 });
 
+test('File check that hangs', async () => {
+  const files = machine({ '/Users/username/Library/LaunchAgents/com.northwind.mount.plist': { Label: 'com.northwind.mount', ProgramArguments: ['/usr/bin/python3', '/Volumes/northwind/agent.py'] }, '/Volumes/northwind/agent.py': '' });
+  const host = virtualHost({ files, programs: { test: () => ({ kind: 'time limit' }) } });
+  const launchd = await readLaunchd(host);
+  expect(item(launchd, 'com.northwind.mount')).toMatchObject({ script: null });
+  expect(launchd).toMatchObject({ status: 'ok', ignored: 0 });
+  // The check ran as a program (sandboxed on a real Mac), not as a stat in the process.
+  expect(host.calls).toContainEqual({ program: 'test', args: ['-f', '/Volumes/northwind/agent.py'] });
+});
+
+test('Script through a link', async () => {
+  const host = job('linked', { ProgramArguments: ['/bin/sh', '/Users/username/bin/northwind-run'] },
+    { '/Users/username/bin/northwind-run': { link: '/Users/username/northwind/run.sh' }, '/Users/username/northwind/run.sh': 'true' });
+  expect(await scriptOf(host, 'linked')).toBe('/Users/username/bin/northwind-run');
+});
+
 test('Non-string script value', async () => {
   const launchd = await readLaunchd(job('dict', { ProgramArguments: ['/usr/bin/python3', { path: '/Users/username/northwind/agent.py' }] }));
   expect(item(launchd, 'com.northwind.dict')).toMatchObject({ script: null });

@@ -64,7 +64,7 @@ Each item SHALL also have `script`: `ProgramArguments.1` when the text of `progr
 - **THEN** the item has `script` null
 
 ### Requirement: launchd script reading
-A limit, a non-zero exit or a missing or non-string value on the `ProgramArguments.1` run, or an empty value, SHALL make `script` null and keep the item; `plutil` not found keeps the rule of "Program limits". An item whose `script` breaks the snapshot secret guard SHALL be left out and counted as ignored, as "Snapshot secret guard" does for every item string.
+A limit, a non-zero exit or a missing or non-string value on the `ProgramArguments.1` run, or an empty value, SHALL make `script` null and keep the item, and so SHALL a file check (`test -f`, sandboxed like every program) that cannot run, is stopped or fails; `plutil` not found keeps the rule of "Program limits". An item whose `script` breaks the snapshot secret guard SHALL be left out and counted as ignored, as "Snapshot secret guard" does for every item string.
 
 #### Scenario: Interpreter with no argument
 - **WHEN** a job has `ProgramArguments` `["/usr/bin/python3"]`
@@ -73,6 +73,14 @@ A limit, a non-zero exit or a missing or non-string value on the `ProgramArgumen
 #### Scenario: Plist reader that hangs on the script key
 - **WHEN** `plutil` hangs on `ProgramArguments.1` of an interpreter job
 - **THEN** after the time limit the item is recorded with `script` null and the source is `ok`
+
+#### Scenario: File check that hangs
+- **WHEN** the file check of an interpreter job's script path hangs, as on a stale network mount
+- **THEN** after the time limit the item is recorded with `script` null and the source is `ok`
+
+#### Scenario: Script through a link
+- **WHEN** an interpreter job's `ProgramArguments.1` is a symbolic link to an existing file
+- **THEN** the item has that link as `script`
 
 #### Scenario: Non-string script value
 - **WHEN** an interpreter job's `ProgramArguments.1` is a dictionary

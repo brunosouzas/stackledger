@@ -24,13 +24,18 @@ export const isInterpreter = (program: string): boolean => {
   return INTERPRETERS.has(name) || /^python3\.[0-9]+$/.test(name);
 };
 
-/** The script of an interpreter job: `ProgramArguments.1` when it is an absolute path to an existing
- * regular file (links followed), else null; `no plutil` keeps the source rule (Program limits). */
+/** The script of an interpreter job: `ProgramArguments.1` when it is an absolute path that sandboxed
+ * `test -f` finds to be a regular file (links followed), else null; `no plutil` keeps the source rule
+ * (Program limits), while a check that cannot run or is stopped only gives null. */
 async function readScript(host: Host, path: string, program: string | null): Promise<string | null | 'no plutil'> {
   if (program === null || !isInterpreter(program)) return null;
   const first = await extractString(host, path, 'ProgramArguments.1');
   if (!first.ok) return first.reason === 'no plutil' ? 'no plutil' : null;
-  return first.value.startsWith('/') && await host.isFile(first.value) ? first.value : null;
+  if (!first.value.startsWith('/')) return null;
+  // The path comes from plist data and may point anywhere (a stale network mount), so it is checked by
+  // `test -f` in the sandbox, with its time and network limits, never by a stat in this process.
+  const check = await host.run('test', ['-f', first.value]);
+  return check.kind === 'exited' && check.code === 0 ? first.value : null;
 }
 
 /** One job file: its item, or a tagged reason (never a bare string, which a Label could equal). */

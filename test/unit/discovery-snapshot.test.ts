@@ -6,6 +6,8 @@ import { discover } from '../../src/discovery/index.js';
 import { checkSnapshot, serialise, snapshotSchema } from '../../src/discovery/snapshot.js';
 import { SOURCES } from '../../src/discovery/annotations.js';
 import { machineFiles, virtualHost } from '../virtual-host.js';
+import { buildDrift } from '../../src/drift.js';
+import { formatDriftText } from '../../src/drift-formats.js';
 
 const at = (iso: string) => new Date(iso);
 
@@ -76,6 +78,15 @@ test('Snapshot from before the script field', async () => {
   const launchd = (checked as { snapshot: typeof snapshot }).snapshot.items.filter(item => item.source === 'launchd');
   expect(launchd.length).toBeGreaterThan(0);
   for (const item of launchd) expect(item).toMatchObject({ script: null });
+  // drift reads it: each job not declared shows its program and no script.
+  const drift = buildDrift((checked as { snapshot: typeof snapshot }).snapshot, []);
+  const jobs = drift.notDeclared.filter(entry => entry.source === 'launchd');
+  expect(jobs.length).toBeGreaterThan(0);
+  const text = formatDriftText(drift).split('\n');
+  for (const entry of jobs) {
+    expect(entry.script).toBeNull();
+    if (entry.program !== null) expect(text).toContainEqual(expect.stringMatching(new RegExp(`\\)  runs ${entry.program.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}  `)));
+  }
 });
 
 test('Script of the wrong type', async () => {
