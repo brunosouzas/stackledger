@@ -42,6 +42,8 @@ The skills, agents, playbooks and rules that AI coding agents use, as a second l
 
 - `site-home` (AB#137, delivered in [#25](https://github.com/brunosouzas/stackledger/pull/25), released as 0.4.0): the site title `stackledger` opens a home page at `/` with a banner, the division cards and links set in `Settings`; the software map moves to `/map/`.
 - `map-backgrounds` (AB#134, delivered in [#39](https://github.com/brunosouzas/stackledger/pull/39), released as 0.6.0): a city backdrop behind the software map, `neutral` (the default, byte for byte the 0.5.1 map) or `london` (the Thames, docks, lakes and large parks of central London from OpenStreetMap data, simplified and attributed, in the `backdrop` colours of `@brunosouzas/design-system` 0.5.3), chosen with `spec.map.backdrop` or `stackledger map --backdrop`; the skills map stays flat. `sao-paulo` later. Never drawn from official metro maps, which are copyrighted.
+- `launchd-script` (AB#223, delivered in [#42](https://github.com/brunosouzas/stackledger/pull/42), released as 0.7.0): `discover` keeps the script an interpreter launchd job runs (an existing file only, checked by sandboxed `test -f`), and `drift` shows `runs <program> [<script>]`.
+- `app-helpers` (AB#222, delivered in [#44](https://github.com/brunosouzas/stackledger/pull/44), released as 0.7.0): `discover` reads the login items, agents and daemons apps declare inside their bundles (scopes `app-agent`, `app-daemon`, `app-login-item`; what an app can run, not whether it is enabled), and `drift` suggests the app's component.
 
 - Build from a Git URL as well as a local folder.
 - Merge catalogues from several repositories (for example, one per team), like Backstage catalogue locations.

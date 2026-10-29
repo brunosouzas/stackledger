@@ -10,7 +10,7 @@ catalog/                            the catalogue: every YAML file below it is r
 README.md                           this file; replace it with your own
 ```
 
-The catalogue lives in `catalog/` so that stackledger never reads the workflow's own YAML (0.3.0 and earlier read hidden folders such as `.github/`; this template pins 0.6.0 (`@brunosouzas/stackledger`), which skips them, so the folder now only keeps the catalogue apart from the repository files). `catalog/catalog-info.yaml` holds one fictitious component, so the copy validates and builds as it is; replace it with yours ([catalogue format](https://github.com/brunosouzas/stackledger/blob/main/docs/catalogue-format.md)).
+The catalogue lives in `catalog/` so that stackledger never reads the workflow's own YAML (0.3.0 and earlier read hidden folders such as `.github/`; this template pins 0.7.0 (`@brunosouzas/stackledger`), which skips them, so the folder now only keeps the catalogue apart from the repository files). `catalog/catalog-info.yaml` holds one fictitious component, so the copy validates and builds as it is; replace it with yours ([catalogue format](https://github.com/brunosouzas/stackledger/blob/main/docs/catalogue-format.md)).
 
 ## Personal or corporate
 
@@ -89,8 +89,8 @@ To fix forward, revert the bad commit on `main`; the push deploys the result. St
 With Node.js 22.12 or later:
 
 ```sh
-npx --yes @brunosouzas/stackledger@0.6.0 validate catalog
-npx --yes @brunosouzas/stackledger@0.6.0 build catalog --out ../catalogue-site --date "$(date -u +%F)"
+npx --yes @brunosouzas/stackledger@0.7.0 validate catalog
+npx --yes @brunosouzas/stackledger@0.7.0 build catalog --out ../catalogue-site --date "$(date -u +%F)"
 ```
 
 Build outside the repository, so the build is never committed.
