@@ -24,6 +24,7 @@ function notDeclaredLine(entry: NotDeclared): string {
   if (entry.versions.length) line += ` ${entry.versions.map(clean).join(', ')}`;
   if (entry.title !== null) line += `  ${clean(entry.title)}`;
   if (entry.path !== null) line += ` (${clean(entry.path)})`;
+  if (entry.program !== null) line += `  runs ${clean(entry.program)}${entry.script === null ? '' : ` ${clean(entry.script)}`}`;
   line += entry.annotation === null ? `  ${entry.note ?? ''}` : `  -> ${clean(entry.annotation)}`;
   if (entry.suggestedComponents.length) line += `  (probably belongs to ${entry.suggestedComponents.map(clean).join(', ')})`;
   return line;

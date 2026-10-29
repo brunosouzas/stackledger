@@ -172,7 +172,7 @@ test('App in the home folder', async () => {
 test('Agent of the user', async () => {
   const launchd = await readLaunchd(virtualHost());
   expect(item(launchd, 'com.northwind.sync')).toEqual({ source: 'launchd', id: 'com.northwind.sync', versions: [], scope: 'user-agent',
-    path: '/Users/username/Library/LaunchAgents/com.northwind.sync.plist', program: '/Applications/Northwind Sync.app/Contents/MacOS/sync' });
+    path: '/Users/username/Library/LaunchAgents/com.northwind.sync.plist', program: '/Applications/Northwind Sync.app/Contents/MacOS/sync', script: null });
 });
 
 test('Unreadable daemon', async () => {
@@ -200,6 +200,114 @@ test('Arguments are not recorded', async () => {
   const runs = host.calls.filter(call => call.args.at(-1) === path);
   expect(runs.length).toBeGreaterThan(0);
   for (const run of runs) expect(run).toEqual({ program: 'plutil', args: ['-extract', expect.stringMatching(/^(Label|Program|ProgramArguments\.0)$/), 'raw', '-expect', 'string', '-o', '-', path] });
+});
+
+// launchd script (launchd-script change): the first argument of an interpreter job, when it is an existing file.
+const job = (name: string, plist: object, extra: Record<string, Entry> = {}) =>
+  virtualHost({ files: machine({ [`/Users/username/Library/LaunchAgents/com.northwind.${name}.plist`]: { Label: `com.northwind.${name}`, ...plist }, ...extra }) });
+const scriptOf = async (host: ReturnType<typeof virtualHost>, name: string) => (item(await readLaunchd(host), `com.northwind.${name}`) as { script: string | null }).script;
+
+test('Interpreter job', async () => {
+  const host = job('server', { ProgramArguments: ['/Users/username/.venvs/northwind/bin/python3.12', '/Users/username/northwind/server.py', '--port', '8800'] }, { '/Users/username/northwind/server.py': 'print()' });
+  expect(item(await readLaunchd(host), 'com.northwind.server')).toMatchObject({ program: '/Users/username/.venvs/northwind/bin/python3.12', script: '/Users/username/northwind/server.py' });
+});
+
+test('Interpreter set through Program', async () => {
+  const host = job('backup-sh', { Program: '/bin/zsh', ProgramArguments: ['zsh', '/Users/username/bin/northwind-backup.sh'] }, { '/Users/username/bin/northwind-backup.sh': 'true' });
+  expect(item(await readLaunchd(host), 'com.northwind.backup-sh')).toMatchObject({ program: '/bin/zsh', script: '/Users/username/bin/northwind-backup.sh' });
+});
+
+test('Interpreter with a flag first', async () => {
+  expect(await scriptOf(job('inline', { ProgramArguments: ['/bin/bash', '-c', 'northwind-sync --all'] }), 'inline')).toBeNull();
+});
+
+test('Not an interpreter name', async () => {
+  const script = { '/Users/username/northwind/tool.py': 'print()' };
+  for (const program of ['/usr/local/bin/python3.12-intel64', '/usr/bin/Python3', '/usr/bin/perl5.34', '/usr/bin/python3.']) {
+    expect(await scriptOf(job('tool', { ProgramArguments: [program, '/Users/username/northwind/tool.py'] }, script), 'tool')).toBeNull();
+  }
+  for (const program of ['python3', '/usr/bin/python3.9', '/opt/homebrew/bin/node', '/usr/bin/osascript']) {
+    expect(await scriptOf(job('tool', { ProgramArguments: [program, '/Users/username/northwind/tool.py'] }, script), 'tool')).toBe('/Users/username/northwind/tool.py');
+  }
+});
+
+test('Script is a folder', async () => {
+  expect(await scriptOf(job('folder', { ProgramArguments: ['/usr/bin/python3', '/Users/username/northwind'] }, { '/Users/username/northwind': { dir: true } }), 'folder')).toBeNull();
+});
+
+test('Interpreter with no argument', async () => {
+  const launchd = await readLaunchd(job('bare', { ProgramArguments: ['/usr/bin/python3'] }));
+  expect(item(launchd, 'com.northwind.bare')).toMatchObject({ program: '/usr/bin/python3', script: null });
+  expect(launchd).toMatchObject({ status: 'ok', ignored: 0 });
+});
+
+test('Plist reader that hangs on the script key', async () => {
+  const plutil = defaultPrograms().plutil!;
+  const files = machine({ '/Users/username/Library/LaunchAgents/com.northwind.slow.plist': { Label: 'com.northwind.slow', ProgramArguments: ['/usr/bin/python3', '/Users/username/northwind/slow.py'] }, '/Users/username/northwind/slow.py': '' });
+  const host = virtualHost({ files, programs: { plutil: (args, h) => args[1] === 'ProgramArguments.1' ? { kind: 'time limit' } : plutil(args, h) } });
+  const launchd = await readLaunchd(host);
+  expect(item(launchd, 'com.northwind.slow')).toMatchObject({ program: '/usr/bin/python3', script: null });
+  expect(launchd).toMatchObject({ status: 'ok', ignored: 0 });
+});
+
+test('File check that hangs', async () => {
+  const files = machine({ '/Users/username/Library/LaunchAgents/com.northwind.mount.plist': { Label: 'com.northwind.mount', ProgramArguments: ['/usr/bin/python3', '/Volumes/northwind/agent.py'] }, '/Volumes/northwind/agent.py': '' });
+  const host = virtualHost({ files, programs: { test: () => ({ kind: 'time limit' }) } });
+  const launchd = await readLaunchd(host);
+  expect(item(launchd, 'com.northwind.mount')).toMatchObject({ script: null });
+  expect(launchd).toMatchObject({ status: 'ok', ignored: 0 });
+  // The check ran as a program (sandboxed on a real Mac), not as a stat in the process.
+  expect(host.calls).toContainEqual({ program: 'test', args: ['-f', '/Volumes/northwind/agent.py'] });
+});
+
+test('Script through a link', async () => {
+  const host = job('linked', { ProgramArguments: ['/bin/sh', '/Users/username/bin/northwind-run'] },
+    { '/Users/username/bin/northwind-run': { link: '/Users/username/northwind/run.sh' }, '/Users/username/northwind/run.sh': 'true' });
+  expect(await scriptOf(host, 'linked')).toBe('/Users/username/bin/northwind-run');
+});
+
+test('Non-string script value', async () => {
+  const launchd = await readLaunchd(job('dict', { ProgramArguments: ['/usr/bin/python3', { path: '/Users/username/northwind/agent.py' }] }));
+  expect(item(launchd, 'com.northwind.dict')).toMatchObject({ script: null });
+  expect(launchd).toMatchObject({ status: 'ok', ignored: 0 });
+});
+
+test('No plutil on the script key', async () => {
+  const plutil = defaultPrograms().plutil!;
+  const host = virtualHost({ files: machine({ '/Users/username/Library/LaunchAgents/com.northwind.gone.plist': { Label: 'com.northwind.gone', ProgramArguments: ['/usr/bin/python3', '/Users/username/northwind/gone.py'] } }),
+    programs: { plutil: (args, h) => args[1] === 'ProgramArguments.1' ? { kind: 'not found' } : plutil(args, h) } });
+  expect(await readLaunchd(host)).toMatchObject({ status: 'skipped' });
+});
+
+test('Later arguments of an interpreter job', async () => {
+  const path = '/Library/LaunchAgents/com.northwind.agent.plist';
+  const host = virtualHost({ files: machine({ [path]: { Label: 'com.northwind.agent', ProgramArguments: ['/usr/bin/python3', '/Users/username/northwind/agent.py', '--token', 'nw-example-value'] }, '/Users/username/northwind/agent.py': '' }) });
+  const results = await readSources(host);
+  const text = JSON.stringify(results);
+  expect(text).toContain('/Users/username/northwind/agent.py');
+  expect(text).not.toContain('nw-example-value');
+  const keys = host.calls.filter(call => call.args.at(-1) === path).map(call => call.args[1]);
+  for (const key of keys) expect(key).toMatch(/^(Label|Program|ProgramArguments\.[01])$/);
+  expect(keys.filter(key => key === 'ProgramArguments.1')).toHaveLength(1);
+});
+
+test('Token as first argument', async () => {
+  const host = job('token', { ProgramArguments: ['/usr/bin/python3', 'nw-example-value'] });
+  expect(await scriptOf(host, 'token')).toBeNull();
+  expect(JSON.stringify(await readSources(host))).not.toContain('nw-example-value');
+});
+
+test('Token that looks like a path', async () => {
+  const host = job('slash', { ProgramArguments: ['/usr/bin/python3', '/nwExampleValue+9a/Q='] });
+  expect(await scriptOf(host, 'slash')).toBeNull();
+  expect(JSON.stringify(await readSources(host))).not.toContain('nwExampleValue');
+});
+
+test('Card number in a script path', async () => {
+  const host = job('pay', { ProgramArguments: ['/usr/bin/python3', '/Users/username/4111111111111111.py'] }, { '/Users/username/4111111111111111.py': '' });
+  const snapshot = await discover(host);
+  expect(snapshot.items.map(entry => entry.id)).not.toContain('com.northwind.pay');
+  expect(snapshot.sources.find(entry => entry.source === 'launchd')).toMatchObject({ status: 'ok', ignored: 1 });
 });
 
 // Plist values are data: a value that reads like a reader status is recorded like any other.

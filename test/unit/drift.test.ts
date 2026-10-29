@@ -4,6 +4,7 @@
  */
 import { test, expect } from 'vitest';
 import { buildDrift, itemNeeds } from '../../src/drift.js';
+import { formatDriftText } from '../../src/drift-formats.js';
 import { app, brew, cask, comp, launchd, mas, simple, snapshotOf } from '../drift-helpers.js';
 
 const ids = (entries: { source: string; id: string }[]) => entries.map(entry => `${entry.source} ${entry.id}`);
@@ -38,7 +39,7 @@ test('Python package spelling', () => {
 
 test('Undeclared cask', () => {
   const drift = buildDrift(snapshotOf([cask('northwind-editor', [], ['5.0.1'])]), []);
-  expect(drift.notDeclared).toEqual([{ source: 'cask', id: 'northwind-editor', path: null, versions: ['5.0.1'], title: null,
+  expect(drift.notDeclared).toEqual([{ source: 'cask', id: 'northwind-editor', path: null, program: null, script: null, versions: ['5.0.1'], title: null,
     annotation: 'stackledger/cask: northwind-editor', note: null, suggestedComponents: [] }]);
   expect(drift.counts.notDeclared).toBe(1);
 });
@@ -173,4 +174,34 @@ test('counts', () => {
   expect(drift.counts).toEqual({ items: 2, matched: 1, notDeclared: 1, dependencies: 0, macos: 0, missing: 0, notChecked: 0, shared: 0, proposedRelations: 0, componentsWithoutAnnotations: 1 });
   expect(drift.snapshot).toEqual({ machine: { name: 'username-macbook-air', user: 'username', macos: '27.2' }, takenAt: '2026-10-21T07:30:00Z' });
   expect(Object.keys(drift)).toEqual(['snapshot', 'counts', 'notDeclared', 'missing', 'notChecked', 'shared', 'matched', 'proposedRelations']);
+});
+
+// What a launchd job runs (launchd-script change).
+const INDEXER = '/Users/username/Library/LaunchAgents/com.northwind.indexer.plist';
+
+test('Interpreter job not declared', () => {
+  const drift = buildDrift(snapshotOf([launchd('com.northwind.indexer', '/usr/bin/python3', INDEXER, '/Users/username/northwind/indexer.py')]), []);
+  const [entry] = drift.notDeclared;
+  expect(Object.keys(entry!).slice(0, 5)).toEqual(['source', 'id', 'path', 'program', 'script']);
+  expect(entry).toMatchObject({ program: '/usr/bin/python3', script: '/Users/username/northwind/indexer.py' });
+  expect(formatDriftText(drift).split('\n')).toContain(`launchd  com.northwind.indexer (${INDEXER})  runs /usr/bin/python3 /Users/username/northwind/indexer.py  -> stackledger/launchd: com.northwind.indexer`);
+});
+
+test('Job without a program', () => {
+  const drift = buildDrift(snapshotOf([launchd('com.northwind.empty', null)]), []);
+  expect(drift.notDeclared[0]).toMatchObject({ program: null, script: null });
+  const line = formatDriftText(drift).split('\n').find(text => text.includes('com.northwind.empty'))!;
+  expect(line).not.toContain('runs');
+});
+
+test('Other sources', () => {
+  const drift = buildDrift(snapshotOf([cask('northwind-editor'), simple('npm', 'northwind-cli')]), []);
+  for (const entry of drift.notDeclared) expect(entry).toMatchObject({ program: null, script: null });
+});
+
+test('Program and script without control characters', () => {
+  const drift = buildDrift(snapshotOf([launchd('com.northwind.bell', '/usr/bin/python3\u0007', undefined, '/Users/username/bell\u001b[31m.py')]), []);
+  const line = formatDriftText(drift).split('\n').find(text => text.includes('com.northwind.bell'))!;
+  expect(line).toContain('runs /usr/bin/python3 /Users/username/bell[31m.py');
+  expect(line).not.toMatch(/[\u0000-\u001f]/);
 });

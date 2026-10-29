@@ -130,7 +130,7 @@ Two stations cannot share a cell. A stop without a position, or a position for a
 
 1. On the Mac: `node dist/cli.js discover` (read-only; it writes only `~/.stackledger/<machine>/snapshot.json`). Never commit the snapshot: it holds the user name and paths.
 2. `node dist/cli.js drift /path/to/catalogue --format json` and read the object:
-   - `notDeclared`: each entry's `annotation` is the line to add, for example `stackledger/cask: northwind-editor`. When `suggestedComponents` is not empty, add the annotation to those components (an app their cask installs). An entry with `note: cannot be annotated` cannot be matched; mention it, do not work around it.
+   - `notDeclared`: each entry's `annotation` is the line to add, for example `stackledger/cask: northwind-editor`. When `suggestedComponents` is not empty, add the annotation to those components (an app their cask installs). An entry with `note: cannot be annotated` cannot be matched; mention it, do not work around it. For a launchd entry, `program` and `script` say what the job runs (`script` is the file an interpreter such as `python3` or `bash` runs); use them to find what the job belongs to, and never copy them into a component.
    - `missing`: a component lists something not installed. Ask whether it was removed (its `lifecycle` may need to change) or the identifier is wrong; `incomplete: true` means the source skipped some entries, so it may be installed after all.
    - `notChecked`: the source was skipped or failed on that Mac. Conclude nothing.
    - `shared`: two components claim one item; `validate` warns too. Ask which one owns it.

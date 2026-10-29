@@ -48,11 +48,15 @@ const plutil: Program = (args, host) => {
   return typeof value === 'string' ? exited(`${value}\n`) : exited('', 1);
 };
 
+/** `test -f <path>` as discovery calls it: exit 0 for a regular file, links followed. */
+const testFile: Program = (args, host) => host.files.get(host.resolve(args[1]!, true))?.kind === 'file' ? exited('', 0) : exited('', 1);
+
 export const defaultPrograms = (): Record<string, Program> => ({
   brew: () => exited(fixture('brew-info.json')),
   mas: () => exited(fixture('mas-list.txt')),
   npm: () => exited(fixture('npm-ls.json')),
   plutil,
+  test: testFile,
   scutil: args => exited(args[1] === 'ComputerName' ? 'username - MacBook Air\n' : 'username---MacBook-Air\n'),
   sw_vers: () => exited('27.2\n'),
 });

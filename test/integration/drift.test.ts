@@ -57,6 +57,7 @@ test('Explicit snapshot', () => {
   expect(documented.stdout).toContain('(probably belongs to component:slack)');
   expect(documented.stdout).toContain('cannot be annotated');
   expect(documented.stdout).toContain('(incomplete source)');
+  expect(documented.stdout).toContain('runs /usr/bin/python3 /Users/username/northwind/indexer.py  -> stackledger/launchd: com.northwind.indexer');
 });
 
 test('Default snapshot', () => {

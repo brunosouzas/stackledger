@@ -14,7 +14,7 @@ export interface BrewItem { source: 'brew'; id: string; versions: string[]; onRe
 export interface CaskItem { source: 'cask'; id: string; versions: string[]; apps: string[] }
 export interface MasItem { source: 'mas'; id: string; versions: string[]; title: string }
 export interface AppItem { source: 'app'; id: string; versions: string[]; title: string; path: string; appStore: boolean }
-export interface LaunchdItem { source: 'launchd'; id: string; versions: string[]; scope: LaunchdScope; path: string; program: string | null }
+export interface LaunchdItem { source: 'launchd'; id: string; versions: string[]; scope: LaunchdScope; path: string; program: string | null; script: string | null }
 export interface MiseItem { source: 'mise'; id: string; versions: string[] }
 export interface NpmItem { source: 'npm'; id: string; versions: string[] }
 export interface PipxItem { source: 'pipx'; id: string; versions: string[] }

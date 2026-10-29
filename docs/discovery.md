@@ -67,14 +67,14 @@ Sources are read in this order. A source whose program or folders are absent is 
 | `brew` and `cask` | One run of `brew info --json=v2 --installed` | Formula: full name (`northwind/tools/ledger` for a tap), installed versions, `onRequest`, runtime dependencies declared directly. Cask: full token, version, the `.app` bundles it installs |
 | `mas` | `mas list` | App Store identifier, name, version |
 | `app` | The `*.app` folders directly in `/Applications` and `~/Applications` and one folder level below; for each, `plutil -convert json -o - <app>/Contents/Info.plist`, or when that fails `plutil -extract <key> raw -expect string -o - <file>` for `CFBundleIdentifier`, `CFBundleDisplayName`, `CFBundleName` and `CFBundleShortVersionString`; whether `Contents/_MASReceipt` exists | Bundle identifier, title (display name, else bundle name, else folder name, else the identifier), version, path, `appStore` |
-| `launchd` | The `.plist` files in `~/Library/LaunchAgents`, `/Library/LaunchAgents` and `/Library/LaunchDaemons`; for each, `plutil -extract Label raw -expect string -o - <file>`, then `Program`, else `ProgramArguments.0` the same way | Label, scope (`user-agent`, `agent`, `daemon`), path, program |
+| `launchd` | The `.plist` files in `~/Library/LaunchAgents`, `/Library/LaunchAgents` and `/Library/LaunchDaemons`; for each, `plutil -extract Label raw -expect string -o - <file>`, then `Program`, else `ProgramArguments.0` the same way; for an interpreter job, `ProgramArguments.1` too, then `test -f <script>` | Label, scope (`user-agent`, `agent`, `daemon`), path, program, script |
 | `mise` | The folders in `installs` of the mise data folder (`$MISE_DATA_DIR`, else `$XDG_DATA_HOME/mise`, else `~/.local/share/mise`); `mise` itself is never run | Tool name and its version folders (links such as `latest` left out) |
 | `npm` | `npm ls --global --depth=0 --json --offline`, with the `npm` found on `PATH` | Package name and version |
 | `pipx` | `venvs/*/pipx_metadata.json` in the pipx home (`$PIPX_HOME`, else `~/.local/pipx` when it exists, else `~/Library/Application Support/pipx`); `pipx` itself is never run, because it writes a log on every run | Package name and version |
 
 The machine name and version come from `scutil --get ComputerName`, `scutil --get LocalHostName` and `sw_vers -productVersion`. A program is looked up in the absolute folders of `PATH` in order, then in `/opt/homebrew/bin` and `/usr/local/bin`. Relative and empty `PATH` entries (such as `bin` or `::`) are skipped: they would make the folder you happen to run discovery from decide which `brew` or `npm` runs.
 
-Only three keys of a launchd file are read, so a job's arguments and environment variables (which may hold tokens) never reach the snapshot. Symbolic links are never followed: a linked app or plist, a linked folder a source reads (`/Applications`, `~/Applications`, a subfolder of either, a launchd folder, the mise data folder, its `installs` or a tool folder in it, the pipx home, its `venvs` or a venv), and an app whose `Contents` or `Info.plist` is a link each count as one ignored entry, so `drift` marks a missing identifier of that source `incomplete`. An `.app` entry that cannot be examined, any other entry of an Applications folder that cannot be examined (it may be a subfolder) and a subfolder that cannot be listed are counted as ignored too, since each may hide an app. A listed `.plist`, mise tool folder or pipx venv that cannot be examined is counted as ignored for the same reason: it may be a job, a tool or a package. Folders are listed by Node itself; only `plutil` runs per file, eight at a time.
+Only three keys of a launchd file are read, so a job's arguments and environment variables (which may hold tokens) never reach the snapshot. The one exception is a job whose program is an interpreter: `sh`, `bash`, `zsh`, `dash`, `ksh`, `python`, `python3`, `python3.<digits>`, `node`, `ruby`, `perl` or `osascript`, compared exactly with the name after the program's last `/`. Its program says nothing about what it runs, so `ProgramArguments.1` is read too and kept as `script` only when it is an absolute path that `test -f`, run in the sandbox like every program, finds to be a file. A flag (`bash -c`, `python3 -m`), inline code or a token, even one starting with `/`, gives `script` `null`, and no later argument is read. Jobs started through `/usr/bin/env` keep `script` `null`. Symbolic links are never followed: a linked app or plist, a linked folder a source reads (`/Applications`, `~/Applications`, a subfolder of either, a launchd folder, the mise data folder, its `installs` or a tool folder in it, the pipx home, its `venvs` or a venv), and an app whose `Contents` or `Info.plist` is a link each count as one ignored entry, so `drift` marks a missing identifier of that source `incomplete`. An `.app` entry that cannot be examined, any other entry of an Applications folder that cannot be examined (it may be a subfolder) and a subfolder that cannot be listed are counted as ignored too, since each may hide an app. A listed `.plist`, mise tool folder or pipx venv that cannot be examined is counted as ignored for the same reason: it may be a job, a tool or a package. Folders are listed by Node itself; only `plutil` runs per file, eight at a time.
 
 A skipped or failed source records one fixed reason: `not found`, `exited with code <n>`, `time limit`, `output limit`, `unreadable output` or `cannot be read`. No program output reaches the snapshot, the summary or the terminal.
 
@@ -124,7 +124,7 @@ The format is `stackledger-snapshot/v1` ([full example](../examples/northwind-ma
     { "source": "cask", "id": "northwind-editor", "versions": ["5.0.1"], "apps": ["Northwind Editor.app"] },
     { "source": "mas", "id": "1234567890", "versions": ["4.2"], "title": "Northwind Notes" },
     { "source": "app", "id": "com.northwind.editor", "versions": ["5.0.1"], "title": "Northwind Editor", "path": "/Applications/Northwind Editor.app", "appStore": false },
-    { "source": "launchd", "id": "com.northwind.sync", "versions": [], "scope": "user-agent", "path": "/Users/username/Library/LaunchAgents/com.northwind.sync.plist", "program": "/Applications/Northwind Sync.app/Contents/MacOS/sync" },
+    { "source": "launchd", "id": "com.northwind.sync", "versions": [], "scope": "user-agent", "path": "/Users/username/Library/LaunchAgents/com.northwind.sync.plist", "program": "/Applications/Northwind Sync.app/Contents/MacOS/sync", "script": null },
     { "source": "mise", "id": "node", "versions": ["22.12.0", "24.1.0"] },
     { "source": "npm", "id": "northwind-cli", "versions": ["3.0.0"] },
     { "source": "pipx", "id": "northwind-docs", "versions": ["1.6.0"] }
@@ -133,7 +133,7 @@ The format is `stackledger-snapshot/v1` ([full example](../examples/northwind-ma
 ```
 
 - `sources` always has the eight sources, in source order; two are shown. `takenAt` is UTC to the second. `machine.macos` is `null` when it cannot be read.
-- Each source has exactly the fields shown for it; an unknown field makes the file invalid. `versions` is always empty for `launchd`, empty for an app without `CFBundleShortVersionString`, and never empty for the other sources; `program` may be `null`.
+- Each source has exactly the fields shown for it; an unknown field makes the file invalid. `versions` is always empty for `launchd`, empty for an app without `CFBundleShortVersionString`, and never empty for the other sources; `program` and `script` may be `null`. A snapshot written before `script` existed has no `script` on its launchd items and is read as if each were `null`; `drift` 0.6.0 and older reject a snapshot that has it (exit 2, shape not valid), so run `discover` and `drift` from the same version.
 - Consistency: every item's source is `ok`; each source's `items` equals its number of items; `reason` is `null` exactly when the status is `ok`; no two items share source, `id` and `path`.
 - Items without a path and with the same `id` in one source are merged (lists united). Items are sorted by source order, then `id`, then `path`, by Unicode code point; every list is sorted without repeats. Characters U+007F to U+009F are written as `\u` escapes. The same machine gives the same bytes apart from `takenAt`.
 
@@ -175,7 +175,7 @@ The machine and `takenAt`, the counts, then not declared (by source), missing, n
 
 ```
 Drift of username-macbook-air (user username, macOS 27.2), snapshot taken 2026-10-21T07:30:00Z
-Counts: items 26, matched 14, not declared 9, dependencies 1, macOS items 2, missing 2, not checked 1, shared 0, proposed relations 1, components without annotations 6
+Counts: items 27, matched 14, not declared 10, dependencies 1, macOS items 2, missing 2, not checked 1, shared 0, proposed relations 1, components without annotations 6
 
 Not declared
 brew  forge 2.1.0  -> stackledger/brew: forge
@@ -183,7 +183,8 @@ cask  northwind-editor 5.0.1  -> stackledger/cask: northwind-editor
 app  com.northwind.draw 3.2  Northwind Draw (/Users/username/Applications/Northwind Draw.app)  -> stackledger/app: com.northwind.draw
 app  com.northwind.editor 5.0.1  Northwind Editor (/Applications/Northwind Editor.app)  -> stackledger/app: com.northwind.editor
 app  com.tinyspeck.slackmacgap 4.46.101  Slack (/Applications/Slack.app)  -> stackledger/app: com.tinyspeck.slackmacgap  (probably belongs to component:slack)
-launchd  com.northwind.sync,helper (/Library/LaunchAgents/com.northwind.sync.helper.plist)  cannot be annotated
+launchd  com.northwind.indexer (/Users/username/Library/LaunchAgents/com.northwind.indexer.plist)  runs /usr/bin/python3 /Users/username/northwind/indexer.py  -> stackledger/launchd: com.northwind.indexer
+launchd  com.northwind.sync,helper (/Library/LaunchAgents/com.northwind.sync.helper.plist)  runs /Applications/Northwind Editor.app/Contents/MacOS/sync-helper  cannot be annotated
 mise  node 22.12.0, 24.1.0  -> stackledger/mise: node
 npm  northwind-cli 3.0.0  -> stackledger/npm: northwind-cli
 pipx  northwind-docs 1.6.0  -> stackledger/pipx: northwind-docs
@@ -209,7 +210,7 @@ With `--format json`, one object, stable within version 1:
 {
   "snapshot": { "machine": { "name": "username-macbook-air", "user": "username", "macos": "27.2" }, "takenAt": "2026-10-21T07:30:00Z" },
   "counts": { "items": 40, "matched": 30, "notDeclared": 4, "dependencies": 5, "macos": 1, "missing": 2, "notChecked": 1, "shared": 1, "proposedRelations": 2, "componentsWithoutAnnotations": 3 },
-  "notDeclared": [{ "source": "cask", "id": "northwind-editor", "path": null, "versions": ["5.0.1"], "title": null, "annotation": "stackledger/cask: northwind-editor", "note": null, "suggestedComponents": [] }],
+  "notDeclared": [{ "source": "cask", "id": "northwind-editor", "path": null, "program": null, "script": null, "versions": ["5.0.1"], "title": null, "annotation": "stackledger/cask: northwind-editor", "note": null, "suggestedComponents": [] }],
   "missing": [{ "component": "component:legacy", "source": "app", "id": "com.northwind.legacy", "incomplete": false }],
   "notChecked": [{ "component": "component:notes", "source": "mas", "id": "1234567890", "status": "skipped" }],
   "shared": [{ "source": "cask", "id": "northwind-editor", "path": null, "components": ["component:editor", "component:editor-beta"] }],
@@ -218,7 +219,7 @@ With `--format json`, one object, stable within version 1:
 }
 ```
 
-- An item is named by `source`, `id` and `path` (`null` for sources without one). `title` is the item's title or `null`. `annotation` is `null`, and `note` is `cannot be annotated`, for an identifier no annotation can hold; otherwise `note` is `null`. `suggestedComponents` may be empty.
+- An item is named by `source`, `id` and `path` (`null` for sources without one). `program` and `script` say what a launchd job runs (each may be `null`) and are `null` for other sources; the text output prints them as `runs <program> [<script>]` after the path. `title` is the item's title or `null`. `annotation` is `null`, and `note` is `cannot be annotated`, for an identifier no annotation can hold; otherwise `note` is `null`. `suggestedComponents` may be empty.
 - `counts.items` is every snapshot item; `matched` counts items matched at least once (shared ones once); `dependencies` and `macos` count the items left out of `notDeclared`; `componentsWithoutAnnotations` counts served components with no discovery annotation.
 - `missing` and `notChecked` hold the identifier as the component wrote it. Components are `component:<name>` as the catalogue writes the name. Shared items are also in `matched`.
 - Characters U+007F to U+009F are written as `\u` escapes; values parse back unchanged.
@@ -233,7 +234,7 @@ With `--format json`, one object, stable within version 1:
 - Everything is built and checked before the first write. If a write fails, the files this run created and `dir` are removed, stdout stays empty, and the command exits 1. A file counts as created by this run only while it is still the same file (device and inode): a file another process put in `dir`, or put in place of a draft, is kept, and so is `dir` then. `dir` itself is removed only while it is still the folder made, checked right before the removal.
 - Grouping: items with the same source and identifier (as matching compares them) share one file, so an app in `/Applications` and in `~/Applications` gives one file. An app that a listed cask installs goes into the file of the first such cask. Items with suggested components, without annotation, or only counted get no file.
 - Name: the title, else the part of the `id` after its last `/`, folded as the machine name is (`item` when nothing is left). A name already used by a catalogue `Component` (even one with errors) or an earlier file, ignoring case, gets `-2`, `-3` and so on, within 63 characters. The file is `<name>.yaml`.
-- Content: `metadata.name`, `metadata.title` (the title without control characters, else the `id`), the discovery annotations in source order, `spec.type` (`service` for a launchd job, else `tool`), `lifecycle: active`, `owner: unknown`, and `spec.dependsOn` with the catalogue components and other drafts that match what the file's items need. No path, program, version or machine name is copied.
+- Content: `metadata.name`, `metadata.title` (the title without control characters, else the `id`), the discovery annotations in source order, `spec.type` (`service` for a launchd job, else `tool`), `lifecycle: active`, `owner: unknown`, and `spec.dependsOn` with the catalogue components and other drafts that match what the file's items need. No path, program, script, version or machine name is copied.
 - Each file is checked as a one-file catalogue with the rules of `stackledger validate`, the secret guard and the 1 MiB limit included. A file with an error is left out, other drafts stop naming it, and stderr says how many were left out.
 
 ```yaml
@@ -306,6 +307,6 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.northwind.stackledge
 - `drift` compares 2,000 items with 500 components in under 2 seconds (`npm run test:perf` checks it).
 - macOS only, one machine per snapshot. No Windows or Linux collector, nothing inside `/System`.
 - Only the global packages of the `npm` on `PATH`; pip packages only through pipx; App Store purchases only when installed.
-- A launchd job's label and program only: never its arguments, environment, or whether it is loaded or running.
+- A launchd job's label and program, plus the script of an interpreter job: never its other arguments, environment, or whether it is loaded or running.
 - `mas` and mise output formats come from their documentation and fixtures; they were not on the spike machine.
 - No history: each `discover` run replaces the machine's snapshot. Discovery data is not shown in the site, the map, the report or the MCP server.
