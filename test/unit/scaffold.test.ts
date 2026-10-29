@@ -8,7 +8,7 @@ import { buildDrift } from '../../src/drift.js';
 import { buildScaffold, checkScaffold, type ScaffoldFile } from '../../src/scaffold.js';
 import type { Item } from '../../src/discovery/types.js';
 import type { Component } from '../../src/schema.js';
-import { app, brew, cask, comp, launchd, snapshotOf, TAKEN_AT } from '../drift-helpers.js';
+import { app, brew, cask, comp, helper, launchd, snapshotOf, TAKEN_AT } from '../drift-helpers.js';
 
 function scaffold(items: Item[], components: Component[] = [], names = components.map(component => component.metadata.name)): ScaffoldFile[] {
   const snapshot = snapshotOf(items);
@@ -109,4 +109,26 @@ test('Scaffold of an interpreter job copies no script', () => {
   expect(files[0]!.text).not.toContain('indexer.py');
   expect(files[0]!.text).not.toContain('/usr/bin/python3');
   expect(documentOf(files[0]!).spec).toMatchObject({ type: 'service' });
+});
+
+// Scaffold of app helpers (app-helpers change).
+const UTILS_APP = '/Applications/Northwind Utils.app';
+const FAN_PLIST = `${UTILS_APP}/Contents/Library/LaunchDaemons/com.northwind.utils.fan.plist`;
+
+test('App and its helper in one file', () => {
+  const files = scaffold([app('com.northwind.utils', UTILS_APP, { title: 'Northwind Utils' }), helper('com.northwind.utils.fan', FAN_PLIST)]);
+  expect(files).toHaveLength(1);
+  expect(documentOf(files[0]!).metadata.annotations).toEqual({ 'stackledger/app': 'com.northwind.utils', 'stackledger/launchd': 'com.northwind.utils.fan' });
+  expect(documentOf(files[0]!).spec).not.toHaveProperty('dependsOn');
+});
+
+test('Helper of an app with a suggestion', () => {
+  const items = [cask('northwind-utils', ['Northwind Utils.app']), app('com.northwind.utils', UTILS_APP), helper('com.northwind.utils.fan', FAN_PLIST)];
+  const files = scaffold(items, [comp('utils', { 'stackledger/cask': 'northwind-utils' })]);
+  expect(files).toEqual([]);
+});
+
+test('Helper whose app is declared gets no file', () => {
+  const files = scaffold([app('com.northwind.utils', UTILS_APP), helper('com.northwind.utils.fan', FAN_PLIST)], [comp('utils', { 'stackledger/app': 'com.northwind.utils' })]);
+  expect(files).toEqual([]);
 });

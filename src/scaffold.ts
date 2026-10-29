@@ -7,7 +7,8 @@
  *
  * - buildScaffold(drift, snapshot, catalogueNames): from the not-declared list, leaving out entries
  *   with suggested components or without annotation, one file per source and identifier (as matching
- *   compares them); an undeclared app a listed cask installs joins the file of the first such cask.
+ *   compares them); an undeclared app a listed cask installs joins the file of the first such cask,
+ *   and a helper an undeclared app declares (scope `app-*`) joins the file holding that app.
  *   Names come from the title (else the id after its last `/`) folded as the machine name is, with
  *   `-2`, `-3` suffixes against every catalogue Component name and earlier file, ignoring case.
  *   `spec.dependsOn` names the catalogue components and other files that match what the file's items
@@ -21,7 +22,7 @@ import { stringify } from 'yaml';
 import { normaliseId, SOURCES } from './discovery/annotations.js';
 import { fold } from './discovery/machine.js';
 import type { Snapshot } from './discovery/snapshot.js';
-import type { Item } from './discovery/types.js';
+import { APP_HELPER_SCOPES, type Item } from './discovery/types.js';
 import { itemKey, itemNeeds, itemRef, type Drift, type NotDeclared } from './drift.js';
 import { compareRefs } from './identity.js';
 import { MAX_FILE_BYTES, parseSource } from './source.js';
@@ -74,9 +75,19 @@ export function buildScaffold(drift: Drift, snapshot: Snapshot, catalogueNames: 
     if (cask) cask.push(...group);
     return !cask;
   });
+  // A helper of an undeclared app joins the file holding that app's annotation, so the annotation lands
+  // on the app's component (drift spec, Scaffold of app helpers). Helpers with suggestions got no group.
+  const fileOfApp = (path: string) => files.find(file => file.some(entry => entry.source === 'app' && entry.path !== null && path.startsWith(`${entry.path}/`)));
+  const placed = files.filter(group => {
+    const item = itemOf(group[0]!);
+    if (item.source !== 'launchd' || !APP_HELPER_SCOPES.includes(item.scope)) return true;
+    const file = fileOfApp(item.path);
+    if (file) file.push(...group);
+    return !file;
+  });
 
   const taken = new Set(catalogueNames.map(name => name.toLowerCase()));
-  const named = files.map(entries => {
+  const named = placed.map(entries => {
     const title = entries.map(entry => entry.title?.replace(CONTROL, '') ?? '').find(text => text !== '');
     const id = entries[0]!.id;
     const name = uniqueName(fold(title ?? id.slice(id.lastIndexOf('/') + 1)) || EMPTY_NAME, taken);

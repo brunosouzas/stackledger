@@ -8,7 +8,9 @@ import type { Reason } from './run.js';
 
 export type { SourceName } from './annotations.js';
 export type Status = 'ok' | 'skipped' | 'failed';
-export type LaunchdScope = 'user-agent' | 'agent' | 'daemon';
+export type LaunchdScope = 'user-agent' | 'agent' | 'daemon' | 'app-agent' | 'app-daemon' | 'app-login-item';
+/** Scopes of the helpers an app declares inside its bundle (mac-discovery spec, App helpers). */
+export const APP_HELPER_SCOPES: readonly LaunchdScope[] = ['app-agent', 'app-daemon', 'app-login-item'];
 
 export interface BrewItem { source: 'brew'; id: string; versions: string[]; onRequest: boolean; dependsOn: string[] }
 export interface CaskItem { source: 'cask'; id: string; versions: string[]; apps: string[] }

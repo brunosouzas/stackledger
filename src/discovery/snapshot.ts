@@ -41,7 +41,7 @@ const itemSchema = z.discriminatedUnion('source', [
   z.strictObject({ source: z.literal('cask'), id: text, versions, apps: list }),
   z.strictObject({ source: z.literal('mas'), id: text, versions, title: text }),
   z.strictObject({ source: z.literal('app'), id: text, versions: list, title: text, path: text, appStore: z.boolean() }),
-  z.strictObject({ source: z.literal('launchd'), id: text, versions: z.array(text).max(0), scope: z.enum(['user-agent', 'agent', 'daemon']), path: text, program: text.nullable(),
+  z.strictObject({ source: z.literal('launchd'), id: text, versions: z.array(text).max(0), scope: z.enum(['user-agent', 'agent', 'daemon', 'app-agent', 'app-daemon', 'app-login-item']), path: text, program: text.nullable(),
     // Absent in snapshots written before the field existed (drift spec, Snapshot without script): read as null.
     script: text.nullable().default(null) }),
   z.strictObject({ source: z.literal('mise'), id: text, versions }),

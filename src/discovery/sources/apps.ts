@@ -20,7 +20,7 @@ import { entryKind, extractString, isRecord, listFolder, listRoot, nonEmptyStrin
 
 const KEYS = ['CFBundleIdentifier', 'CFBundleDisplayName', 'CFBundleName', 'CFBundleShortVersionString'] as const;
 type Fields = Partial<Record<typeof KEYS[number], string>>;
-type Found = { kind: 'app'; path: string } | { kind: 'ignored' };
+export type Found = { kind: 'app'; path: string } | { kind: 'ignored' };
 
 /** The `.app` folders in one root and its subfolders, plus the ignored entries (linked or unexaminable
  * `.app` entries, unexaminable top-level entries, unlistable subfolders). */
@@ -98,19 +98,29 @@ async function readBundle(host: Host, path: string): Promise<BundleRead> {
   } };
 }
 
-export async function readApps(host: Host): Promise<SourceResult> {
+/** The walk of both Applications folders, shared with `launchd` for the helpers apps declare
+ * (mac-discovery spec, App helpers not followed; app-helpers design D3): the `.app` folders, the
+ * ignored entries, how many roots exist and how many of those cannot be listed. `app` fails on an
+ * unlistable root; `launchd` counts it as one ignored entry. */
+export interface ApplicationsWalk { present: number; unreadable: number; found: Found[] }
+export async function walkApplications(host: Host): Promise<ApplicationsWalk> {
   const roots = [host.applications, join(host.home, 'Applications')];
-  const found: Found[] = [];
-  let present = 0;
+  const walk: ApplicationsWalk = { present: 0, unreadable: 0, found: [] };
   for (const root of roots) {
     const bundles = await bundlesIn(host, root, 0);
     if (bundles === 'absent') continue;
-    if (bundles === 'unreadable') return failed('app', 'cannot be read');
-    present++;
+    walk.present++;
+    if (bundles === 'unreadable') walk.unreadable++;
     // A linked Applications folder exists but is not followed: one ignored entry.
-    if (bundles === 'link') found.push({ kind: 'ignored' });
-    else found.push(...bundles);
+    else if (bundles === 'link') walk.found.push({ kind: 'ignored' });
+    else walk.found.push(...bundles);
   }
+  return walk;
+}
+
+export async function readApps(host: Host): Promise<SourceResult> {
+  const { present, unreadable, found } = await walkApplications(host);
+  if (unreadable) return failed('app', 'cannot be read');
   if (!present) return skipped('app');
   const paths = found.flatMap(entry => entry.kind === 'app' ? [entry.path] : []);
   const read = await pool(paths, PLUTIL_POOL, path => readBundle(host, path));

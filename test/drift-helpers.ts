@@ -20,6 +20,9 @@ export const app = (id: string, path: string, fields: { title?: string; appStore
   ({ source: 'app', id, versions: fields.versions ?? ['1.0.0'], title: fields.title ?? path.split('/').at(-1)!.replace(/\.app$/, ''), path, appStore: fields.appStore ?? false });
 export const launchd = (id: string, program: string | null, path = `/Users/username/Library/LaunchAgents/${id}.plist`, script: string | null = null): Item =>
   ({ source: 'launchd', id, versions: [], scope: 'user-agent', path, program, script });
+/** A helper an app declares inside its bundle (app-helpers change). */
+export const helper = (id: string, path: string, scope: 'app-agent' | 'app-daemon' | 'app-login-item' = 'app-daemon', program: string | null = null): Item =>
+  ({ source: 'launchd', id, versions: [], scope, path, program, script: null });
 export const simple = (source: 'mise' | 'npm' | 'pipx', id: string, versions = ['1.0.0']): Item => ({ source, id, versions });
 
 export function snapshotOf(items: Item[], sources: Partial<Record<SourceName, { status?: Status; ignored?: number }>> = {}): Snapshot {
