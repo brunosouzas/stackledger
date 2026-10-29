@@ -166,7 +166,7 @@ Program output that is not the expected top-level JSON (an object with `formulae
 
 #### Scenario: Agent of the user
 - **WHEN** `~/Library/LaunchAgents/com.northwind.sync.plist` has `Label` `com.northwind.sync` and `ProgramArguments` `["/Applications/Northwind Sync.app/Contents/MacOS/sync", "--quiet"]`
-- **THEN** the item has scope `user-agent` and `program` `/Applications/Northwind Sync.app/Contents/MacOS/sync`
+- **THEN** the item has scope `user-agent`, `program` `/Applications/Northwind Sync.app/Contents/MacOS/sync` and `script` null
 
 #### Scenario: Unreadable daemon
 - **WHEN** a file in `/Library/LaunchDaemons` cannot be read by the user
@@ -181,11 +181,23 @@ Program output that is not the expected top-level JSON (an object with `formulae
 - **THEN** that job is not recorded, `launchd` is `ok` and `ignored` counts the link once
 
 ### Requirement: launchd privacy
-Discovery SHALL read only the keys `Label`, `Program` and `ProgramArguments.0` of a launchd file, one `plutil -extract <key> raw` run per key, so no other argument, environment variable or key is read or reaches the snapshot.
+Discovery SHALL read only the keys `Label`, `Program` and `ProgramArguments.0` of a launchd file, plus `ProgramArguments.1` once when `program` is an interpreter ("launchd script"), one `plutil -extract <key> raw` run per key, so no other argument, environment variable or key is read or reaches the snapshot.
 
 #### Scenario: Arguments are not recorded
 - **WHEN** a job's `ProgramArguments` is `["/usr/local/bin/northwind-agent", "--token", "nw-example-value"]` and it has `EnvironmentVariables`
-- **THEN** the snapshot contains neither `nw-example-value` nor any environment variable, and every `plutil` run on that file extracts one of the three keys
+- **THEN** the snapshot contains neither `nw-example-value` nor any environment variable, and every `plutil` run on that file extracts `Label`, `Program` or `ProgramArguments.0`
+
+#### Scenario: Later arguments of an interpreter job
+- **WHEN** a job's `ProgramArguments` is `["/usr/bin/python3", "/Users/username/northwind/agent.py", "--token", "nw-example-value"]` and that script file exists
+- **THEN** `script` is `/Users/username/northwind/agent.py`, the snapshot does not contain `nw-example-value`, every `plutil` run on that file extracts `Label`, `Program`, `ProgramArguments.0` or `ProgramArguments.1`, and `ProgramArguments.1` is extracted once
+
+#### Scenario: Token as first argument
+- **WHEN** a job's `ProgramArguments` is `["/usr/bin/python3", "nw-example-value"]`
+- **THEN** `script` is null and the snapshot does not contain `nw-example-value`
+
+#### Scenario: Token that looks like a path
+- **WHEN** a job's `ProgramArguments` is `["/usr/bin/python3", "/nwExampleValue+9a/Q="]` and no such file exists
+- **THEN** `script` is null and the snapshot does not contain `/nwExampleValue+9a/Q=`
 
 ### Requirement: mise
 `mise` SHALL list the folders inside `installs` of the mise data folder (`$MISE_DATA_DIR`, else `$XDG_DATA_HOME/mise`, else `~/.local/share/mise`). Each tool folder is one item with `id` = the folder name and `versions` = the names of its version folders, leaving out symbolic links such as `latest`. It SHALL NOT run `mise`. Without that folder the source is `skipped`. A linked data folder, `installs` folder or tool folder is not followed and counts as one ignored entry.
@@ -334,3 +346,53 @@ Discovery SHALL NOT use `sudo`, open network connections, send telemetry or call
 #### Scenario: Writes only the snapshot
 - **WHEN** discovery runs under the Node.js permission model with write access only to the snapshot folder
 - **THEN** it succeeds
+
+### Requirement: launchd script
+Each item SHALL also have `script`: `ProgramArguments.1` when the text of `program` after its last `/` (the whole value if it has none) equals, exactly and case-sensitively, `sh`, `bash`, `zsh`, `dash`, `ksh`, `python`, `python3`, `node`, `ruby`, `perl`, `osascript`, or `python3.` followed by one or more ASCII digits and nothing more, and that value starts with `/` and names an existing regular file, links followed; otherwise null.
+
+#### Scenario: Interpreter job
+- **WHEN** a job has `ProgramArguments` `["/Users/username/.venvs/northwind/bin/python3.12", "/Users/username/northwind/server.py", "--port", "8800"]` and `server.py` exists
+- **THEN** the item has `program` `/Users/username/.venvs/northwind/bin/python3.12` and `script` `/Users/username/northwind/server.py`
+
+#### Scenario: Interpreter set through Program
+- **WHEN** a job has `Program` `/bin/zsh`, `ProgramArguments` `["zsh", "/Users/username/bin/northwind-backup.sh"]` and that file exists
+- **THEN** the item has `program` `/bin/zsh` and `script` `/Users/username/bin/northwind-backup.sh`
+
+#### Scenario: Interpreter with a flag first
+- **WHEN** a job has `ProgramArguments` `["/bin/bash", "-c", "northwind-sync --all"]`
+- **THEN** the item has `program` `/bin/bash` and `script` null
+
+#### Scenario: Not an interpreter name
+- **WHEN** jobs have `program` `/usr/local/bin/python3.12-intel64`, `/usr/bin/Python3` or `/usr/bin/perl5.34`, each followed by an existing script path
+- **THEN** each item has `script` null
+
+#### Scenario: Script is a folder
+- **WHEN** an interpreter job's `ProgramArguments.1` is `/Users/username/northwind`, a folder
+- **THEN** the item has `script` null
+
+### Requirement: launchd script reading
+A limit, a non-zero exit or a missing or non-string value on the `ProgramArguments.1` run, or an empty value, SHALL make `script` null and keep the item, and so SHALL a file check (`test -f`, sandboxed like every program) that cannot run, is stopped or fails; `plutil` not found keeps the rule of "Program limits". An item whose `script` breaks the snapshot secret guard SHALL be left out and counted as ignored, as "Snapshot secret guard" does for every item string.
+
+#### Scenario: Interpreter with no argument
+- **WHEN** a job has `ProgramArguments` `["/usr/bin/python3"]`
+- **THEN** the item is recorded with `script` null
+
+#### Scenario: Plist reader that hangs on the script key
+- **WHEN** `plutil` hangs on `ProgramArguments.1` of an interpreter job
+- **THEN** after the time limit the item is recorded with `script` null and the source is `ok`
+
+#### Scenario: File check that hangs
+- **WHEN** the file check of an interpreter job's script path hangs, as on a stale network mount
+- **THEN** after the time limit the item is recorded with `script` null and the source is `ok`
+
+#### Scenario: Script through a link
+- **WHEN** an interpreter job's `ProgramArguments.1` is a symbolic link to an existing file
+- **THEN** the item has that link as `script`
+
+#### Scenario: Non-string script value
+- **WHEN** an interpreter job's `ProgramArguments.1` is a dictionary
+- **THEN** the item is recorded with `script` null
+
+#### Scenario: Card number in a script path
+- **WHEN** an interpreter job's `script` would be `/Users/username/4111111111111111.py`, an existing file
+- **THEN** the item is left out and counted as ignored
