@@ -41,13 +41,15 @@ const itemSchema = z.discriminatedUnion('source', [
   z.strictObject({ source: z.literal('cask'), id: text, versions, apps: list }),
   z.strictObject({ source: z.literal('mas'), id: text, versions, title: text }),
   z.strictObject({ source: z.literal('app'), id: text, versions: list, title: text, path: text, appStore: z.boolean() }),
-  z.strictObject({ source: z.literal('launchd'), id: text, versions: z.array(text).max(0), scope: z.enum(['user-agent', 'agent', 'daemon']), path: text, program: text.nullable() }),
+  z.strictObject({ source: z.literal('launchd'), id: text, versions: z.array(text).max(0), scope: z.enum(['user-agent', 'agent', 'daemon']), path: text, program: text.nullable(),
+    // Absent in snapshots written before the field existed (drift spec, Snapshot without script): read as null.
+    script: text.nullable().default(null) }),
   z.strictObject({ source: z.literal('mise'), id: text, versions }),
   z.strictObject({ source: z.literal('npm'), id: text, versions }),
   z.strictObject({ source: z.literal('pipx'), id: text, versions }),
 ]);
 const count = z.number().int().nonnegative();
-export const snapshotSchema: z.ZodType<Snapshot> = z.strictObject({
+export const snapshotSchema: z.ZodType<Snapshot, unknown> = z.strictObject({
   format: z.literal(SNAPSHOT_FORMAT),
   takenAt: z.string().regex(TAKEN_AT),
   machine: z.strictObject({ name: z.string().regex(MACHINE_NAME), user: text, macos: text.nullable() }),
@@ -58,7 +60,7 @@ export const snapshotSchema: z.ZodType<Snapshot> = z.strictObject({
   items: z.array(itemSchema),
 });
 
-/** Every string of an item (id, versions, title, path, apps, dependencies, program). */
+/** Every string of an item (id, versions, title, path, apps, dependencies, program, script). */
 function strings(item: Item): string[] {
   return Object.values(item).flatMap(value => typeof value === 'string' ? [value] : Array.isArray(value) ? value as string[] : []);
 }
@@ -73,7 +75,7 @@ function normalise(item: Item): Item {
     case 'cask': return { source: 'cask', id: item.id, versions, apps: sorted(item.apps) };
     case 'mas': return { source: 'mas', id: item.id, versions, title: item.title };
     case 'app': return { source: 'app', id: item.id, versions, title: item.title, path: item.path, appStore: item.appStore };
-    case 'launchd': return { source: 'launchd', id: item.id, versions, scope: item.scope, path: item.path, program: item.program };
+    case 'launchd': return { source: 'launchd', id: item.id, versions, scope: item.scope, path: item.path, program: item.program, script: item.script };
     default: return { source: item.source, id: item.id, versions };
   }
 }

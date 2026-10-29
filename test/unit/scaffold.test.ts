@@ -8,7 +8,7 @@ import { buildDrift } from '../../src/drift.js';
 import { buildScaffold, checkScaffold, type ScaffoldFile } from '../../src/scaffold.js';
 import type { Item } from '../../src/discovery/types.js';
 import type { Component } from '../../src/schema.js';
-import { app, brew, cask, comp, snapshotOf, TAKEN_AT } from '../drift-helpers.js';
+import { app, brew, cask, comp, launchd, snapshotOf, TAKEN_AT } from '../drift-helpers.js';
 
 function scaffold(items: Item[], components: Component[] = [], names = components.map(component => component.metadata.name)): ScaffoldFile[] {
   const snapshot = snapshotOf(items);
@@ -101,4 +101,12 @@ test('Title that looks like YAML', () => {
   expect(documents[0]!.errors).toEqual([]);
   expect((documents[0]!.toJS() as Component).metadata.title).toBe('Northwind: Editor # beta');
   expect(checkScaffold([file!]).leftOut).toBe(0);
+});
+
+test('Scaffold of an interpreter job copies no script', () => {
+  const files = scaffold([launchd('com.northwind.indexer', '/usr/bin/python3', undefined, '/Users/username/northwind/indexer.py')]);
+  expect(files).toHaveLength(1);
+  expect(files[0]!.text).not.toContain('indexer.py');
+  expect(files[0]!.text).not.toContain('/usr/bin/python3');
+  expect(documentOf(files[0]!).spec).toMatchObject({ type: 'service' });
 });

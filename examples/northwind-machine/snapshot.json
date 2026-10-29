@@ -39,7 +39,7 @@
       "source": "launchd",
       "status": "ok",
       "reason": null,
-      "items": 3,
+      "items": 4,
       "ignored": 1
     },
     {
@@ -258,7 +258,17 @@
       "versions": [],
       "scope": "daemon",
       "path": "/Library/LaunchDaemons/com.apple.northwind.helper.plist",
-      "program": "/usr/libexec/northwind-helper"
+      "program": "/usr/libexec/northwind-helper",
+      "script": null
+    },
+    {
+      "source": "launchd",
+      "id": "com.northwind.indexer",
+      "versions": [],
+      "scope": "user-agent",
+      "path": "/Users/username/Library/LaunchAgents/com.northwind.indexer.plist",
+      "program": "/usr/bin/python3",
+      "script": "/Users/username/northwind/indexer.py"
     },
     {
       "source": "launchd",
@@ -266,7 +276,8 @@
       "versions": [],
       "scope": "user-agent",
       "path": "/Users/username/Library/LaunchAgents/com.northwind.secrets-sync.plist",
-      "program": "/opt/homebrew/opt/doppler/bin/doppler"
+      "program": "/opt/homebrew/opt/doppler/bin/doppler",
+      "script": null
     },
     {
       "source": "launchd",
@@ -274,7 +285,8 @@
       "versions": [],
       "scope": "agent",
       "path": "/Library/LaunchAgents/com.northwind.sync.helper.plist",
-      "program": "/Applications/Northwind Editor.app/Contents/MacOS/sync-helper"
+      "program": "/Applications/Northwind Editor.app/Contents/MacOS/sync-helper",
+      "script": null
     },
     {
       "source": "mise",

@@ -11,7 +11,7 @@
  *   Names come from the title (else the id after its last `/`) folded as the machine name is, with
  *   `-2`, `-3` suffixes against every catalogue Component name and earlier file, ignoring case.
  *   `spec.dependsOn` names the catalogue components and other files that match what the file's items
- *   need (src/drift.ts itemNeeds). Only identifiers and titles are copied: never a path, program,
+ *   need (src/drift.ts itemNeeds). Only identifiers and titles are copied: never a path, program, script,
  *   version or machine name. YAML comes from the `yaml` package, so any title stays one scalar.
  * - checkScaffold(files): each file checked as a one-file catalogue with the rules of `stackledger
  *   validate` (secret guard and the 1 MiB limit included); files with errors are left out, and the

@@ -18,8 +18,8 @@ export const cask = (id: string, apps: string[] = [], versions = ['1.0.0']): Ite
 export const mas = (id: string, title: string): Item => ({ source: 'mas', id, versions: ['1.0'], title });
 export const app = (id: string, path: string, fields: { title?: string; appStore?: boolean; versions?: string[] } = {}): Item =>
   ({ source: 'app', id, versions: fields.versions ?? ['1.0.0'], title: fields.title ?? path.split('/').at(-1)!.replace(/\.app$/, ''), path, appStore: fields.appStore ?? false });
-export const launchd = (id: string, program: string | null, path = `/Users/username/Library/LaunchAgents/${id}.plist`): Item =>
-  ({ source: 'launchd', id, versions: [], scope: 'user-agent', path, program });
+export const launchd = (id: string, program: string | null, path = `/Users/username/Library/LaunchAgents/${id}.plist`, script: string | null = null): Item =>
+  ({ source: 'launchd', id, versions: [], scope: 'user-agent', path, program, script });
 export const simple = (source: 'mise' | 'npm' | 'pipx', id: string, versions = ['1.0.0']): Item => ({ source, id, versions });
 
 export function snapshotOf(items: Item[], sources: Partial<Record<SourceName, { status?: Status; ignored?: number }>> = {}): Snapshot {

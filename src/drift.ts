@@ -27,6 +27,8 @@ import type { Component } from './schema.js';
 /** An item as drift output names it (design D9): `path` is null for sources without one. */
 export interface ItemRef { source: SourceName; id: string; path: string | null }
 export interface NotDeclared extends ItemRef {
+  /** What a launchd job runs (drift spec, What a launchd job runs); null for other sources. */
+  program: string | null; script: string | null;
   versions: string[]; title: string | null; annotation: string | null; note: string | null; suggestedComponents: string[];
 }
 export interface Missing { component: string; source: SourceName; id: string; incomplete: boolean }
@@ -162,7 +164,8 @@ export function buildDrift(snapshot: Snapshot, components: Component[]): Drift {
     if (only) { counted[only]++; continue; }
     const canAnnotate = annotatable(item.id);
     const folder = item.source === 'app' ? item.path.slice(item.path.lastIndexOf('/') + 1) : undefined;
-    notDeclared.push({ ...itemRef(item), versions: [...item.versions], title: 'title' in item ? item.title : null,
+    const runs = item.source === 'launchd' ? { program: item.program, script: item.script } : { program: null, script: null };
+    notDeclared.push({ ...itemRef(item), ...runs, versions: [...item.versions], title: 'title' in item ? item.title : null,
       annotation: canAnnotate ? `stackledger/${item.source}: ${item.id}` : null, note: canAnnotate ? null : CANNOT_BE_ANNOTATED,
       suggestedComponents: folder === undefined ? [] : sortRefs(casksByApp.get(folder) ?? []) });
   }

@@ -65,3 +65,26 @@ test('Item without versions', async () => {
   app.items.find((entry: { source: string }) => entry.source === 'app').versions = [];
   expect(checkSnapshot(app)).toHaveProperty('snapshot');
 });
+
+// Snapshot without script (launchd-script change): written before the field existed.
+test('Snapshot from before the script field', async () => {
+  const snapshot = await discover(virtualHost(), at('2026-10-21T07:30:00Z'));
+  const old = JSON.parse(serialise(snapshot));
+  for (const item of old.items) if (item.source === 'launchd') delete item.script;
+  const checked = checkSnapshot(old);
+  expect(checked).toHaveProperty('snapshot');
+  const launchd = (checked as { snapshot: typeof snapshot }).snapshot.items.filter(item => item.source === 'launchd');
+  expect(launchd.length).toBeGreaterThan(0);
+  for (const item of launchd) expect(item).toMatchObject({ script: null });
+});
+
+test('Script of the wrong type', async () => {
+  const snapshot = JSON.parse(serialise(await discover(virtualHost(), at('2026-10-21T07:30:00Z'))));
+  snapshot.items.find((item: { source: string }) => item.source === 'launchd').script = 42;
+  expect(checkSnapshot(snapshot)).toEqual({ problem: 'shape' });
+});
+
+test('Launchd item fields in order', async () => {
+  const snapshot = await discover(virtualHost(), at('2026-10-21T07:30:00Z'));
+  expect(Object.keys(snapshot.items.find(item => item.source === 'launchd')!)).toEqual(['source', 'id', 'versions', 'scope', 'path', 'program', 'script']);
+});
