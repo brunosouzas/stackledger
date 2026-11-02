@@ -15,6 +15,7 @@ You need Node.js 22.12 or later and a wrangler sign-in to the account that owns 
 
 The package is installed into a temporary folder because, inside this repository, `npx @brunosouzas/stackledger@<version>` runs the local package of the same name instead of the released one.
 
+<!-- x-release-please-start-version -->
 ```sh
 (
   set -eu
@@ -36,6 +37,7 @@ The package is installed into a temporary folder because, inside this repository
     --commit-hash "$commit" --commit-message "demo $date $commit"
 )
 ```
+<!-- x-release-please-end -->
 
 `set -eu` stops the block at the first failure, so a failed validation or build never reaches the deploy. `validate` and `skills validate` exit 1 on errors only; warnings do not stop it.
 

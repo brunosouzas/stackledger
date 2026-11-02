@@ -1,0 +1,38 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "666917ca654da729f9b8d89b5de816fcfd66f5b9",
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "include-component-in-tag": false,
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "README.md"
+        },
+        {
+          "type": "generic",
+          "path": "docs/mcp.md"
+        },
+        {
+          "type": "generic",
+          "path": "docs/skills.md"
+        },
+        {
+          "type": "generic",
+          "path": "docs/demo.md"
+        },
+        {
+          "type": "generic",
+          "path": "examples/catalogue-repository/README.md"
+        },
+        {
+          "type": "generic",
+          "path": "examples/catalogue-repository/.github/workflows/stackledger.yml"
+        }
+      ]
+    }
+  }
+}

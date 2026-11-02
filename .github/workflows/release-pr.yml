@@ -1,0 +1,26 @@
+name: Release PR
+
+# Keeps the release pull request (version in package.json and npm-shrinkwrap.json, CHANGELOG.md) with
+# release-please, through the shared workflow of brunosouzas/github-reusable-workflows, acting as the
+# GitHub App brunosouzas-release (a pull request opened with GITHUB_TOKEN would start no checks).
+#
+# It only opens and updates that pull request (skip-github-release): merging it changes the version on
+# main, and release.yml then reserves the tag v<version>, publishes to npm after the owner approves the
+# environment npm, and creates the GitHub release. How to release: docs/release.md.
+#
+# Needs the repository secret RELEASE_APP_PRIVATE_KEY (the app's private key) and the app installed here.
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  release-please:
+    # TODO(AB#243): pin to @v0.1.0 before ready.
+    uses: brunosouzas/github-reusable-workflows/.github/workflows/release-please.yml@feature/ab243-release-please
+    with:
+      skip-github-release: true
+    secrets:
+      release-app-private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}

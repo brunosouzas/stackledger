@@ -6,7 +6,8 @@ import { readFileSync } from 'node:fs';
 const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 test('Deployment documentation: npm once released, template, hosting, release rule and roadmap', () => {
   const readme = read('README.md');
-  for (const text of ['npx @brunosouzas/stackledger@0.7.0', 'examples/catalogue-repository/', 'docs/hosting.md', 'docs/release.md']) expect(readme).toContain(text);
+  const { version } = JSON.parse(read('package.json')) as { version: string };
+  for (const text of [`npx @brunosouzas/stackledger@${version}`, 'examples/catalogue-repository/', 'docs/hosting.md', 'docs/release.md']) expect(readme).toContain(text);
   // The README no longer says the tool is unreleased: it is on npm.
   expect(readme).not.toMatch(/not published|not released|not yet released/i);
   const agents = read('AGENTS.md');

@@ -160,18 +160,20 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-      - run: npx --yes @brunosouzas/stackledger@0.7.0 skills validate
+      - run: npx --yes @brunosouzas/stackledger@0.7.0 skills validate  # x-release-please-version
 ```
 
 With no folder the repository root is checked, so problem paths are relative to it. The job fails on any error and passes with warnings. Name folders on the last line (for example `skills validate skills vendor`) to check only those, together.
 
 A pull request can also change `.stackledgerignore` to hide a real skill. To refuse skips you have not approved, replace the last step with one that compares the JSON `ignored` list with a trusted one (`jq` is installed on GitHub's Ubuntu runners; the exit code of `skills validate` is replaced by the `errors` check, and a usage error leaves no JSON, so `jq` fails):
 
+<!-- x-release-please-start-version -->
 ```yaml
       - run: |
           npx --yes @brunosouzas/stackledger@0.7.0 skills validate --json > skills.json || true
           jq -e '.summary.errors == 0 and .ignored == ["skills/fixtures","templates"]' skills.json
 ```
+<!-- x-release-please-end -->
 
 Compare the list, not only the count: a fork could swap an approved exclusion for a real skill and keep the number. A folder pattern such as `fixtures/` lists only the folder, so a skill moved into it stays hidden with the same list: prefer one entry per pattern (`fixtures/*`), so each hidden skill shows up in the list, or also check `.summary.skills`.
 
@@ -235,10 +237,12 @@ stdout stays empty; stderr gives the pages created, updated and removed.
 
 `--check` writes nothing. It prints one line per file that would be created, updated or removed (`update skills/writer.md`) and exits 1 when there is any, so a pipeline can fail a pull request that changed skills without running the map. It reads CRLF as LF, for checkouts made before `.gitattributes` existed. Run it next to `skills validate`, which is what fails on errors:
 
+<!-- x-release-please-start-version -->
 ```yaml
       - run: npx --yes @brunosouzas/stackledger@0.7.0 skills validate
       - run: npx --yes @brunosouzas/stackledger@0.7.0 skills map . --out docs/skills-map --check
 ```
+<!-- x-release-please-end -->
 
 ### Where the diagrams render
 
@@ -317,7 +321,7 @@ The catalogue pipeline needs the skills too. Check out the skills repository fro
           path: ai-kit
           token: ${{ secrets.AI_KIT_READ_TOKEN }}
           persist-credentials: false
-      - run: npx --yes @brunosouzas/stackledger@0.7.0 build catalogue --out public --skills ai-kit
+      - run: npx --yes @brunosouzas/stackledger@0.7.0 build catalogue --out public --skills ai-kit  # x-release-please-version
 ```
 
 - A private skills repository needs a token that can only read it. Keep it out of pull requests from forks: build those without the skills (no `--skills` and no `spec.skills`), and never publish a pull-request build.
