@@ -1,7 +1,8 @@
 ---
 // Footer from brunosouzas.com (Astroplate theme, MIT): brand and links, then the view, the
-// stackledger version and the theme credit. No links to other sites (site-security): only the home
-// page's configured links leave the site.
+// stackledger version, the parent brand's endorsement (its symbol, one image per theme like the
+// header mark, and "by Bruno Souza", not a link: catalogue-site, Parent brand endorsement) and the
+// theme credit. No links to other sites (site-security): only the home page's configured links leave the site.
 import { href, site } from '../lib/site';
 
 interface Props {
@@ -20,6 +21,6 @@ const { root } = Astro.props;
     </ul>
   </div>
   <div class="footer-bottom">
-    <p class="container">{site.view} view · stackledger {site.version} · Look based on the Astroplate theme (MIT)</p>
+    <p class="container">{site.view} view · stackledger {site.version} · <span class="endorsement"><img class="symbol-mark themed-light" src={href(root, 'symbol-light.svg')} alt="" width="16" height="16" /><img class="symbol-mark themed-dark" src={href(root, 'symbol-dark.svg')} alt="" width="16" height="16" /> by Bruno Souza</span> · Look based on the Astroplate theme (MIT)</p>
   </div>
 </footer>

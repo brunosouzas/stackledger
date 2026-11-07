@@ -164,8 +164,8 @@ test.concurrent('Relative skills folder', async () => {
   expect(html(target, 'full', 'skills/writer')).toContain('<code>skills/writer/SKILL.md</code>');
   for (const file of files(target)) expect(readFileSync(join(target, file), 'utf8'), file).not.toContain('northwind-kit');
 }, 180_000);
-/** The page without the site's own images (catalogue-site "Brand mark"): class, empty alt, the only allowed attributes and a site art src. */
-const SITE_IMAGE = /<img class="(?:brand-mark themed-(?:light|dark)|home-banner-art|link-icon themed-(?:light|dark))" src="(?:\.\.\/)*(?:favicon\.svg|brand-mark-dark\.svg|home-banner\.svg|link-icons\/(?:github|website|linkedin|email)-(?:light|dark)\.svg)" alt="" width="\d+" height="\d+">/g;
+/** The page without the site's own images (catalogue-site "Brand mark", "Parent brand endorsement"): class, empty alt, the only allowed attributes and a site art src. */
+const SITE_IMAGE = /<img class="(?:brand-mark themed-(?:light|dark)|symbol-mark themed-(?:light|dark)|home-banner-art|link-icon themed-(?:light|dark))" src="(?:\.\.\/)*(?:favicon\.svg|brand-mark-dark\.svg|symbol-(?:light|dark)\.svg|home-banner\.svg|link-icons\/(?:github|website|linkedin|email)-(?:light|dark)\.svg)" alt="" width="\d+" height="\d+">/g;
 const withoutSiteImages = (html: string) => html.replace(SITE_IMAGE, '');
 
 test('Description with HTML', () => {

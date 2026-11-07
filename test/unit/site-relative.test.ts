@@ -5,7 +5,7 @@
 import { test, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { decodeAttribute, relativise, scan } from '../../src/site/relative.js';
+import { decodeAttribute, fontCss, moveFontCss, relativise, scan } from '../../src/site/relative.js';
 import { POLICY } from '../../src/site/policy.js';
 import { folder } from '../helpers.js';
 
@@ -178,4 +178,73 @@ test('A no-break space does not split a srcset candidate', () => {
 test('An import specifier holding a string escape is refused', () => {
   const site = folder({ '_astro/map.js': 'import "./\\x2e\\x2e/\\x2e\\x2e/full/x.js";' });
   expect(scan(site)).toEqual(['_astro/map.js: import specifier "./\\x2e\\x2e/\\x2e\\x2e/full/x.js" has a string escape']);
+});
+
+// catalogue-site "Font delivery": the Fonts API's <style> elements move into _astro/fonts.css.
+// The CSS below has the forms Astro writes: faces, a fallback face with src:local("Arial") whose
+// quoted family name holds `:`, `;` and `}`, and a :root block of font variables.
+const FALLBACK = '"Source Sans 3-4235479e6dd7653f fallback: Arial;}"';
+const SANS = '@font-face{font-family:"Source Sans 3-4235479e6dd7653f";src:url("/_astro/fonts/cb6b89414ae7bb91.woff2") format("woff2");font-display:swap;font-weight:400;font-style:normal;unicode-range:U+0000-00FF,U+0131;}'
+  + `@font-face{font-family:${FALLBACK};src:local("Arial");font-display:swap;font-weight:400;font-style:normal;size-adjust:93.7639%;ascent-override:109.2105%;descent-override:42.6604%;line-gap-override:0%;}`
+  + `:root{--font-primary:"Source Sans 3-4235479e6dd7653f",${FALLBACK},sans-serif;}`;
+const SERIF = '@font-face{font-family:"Source Serif 4-3cc88f0d5f12d95d";src:url(/_astro/fonts/7a66173eb8e487de.woff2) format(woff2);font-weight:700;font-style:italic;}:root{--font-secondary:"Source Serif 4-3cc88f0d5f12d95d",serif;}';
+const fontHead = (styles = [SANS, SERIF]) => `${csp}<title>x</title>${styles.map(css => `<style>${css}</style>`).join('')}<link rel="preload" href="/_astro/fonts/cb6b89414ae7bb91.woff2" as="font" type="font/woff2" crossorigin>`;
+const moved = (css: string) => css.replace('url("/_astro/fonts/', 'url("fonts/').replace('url(/_astro/fonts/', 'url(fonts/');
+
+test('Accepted font CSS', () => {
+  expect(fontCss(SANS)).toEqual({ css: moved(SANS) });
+  expect(fontCss(SERIF)).toEqual({ css: moved(SERIF) });
+  const site = folder({ 'index.html': page('<p>home</p>', fontHead()), 'software/editor/index.html': page('<p>editor</p>', fontHead()) });
+  expect(moveFontCss(site)).toEqual([]);
+  const css = readFileSync(join(site, '_astro/fonts.css'), 'utf8');
+  // The quoted text is kept whole; only the url() values changed.
+  expect(css).toBe(moved(SANS) + moved(SERIF));
+  expect(css).toContain(FALLBACK);
+  expect(css.replaceAll('url("fonts/', 'url("/_astro/fonts/').replaceAll('url(fonts/', 'url(/_astro/fonts/')).toBe(SANS + SERIF);
+  // One link, where the first element was, relative to each page; the other elements are gone.
+  const editor = readFileSync(join(site, 'software/editor/index.html'), 'utf8');
+  expect(editor).toContain('<title>x</title><link rel="stylesheet" href="../../_astro/fonts.css"><link rel="preload"');
+  expect(readFileSync(join(site, 'index.html'), 'utf8')).toContain('<title>x</title><link rel="stylesheet" href="_astro/fonts.css"><link rel="preload"');
+  expect(editor).not.toContain('<style');
+  // The site then passes the scan once relativise() has rewritten the preload.
+  relativise(site);
+  expect(scan(site)).toEqual([]);
+});
+
+test('Other style still fails', () => {
+  const hostile = [
+    'p{color:red}',
+    '@import url("/_astro/x.css");',
+    '@media screen{:root{--font-primary:serif;}}',
+    `${SANS}@font-face{font-family:"X";src:url("/_astro/fonts/a.woff2");font-feature-settings:"liga" 0;}`,
+    ':root{--font-primary:serif;color:red;}',
+    '@font-face{font-family:"X";src:url("https://fonts.example/a.woff2") format("woff2");}',
+    '@font-face{font-family:"X";src:url("/_astro/other/a.woff2") format("woff2");}',
+    '@font-face{font-family:"X";src:url("/_astro/fonts/a.woff2"),url("data:font/woff2;base64,AAAA");}',
+    ':root{--font-primary:url(/_astro/fonts/a.woff2);}',
+    '@font-face{font-family:"X";src:url("/_astro/fonts/a.woff2");font-display:var(--x);}',
+    '@font-face{font-family:"X";src:url("/_astro/fonts/\\61.woff2");}',
+    '/* x */:root{--font-primary:serif;}',
+  ];
+  for (const css of hostile) {
+    expect('problem' in fontCss(css), css).toBe(true);
+    const site = folder({ 'index.html': page('<p>home</p>', fontHead()), 'map/index.html': page('<p>map</p>', fontHead([SANS, SERIF, css])) });
+    const problems = moveFontCss(site);
+    expect(problems, css).toHaveLength(1);
+    expect(problems[0], css).toMatch(/^map\/index\.html: /);
+    // Nothing is written: the pages keep their elements and there is no stylesheet.
+    expect(readFileSync(join(site, 'index.html'), 'utf8')).toContain('<style>');
+    expect(() => readFileSync(join(site, '_astro/fonts.css'))).toThrow();
+  }
+  // A <style> with attributes is refused too.
+  const attributed = folder({ 'index.html': page('', `${csp}<style media="print">${SANS}</style>`) });
+  expect(moveFontCss(attributed)).toEqual(['index.html: <style> element with attributes']);
+});
+
+test('Font CSS differs between pages', () => {
+  const changed = SANS.replace('font-weight:400;font-style:normal;unicode', 'font-weight:401;font-style:normal;unicode');
+  expect(changed).not.toBe(SANS);
+  const site = folder({ 'index.html': page('', fontHead()), 'map/index.html': page('', fontHead([changed, SERIF])), 'software/index.html': page('', csp) });
+  expect(moveFontCss(site)).toEqual(['map/index.html: font CSS differs from index.html\'s', 'software/index.html: no font CSS']);
+  expect(() => readFileSync(join(site, '_astro/fonts.css'))).toThrow();
 });

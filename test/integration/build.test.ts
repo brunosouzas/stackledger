@@ -30,6 +30,9 @@ const faultEntry = join(root, 'test', 'integration', 'build-with-faults.mjs');
 interface Fault { op: 'mkdir' | 'rename' | 'rmdir' | 'rm'; nth: number }
 interface Plan {
   out: string;
+  /** build-with-faults.mjs build hooks: a font file the packages lack, a page Astro wrote changed. */
+  missingFont?: string;
+  pageEdit?: { site: 'full' | 'staff'; page: string; kind: 'style' | 'font-css' };
   fail?: Fault[];
   swap?: { to: string; kind: 'link' | 'folder'; after?: Fault; atCheck?: number };
   readOnlyStaging?: boolean;
@@ -643,6 +646,25 @@ test.concurrent('One error', async () => {
     expect.stringMatching(PROXY),
   ]);
 }, 120_000);
+
+// catalogue-site "Missing font file", "Other style still fails" and "Font CSS differs between pages":
+// the build fails naming the file or the page, and nothing is published.
+describe('Font delivery faults', () => {
+  const faults: [string, Omit<Plan, 'out'>, RegExp][] = [
+    ['Missing font file', { missingFont: 'source-serif-4-latin-700-italic.woff2' }, /@fontsource\/source-serif-4\/files\/source-serif-4-latin-700-italic\.woff2 is missing/],
+    ['Other style still fails', { pageEdit: { site: 'full', page: 'map/index.html', kind: 'style' } }, /The full site has style the build does not allow: map\/index\.html: a <style> element with "p"/],
+    ['Font CSS differs between pages', { pageEdit: { site: 'staff', page: 'software/index.html', kind: 'font-css' } }, /The staff site has style the build does not allow: software\/index\.html: font CSS differs from index\.html's/],
+  ];
+  test.concurrent.each(faults)('%s', async (_, plan, message) => {
+    const out = fresh('font-fault');
+    const result = await build(['build', catalogue, '--out', out, '--date', DATE], { plan: { out, ...plan } });
+    expect(result.status, result.stderr).toBe(1);
+    expect(result.stderr).toMatch(/^stackledger build: internal error: /);
+    expect(result.stderr).toMatch(message);
+    // Nothing is published and no staging folder is left.
+    expect(existsSync(out) ? readdirSync(out) : []).toEqual([]);
+  }, 120_000);
+});
 
 test.concurrent('Built twice', async () => {
   // Same documents, other order and other file names: the build is still identical.

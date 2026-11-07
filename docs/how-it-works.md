@@ -46,4 +46,4 @@ flowchart TB
 | Cloudflare Access | one application, only you | two: finance on `/full/*`, staff on the rest |
 | `/` leads to | `/full/` | `/staff/` |
 
-The diagram is drawn by [`@brunosouzas/design-system`](https://www.npmjs.com/package/@brunosouzas/design-system) from the spec [`scripts/how-it-works.json`](../scripts/how-it-works.json), which follows the Mermaid block above: after changing either, run `npm run build && node scripts/site-art.mjs`.
+The diagram is drawn by [`@brunosouzas/design-system`](https://www.npmjs.com/package/@brunosouzas/design-system) from the spec [`scripts/how-it-works.json`](../scripts/how-it-works.json), which follows the Mermaid block above, with its Source faces embedded as subsets (GitHub shows the file as an image, which never loads a page's fonts): after changing either, run `npm run build && node scripts/site-art.mjs`.

@@ -3,9 +3,10 @@
  * and attribute allow-lists, the paint check, finite numbers and the escaping apply to it as to every
  * other node: a piece node outside those rules throws instead of reaching a page.
  *
- * The pieces name `Lato, 'Helvetica Neue', …` on every text. The writer leaves that `font-family` out:
- * the root svg names the same families without quotes, so nothing renders differently and no quote
- * character reaches an attribute value. Call writePiece(stationMarker({ … })). Pure, no I/O.
+ * The pieces name the design system's `font.sans` on every text. The writer leaves that `font-family`
+ * out: the root svg names the same quoted stack (`'Source Sans 3', …`, each `'` written `&apos;`), so
+ * nothing renders differently and only the root carries a font. Call writePiece(stationMarker({ … })).
+ * Pure, no I/O.
  */
 import type { Drawn, SvgNode } from '@brunosouzas/design-system';
 import { escapeXml, tag, type Attributes } from './xml.js';

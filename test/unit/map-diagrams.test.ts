@@ -7,6 +7,7 @@ import { buildMapModel } from '../../src/map/model.js';
 import { neighbourhood, renderNeighbourhood } from '../../src/map/neighbourhood.js';
 import { renderLineBadge, renderStrip, strip } from '../../src/map/strip.js';
 import { themes } from '../../src/map/themes.js';
+import { tokens } from '@brunosouzas/design-system/tokens';
 import { component, journey, set, viewOf } from './map-helpers.js';
 import { safe } from './svg-helpers.js';
 
@@ -14,7 +15,7 @@ const depends = (name: string, refs: string[]) => set(component(name), 'spec.dep
 const resource = (name: string, type: string) => ({ apiVersion: 'backstage.io/v1alpha1', kind: 'Resource', metadata: { name }, spec: { type, owner: 'user:alex' } });
 const graphOf = (documents: unknown[]) => buildGraph(viewOf(documents, 'full'));
 const groups = (svg: string) => Array.from(safe(svg).getElementsByTagName('g'));
-// The box face is the last outlined rect; its shadow copy comes first and sits right and below.
+// The box face is the last outlined rect (a shadow copy would come first, while map.shadow is above 0).
 const face = (group: Element) => Array.from(group.getElementsByTagName('rect')).filter(rect => rect.getAttribute('stroke') !== null).at(-1)!;
 const boxX = (group: Element) => Number(face(group).getAttribute('x'));
 
@@ -80,6 +81,8 @@ test('Diagrams are safe SVG with hostile titles', () => {
       expect(doc.documentElement.textContent).toContain(clean);
       for (const element of Array.from(doc.getElementsByTagName('*'))) {
         for (const attr of Array.from(element.attributes)) {
+          // The root's font stack quotes its families (metro-map "Allowed attribute values").
+          if (attr.name === 'font-family') { expect(element).toBe(doc.documentElement); expect(attr.value).toBe(tokens.font.sans); continue; }
           if (!['data-ref', 'data-line', 'data-zone'].includes(attr.name)) expect(attr.value, attr.name).not.toMatch(/[<>&"']|script/i);
         }
       }
@@ -156,7 +159,8 @@ test('A strip stop is clickable between its marker and its label', () => {
   expect(bottom).toBeGreaterThan(Number(label.getAttribute('y')));
 });
 
-const INK = '#0A1033';
+const INK = '#121212';
+const MUTED = '#ADA79D';
 const shapesOf = (group: Element) => Array.from(group.childNodes).filter((node: any) => node.nodeType === 1 && node.tagName !== 'title') as Element[];
 const interchangeView = () => viewOf([component('linear'), component('slack'), component('figma'),
   journey('ship', ['linear', 'slack'], '1'), journey('design', ['figma', 'slack'], '2')], 'staff');
@@ -169,14 +173,11 @@ test('Neighbourhood boxes', () => {
   expect(linked).toHaveLength(3);
   for (const group of linked) {
     const rects = shapesOf(group).filter(item => item.tagName === 'rect');
-    const [shadow, face] = [rects[0]!, rects.at(-1)!];
-    expect(rects).toHaveLength(2);
-    expect(face.getAttribute('stroke')).toBe(INK);
-    expect(shadow.getAttribute('fill')).toBe(INK);
-    expect(Number(shadow.getAttribute('x'))).toBeGreaterThan(Number(face.getAttribute('x')));
-    expect(Number(shadow.getAttribute('y'))).toBeGreaterThan(Number(face.getAttribute('y')));
+    // The outlined face alone: no shadow shape before it (map.shadow is 0).
+    expect(rects).toHaveLength(1);
+    expect(rects[0]!.getAttribute('stroke')).toBe(INK);
   }
-  expect(safe(svg).documentElement.getAttribute('font-family')!.startsWith('Lato')).toBe(true);
+  expect(safe(svg).documentElement.getAttribute('font-family')).toBe(tokens.font.sans);
 });
 
 /** Bounds of a marker shape grown by half its stroke: a circle, or the capsule path of stationMarker
@@ -209,10 +210,11 @@ test('Strip line and stops', () => {
   expect(Number(pipe[0]!.getAttribute('stroke-width'))).toBeGreaterThan(Number(pipe[1]!.getAttribute('stroke-width')));
   for (const ref of ['component:linear', 'component:slack']) {
     const shapes = markers(all.find(group => group.getAttribute('data-ref') === ref)!);
-    expect(shapes[0]!.getAttribute('fill')).toBe('#4C5CB8');
-    // Every stop is white with an ink outline, as on the map, and wider than the pipe.
+    // No shadow shape before the marker: the outlined face is the only one.
+    expect(shapes).toHaveLength(1);
+    // Every stop is white with the dark surface's muted outline, as on the map, and wider than the pipe.
     const face = shapes.at(-1)!, box = bounds(face);
-    expect(face.getAttribute('stroke')).toBe(INK);
+    expect(face.getAttribute('stroke')).toBe(MUTED);
     expect(face.getAttribute('fill')).toBe('#FFFFFF');
     expect(box.right - box.left).toBeGreaterThan(themes.dark.lineWidth + themes.dark.casing.extraWidth);
   }

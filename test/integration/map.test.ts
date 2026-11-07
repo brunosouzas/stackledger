@@ -18,6 +18,7 @@ import { layoutMap } from '../../src/map/layout.js';
 import { renderSvg } from '../../src/map/svg.js';
 import { themes } from '../../src/map/themes.js';
 import { localDate } from '../../src/graph.js';
+import { tokens } from '@brunosouzas/design-system/tokens';
 const yaml=(...docs:unknown[])=>docs.map(d=>stringify(d)).join('---\n');
 const fixture=()=>folder({'catalogue.yaml':yaml(component('a'),component('b'),line(),layout())});
 const parse=(svg:string)=>new DOMParser({onError:(level,message)=>{throw new Error(`${level}: ${message}`);}}).parseFromString(svg,'image/svg+xml');
@@ -51,4 +52,14 @@ test('Map library bundles for the browser without Node filesystem imports',()=>{
  const source=['model:buildMapModel','layout:layoutMap','svg:renderSvg'].map(entry=>{const [file,name]=entry.split(':');return `export { ${name} } from './src/map/${file}.ts';`;}).join('\n');
  const result=spawnSync(join(root,'node_modules/.bin/esbuild'),['--bundle','--platform=browser','--format=esm','--loader=ts'],{cwd:root,input:source,encoding:'utf8'});
  expect(result.error).toBeUndefined();expect(result.status,result.stderr).toBe(0);for(const name of ['buildMapModel','layoutMap','renderSvg'])expect(result.stdout).toContain(name);expect(result.stdout).not.toContain('node:fs');
+});
+// catalogue-site "Standalone map keeps the plain name": stackledger map names the design system's
+// families as they are, quotes included, with no generated suffix (the site renames them, a file does not).
+test('Standalone map keeps the plain name',()=>{
+ for(const theme of ['light','dark']){
+  const r=run(['map',fixture(),'--theme',theme,'--date','2027-06-01']);expect(r.status).toBe(0);
+  const font=parse(r.stdout).documentElement.getAttribute('font-family')!;
+  expect(font).toBe(tokens.font.sans);expect(font.startsWith("'Source Sans 3',")).toBe(true);expect(font).not.toMatch(/Source Sans 3-/);
+  expect(r.stdout).toContain("font-family=\"&apos;Source Sans 3&apos;,");
+ }
 });

@@ -293,6 +293,21 @@ for (const [how, set] of [
     }
   });
 
+  // catalogue-site "Parent brand endorsement": one symbol per theme, inline before "by Bruno Souza".
+  test(`Symbol follows the theme (${how})`, async ({ page }) => {
+    for (const scheme of ['light', 'dark'] as const) {
+      await page.goto('/staff/software/');
+      await set(page, scheme);
+      expect(await shownImages(page, '.footer-bottom img'), scheme).toEqual([[`symbol-${scheme}.svg`, 'inline']]);
+      const after = await page.locator(`.footer-bottom img.themed-${scheme}`).evaluate(image => {
+        let text = '';
+        for (let node = image.nextSibling; node; node = node.nextSibling) text += node.textContent;
+        return text;
+      });
+      expect(after.trim(), scheme).toBe('by Bruno Souza');
+    }
+  });
+
   test(`Link icon follows the theme (${how})`, async ({ page }) => {
     for (const scheme of ['light', 'dark'] as const) {
       await page.goto('/extra/');
@@ -302,33 +317,78 @@ for (const [how, set] of [
   });
 }
 
+// The frame of each theme: ink in light, the dark surface's muted colour in dark; no shadow, no rim.
+const FRAME = {
+  light: { width: '3px', style: 'solid', color: 'rgb(18, 18, 18)', shadow: 'none' },
+  dark: { width: '3px', style: 'solid', color: 'rgb(173, 167, 157)', shadow: 'none' },
+} as const;
+// The body colour of each theme (#F6F3EC, #121110) and stackledger's accent (#3B5BDB, #7D8CFF).
+const BODY = { light: 'rgb(246, 243, 236)', dark: 'rgb(18, 17, 16)' } as const;
+const ACCENT = { light: 'rgb(59, 91, 219)', dark: 'rgb(125, 140, 255)' } as const;
+
 test('Card frame in light', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('/full/');
-  expect(await frameOf(page, '.card')).toEqual({ width: '3px', style: 'solid', color: 'rgb(10, 16, 51)', shadow: 'rgb(10, 16, 51) 4px 4px 0px 0px' });
-  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(255, 255, 255)');
+  expect(await frameOf(page, '.card')).toEqual(FRAME.light);
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(BODY.light);
 });
 
 test('Card frame in dark', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/full/');
-  expect(await frameOf(page, '.card')).toEqual({ width: '3px', style: 'solid', color: 'rgb(10, 16, 51)', shadow: 'rgb(238, 242, 255) 0px 0px 0px 1px, rgb(76, 92, 184) 4px 4px 0px 0px' });
-  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(28, 28, 28)');
+  expect(await frameOf(page, '.card')).toEqual(FRAME.dark);
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(BODY.dark);
 });
 
-test('Pressed chip keeps the dark rim', async ({ page }) => {
-  for (const [scheme, shadow] of [['light', 'none'], ['dark', 'rgb(238, 242, 255) 0px 0px 0px 1px']] as const) {
+test('Pressed button keeps its frame', async ({ page }) => {
+  for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     await page.goto('/full/map/');
     const chip = page.locator('.line-chips .btn').first();
+    await chip.hover();
+    expect(await frameOf(page, '.line-chips .btn'), `${scheme} hovered`).toEqual(FRAME[scheme]);
     await chip.click();
     await expect(chip).toHaveAttribute('aria-pressed', 'true');
-    expect((await frameOf(page, '.line-chips .btn[aria-pressed="true"]')).shadow, scheme).toBe(shadow);
+    expect(await frameOf(page, '.line-chips .btn[aria-pressed="true"]'), `${scheme} pressed`).toEqual(FRAME[scheme]);
+  }
+});
+
+// catalogue-site "Site tokens from the design system": the text over primary is the body colour of its theme.
+test('Colour on primary', async ({ page }) => {
+  for (const scheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto('/full/map/');
+    const button = page.getByRole('button', { name: 'Zoom in' });
+    await button.hover();
+    // The button's colour transition is 0.2s.
+    await expect.poll(() => button.evaluate(element => getComputedStyle(element).color), scheme).toBe(BODY[scheme]);
+  }
+});
+
+test('Accent readable on the page', async ({ page }) => {
+  for (const scheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto('/full/');
+    const colours = await page.evaluate(() => {
+      const probe = document.createElement('span');
+      probe.style.setProperty('color', 'var(--color-accent)');
+      document.body.append(probe);
+      const accent = getComputedStyle(probe).color;
+      probe.remove();
+      return { accent, body: getComputedStyle(document.body).backgroundColor };
+    });
+    expect(colours, scheme).toEqual({ accent: ACCENT[scheme], body: BODY[scheme] });
+    const luminance = (rgb: string) => {
+      const [r, g, b] = rgb.match(/\d+/g)!.slice(0, 3).map(Number).map(value => { const c = value / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+      return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+    };
+    const [high, low] = [luminance(colours.accent), luminance(colours.body)].sort((a, b) => b - a);
+    expect((high! + 0.05) / (low! + 0.05), scheme).toBeGreaterThanOrEqual(4.5);
   }
 });
 
 test('Focus still visible', async ({ page }) => {
-  for (const [scheme, accent] of [['light', 'rgb(0, 15, 159)'], ['dark', 'rgb(157, 168, 255)']] as const) {
+  for (const [scheme, accent] of [['light', ACCENT.light], ['dark', ACCENT.dark]] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     await page.goto('/full/map/');
     const chips = page.locator('.line-chips .btn');
@@ -540,4 +600,87 @@ test.describe('Map backdrop', () => {
       expect(await page.content(), path).not.toContain('OpenStreetMap');
     }
   });
+});
+
+// catalogue-site "Font delivery" and "Font variables": the faces the Fonts API generates, loaded under the policy.
+/** The first family of a computed font-family, unquoted. */
+const firstFamily = (value: string) => value.split(',')[0]!.trim().replace(/^["']|["']$/g, '');
+/** The faces of the generated Source families the page has loaded, as `family-without-hash weight style`. */
+async function loadedFaces(page: Page): Promise<string[]> {
+  await page.waitForLoadState('networkidle');
+  await page.evaluate(() => document.fonts.ready);
+  const faces = await page.evaluate(() => [...document.fonts].filter(face => face.status === 'loaded').map(face => [face.family, face.weight, face.style]));
+  return faces.map(([family, weight, style]) => [family!.replace(/^["']|["']$/g, ''), weight, style] as const)
+    .filter(([family]) => /^Source (?:Sans 3|Serif 4|Code Pro)-[0-9a-f]{16}$/.test(family))
+    .map(([family, weight, style]) => `${family.replace(/-[0-9a-f]{16}$/, '')} ${weight} ${style}`);
+}
+const computedFamily = (page: Page, selector: string) => page.locator(selector).first().evaluate(element => getComputedStyle(element).fontFamily);
+
+test('Fonts load under the policy', async ({ page }) => {
+  const watched = await watch(page, '/full/');
+  const loaded = new Set<string>();
+  for (const path of ['/full/', '/full/software/slack/', '/full/map/']) {
+    await page.goto(path);
+    for (const face of await loadedFaces(page)) loaded.add(face);
+    expect(await violations(page), path).toEqual([]);
+  }
+  for (const face of ['Source Sans 3 400 normal', 'Source Sans 3 600 normal', 'Source Sans 3 700 normal', 'Source Sans 3 900 normal',
+    'Source Serif 4 700 normal', 'Source Serif 4 700 italic', 'Source Code Pro 400 normal']) expect([...loaded], face).toContain(face);
+  expect(watched.problems).toEqual([]);
+});
+
+test('Map drawn in the shipped face', async ({ page }) => {
+  for (const scheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto('/full/map/');
+    const map = await computedFamily(page, `.map-canvas.themed-${scheme} svg`);
+    expect(firstFamily(map), scheme).toMatch(/^Source Sans 3-/);
+    const label = await computedFamily(page, `.map-canvas.themed-${scheme} svg text[data-line]`);
+    expect(firstFamily(label), scheme).toBe(firstFamily(map));
+    await page.goto('/full/software/slack/');
+    const diagram = await computedFamily(page, `.diagram.themed-${scheme} svg`);
+    expect(firstFamily(diagram), scheme).toBe(firstFamily(map));
+  }
+});
+
+test('Body and code faces', async ({ page }) => {
+  await page.goto('/full/');
+  expect(firstFamily(await computedFamily(page, 'body'))).toMatch(/^Source Sans 3-/);
+  expect(firstFamily(await computedFamily(page, 'h1'))).toMatch(/^Source Serif 4-/);
+  await page.goto('/full/software/slack/');
+  const code = firstFamily(await computedFamily(page, 'main code'));
+  expect(code).toMatch(/^Source Code Pro-/);
+  expect(await loadedFaces(page)).toContain('Source Code Pro 400 normal');
+});
+
+// catalogue-site "Wordmark": the header's site title in the shipped Source Serif 4, italic, 700.
+async function wordmark(page: Page) {
+  const style = await page.locator('.header .navbar-brand').evaluate(element => {
+    const computed = getComputedStyle(element);
+    return { family: computed.fontFamily, style: computed.fontStyle, weight: computed.fontWeight, text: element.textContent };
+  });
+  return { ...style, family: firstFamily(style.family), loaded: await loadedFaces(page) };
+}
+
+test('Wordmark face', async ({ page }) => {
+  for (const scheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    for (const path of ['/full/', '/staff/map/']) {
+      await page.goto(path);
+      const mark = await wordmark(page);
+      expect(mark.family, `${scheme} ${path}`).toMatch(/^Source Serif 4-[0-9a-f]{16}$/);
+      expect([mark.style, mark.weight], `${scheme} ${path}`).toEqual(['italic', '700']);
+      expect(mark.loaded, `${scheme} ${path}`).toContain('Source Serif 4 700 italic');
+    }
+  }
+});
+
+test('Wordmark with the longest title', async ({ page }) => {
+  await page.goto('/full/');
+  const standard = await wordmark(page);
+  await page.goto('/extra/');
+  const longest = await wordmark(page);
+  expect(longest.text).toHaveLength(60);
+  expect([longest.family, longest.style, longest.weight]).toEqual([standard.family, standard.style, standard.weight]);
+  expect(longest.loaded).toContain('Source Serif 4 700 italic');
 });

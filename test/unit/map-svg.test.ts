@@ -38,10 +38,27 @@ test('Unknown attribute',()=>{safe(renderSvg(hostileGeometry(),themes.light));})
 test('Paint values',()=>{for(const theme of Object.values(themes))safe(renderSvg(geometry(),theme));const g=geometry();g.lines[0]!.color='url(javascript:alert(1))';expect(()=>renderSvg(g,themes.light)).toThrow(/colour/);});
 test('Hostile titles',()=>{const svg=renderSvg(hostileGeometry(),themes.light),doc=safe(svg);const clean=hostile.replace(/[\u0001\uFFFE]/g,'�');expect(doc.documentElement.textContent).toContain(clean);expect(doc.getElementsByTagName('script')).toHaveLength(0);for(const e of Array.from(doc.getElementsByTagName('*')))for(const a of Array.from(e.attributes))expect(a.value).not.toContain('javascript:');expect(escapeXml('&<>"\'\ud800')).toBe('&amp;&lt;&gt;&quot;&apos;�');});
 test('Long title keeps full station title',()=>{const full='Northwind Customer Relationship Manager';const g=geometry([set(component('a'),'metadata.title',full),...docs().slice(1)]);const doc=parseSvg(renderSvg(g,themes.light));const station=Array.from(doc.getElementsByTagName('g')).find(e=>e.getAttribute('data-ref')==='component:a')!;expect(station.getElementsByTagName('title')[0]!.textContent).toBe(full);expect(g.labels.find(l=>l.ref==='component:a')!.rows).toEqual(['Northwind Customer','Relationship','Manager']);});
-test('Dark theme',()=>{const g=geometry(),svg=renderSvg(g,themes.dark);expect(themes.dark.background).toBe('#14215A');expect(svg).toContain(`fill="${themes.dark.background}"`);expect(svg).toContain('stroke="#FF0000"');expect(svg).not.toBe(renderSvg(g,themes.light));});
-test('Themes are data, with casing and offset shadows on in both themes',()=>{
- for(const t of Object.values(themes)){expect(t.casing).toMatchObject({enabled:true,color:INK});expect(t.casing.extraWidth).toBeGreaterThan(0);expect(t.shadow.enabled).toBe(true);expect(t.shadow.dx).toBeGreaterThan(0);expect(t.shadow.dy).toBeGreaterThan(0);expect(t.outline).toBe(INK);expect(t.font).toBe('Lato, Helvetica Neue, Helvetica, Arial, sans-serif');}
- expect(themes.light.shadow.color).toBe(INK);expect(themes.dark.shadow.color).toBe('#4C5CB8');
+/** The header band: the rect of the header's height at the top of the viewBox. */
+const headerBand=(doc:Document)=>{const [x,y]=doc.documentElement.getAttribute('viewBox')!.split(' ').map(Number);return Array.from(doc.getElementsByTagName('rect')).find(r=>num(r,'x')===x&&num(r,'y')===y&&num(r,'height')===64);};
+test('Dark theme',()=>{const g=geometry(),svg=renderSvg(g,themes.dark);expect(themes.dark.background).toBe('#121110');expect(svg).toContain(`fill="${themes.dark.background}"`);expect(svg).toContain('stroke="#FF0000"');expect(svg).not.toBe(renderSvg(g,themes.light));expect(headerBand(safe(svg))!.getAttribute('fill')).toBe('#1D1C1A');});
+test('Themes are data, with casing in both themes and no shadow',()=>{
+ for(const t of Object.values(themes)){expect(t.casing).toMatchObject({enabled:true,color:INK});expect(t.casing.extraWidth).toBeGreaterThan(0);expect(t.shadow.enabled).toBe(false);expect(t.font).toBe(tokens.font.sans);}
+ expect(themes.light.outline).toBe(INK);expect(themes.dark.outline).toBe(MUTED);
+});
+// metro-map "Themes": the font stack is font.sans as is, quotes included, written with &apos;.
+test('Font stack with its quotes',()=>{
+ for(const theme of Object.values(themes))for(const chrome of [true,false]){
+  const svg=renderSvg(geometry(interchangeDocs()),theme,{chrome});
+  expect(safe(svg).documentElement.getAttribute('font-family')).toBe(tokens.font.sans);
+  expect(tokens.font.sans).toContain("'");
+  expect(svg).toContain(`font-family="${tokens.font.sans.replaceAll("'",'&apos;')}"`);
+  expect(svg).not.toMatch(/="[^"]*'[^"]*"/);
+ }
+});
+test('No header band without the header',()=>{
+ const svg=renderSvg(geometry(interchangeDocs()),themes.dark,{chrome:false}),doc=safe(svg);
+ expect(headerBand(doc)).toBeUndefined();expect(svg).not.toContain('Software map</text>');
+ for(const e of Array.from(doc.getElementsByTagName('*')))expect(e.getAttribute('fill'),e.tagName).not.toBe(tokens.surface.dark.panel);
 });
 // metro-map "Design system tokens".
 test('Theme values are the tokens',()=>{
@@ -50,27 +67,34 @@ test('Theme values are the tokens',()=>{
  expect(t.outlineWidth).toBe(tokens.map.outline);expect(t.lineWidth).toBe(tokens.map.lineWidth);expect(t.bendRadius).toBe(tokens.map.bendRadius);
  expect([t.text,t.muted,t.grid,t.panel,t.rim.color]).toEqual([d.text,d.muted,d.grid,d.panel,d.rim]);
  expect([t.casing.extraWidth,t.shadow.dx,t.shadow.dy]).toEqual([tokens.map.casing,tokens.map.shadow,tokens.map.shadow]);
- expect([t.outline,t.station,t.badgeText,t.licence,t.renewal,t.accent]).toEqual([tokens.color.ink,tokens.color.white,tokens.color.white,tokens.color.healthy,tokens.color.blocked,tokens.color.caller]);
+ expect([t.outline,t.station,t.badgeText,t.licence,t.renewal,t.accent]).toEqual([d.muted,tokens.color.white,tokens.color.white,tokens.color.state.healthy,tokens.color.state.blocked,tokens.color.state.caller]);
+});
+test('Dark theme has no rim and no shadow',()=>{
+ expect(tokens.surface.dark.rimWidth).toBe(0);expect(tokens.map.shadow).toBe(0);expect(themes.dark.rim.enabled).toBe(false);
+ expect(inkOf(themes.dark).outline).toBe(tokens.map.outline);expect(inkOf(themes.dark).shadow).toEqual([0,0]);
+});
+test('State colours are the tokens',()=>{
+ for(const t of Object.values(themes)){expect([t.licence,t.renewal,t.accent]).toEqual([tokens.color.state.healthy,tokens.color.state.blocked,tokens.color.state.caller]);expect([t.licence,t.renewal,t.accent]).toEqual(['#3DDC84','#FF8A3D','#8FB2FF']);}
 });
 // metro-map "Piece colours in the themes".
 test('Piece colours are the tokens',()=>{
  const t=themes.dark;
- expect([t.licence,t.renewal,t.zoneOpacity,t.zoneTitleTint]).toEqual([tokens.color.healthy,tokens.color.blocked,tokens.surface.dark.zoneOpacity,tokens.map.zoneTitleTint]);
+ expect([t.licence,t.renewal,t.zoneOpacity,t.zoneTitleTint]).toEqual([tokens.color.state.healthy,tokens.color.state.blocked,tokens.surface.dark.zoneOpacity,tokens.map.zoneTitleTint]);
 });
 test('Light zone titles are not tinted',()=>{
  expect(themes.light.zoneTitleTint).toBe(0);expect(themes.light.zoneOpacity).toBe(tokens.surface.light.zoneOpacity);
 });
 test('Light theme has no rim',()=>{
- expect(tokens.surface.light.rimWidth).toBe(0);expect(themes.light.rim.enabled).toBe(false);expect(inkOf(themes.light).outline).toBe(tokens.map.outline);
+ expect(tokens.surface.light.rimWidth).toBe(0);expect(themes.light.rim.enabled).toBe(false);expect(themes.light.outline).toBe(tokens.color.ink);expect(inkOf(themes.light).outline).toBe(tokens.map.outline);
 });
 // metro-map "Theme ink comes from the design system".
 test('Custom ink is refused',()=>{
  const wide=structuredClone(themes.light);wide.outlineWidth=9;
  expect(()=>renderSvg(geometry(),wide)).toThrow(/outlineWidth/);
- const flat=structuredClone(themes.light);flat.shadow.enabled=false;
- expect(()=>renderSvg(geometry(),flat)).toThrow(/shadow/);
+ const offset=structuredClone(themes.light);offset.shadow={...offset.shadow,enabled:true,dx:4,dy:4};
+ expect(()=>renderSvg(geometry(),offset)).toThrow(/shadow/);
  // Same values in another key order are the same ink; a changed value is not.
- const reordered={...themes.dark,shadow:{dy:themes.dark.shadow.dy,dx:themes.dark.shadow.dx,color:themes.dark.shadow.color,enabled:true}};
+ const reordered={...themes.dark,shadow:{dy:themes.dark.shadow.dy,dx:themes.dark.shadow.dx,color:themes.dark.shadow.color,enabled:themes.dark.shadow.enabled}};
  expect(()=>renderSvg(geometry(),reordered)).not.toThrow();
  expect(()=>renderSvg(geometry(),{...reordered,shadow:{...reordered.shadow,color:'#4C5CB9'}})).toThrow(/shadow/);
 });
@@ -90,7 +114,8 @@ test('Other theme fields stay free',()=>{
  const t=structuredClone(themes.light);t.background='#FFFFFF';
  expect(renderSvg(geometry(),t)).toContain('fill="#FFFFFF"');expect(renderSvg(geometry(),t)).not.toContain(`fill="${themes.light.background}"`);
 });
-const INK='#0A1033';
+const INK='#121212';
+const MUTED='#ADA79D';
 // Two lines through `slack` make it an interchange; `a` and `b` stay ticks.
 const interchangeDocs=()=>[component('a'),component('b'),component('slack'),journey('ship',['a','slack']),journey('design',['slack','b']),positions({a:[0,0],slack:[4,0],b:[8,0]})];
 const groupOf=(doc:Document,ref:string)=>Array.from(doc.getElementsByTagName('g')).find(e=>e.getAttribute('data-ref')===ref)!;
@@ -117,8 +142,9 @@ test('Stations are circles',()=>{
   const stop=shapes(groupOf(doc,'component:a'));
   expect(stop.some(e=>e.tagName==='line')).toBe(false);
   const circles=stop.filter(e=>e.tagName==='circle'),face=circles.at(-1)!;
-  expect(circles[0]!.getAttribute('fill')).toBe(theme.shadow.color);
-  expect(face.getAttribute('fill')).toBe('#FFFFFF');expect(face.getAttribute('stroke')).toBe(INK);
+  // No shadow copy: the outlined face is the only circle.
+  expect(circles).toHaveLength(1);
+  expect(face.getAttribute('fill')).toBe('#FFFFFF');expect(face.getAttribute('stroke')).toBe(theme.outline);
   // The circle is wider than the pipe it sits on, and centred on it.
   expect(2*num(face,'r')).toBeGreaterThan(outer);
   const a=g.stations.find(s=>s.name==='a')!;expect([num(face,'cx'),num(face,'cy')]).toEqual(a.marker.contacts[0]);
@@ -178,40 +204,81 @@ test('Bundled pipes fit side by side',()=>{
  }
 });
 
+// metro-map "Sticker shadow": map.shadow is 0 in the pinned package, so no shadow copy is drawn.
 test('Shadow under an interchange',()=>{
  const g=geometry(interchangeDocs()),svg=renderSvg(g,themes.light),doc=safe(svg);
  const marker=g.stations.find(s=>s.name==='slack')!.marker;expect(marker.kind).toBe('interchange');
  const parts=shapes(groupOf(doc,'component:slack'));
- // The face is drawn last: white with the ink outline; the shadow copy comes right before it, moved by the offset.
- const face=parts.at(-1)!,shadow=parts.at(-2)!;
+ // The outlined face is the first and only shape: white with the ink outline, no copy before it.
+ expect(parts).toHaveLength(1);
+ const face=parts[0]!;
  expect(face.getAttribute('fill')).toBe('#FFFFFF');expect(face.getAttribute('stroke')).toBe(INK);
  expect(num(face,'stroke-width')).toBe(themes.light.outlineWidth);
- expect(shadow.getAttribute('fill')).toBe(INK);expect(shadow.tagName).toBe(face.tagName);
- const start=(e:Element)=>e.tagName==='circle'?[num(e,'cx'),num(e,'cy')]:e.getAttribute('d')!.slice(1).split(' ')[0]!.split(',').map(Number);
- const [fx,fy]=start(face),[sx,sy]=start(shadow);
- expect(sx!-fx!).toBeCloseTo(themes.light.shadow.dx,1);expect(sy!-fy!).toBeCloseTo(themes.light.shadow.dy,1);
  expect(marker.box.x).toBeLessThanOrEqual(Math.min(...marker.contacts.map(p=>p[0])));
- // Stops start with their shadow; badges are pills holding a shadow copy before their outlined face.
- const stop=shapes(groupOf(doc,'component:a'));expect(stop[0]!.getAttribute('fill')).toBe(INK);expect(stop[0]!.tagName).toBe('circle');
- const badges=Array.from(doc.getElementsByTagName('g')).filter(e=>e.getAttribute('data-line')&&!e.getAttribute('data-ref')&&shapes(e).length===3&&shapes(e)[2]!.tagName==='text');
+ // Stops are their outlined face alone; badges are pills whose first shape is their outlined face.
+ const stop=shapes(groupOf(doc,'component:a'));expect(stop).toHaveLength(1);expect(stop[0]!.getAttribute('stroke')).toBe(INK);expect(stop[0]!.tagName).toBe('circle');
+ const badges=Array.from(doc.getElementsByTagName('g')).filter(e=>e.getAttribute('data-line')&&!e.getAttribute('data-ref')&&shapes(e).length===2&&shapes(e)[1]!.tagName==='text');
  expect(badges.length).toBeGreaterThanOrEqual(4);
- for(const badge of badges){const [shade,face]=shapes(badge);expect(shade!.getAttribute('fill')).toBe(INK);expect(face!.getAttribute('stroke')).toBe(INK);expect(num(shade!,'x')-num(face!,'x')).toBe(themes.light.shadow.dx);expect(num(face!,'rx')).toBe(num(face!,'height')/2);}
+ for(const badge of badges){const [face]=shapes(badge);expect(face!.getAttribute('stroke')).toBe(INK);expect(num(face!,'rx')).toBe(num(face!,'height')/2);}
  expect(svg).not.toMatch(/transform|filter/);
 });
 
 test('Dark shadow and rim',()=>{
- const svg=renderSvg(geometry(interchangeDocs()),themes.dark),doc=safe(svg);
- expect(svg).toContain('fill="#4C5CB8"');expect(svg).toContain('stroke="#EEF2FF"');expect(svg).not.toMatch(/transform|filter/);
- // Ink stays the outline and casing; apart from the title band no shape is filled with it.
- for(const e of Array.from(doc.getElementsByTagName('*')))if(e.tagName!=='rect'||num(e,'height')!==64)expect(e.getAttribute('fill'),e.tagName).not.toBe(INK);
+ const g=geometry(interchangeDocs()),svg=renderSvg(g,themes.dark),doc=safe(svg);
+ expect(svg).not.toMatch(/transform|filter/);
+ const d=tokens.surface.dark;expect([d.shadow,d.rim]).toEqual(['#121110','#F1EEE8']);
+ // Stations, terminal badges and the legend panel: no copy in the shadow colour and no rim behind the face.
+ const groups=Array.from(doc.getElementsByTagName('g')).filter(e=>e.getAttribute('data-ref')?.startsWith('component:')||(e.getAttribute('data-line')&&!e.getAttribute('data-ref')));
+ expect(groups.length).toBeGreaterThan(4);
+ for(const group of groups)for(const e of shapes(group))if(e.tagName!=='text')expect([d.shadow,d.rim],e.tagName).not.toContain(e.getAttribute('fill'));
  const marker=shapes(groupOf(doc,'component:slack')).filter(e=>e.tagName!=='text');
- expect(marker.map(e=>e.getAttribute('fill'))).toEqual(['#4C5CB8','#EEF2FF','#FFFFFF']);
+ expect(marker.map(e=>e.getAttribute('fill'))).toEqual(['#FFFFFF']);
+ const panel=Array.from(doc.getElementsByTagName('rect')).filter(r=>num(r,'x')===g.legend.box.x&&num(r,'width')===g.legend.box.w);
+ expect(panel.map(r=>[r.getAttribute('fill'),r.getAttribute('stroke')])).toEqual([[d.panel,MUTED]]);
+});
+
+// metro-map "Sticker shadow": with a theme whose shadow offset is 4, the sticker draws the copy first.
+test('Shadow when the token is above 0',async()=>{
+ const { sticker } = await import('../../src/map/ink.js');
+ const theme=structuredClone(themes.light);theme.shadow={enabled:true,color:theme.shadow.color,dx:4,dy:4};
+ const drawn=sticker(theme,(by,attrs)=>tag('rect',{x:10+by[0],y:20+by[1],width:8,height:8,...attrs}),'#FFFFFF');
+ const doc=parseSvg(`<svg xmlns="http://www.w3.org/2000/svg">${drawn}</svg>`),rects=Array.from(doc.getElementsByTagName('rect'));
+ expect(rects).toHaveLength(2);
+ expect([num(rects[0]!,'x'),num(rects[0]!,'y'),rects[0]!.getAttribute('fill')]).toEqual([14,24,theme.shadow.color]);
+ expect([num(rects[1]!,'x'),num(rects[1]!,'y'),rects[1]!.getAttribute('fill'),rects[1]!.getAttribute('stroke')]).toEqual([10,20,'#FFFFFF',INK]);
+ // With the pinned theme (map.shadow 0) the outlined shape is alone.
+ expect(sticker(themes.light,(by,attrs)=>tag('rect',{x:10+by[0],y:20+by[1],...attrs}),'#FFFFFF').match(/<rect/g)).toHaveLength(1);
+});
+
+test('Casing on the dark surface',()=>{
+ const paths=shapes(groupOf(safe(renderSvg(geometry(),themes.dark)),'line:ship'));
+ expect(paths.map(p=>p.getAttribute('stroke'))).toEqual([INK,'#FF0000']);
+});
+
+test('Outline on the dark surface',async()=>{
+ const { join } = await import('node:path');const { loadFolder } = await import('../../src/source.js'); const { validateLoaded } = await import('../../src/validate.js');
+ const catalogue=validateLoaded(await loadFolder(join(import.meta.dirname,'../../examples/northwind')));
+ const g=layoutMap(buildMapModel(applyView(catalogue.served,'full',resolveHidden(catalogue)),'2027-06-01'),themes.dark.lineWidth,inkOf(themes.dark));
+ const doc=safe(renderSvg(g,themes.dark));
+ const stations=Array.from(doc.getElementsByTagName('g')).filter(e=>e.getAttribute('data-ref')?.startsWith('component:'));
+ expect(stations.length).toBeGreaterThan(10);
+ const badges=Array.from(doc.getElementsByTagName('g')).filter(e=>e.getAttribute('data-line')&&!e.getAttribute('data-ref'));
+ // No station shape (marker, licence marker, renewal ring), terminal badge or legend entry is stroked with ink.
+ for(const group of [...stations,...badges])for(const e of shapes(group)){
+  if(group.getAttribute('data-ref')===null&&e.tagName==='path')continue; // the legend's line sample is a pipe, cased in ink
+  expect(e.getAttribute('stroke'),group.getAttribute('data-ref')??group.getAttribute('data-line')!).not.toBe(INK);
+ }
+ // Every station marker (white, or muted when deprecated) is outlined in the dark surface's muted colour.
+ for(const group of stations)expect(shapes(group).some(e=>e.getAttribute('stroke')===MUTED),group.getAttribute('data-ref')!).toBe(true);
+ const panel=Array.from(doc.getElementsByTagName('rect')).filter(r=>num(r,'x')===g.legend.box.x&&num(r,'width')===g.legend.box.w);
+ expect(panel).toHaveLength(1);expect(panel[0]!.getAttribute('stroke')).toBe(MUTED);
 });
 
 test('Light theme',()=>{
  const doc=safe(renderSvg(geometry(interchangeDocs()),themes.light));
- expect(shapes(doc.documentElement.getElementsByTagName('g')[0]!)[0]!.getAttribute('fill')).toBe('#EEF2FF');
- const font=doc.documentElement.getAttribute('font-family')!;expect(font.startsWith('Lato')).toBe(true);expect(font.endsWith('sans-serif')).toBe(true);
+ expect(shapes(doc.documentElement.getElementsByTagName('g')[0]!)[0]!.getAttribute('fill')).toBe('#F6F3EC');
+ expect(headerBand(doc)!.getAttribute('fill')).toBe('#121212');
+ const font=doc.documentElement.getAttribute('font-family')!;expect(font.startsWith("'Source Sans 3'")).toBe(true);expect(font.endsWith('sans-serif')).toBe(true);
  const labels=Array.from(doc.getElementsByTagName('text')).filter(e=>e.getAttribute('data-line'));
  expect(labels.length).toBeGreaterThanOrEqual(3);
  for(const label of labels)expect(num(label,'font-weight')).toBeGreaterThanOrEqual(700);
@@ -248,7 +315,7 @@ test('Larger ink pushes a label out in the layout',()=>{
 });
 
 test('No embedded font',()=>{
- for(const theme of Object.values(themes)){const svg=renderSvg(geometry(interchangeDocs()),theme);expect(svg).toContain(`font-family="${theme.font}"`);expect(svg).not.toMatch(/@font-face|url\(|base64|woff/i);}
+ for(const theme of Object.values(themes)){const svg=renderSvg(geometry(interchangeDocs()),theme);expect(svg).toContain(`font-family="${escapeXml(theme.font)}"`);expect(svg).not.toMatch(/@font-face|url\(|base64|woff/i);}
 });
 
 test('Same input, same SVG in both themes',()=>{
@@ -299,7 +366,11 @@ test('Hostile titles in data attributes',()=>{
  const g=geometry(docs);expect(g.zones).toHaveLength(1);
  for(const theme of Object.values(themes)){
   const doc=safe(renderSvg(g,theme));
-  for(const e of Array.from(doc.getElementsByTagName('*')))for(const a of Array.from(e.attributes))if(!textAttributes.has(a.name))expect(a.value,a.name).not.toMatch(/[<>&"']|script|javascript/i);
+  for(const e of Array.from(doc.getElementsByTagName('*')))for(const a of Array.from(e.attributes)){
+   // The root's font stack quotes its families (metro-map "Allowed attribute values").
+   if(a.name==='font-family'){expect(e).toBe(doc.documentElement);expect(a.value).toBe(tokens.font.sans);continue;}
+   if(!textAttributes.has(a.name))expect(a.value,a.name).not.toMatch(/[<>&"']|script|javascript/i);
+  }
   const station=Array.from(doc.getElementsByTagName('g')).find(e=>e.getAttribute('data-ref')==='component:a')!;
   expect(station.getAttribute('data-zone')).toBe(zoneName.toLowerCase());
  }
@@ -371,7 +442,7 @@ test('Legend interchange is a capsule', () => {
     expect(doc.getElementsByTagName('circle')).toHaveLength(0);
     const shapes = Array.from(doc.getElementsByTagName('*')).filter(e => ['circle', 'rect', 'path', 'polygon'].includes(e.tagName));
     const face = shapes.at(-1)!;
-    expect(face.tagName).toBe('path');expect(face.getAttribute('stroke')).toBe(INK);
+    expect(face.tagName).toBe('path');expect(face.getAttribute('stroke')).toBe(theme.outline);
     expect(face.getAttribute('d')!.match(/A/g)).toHaveLength(2);
     const [x0, y0, x1, y1] = bounds(face);expect(y1 - y0).toBeGreaterThan(x1 - x0);
     for (const shape of shapes) {
@@ -411,6 +482,7 @@ function unround(d:string):string{
  const n=(x:number)=>String(Math.round(x*100)/100);
  return out.map((p,i)=>`${i?'L':'M'}${n(p[0]!)},${n(p[1]!)}`).join(' ');
 }
+const OUTLINES=['#0A1033',INK,MUTED];
 function placement(svg:string){
  const doc=parseSvg(svg),groups=Array.from(doc.getElementsByTagName('g'));
  // Every path of a line: its casing and its colour.
@@ -418,7 +490,8 @@ function placement(svg:string){
  // A station's outlined face is its last white-or-muted shape with an ink stroke; its centre is cx,cy or the capsule's start.
  const stations=groups.filter(g=>g.getAttribute('data-ref')?.startsWith('component:')).map(g=>{
   // Licence markers (radius 5) and renewal rings (no fill) share the group; they are not the marker.
-  const face=Array.from(g.children).filter(e=>['circle','path'].includes(e.tagName)&&e.getAttribute('stroke')==='#0A1033'&&e.getAttribute('fill')!=='none'&&e.getAttribute('r')!=='5').at(-1)!;
+  // The outline is 0.2.0's ink in the recording, the theme's outline (ink, or muted on dark) when drawn now.
+  const face=Array.from(g.children).filter(e=>['circle','path'].includes(e.tagName)&&OUTLINES.includes(e.getAttribute('stroke')!)&&e.getAttribute('fill')!=='none'&&e.getAttribute('r')!=='5').at(-1)!;
   return [g.getAttribute('data-ref'),face.tagName==='circle'?[face.getAttribute('cx'),face.getAttribute('cy'),face.getAttribute('r')]:[face.getAttribute('d')]];
  });
  const labels=Array.from(doc.getElementsByTagName('text')).filter(t=>t.parentElement?.tagName==='g'&&!t.parentElement.getAttribute('data-ref')&&t.getAttribute('data-line')).map(t=>[t.textContent,t.getAttribute('x'),t.getAttribute('y')]);
@@ -469,4 +542,39 @@ test('Software lines in a skills map file name',async()=>{
  const read=async(name:string)=>{const c=validateLoaded(await loadFolder(folder({'items.yaml':docs.slice(0,2).join('---\n'),[name]:docs[2]!})));return layoutMap(buildMapModel(applyView(c.served,'full',resolveHidden(c)),'2027-06-01')).lines.map(l=>l.ref);};
  expect(await read('stackledger-skills.yaml')).toEqual([]);
  expect(await read('lines.yaml')).toEqual(['line:ship']);
+});
+// metro-map "Allowed attribute values": an apostrophe only in the root's font stack (and in catalogue text).
+test('Apostrophe in the font stack',async()=>{
+ const { join } = await import('node:path');const { loadFolder } = await import('../../src/source.js'); const { validateLoaded } = await import('../../src/validate.js');
+ const catalogue=validateLoaded(await loadFolder(join(import.meta.dirname,'../../examples/northwind')));
+ for(const theme of Object.values(themes)){
+  const svg=renderSvg(layoutMap(buildMapModel(applyView(catalogue.served,'full',resolveHidden(catalogue)),'2027-06-01'),theme.lineWidth,inkOf(theme)),theme);
+  const written=[...svg.matchAll(/\s([\w:-]+)="([^"]*)"/g)].filter(m=>m[2]!.includes('&apos;')).map(m=>m[1]);
+  expect(written).toEqual(['font-family']);
+  expect(safe(svg).documentElement.getAttribute('font-family')).toBe(tokens.font.sans);
+ }
+});
+test('Apostrophe in another attribute',()=>{
+ for(const attrs of [{'stroke-dasharray':"4 '2"},{'font-weight':"7'00"}])expect(()=>tag('path',{d:'M0,0 L1,1',...attrs})).toThrow(/apostrophe/);
+ expect(tag('svg',{'font-family':tokens.font.sans})).toContain('&apos;Source Sans 3&apos;');
+ expect(tag('g',{'data-zone':"o'brien"})).toBe('<g data-zone="o&apos;brien"/>');
+});
+// metro-map "Software map unchanged" / "Same ink, same labels": laid out with the line width and Ink of the
+// 0.6.0 themes, every label and terminal badge is where 0.2.0 placed it (labels.json, read from the 0.2.0
+// recording before group 6 re-records it). Only the ink moves labels; the placement logic is unchanged.
+test('Same ink, same labels',async()=>{
+ const { readFileSync } = await import('node:fs'); const { join } = await import('node:path');
+ const { loadFolder } = await import('../../src/source.js'); const { validateLoaded } = await import('../../src/validate.js');
+ const { widestInk } = await import('../../src/map/themes.js');
+ const recorded=JSON.parse(readFileSync(join(import.meta.dirname,'../fixtures/map-0.2.0/labels.json'),'utf8')) as Record<string,string[][]>;
+ // Design system 0.6.0: line width 12, casing 6, outline 3, shadow 3.5; the dark surface added a rim of 1 on each side.
+ const ink060={light:{casing:6,outline:3,shadow:[3.5,3.5] as [number,number]},dark:{casing:6,outline:5,shadow:[3.5,3.5] as [number,number]}};
+ const catalogue=validateLoaded(await loadFolder(join(import.meta.dirname,'../../examples/northwind')));
+ for(const view of ['full','staff'] as const)for(const name of ['light','dark'] as const)for(const chrome of [true,false]){
+  const key=`${view}-${name}${chrome?'':'-site'}`,ink=chrome?ink060[name]:widestInk(ink060.light,ink060.dark);
+  const served=applyView(catalogue.served,view,resolveHidden(catalogue));
+  const svg=renderSvg(layoutMap(buildMapModel(served,'2027-06-01'),12,ink),themes[name],{chrome});
+  expect(recorded[key]!.length,key).toBeGreaterThan(10);
+  expect(placement(svg).labels,key).toEqual(recorded[key]);
+ }
 });

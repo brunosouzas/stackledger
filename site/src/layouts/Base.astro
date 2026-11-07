@@ -1,8 +1,11 @@
 ---
 // Shared page shell (catalogue-site, Layout): fixed CSP and noindex metas, header, main, footer.
 // Structure from brunosouzas.com's Layout.astro (Astroplate theme, MIT, see LICENSE-astroplate).
-// No inline code: the theme script is a bundled file, styles are imported files.
-import '../styles/fonts.css';
+// No inline code: the theme script is a bundled file, styles are imported files. The fonts come from
+// Astro's Fonts API (src/site/build.ts): its <Font> components write inline <style> elements, which
+// the build moves into _astro/fonts.css before the scan (catalogue-site, Font delivery). They come
+// after the CSP meta, so the stylesheet link and the preloads are requested under the policy.
+import { Font } from 'astro:assets';
 import '../styles/tokens.css';
 import '../styles/override.css';
 import '../styles/base.css';
@@ -35,6 +38,9 @@ const root = rootFor(Astro.url.pathname);
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <title>{home ? site.title : `${title} | ${site.title}`}</title>
+    <Font cssVariable="--font-primary" preload={[{ weight: 400, style: 'normal' }]} />
+    <Font cssVariable="--font-secondary" preload={[{ weight: 700, style: 'normal' }]} />
+    <Font cssVariable="--font-mono" />
     <link rel="icon" type="image/svg+xml" href={href(root, 'favicon.svg')} />
     <script>
       import '../scripts/theme.ts';

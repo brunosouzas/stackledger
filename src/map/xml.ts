@@ -1,6 +1,8 @@
 /** Strict XML text writer used by the SVG renderer; npm test parses hostile output.
  * Names are fixed allow-lists; paints must be six-digit hex or none; nonfinite geometry
  * throws rather than producing invalid SVG. Catalogue strings are always XML escaped.
+ * An apostrophe (written `&apos;`) is allowed only in `font-family`, whose design system stack quotes
+ * its families, and in the attributes that carry catalogue text (metro-map: Allowed attribute values).
  */
 const elements = new Set('svg title desc g path line rect circle ellipse polygon polyline text tspan'.split(' '));
 
@@ -11,6 +13,9 @@ const attributes = new Set([
   // Read by the site's map script for line highlight and the zone filter; values are escaped like text.
   'data-line', 'data-zone',
 ]);
+
+/** The attributes whose value may hold `'`: the quoted font stack and catalogue text. */
+const APOSTROPHE_ALLOWED = new Set(['font-family', 'data-ref', 'data-line', 'data-zone']);
 
 const ENTITIES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' };
 
@@ -52,6 +57,7 @@ export function tag(name: string, attrs: Attributes = {}, children?: string): st
     if (typeof value === 'number') text = number(value);
     else if (key === 'fill' || key === 'stroke') text = color(value);
     else text = value;
+    if (text.includes("'") && !APOSTROPHE_ALLOWED.has(key)) throw new Error(`Unsupported apostrophe in SVG attribute ${key}`);
     return ` ${key}="${escapeXml(text)}"`;
   }).join('');
   return children === undefined ? `<${name}${values}/>` : `<${name}${values}>${children}</${name}>`;

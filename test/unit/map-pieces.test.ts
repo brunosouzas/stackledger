@@ -43,7 +43,10 @@ test('Piece text has no font of its own', () => {
       const doc = safe(svg);
       const withFont = Array.from(doc.getElementsByTagName('*')).filter(element => element.hasAttribute('font-family'));
       expect(withFont.map(element => element.tagName)).toEqual(['svg']);
-      for (const element of Array.from(doc.getElementsByTagName('*'))) for (const attr of Array.from(element.attributes)) expect(attr.value, attr.name).not.toContain("'");
+      for (const element of Array.from(doc.getElementsByTagName('*'))) for (const attr of Array.from(element.attributes)) if (!['font-family', 'data-ref', 'data-line', 'data-zone'].includes(attr.name)) expect(attr.value, attr.name).not.toContain("'");
+      // The root's font stack is the design system's, quotes included, each written as &apos;.
+      expect(doc.documentElement.getAttribute('font-family')).toBe(theme.font);
+      expect(svg).toContain(`font-family="${theme.font.replaceAll("'", '&apos;')}"`);
     }
   }
 });
@@ -78,7 +81,7 @@ test('Held licence is green', () => {
   for (const name of ['light', 'dark'] as const) {
     const svg = renderSvg(g, themes[name]);
     expect(groupText(svg, 'component:editor')).toContain(writePiece(licenceMark({ cx, cy, state: 'owned', surface: surfaceOf(name) })));
-    expect(groupText(svg, 'component:editor')).toContain(`r="5" fill="#3DDC84" stroke="#0A1033"`);
+    expect(groupText(svg, 'component:editor')).toContain(`r="5" fill="#3DDC84" stroke="${themes[name].outline}"`);
   }
 });
 
@@ -89,7 +92,7 @@ test('Licence to buy is white', () => {
   for (const name of ['light', 'dark'] as const) {
     const svg = renderSvg(g, themes[name]);
     expect(groupText(svg, 'component:editor')).toContain(writePiece(licenceMark({ cx, cy, state: 'toBuy', surface: name })));
-    expect(groupText(svg, 'component:editor')).toContain(`r="5" fill="#FFFFFF" stroke="#0A1033"`);
+    expect(groupText(svg, 'component:editor')).toContain(`r="5" fill="#FFFFFF" stroke="${themes[name].outline}"`);
   }
 });
 

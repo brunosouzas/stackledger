@@ -2,6 +2,8 @@
 
 Govern your software stack and licences, drawn as a metro map.
 
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/symbol-dark.svg"><img src="docs/images/symbol-light.svg" alt="" width="16" height="16"></picture> by Bruno Souza
+
 [![OpenSpec](https://github.com/brunosouzas/stackledger/actions/workflows/openspec.yml/badge.svg)](https://github.com/brunosouzas/stackledger/actions/workflows/openspec.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
@@ -60,7 +62,7 @@ The diagram as Mermaid, and the personal and corporate modes: [docs/how-it-works
 4. **The website is static.** No server, no database, nothing to patch. Why: [ADR 5](docs/adr/0005-static-site-no-server.md).
 5. **It is written in TypeScript**, so the same map engine runs at build time and in the browser. Why: [ADR 9](docs/adr/0009-typescript-end-to-end.md).
 6. **Agent skills are a second ledger in the same tool.** The skills, agents, playbooks and rules your AI agents use are read from their own folders, never copied into YAML. `stackledger skills validate` checks them, `stackledger skills map` draws them in the skills repository, and since 0.3.0 the site has a Skills section next to Software; linking each skill to the software it needs is planned. Why: [ADR 10](docs/adr/0010-agent-skills-are-a-second-ledger-read-from-their-folders.md).
-7. **It looks like brunosouzas.com.** The map, the diagrams, the favicon and the site's colours and fonts come from [`@brunosouzas/design-system`](https://www.npmjs.com/package/@brunosouzas/design-system), a dependency of the published package with no dependencies of its own; stackledger keeps the layout and writes every piece through its own SVG writer. See [the map](docs/map.md#routes-and-themes) and [the site](docs/site.md).
+7. **It looks like brunosouzas.com, with an identity of its own.** The map, the diagrams, the favicon and the site's colours come from [`@brunosouzas/design-system`](https://www.npmjs.com/package/@brunosouzas/design-system), a dependency of the published package; stackledger keeps the layout and writes every piece through its own SVG writer. On top of the family it has its own accent (a blue), its wordmark (the site title in Source Serif 4 italic), its mark (a ledger page) and the parent brand's endorsement in the footer. The fonts are the site's: Source Sans 3, Source Serif 4 and Source Code Pro, shipped in the package and delivered by Astro's Fonts API, so no font is fetched from another site. See [the map](docs/map.md#routes-and-themes) and [the site](docs/site.md).
 
 [How it works, end to end](docs/how-it-works.md) draws the publication path (a push to `main` of the private catalogue repository, GitHub Actions, Cloudflare Pages behind Cloudflare Access) and explains the personal (one site, one reader) and corporate (two sites) modes.
 

@@ -8,6 +8,11 @@
  * CSP differs from POLICY and any build path left in a file; the build fails on any problem, before
  * anything is published.
  *
+ * Fonts: moveFontCss(siteDir) runs first. Astro's Fonts API writes its CSS in inline `<style>`
+ * elements; only that CSS (`:root` font variables and `@font-face` rules, "Accepted font CSS") is
+ * moved into `_astro/fonts.css`, identical on every page, and linked where the first element was.
+ * Anything else in a `<style>` fails the build, and the scan still refuses any `<style>` left.
+ *
  * HTML is read tag by tag: catalogue text is escaped by Astro and the SVG renderers, so `<` and `>`
  * never appear inside text or attribute values, and a hostile title cannot look like an attribute.
  * Deterministic: files are visited in sorted order and only rewritten, never renamed.
@@ -20,7 +25,7 @@
  * syntax are refused too, so an unknown name can never hide a separator. CSS escapes are not
  * decoded: a CSS URL holding a backslash is refused instead.
  */
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, posix, relative, sep } from 'node:path';
 import { POLICY } from './policy.js';
 import { BACKDROP_CREDIT_URL } from '../map/svg.js';
@@ -143,6 +148,160 @@ function relativiseCss(file: string, css: string): string {
   return css
     .replace(/url\(\s*(["']?)(\/_astro\/[^"')]*)\1\s*\)/g, (_: string, quote: string, url: string) => `url(${quote}${toRelative(file, url)}${quote})`)
     .replace(/@import\s+(["'])(\/_astro\/[^"']*)\1/g, (_: string, quote: string, url: string) => `@import ${quote}${toRelative(file, url)}${quote}`);
+}
+
+/** The stylesheet file that receives the Fonts API's CSS (catalogue-site, Font delivery). */
+export const FONT_CSS_FILE = '_astro/fonts.css';
+const STYLE_ELEMENT = /<style\b([^>]*)>([\s\S]*?)<\/style\s*>/gi;
+/** The @font-face descriptors the Fonts API writes, for its faces and its generated fallbacks. */
+const FONT_DESCRIPTORS = new Set(['font-family', 'src', 'font-display', 'font-weight', 'font-style', 'size-adjust',
+  'ascent-override', 'descent-override', 'line-gap-override', 'unicode-range']);
+const FONT_URL = /^url\(\s*(["']?)\/_astro\/fonts\/([A-Za-z0-9_.-]+\.woff2)\1\s*\)/;
+const FORMAT = /^format\(\s*(?:"[A-Za-z0-9-]+"|'[A-Za-z0-9-]+'|[A-Za-z0-9-]+)\s*\)$/;
+const LOCAL = /^local\(\s*(?:"[^"]*"|'[^']*')\s*\)$/;
+
+interface Piece { text: string; start: number }
+
+/** `text` split at each `separator` outside quoted strings and parentheses, with each piece's offset.
+ * Undefined when a string or a parenthesis is left open. */
+function splitOutside(text: string, separator: string, offset = 0): Piece[] | undefined {
+  const pieces: Piece[] = [];
+  let quote = '', depth = 0, start = 0;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i]!;
+    if (quote) { if (char === quote) quote = ''; continue; }
+    if (char === '"' || char === "'") quote = char;
+    else if (char === '(') depth++;
+    else if (char === ')') { if (--depth < 0) return undefined; }
+    else if (char === separator && depth === 0) { pieces.push({ text: text.slice(start, i), start: offset + start }); start = i + 1; }
+  }
+  if (quote || depth) return undefined;
+  pieces.push({ text: text.slice(start), start: offset + start });
+  return pieces;
+}
+
+/** Whether `text` holds a parenthesis outside quoted strings. */
+function hasCall(text: string): boolean {
+  let quote = '';
+  for (const char of text) {
+    if (quote) { if (char === quote) quote = ''; }
+    else if (char === '"' || char === "'") quote = char;
+    else if (char === '(' || char === ')') return true;
+  }
+  return false;
+}
+
+/** The top-level blocks of a style sheet (selector or at-rule prelude, body and the body's offset),
+ * quoted strings skipped. Undefined for nested blocks, an unclosed string or block, text after the
+ * last block, or a comment. */
+function cssBlocks(css: string): { prelude: string; body: string; start: number }[] | undefined {
+  const blocks: { prelude: string; body: string; start: number }[] = [];
+  let quote = '', open = -1, start = 0;
+  for (let i = 0; i < css.length; i++) {
+    const char = css[i]!;
+    if (quote) { if (char === quote) quote = ''; continue; }
+    if (char === '"' || char === "'") quote = char;
+    else if (char === '/' && css[i + 1] === '*') return undefined;
+    else if (char === '{') { if (open !== -1) return undefined; open = i; }
+    else if (char === '}') {
+      if (open === -1) return undefined;
+      blocks.push({ prelude: css.slice(start, open).trim(), body: css.slice(open + 1, i), start: open + 1 });
+      start = i + 1;
+      open = -1;
+    }
+  }
+  if (quote || open !== -1 || css.slice(start).trim()) return undefined;
+  return blocks;
+}
+
+/** Checks the CSS of one `<style>` element against "Accepted font CSS" and returns it with each font
+ * `url()` made relative to FONT_CSS_FILE (`fonts/<file>.woff2`), or the reason it is refused. Only
+ * `:root` blocks of `--font-*` custom properties and `@font-face` blocks of the descriptors the Fonts
+ * API writes are accepted; `url()` only in `src`, and only to `/_astro/fonts/<file>.woff2`. A
+ * backslash anywhere is refused, so a CSS escape cannot spell what the checks look for. */
+export function fontCss(css: string): { css: string } | { problem: string } {
+  if (css.includes('\\')) return { problem: 'a CSS escape in a <style> element' };
+  const blocks = cssBlocks(css);
+  if (!blocks) return { problem: 'a <style> element that is not font CSS' };
+  const urls: { start: number; end: number; text: string }[] = [];
+  for (const block of blocks) {
+    const fontFace = block.prelude.toLowerCase() === '@font-face';
+    if (!fontFace && block.prelude !== ':root') return { problem: `a <style> element with ${JSON.stringify(block.prelude.slice(0, 40))}` };
+    const declarations = splitOutside(block.body, ';', block.start);
+    if (!declarations) return { problem: 'a <style> element that is not font CSS' };
+    for (const declaration of declarations) {
+      if (!declaration.text.trim()) continue;
+      const colon = declaration.text.indexOf(':');
+      if (colon < 0) return { problem: 'a <style> declaration without a value' };
+      const name = declaration.text.slice(0, colon).trim().toLowerCase();
+      const value = declaration.text.slice(colon + 1);
+      if (!fontFace) {
+        if (!/^--font-[a-z0-9-]+$/.test(name) || hasCall(value)) return { problem: `a :root declaration ${JSON.stringify(name)} that is not a font variable` };
+        continue;
+      }
+      if (!FONT_DESCRIPTORS.has(name)) return { problem: `an @font-face descriptor ${JSON.stringify(name)}` };
+      if (name !== 'src') {
+        if (hasCall(value)) return { problem: `an @font-face ${name} with a function` };
+        continue;
+      }
+      const sources = splitOutside(value, ',', declaration.start + colon + 1);
+      if (!sources) return { problem: 'an @font-face src that is not font CSS' };
+      for (const source of sources) {
+        const item = source.text.trim(), lead = source.text.length - source.text.trimStart().length;
+        const url = FONT_URL.exec(item);
+        if (url) {
+          if (!FORMAT.test(item.slice(url[0].length).trim()) && item.slice(url[0].length).trim()) return { problem: `an @font-face src ${JSON.stringify(item)}` };
+          urls.push({ start: source.start + lead, end: source.start + lead + url[0].length, text: `url(${url[1]}fonts/${url[2]}${url[1]})` });
+        } else if (!LOCAL.test(item)) return { problem: `an @font-face src ${JSON.stringify(item)}` };
+      }
+    }
+  }
+  let moved = '', at = 0;
+  for (const url of urls) { moved += css.slice(at, url.start) + url.text; at = url.end; }
+  return { css: moved + css.slice(at) };
+}
+
+/** One page with its `<style>` elements replaced by one link to FONT_CSS_FILE, where the first was,
+ * and their font CSS (fontCss), in order; or the reason the page is refused. `file` is the page's
+ * path from the site root. A page with no font CSS is refused. */
+export function movePageFonts(file: string, html: string): { html: string; css: string } | { problem: string } {
+  const elements = [...html.matchAll(STYLE_ELEMENT)];
+  if (!elements.length) return { problem: `${file}: no font CSS` };
+  const parts: string[] = [];
+  for (const element of elements) {
+    if (element[1]!.trim()) return { problem: `${file}: <style> element with attributes` };
+    const checked = fontCss(element[2]!);
+    if ('problem' in checked) return { problem: `${file}: ${checked.problem}` };
+    parts.push(checked.css);
+  }
+  const link = `<link rel="stylesheet" href="${posix.relative(posix.dirname(file), FONT_CSS_FILE)}">`;
+  let first = true;
+  const rewritten = html.replace(STYLE_ELEMENT, () => (first ? ((first = false), link) : ''));
+  return { html: rewritten, css: parts.join('') };
+}
+
+/** Move the Fonts API's font CSS of every HTML page of a site into FONT_CSS_FILE (design §2). Every
+ * page, in sorted path order, must yield the first page's font CSS. Returns the problems; with any,
+ * nothing is written and the build fails before the scan (Other style still fails, Font CSS differs
+ * between pages). */
+export function moveFontCss(siteDir: string): string[] {
+  const pages = listFiles(siteDir).filter(file => file.endsWith('.html'));
+  if (listFiles(siteDir).includes(FONT_CSS_FILE)) return [`${FONT_CSS_FILE} already exists`];
+  const moved: [string, string][] = [];
+  let css: string | undefined;
+  const problems: string[] = [];
+  for (const file of pages) {
+    const page = movePageFonts(file, readFileSync(join(siteDir, file), 'utf8'));
+    if ('problem' in page) { problems.push(page.problem); continue; }
+    css ??= page.css;
+    if (page.css !== css) { problems.push(`${file}: font CSS differs from ${pages[0]}'s`); continue; }
+    moved.push([file, page.html]);
+  }
+  if (problems.length || css === undefined) return problems.length ? problems : ['no page with font CSS'];
+  for (const [file, html] of moved) writeFileSync(join(siteDir, file), html);
+  mkdirSync(join(siteDir, posix.dirname(FONT_CSS_FILE)), { recursive: true });
+  writeFileSync(join(siteDir, FONT_CSS_FILE), css);
+  return [];
 }
 
 /** Rewrite every root-absolute Astro asset URL in the site's HTML and CSS files, in place. */

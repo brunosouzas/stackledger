@@ -1,10 +1,14 @@
 /** The two themes, built from the tokens of @brunosouzas/design-system (metro-map: Design system
- * tokens): each `surface.<theme>`, the `map` measures and the `color` meanings of brunosouzas.com.
- * Ink outlines, pipe lines with an ink casing, hard offset shadows (indigo with a light rim on the
- * dark navy), the city backdrop colours and the Lato font stack. The pieces paint a surface's ink, the licence and renewal colours
- * and the zone opacity and title tint from the same tokens, so the renderers refuse a theme whose value
- * for any of them differs (checkInk). No fonts or other assets are fetched at render time: the stack names Lato, which the site
- * ships, then system fonts (unquoted, so no quote character reaches an SVG attribute).
+ * tokens): each `surface.<theme>`, the `map` measures, the `color` ink and the `color.state` meanings.
+ * Ink outlines (`color.ink` on light, `surface.dark.muted` on dark, where ink vanishes), pipe lines
+ * with an ink casing on both surfaces, a sticker shadow only while `map.shadow` is above 0 (0 in the
+ * pinned package), the city backdrop colours and the design system's `font.sans` stack. The pieces
+ * paint a surface's ink, the licence and renewal colours and the zone opacity and title tint from the
+ * same tokens, so the renderers refuse a theme whose value for any of them differs (checkInk).
+ * No fonts or other assets are fetched at render time: the stack is `font.sans` as is, quotes
+ * included ('Source Sans 3' ends in a digit, so CSS needs the quotes); the map's writer escapes each
+ * `'` as `&apos;` (metro-map: Themes, Allowed attribute values). The site ships the faces and points
+ * its inline drawings at them with a CSS rule.
  */
 import { tokens } from '@brunosouzas/design-system/tokens';
 import type { Box } from './labels.js';
@@ -46,8 +50,6 @@ export interface Theme {
 
 const M = tokens.map;
 const C = tokens.color;
-// The families of the design system's font.sans, without quotes.
-const FONT = 'Lato, Helvetica Neue, Helvetica, Arial, sans-serif';
 
 function fromTokens(surface: 'light' | 'dark'): Theme {
   const s = tokens.surface[surface];
@@ -57,24 +59,25 @@ function fromTokens(surface: 'light' | 'dark'): Theme {
     text: s.text,
     muted: s.muted,
     grid: s.grid,
-    header: C.ink,
+    // Ink vanishes on the near-black dark surface (design system ADR 0009): the band is the panel there.
+    header: surface === 'dark' ? s.panel : C.ink,
     headerText: C.white,
     station: C.white,
-    outline: C.ink,
+    outline: surface === 'dark' ? s.muted : C.ink,
     outlineWidth: M.outline,
-    licence: C.healthy,
-    renewal: C.blocked,
+    licence: C.state.healthy,
+    renewal: C.state.blocked,
     badgeText: C.white,
     panel: s.panel,
-    accent: C.caller,
-    font: FONT,
+    accent: C.state.caller,
+    font: tokens.font.sans,
     lineWidth: M.lineWidth,
     bendRadius: M.bendRadius,
     zoneOpacity: s.zoneOpacity,
     // The zone piece tints titles on the dark surface only.
     zoneTitleTint: surface === 'dark' ? M.zoneTitleTint : 0,
     casing: { enabled: M.casing > 0, color: C.ink, extraWidth: M.casing },
-    shadow: { enabled: true, color: s.shadow, dx: M.shadow, dy: M.shadow },
+    shadow: { enabled: M.shadow > 0, color: s.shadow, dx: M.shadow, dy: M.shadow },
     rim: { enabled: s.rimWidth > 0, color: s.rim, width: s.rimWidth },
     backdrop: { water: s.backdropWater, waterEdge: s.backdropWaterEdge, park: s.backdropPark, credit: s.backdropCredit },
   };

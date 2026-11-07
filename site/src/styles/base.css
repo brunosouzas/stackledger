@@ -90,8 +90,16 @@ dt {
 }
 
 code {
+  font-family: var(--font-mono);
   font-size: 0.9em;
   overflow-wrap: anywhere;
+}
+
+/* The map and the diagrams name the design system's plain family ('Source Sans 3') in their
+   font-family attribute; the Fonts API renames the shipped face, so the page points them at it.
+   A CSS rule overrides a presentation attribute; standalone SVG files keep the plain names. */
+svg[font-family] {
+  font-family: var(--font-primary);
 }
 
 :focus-visible {
@@ -177,6 +185,11 @@ code {
   font-size: 1.35rem;
   font-weight: 700;
   text-decoration: none;
+}
+
+/* The wordmark: the header's site title in Source Serif 4 italic 700 (catalogue-site, Wordmark). */
+.header .navbar-brand {
+  font-style: italic;
 }
 
 .navbar-nav {
@@ -286,6 +299,11 @@ code {
   margin: 0;
 }
 
+/* The parent brand's symbol sits on the text line, before "by Bruno Souza". */
+.symbol-mark {
+  vertical-align: -0.15em;
+}
+
 /* Buttons and form controls. */
 
 .btn {
@@ -296,7 +314,6 @@ code {
   padding: 0.35rem 0.9rem;
   border: var(--frame-outline);
   border-radius: var(--radius);
-  box-shadow: var(--frame-shadow);
   background: transparent;
   color: var(--color-text-dark);
   font: inherit;
@@ -390,7 +407,6 @@ tbody tr:last-child td {
   border: var(--frame-outline);
   border-radius: var(--radius);
   background: var(--color-body);
-  box-shadow: var(--frame-shadow);
 }
 
 .plain-list {
@@ -415,7 +431,6 @@ tbody tr:last-child td {
   padding: 0 0.6rem;
   border: var(--frame-outline);
   border-radius: 1rem;
-  box-shadow: var(--frame-shadow);
   font-size: 0.9rem;
 }
 

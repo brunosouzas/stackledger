@@ -19,5 +19,5 @@ test("Icon is the design system's", () => {
   // The button icons follow the text colour; the switch keeps token colours.
   for (const name of ['zoomIn', 'zoomOut', 'reset', 'download'] as const) expect(icons[name]).toContain('fill="currentColor" stroke="currentColor"');
   expect(icons.sun).toContain('fill="#FFFFFF"');
-  expect(icons.moon).toContain('fill="#0A1033"');
+  expect(icons.moon).toContain('fill="#121212"');
 });

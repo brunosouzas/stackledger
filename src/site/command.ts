@@ -20,6 +20,7 @@
  *
  * Every filesystem call on the output folder goes through `ops` (fs-ops.ts). src/cli.ts passes none,
  * so the CLI uses node:fs; tests pass a wrapper that fails or swaps the folder at a chosen call.
+ * `hooks` (build.ts BuildHooks) are test seams too: a missing font file, a page Astro wrote changed.
  */
 import { randomBytes } from 'node:crypto';
 import type { Stats } from 'node:fs';
@@ -31,7 +32,7 @@ import { REPORT_DAYS } from './data.js';
 import { loadFolder } from '../source.js';
 import { internal } from '../errors.js';
 import { problemCounts } from '../map/command.js';
-import { prepareBuild, packageVersion, type PreparedBuild } from './build.js';
+import { prepareBuild, packageVersion, type BuildHooks, type PreparedBuild } from './build.js';
 import { validateLoaded } from '../validate.js';
 import { refuseSkillsOutput, skillsInUse, skillsStops } from './skills-build.js';
 import { NODE_FS, type FsOps } from './fs-ops.js';
@@ -178,7 +179,7 @@ function parseBuildArgs(args: string[]): { folder: string; out: string; date: st
   return { folder, out: values.out, date, skills };
 }
 
-export async function buildCommand(args: string[], ops: FsOps = NODE_FS): Promise<void> {
+export async function buildCommand(args: string[], ops: FsOps = NODE_FS, hooks: BuildHooks = {}): Promise<void> {
   const options = parseBuildArgs(args);
   // Usage checks first: loading the folder throws a usage error for a missing or unreadable folder.
   const loaded = await loadFolder(resolve(options.folder));
@@ -203,7 +204,7 @@ export async function buildCommand(args: string[], ops: FsOps = NODE_FS): Promis
   ops.mkdir(staging);
   let prepared: PreparedBuild;
   try {
-    prepared = await prepareBuild(loaded, staging, options.date, packageVersion(), skills.set);
+    prepared = await prepareBuild(loaded, staging, options.date, packageVersion(), skills.set, hooks);
     publish(target, staging, identity, ops);
   } catch (error) {
     throw failedBuild(error, staging, identity, ops);

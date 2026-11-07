@@ -2,12 +2,13 @@
  * draws the page's Mermaid block (catalogue-pipeline: How it works diagram, How it works diagram content,
  * How it works generation). The file is written by scripts/site-art.mjs. Run npm test. */
 import { test, expect } from 'vitest';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { XMLSerializer } from '@xmldom/xmldom';
 import { coverTree, toSvg, validateCoverSpec } from '@brunosouzas/design-system';
+import { embedFonts } from '@brunosouzas/design-system/fonts';
 import { activeParts, parseSvg } from './svg-helpers.js';
 
 const repo = join(import.meta.dirname, '../..');
@@ -111,15 +112,18 @@ export function mermaidProblems(block: string, diagram: { pieces: Piece[]; custo
 
 const mermaid = () => /```mermaid\n([\s\S]*?)```/.exec(read('docs/how-it-works.md'))![1]!;
 
-test("Diagram file is the design system's drawing", () => {
+/** The drawing scripts/site-art.mjs writes: the spec's coverTree with its Source faces embedded. */
+const drawing = async () => toSvg(await embedFonts(coverTree(spec())));
+
+test("Diagram file is the design system's drawing", async () => {
   const diagram = spec();
   expect(validateCoverSpec(diagram)).toEqual([]);
   expect(diagram.format).toBe('diagram');
-  expect(shapes(read('docs/images/how-it-works.svg'))).toEqual(shapes(toSvg(coverTree(diagram))));
+  expect(shapes(read('docs/images/how-it-works.svg'))).toEqual(shapes(await drawing()));
 });
 
-test('Stale diagram file', () => {
-  const drawn = toSvg(coverTree(spec()));
+test('Stale diagram file', async () => {
+  const drawn = await drawing();
   const doc = parseSvg(drawn);
   const rect = doc.getElementsByTagName('rect')[1]!;
   rect.setAttribute('x', String(Number(rect.getAttribute('x')) + 1));
@@ -133,8 +137,28 @@ test('Colour literal refused', () => {
   expect(validateCoverSpec(diagram)).toEqual(expect.arrayContaining([expect.objectContaining({ path: `pieces[${at}].fill` })]));
 });
 
+// catalogue-pipeline "Removed colour path refused": color.healthy left the package in 0.7.0 (now color.state.healthy).
+test('Removed colour path refused', () => {
+  const diagram = spec();
+  const at = diagram.pieces.findIndex((piece: Piece) => piece.piece === 'diagramBox');
+  diagram.pieces[at].fill = 'color.healthy';
+  expect(validateCoverSpec(diagram)).toEqual(expect.arrayContaining([expect.objectContaining({ path: `pieces[${at}].fill` })]));
+});
+
 test('Diagram is inert', () => {
-  expect(activeParts(read('docs/images/how-it-works.svg'))).toEqual([]);
+  const svg = read('docs/images/how-it-works.svg');
+  // Inert apart from the fonts: one style element, the embedded faces, and nothing else active.
+  expect(activeParts(svg)).toEqual(['style']);
+  const styles = Array.from(parseSvg(svg).getElementsByTagName('style'));
+  expect(styles).toHaveLength(1);
+  const css = styles[0]!.textContent!;
+  const rules = css.match(/@font-face\s*\{[^}]*\}/g) ?? [];
+  expect(rules.length).toBeGreaterThan(0);
+  expect(css.replace(/@font-face\s*\{[^}]*\}/g, '').trim()).toBe('');
+  const urls = [...css.matchAll(/url\(([^)]*)\)/g)].map(match => match[1]!.replace(/^["']|["']$/g, ''));
+  expect(urls).toHaveLength(rules.length);
+  for (const url of urls) expect(url.startsWith('data:font/ttf;base64,'), url.slice(0, 40)).toBe(true);
+  expect(css).not.toMatch(/@import|\\/);
 });
 
 test('Mermaid content kept', () => {
@@ -188,6 +212,30 @@ function runArt(specs: Record<string, unknown>) {
     return { status: run.status, stderr: run.stderr, entries: readdirSync(root).sort() };
   } finally { rmSync(root, { recursive: true, force: true }); }
 }
+
+// catalogue-pipeline "Font file unreadable": the script stops, naming the file, and leaves the diagram as it was.
+test('Font file unreadable', () => {
+  const root = mkdtempSync(join(tmpdir(), 'stackledger-art-'));
+  try {
+    mkdirSync(join(root, 'scripts'));
+    copyFileSync(join(repo, 'scripts/site-art.mjs'), join(root, 'scripts/site-art.mjs'));
+    for (const name of ['home-banner.json', 'how-it-works.json']) copyFileSync(join(repo, 'scripts', name), join(root, 'scripts', name));
+    // node_modules: links to the repository's packages, except a copy of the design system without one font file.
+    const modules = join(root, 'node_modules');
+    mkdirSync(join(modules, '@brunosouzas'), { recursive: true });
+    for (const name of readdirSync(join(repo, 'node_modules'))) if (name !== '@brunosouzas') symlinkSync(join(repo, 'node_modules', name), join(modules, name), 'dir');
+    cpSync(join(repo, 'node_modules/@brunosouzas/design-system'), join(modules, '@brunosouzas/design-system'), { recursive: true });
+    rmSync(join(modules, '@brunosouzas/design-system/fonts/SourceSans3-Bold.ttf'));
+    mkdirSync(join(root, 'docs/images'), { recursive: true });
+    writeFileSync(join(root, 'docs/images/how-it-works.svg'), 'before\n');
+    const run = spawnSync(process.execPath, [join(root, 'scripts/site-art.mjs')], { encoding: 'utf8' });
+    expect(run.status).not.toBe(0);
+    expect(run.stderr).toContain('SourceSans3-Bold.ttf');
+    expect(readFileSync(join(root, 'docs/images/how-it-works.svg'), 'utf8')).toBe('before\n');
+    expect(readdirSync(join(root, 'docs/images'))).toEqual(['how-it-works.svg']);
+    expect(existsSync(join(root, 'site'))).toBe(false);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
 
 test('Invalid spec writes nothing', () => {
   const banner = JSON.parse(read('scripts/home-banner.json'));

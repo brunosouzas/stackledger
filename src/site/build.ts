@@ -18,10 +18,14 @@
  * into the render step, packages resolved from this package through a Vite plugin, caches in staging
  * and telemetry off. process.chdir makes this one build at a time per process.
  *
- * What can go wrong: an Astro or Vite upgrade that emits a URL form relative.ts does not handle, or
- * inline code, fails the scan and throws before anything is published.
+ * Fonts: Astro's Fonts API (local provider, files copied from the @fontsource packages) writes its CSS
+ * in inline <style> elements; moveFontCss (relative.ts) moves exactly that CSS into `_astro/fonts.css`
+ * before the scan, so the pages keep the fixed policy with no inline style.
+ *
+ * What can go wrong: an Astro or Vite upgrade that emits a URL form relative.ts does not handle, font
+ * CSS outside what moveFontCss accepts, or inline code, fails the build before anything is published.
  */
-import { chmodSync, cpSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,7 +38,7 @@ import { buildSiteData, CALENDAR_FILE, type SiteData } from './data.js';
 import { ownerNames } from './owners.js';
 import { HEADERS, MARKER, MARKER_NAME, POLICY, redirects, ROBOTS } from './policy.js';
 import { FULL_ONLY } from './staging.js';
-import { listFiles, relativise, scan } from './relative.js';
+import { listFiles, moveFontCss, relativise, scan } from './relative.js';
 import { buildSkillsData } from './skills-data.js';
 import { skillsReport } from './skills-build.js';
 import type { SkillSet } from '../skills/source.js';
@@ -44,17 +48,52 @@ const thisFile = fileURLToPath(import.meta.url);
 const packageRoot = fileURLToPath(new URL('../../', import.meta.url));
 const siteSource = join(packageRoot, 'site');
 
-/** Font files copied from the @fontsource packages: Heebo for text, Signika for headings and Lato for
- * the map and diagrams (as brunosouzas.com and its illustrations). */
-const FONT_FILES: readonly [string, string][] = [
-  ['@fontsource/heebo', 'heebo-latin-400-normal.woff2'],
-  ['@fontsource/heebo', 'heebo-latin-600-normal.woff2'],
-  ['@fontsource/signika', 'signika-latin-500-normal.woff2'],
-  ['@fontsource/signika', 'signika-latin-700-normal.woff2'],
-  ['@fontsource/lato', 'lato-latin-400-normal.woff2'],
-  ['@fontsource/lato', 'lato-latin-700-normal.woff2'],
-  ['@fontsource/lato', 'lato-latin-900-normal.woff2'],
+/** The families the site ships, delivered by Astro's Fonts API with its local provider (catalogue-site,
+ * Font delivery; design §1), from the @fontsource packages (SIL Open Font License 1.1): Source Sans 3
+ * for text, labels, the map and the diagrams (900 for the map's interchange labels), Source Serif 4 for
+ * headings and the wordmark, Source Code Pro for code. Each family sets one CSS variable the site's
+ * CSS reads; site/src/layouts/Base.astro chooses the preloads. The fallbacks are the design system's
+ * `site.font.*` generic families. */
+interface FontFamily {
+  name: string;
+  cssVariable: '--font-primary' | '--font-secondary' | '--font-mono';
+  pkg: string;
+  /** The file names' prefix in the package's files/ folder. */
+  slug: string;
+  faces: readonly (readonly [number, 'normal' | 'italic'])[];
+  fallback: 'sans-serif' | 'serif' | 'monospace';
+}
+const FONT_FAMILIES: readonly FontFamily[] = [
+  { name: 'Source Sans 3', cssVariable: '--font-primary', pkg: '@fontsource/source-sans-3', slug: 'source-sans-3',
+    faces: [[400, 'normal'], [600, 'normal'], [700, 'normal'], [900, 'normal']], fallback: 'sans-serif' },
+  { name: 'Source Serif 4', cssVariable: '--font-secondary', pkg: '@fontsource/source-serif-4', slug: 'source-serif-4',
+    faces: [[700, 'normal'], [700, 'italic']], fallback: 'serif' },
+  { name: 'Source Code Pro', cssVariable: '--font-mono', pkg: '@fontsource/source-code-pro', slug: 'source-code-pro',
+    faces: [[400, 'normal']], fallback: 'monospace' },
 ];
+const fontFile = (family: FontFamily, [weight, style]: readonly [number, string]) => `${family.slug}-latin-${weight}-${style}.woff2`;
+/** Every font file the fonts configuration names, as [package, file in its files/ folder]. */
+export const FONT_FILES: readonly [string, string][] = FONT_FAMILIES.flatMap(family => family.faces.map(face => [family.pkg, fontFile(family, face)] as [string, string]));
+
+/** Test seams of one build, passed only by test/integration/build-with-faults.mjs; src/cli.ts passes
+ * none. `fontFile` gives the installed path of a font file (default: resolved from this package);
+ * `afterAstro` sees each site folder right after Astro wrote it, before the font CSS is moved. */
+export interface BuildHooks {
+  fontFile?(pkg: string, file: string): string;
+  afterAstro?(siteDir: string): void;
+}
+
+/** The installed path of one font file; a missing file fails the build naming it (Missing font file). */
+function fontSource(pkg: string, file: string, hooks: BuildHooks): string {
+  let path: string | undefined;
+  try {
+    path = hooks.fontFile ? hooks.fontFile(pkg, file) : require.resolve(`${pkg}/files/${file}`);
+  } catch {
+    path = undefined;
+  }
+  if (path === undefined || !existsSync(path)) throw new Error(`Font file ${pkg}/files/${file} is missing from the installed packages`);
+  return path;
+}
 
 const HEX_COLOUR = /^#[0-9a-fA-F]{6}$/;
 
@@ -92,7 +131,7 @@ function makeWritable(dir: string): void {
   }
 }
 
-function prepareWorkingCopy(staging: string, view: ViewName, data: SiteData): string {
+function prepareWorkingCopy(staging: string, view: ViewName, data: SiteData, hooks: BuildHooks): string {
   const work = join(staging, `work-${view}`);
   cpSync(siteSource, work, { recursive: true });
   makeWritable(work);
@@ -105,7 +144,9 @@ function prepareWorkingCopy(staging: string, view: ViewName, data: SiteData): st
   mkdirSync(join(work, '.astro'), { recursive: true });
   writeFileSync(join(work, '.astro', 'settings.json'), JSON.stringify(ASTRO_PREFERENCES) + '\n');
   mkdirSync(join(work, 'src', 'fonts'), { recursive: true });
-  for (const [pkg, file] of FONT_FILES) cpSync(require.resolve(`${pkg}/files/${file}`), join(work, 'src', 'fonts', file));
+  // The Fonts API reads them by paths relative to the project root (astroConfig), so the family names it
+  // generates, the font CSS and the pages do not depend on where the working copy is.
+  for (const [pkg, file] of FONT_FILES) cpSync(fontSource(pkg, file, hooks), join(work, 'src', 'fonts', file));
   // The design system's variables (--ds-*), read by tokens.css.
   cpSync(require.resolve('@brunosouzas/design-system/tokens.css'), join(work, 'src', 'styles', 'ds-tokens.css'));
   return work;
@@ -124,7 +165,27 @@ function packageResolver() {
   };
 }
 
-function astroConfig(staging: string, view: ViewName, work: string) {
+/** One family of the fonts configuration, as astroConfig gives it to Astro's Fonts API. */
+export interface FontConfig {
+  name: string;
+  cssVariable: string;
+  provider: { name: string };
+  fallbacks: string[];
+  options: { variants: { weight: number; style: string; src: string[] }[] };
+}
+
+/** The Astro configuration of one build. Exported for test/unit/site-fonts.test.ts: the fonts use only
+ * the local provider and root-relative paths, so the build makes no network call for them. Astro's
+ * own `security.csp` stays off: the site writes its own policy meta, and the scan requires one. */
+export async function astroConfig(staging: string, view: ViewName, work: string): Promise<{ fonts: FontConfig[] } & Record<string, unknown>> {
+  const { fontProviders } = await import('astro/config');
+  const fonts = FONT_FAMILIES.map((family): FontConfig => ({
+    name: family.name,
+    cssVariable: family.cssVariable,
+    provider: fontProviders.local(),
+    fallbacks: [family.fallback],
+    options: { variants: family.faces.map(face => ({ weight: face[0], style: face[1], src: [`./src/fonts/${fontFile(family, face)}`] })) },
+  }));
   return {
     root: work,
     configFile: false as const,
@@ -135,6 +196,7 @@ function astroConfig(staging: string, view: ViewName, work: string) {
     outDir: join(work, 'dist'),
     cacheDir: join(staging, `cache-${view}`, 'astro'),
     integrations: [],
+    fonts,
     devToolbar: { enabled: false },
     prefetch: false,
     build: { format: 'directory' as const, inlineStylesheets: 'never' as const },
@@ -152,22 +214,27 @@ function astroConfig(staging: string, view: ViewName, work: string) {
 
 /** Build one site; `calendar` (full site only) is written as renewals.ics before the scan, so it is
  * checked and published with the pages. */
-async function buildView(staging: string, view: ViewName, data: SiteData, calendar?: string): Promise<BuiltSite> {
-  const work = prepareWorkingCopy(staging, view, data);
+async function buildView(staging: string, view: ViewName, data: SiteData, hooks: BuildHooks, calendar?: string): Promise<BuiltSite> {
+  const work = prepareWorkingCopy(staging, view, data, hooks);
   // Telemetry must be off before Astro is first loaded.
   process.env.ASTRO_TELEMETRY_DISABLED = '1';
+  const config = await astroConfig(staging, view, work);
   const { build } = await import('astro');
   // Astro writes its prerender bundle inside outDir only when outDir is inside the current directory.
   const previous = process.cwd();
   process.chdir(work);
   try {
-    await build(astroConfig(staging, view, work) as Parameters<typeof build>[0]);
+    await build(config as unknown as Parameters<typeof build>[0]);
   } finally {
     process.chdir(previous);
   }
   const dir = join(staging, `site-${view}`);
   renameSync(join(work, 'dist'), dir);
   if (calendar !== undefined) writeFileSync(join(dir, CALENDAR_FILE), calendar);
+  hooks.afterAstro?.(dir);
+  // The Fonts API's inline <style> elements become one stylesheet file, so no page holds inline style.
+  const fontProblems = moveFontCss(dir);
+  if (fontProblems.length) throw new Error(`The ${view} site has style the build does not allow: ${fontProblems.join('; ')}`);
   relativise(dir);
   // The staging folder's absolute path and random name, and the working copy, must not leak into a file.
   const problems = scan(dir, [staging, work, basename(staging)], data.home.links.map(link => link.url), data.map.credit);
@@ -178,7 +245,7 @@ async function buildView(staging: string, view: ViewName, data: SiteData, calend
 }
 
 /** Build both sites and the root files into `staging`, which must exist and be empty. */
-export async function prepareBuild(folder: string | Loaded, stagingPath: string, date: string, version = packageVersion(), skillSet?: SkillSet): Promise<PreparedBuild> {
+export async function prepareBuild(folder: string | Loaded, stagingPath: string, date: string, version = packageVersion(), skillSet?: SkillSet, hooks: BuildHooks = {}): Promise<PreparedBuild> {
   // Astro compares module paths with process.cwd(), which is always the real path (on macOS the
   // temporary folder /var is a link to /private/var), so the working copies use the real path too.
   const staging = realpathSync(stagingPath);
@@ -190,10 +257,10 @@ export async function prepareBuild(folder: string | Loaded, stagingPath: string,
   // One Skills section for every site (skills-site, Same skills in every site): built once, copied into each.
   const skills = skillSet ? buildSkillsData(skillSet) : undefined;
   const withSkills = <T extends SiteData>(data: T): T => (skills ? { ...data, skills: skills.data } : data);
-  const staff = sites.includes('staff') ? await buildView(staging, 'staff', withSkills(buildSiteData(catalogue, 'staff', version, undefined, owners).data)) : undefined;
+  const staff = sites.includes('staff') ? await buildView(staging, 'staff', withSkills(buildSiteData(catalogue, 'staff', version, undefined, owners).data), hooks) : undefined;
   if (!staff) writeFileSync(join(staging, FULL_ONLY), '');
   const fullData = buildSiteData(catalogue, 'full', version, date, owners);
-  const full = await buildView(staging, 'full', withSkills(fullData.data), fullData.calendar);
+  const full = await buildView(staging, 'full', withSkills(fullData.data), hooks, fullData.calendar);
   const root = join(staging, 'root');
   mkdirSync(root);
   writeFileSync(join(root, '_headers'), HEADERS);

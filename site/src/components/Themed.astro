@@ -1,8 +1,11 @@
 ---
 // One stackledger-rendered SVG per theme; CSS shows the one that matches the page theme.
-// set:html is allowed only here, for line badges and for the interface icons: these SVGs come from
-// src/map/*.ts, which escape every catalogue text themselves, or from src/site/ui-icons.ts, which
-// holds no catalogue text (site-security, Escaped catalogue text).
+// stackledger's templates use set:html only here, for line badges and for the interface icons: these
+// SVGs come from src/map/*.ts, which escape every catalogue text themselves, or from
+// src/site/ui-icons.ts, which holds no catalogue text (site-security, Escaped catalogue text).
+// Astro's own <Font> component (in Base.astro) also writes its CSS raw (<style set:html>), from the
+// fonts configuration alone, never catalogue text; the build moves that CSS into _astro/fonts.css
+// before the scan, which still refuses any other <style> (src/site/relative.ts, moveFontCss).
 interface Props {
   light: string;
   dark: string;

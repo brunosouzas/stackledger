@@ -1,25 +1,109 @@
 {
-  "id": "home-banner",
-  "title": "A small metro map",
-  "description": "Illustration. Three metro lines, blue, green and yellow, cross a navy background with rings. White stations sit on the lines, one of them an interchange shared by two lines and one muted. Each line starts at a coloured badge on the left.",
-  "format": "banner",
-  "background": "navy",
-  "rings": { "cx": 860, "cy": 210, "radius": 40 },
-  "pieces": [
-    { "piece": "pipe", "d": "M150,300 H470 Q520,300 545,255 L600,160 Q625,120 680,120 H1050", "fill": "illustration.accent", "width": 24, "casing": 10 },
-    { "piece": "pipe", "d": "M150,210 H1050", "fill": "color.healthy", "width": 24, "casing": 10 },
-    { "piece": "pipe", "d": "M330,110 Q380,110 405,150 L470,260 Q495,300 545,300 H1050", "fill": "color.transitional", "width": 24, "casing": 10 },
-    { "piece": "stationMarker", "cx": 260, "cy": 300, "surface": "dark", "inkScale": 1.6, "r": 20 },
-    { "piece": "stationMarker", "cx": 260, "cy": 210, "surface": "dark", "inkScale": 1.6, "r": 20 },
-    { "piece": "stationMarker", "cx": 437, "cy": 210, "surface": "dark", "inkScale": 1.6, "r": 20 },
-    { "piece": "stationMarker", "cx": 572, "cy": 210, "surface": "dark", "inkScale": 1.6, "r": 20 },
-    { "piece": "stationMarker", "cx": 760, "cy": 120, "surface": "dark", "inkScale": 1.6, "r": 20 },
-    { "piece": "stationMarker", "cx": 760, "cy": 210, "surface": "dark", "inkScale": 1.6, "r": 20 },
-    { "piece": "stationMarker", "cx": 760, "cy": 300, "surface": "dark", "inkScale": 1.6, "r": 20 },
-    { "piece": "stationMarker", "cx": 920, "cy": 120, "to": [920, 300], "surface": "dark", "inkScale": 1.6, "r": 20 },
-    { "piece": "stationMarker", "cx": 920, "cy": 210, "surface": "dark", "inkScale": 1.6, "r": 20, "state": "deprecated" },
-    { "piece": "lineBadge", "x": 110, "y": 300, "fill": "illustration.accent", "surface": "dark", "inkScale": 1.6, "height": 34, "width": 54 },
-    { "piece": "lineBadge", "x": 110, "y": 210, "fill": "color.healthy", "surface": "dark", "inkScale": 1.6, "height": 34, "width": 54 },
-    { "piece": "lineBadge", "x": 290, "y": 110, "fill": "color.transitional", "surface": "dark", "inkScale": 1.6, "height": 34, "width": 54 }
-  ]
+ "id": "stackledger-banner-c",
+ "format": "banner",
+ "title": "From the ledger to the map",
+ "description": "Illustration on the cream page. stackledger's mark, a ledger page, sits on the left; three of its rows leave it as orange, blue and ink metro lines, cross at an interchange and run right to Sinal, the signal post, who waits at the end of the line.",
+ "background": "neutral",
+ "pieces": [
+  {
+   "piece": "ledgerMark",
+   "x": 90,
+   "y": 120,
+   "size": 180
+  },
+  {
+   "piece": "pipe",
+   "d": "M280,160 H520 Q560,160 580,190 L640,280 Q660,310 700,310 H880",
+   "fill": "illustration.accent",
+   "width": 20,
+   "casing": 8
+  },
+  {
+   "piece": "pipe",
+   "d": "M280,210 H960",
+   "fill": "brand.light.stackledgerAccent",
+   "width": 20,
+   "casing": 8
+  },
+  {
+   "piece": "pipe",
+   "d": "M280,260 H520 Q560,260 580,230 L640,140 Q660,110 700,110 H880",
+   "fill": "color.ink",
+   "width": 14,
+   "casing": 6
+  },
+  {
+   "piece": "stationMarker",
+   "cx": 380,
+   "cy": 160,
+   "r": 15,
+   "inkScale": 1.5
+  },
+  {
+   "piece": "stationMarker",
+   "cx": 380,
+   "cy": 210,
+   "r": 15,
+   "inkScale": 1.5
+  },
+  {
+   "piece": "stationMarker",
+   "cx": 380,
+   "cy": 260,
+   "r": 15,
+   "inkScale": 1.5
+  },
+  {
+   "piece": "stationMarker",
+   "cx": 760,
+   "cy": 110,
+   "r": 15,
+   "inkScale": 1.5
+  },
+  {
+   "piece": "stationMarker",
+   "cx": 760,
+   "cy": 310,
+   "r": 15,
+   "inkScale": 1.5
+  },
+  {
+   "piece": "stationMarker",
+   "cx": 610,
+   "cy": 210,
+   "r": 20,
+   "inkScale": 1.5
+  },
+  {
+   "piece": "stationMarker",
+   "cx": 880,
+   "cy": 110,
+   "r": 15,
+   "inkScale": 1.5
+  },
+  {
+   "piece": "stationMarker",
+   "cx": 880,
+   "cy": 310,
+   "r": 15,
+   "inkScale": 1.5
+  },
+  {
+   "piece": "stationMarker",
+   "cx": 960,
+   "cy": 210,
+   "r": 20,
+   "inkScale": 1.5
+  },
+  {
+   "piece": "sinal",
+   "x": 1040,
+   "y": 300,
+   "scale": 1.3
+  }
+ ],
+ "rings": {
+  "cx": 860,
+  "cy": 210
+ }
 }

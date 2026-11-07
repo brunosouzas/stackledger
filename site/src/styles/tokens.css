@@ -1,7 +1,10 @@
-/* Design tokens: every colour, font and size of the site (catalogue-site, Look and theme).
-   Colours, fonts and type scale come from @brunosouzas/design-system (the site tokens of
-   brunosouzas.com), copied by the build next to this file as ds-tokens.css; the accent and the
-   focus colour are stackledger's own additions.
+/* Design tokens: every colour and size of the site (catalogue-site, Look and theme).
+   The font variables (--font-primary, --font-secondary, --font-mono) are not defined here: Astro's
+   Fonts API defines them in _astro/fonts.css, and a definition here, loaded later, would win.
+   Colours and type scale come from @brunosouzas/design-system (the site tokens of
+   brunosouzas.com), copied by the build next to this file as ds-tokens.css; the accent, which is
+   also the focus colour, is stackledger's own brand colour in the package
+   (--ds-brand-<theme>-stackledger-accent).
    Light is the default. Dark applies when the reader chose it (data-theme="dark" on <html>), or
    when the system prefers dark and the reader made no choice. Those dark rules are more specific
    than :root, so override.css (spec.site.colors, also :root) changes the light theme only. */
@@ -12,7 +15,7 @@
   color-scheme: light;
 
   --color-primary: var(--ds-site-light-primary);
-  --color-accent: #000f9f;
+  --color-accent: var(--ds-brand-light-stackledger-accent);
   --color-body: var(--ds-site-light-body);
   --color-border: var(--ds-site-light-border);
   --color-light: var(--ds-site-light-light);
@@ -20,11 +23,9 @@
   --color-text: var(--ds-site-light-text);
   --color-text-dark: var(--ds-site-light-text-dark);
   --color-text-light: var(--ds-site-light-text-light);
-  --color-on-primary: #ffffff;
+  /* Text over primary (the text colour since design system 0.8.0): the page's body colour. */
+  --color-on-primary: var(--ds-site-light-body);
   --color-map-credit: var(--ds-surface-light-backdrop-credit);
-
-  --font-primary: var(--ds-site-font-primary);
-  --font-secondary: var(--ds-site-font-secondary);
 
   --text-base: var(--ds-site-font-size-base);
   --text-base-sm: var(--ds-site-font-size-base-small);
@@ -41,18 +42,16 @@
   --radius: 0.5rem;
   --container: 1320px;
 
-  /* The identity's ink frame (cards, buttons, chips): ink outline and hard shadow. */
+  /* The identity's ink frame (cards, buttons, chips): an outline, no shadow and no rim (the design
+     system's shadow and rim width tokens are 0). */
   --frame-outline: var(--ds-outline-small) solid var(--ds-color-ink);
-  --frame-shadow: var(--ds-shadow-small) var(--ds-shadow-small) 0 var(--ds-surface-light-shadow);
-  /* What a frame keeps when it is pressed down onto its shadow: nothing in light, the rim in dark. */
-  --frame-pressed: none;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
 
   --color-primary: var(--ds-site-dark-primary);
-  --color-accent: #9da8ff;
+  --color-accent: var(--ds-brand-dark-stackledger-accent);
   --color-body: var(--ds-site-dark-body);
   --color-border: var(--ds-site-dark-border);
   --color-light: var(--ds-site-dark-light);
@@ -60,12 +59,11 @@
   --color-text: var(--ds-site-dark-text);
   --color-text-dark: var(--ds-site-dark-text-dark);
   --color-text-light: var(--ds-site-dark-text-light);
-  --color-on-primary: #040404;
+  --color-on-primary: var(--ds-site-dark-body);
   --color-map-credit: var(--ds-surface-dark-backdrop-credit);
 
-  /* On a dark page the ink outline gets a light rim and the shadow turns indigo, as on the map. */
-  --frame-shadow: 0 0 0 var(--ds-surface-dark-rim-width) var(--ds-surface-dark-rim), var(--ds-shadow-small) var(--ds-shadow-small) 0 var(--ds-surface-dark-shadow);
-  --frame-pressed: 0 0 0 var(--ds-surface-dark-rim-width) var(--ds-surface-dark-rim);
+  /* Ink vanishes on the dark page: the frame takes the dark surface's muted colour, as on the map. */
+  --frame-outline: var(--ds-outline-small) solid var(--ds-surface-dark-muted);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -73,7 +71,7 @@
     color-scheme: dark;
 
     --color-primary: var(--ds-site-dark-primary);
-    --color-accent: #9da8ff;
+    --color-accent: var(--ds-brand-dark-stackledger-accent);
     --color-body: var(--ds-site-dark-body);
     --color-border: var(--ds-site-dark-border);
     --color-light: var(--ds-site-dark-light);
@@ -81,10 +79,9 @@
     --color-text: var(--ds-site-dark-text);
     --color-text-dark: var(--ds-site-dark-text-dark);
     --color-text-light: var(--ds-site-dark-text-light);
-    --color-on-primary: #040404;
+    --color-on-primary: var(--ds-site-dark-body);
     --color-map-credit: var(--ds-surface-dark-backdrop-credit);
 
-    --frame-shadow: 0 0 0 var(--ds-surface-dark-rim-width) var(--ds-surface-dark-rim), var(--ds-shadow-small) var(--ds-shadow-small) 0 var(--ds-surface-dark-shadow);
-  --frame-pressed: 0 0 0 var(--ds-surface-dark-rim-width) var(--ds-surface-dark-rim);
+    --frame-outline: var(--ds-outline-small) solid var(--ds-surface-dark-muted);
   }
 }

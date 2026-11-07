@@ -3,7 +3,7 @@
  * built once per fixture in beforeAll (in parallel child processes) and then only read.
  * Fixtures are fictitious; hidden values are distinctive so that any leak shows.
  */
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { join } from 'node:path';
 import { component, licence, line, set, settings } from '../unit/helpers.js';
@@ -158,6 +158,46 @@ test('View in the footer', () => {
   expect(read(main.full, 'index.html')).toMatch(/<footer[\s\S]*full view · stackledger/);
 });
 
+// catalogue-site "Parent brand endorsement".
+test('Footer endorsement', () => {
+  for (const [view, site] of [['full', main.full], ['staff', main.staff]] as const) {
+    for (const page of pages(site)) {
+      const footer = /<footer[\s\S]*<\/footer>/.exec(read(site, page))![0];
+      const depth = '(?:\\.\\.\\/)*';
+      expect(footer, page).toMatch(new RegExp(`${view} view · stackledger \\d+\\.\\d+\\.\\d+ · <span class="endorsement">`
+        + `<img class="symbol-mark themed-light" src="${depth}symbol-light\\.svg" alt="" width="16" height="16">`
+        + `<img class="symbol-mark themed-dark" src="${depth}symbol-dark\\.svg" alt="" width="16" height="16"> by Bruno Souza</span>`));
+      // No link holds the symbols or the words.
+      for (const anchor of footer.matchAll(/<a\b[^>]*>([\s\S]*?)<\/a>/g)) expect(anchor[1], page).not.toMatch(/symbol-|Bruno Souza/);
+    }
+  }
+});
+
+test('No SVG of the sites holds a style', () => {
+  for (const site of [iconed.full, iconed.staff]) {
+    const svgs = [...tree(site)].filter(([file]) => file.endsWith('.svg'));
+    expect(svgs.map(([file]) => file)).toEqual(expect.arrayContaining(['symbol-light.svg', 'symbol-dark.svg', 'home-banner.svg', 'favicon.svg', 'link-icons/github-light.svg']));
+    for (const [file, content] of svgs) expect(content, file).not.toMatch(/<style\b/i);
+  }
+});
+
+// catalogue-site "Brand mark": the templates write img elements only for these files.
+test('No other images', () => {
+  const allowed = /^(?:\.\.\/)*(?:favicon\.svg|brand-mark-dark\.svg|symbol-light\.svg|symbol-dark\.svg|home-banner\.svg|link-icons\/[a-z]+-(?:light|dark)\.svg)$/;
+  for (const site of [iconed.full, iconed.staff]) {
+    let icons = 0;
+    for (const page of pages(site)) {
+      for (const tag of tagsOf(read(site, page)).filter(tag => tag.name === 'img')) {
+        const src = attrsOf(tag.attrs).find(attr => attr.name === 'src')!.value;
+        expect(src, page).toMatch(allowed);
+        if (src.includes('link-icons/')) { icons++; expect(page).toBe('index.html'); }
+        if (src.endsWith('home-banner.svg')) expect(page).toBe('index.html');
+      }
+    }
+    expect(icons).toBe(2);
+  }
+});
+
 /** A custom property of the light theme (top-level :root rules, last wins) and of the chosen dark theme. */
 function themeVar(site: string, name: string): { light: string | undefined; dark: string | undefined } {
   const css = [...tree(site)].filter(([file]) => file.endsWith('.css')).map(([, text]) => text).join('\n');
@@ -178,15 +218,37 @@ function themeVar(site: string, name: string): { light: string | undefined; dark
   return { light, dark };
 }
 const accents = (site: string) => themeVar(site, '--color-accent');
+const DEFAULT_ACCENTS = { light: 'var(--ds-brand-light-stackledger-accent)', dark: 'var(--ds-brand-dark-stackledger-accent)' };
+/** A theme's value of a custom property with every var() resolved through the site's :root rules (the
+ * design system's variables are all top-level :root values). */
+function resolved(site: string, name: string, theme: 'light' | 'dark'): string | undefined {
+  let value = themeVar(site, name)[theme] ?? themeVar(site, name).light;
+  for (let depth = 0; value?.startsWith('var(') && depth < 10; depth++) value = themeVar(site, /^var\((--[\w-]+)\)$/.exec(value)![1]!).light;
+  return value;
+}
+/** The value of a custom property under prefers-color-scheme: dark when the reader made no choice. */
+function systemDark(site: string, name: string): string | undefined {
+  const css = [...tree(site)].filter(([file]) => file.endsWith('.css')).map(([, text]) => text).join('\n');
+  const block = /@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root:not\(\[data-theme=("?)light\1\]\)\s*\{([^}]*)\}/.exec(css)?.[2];
+  return block === undefined ? undefined : new RegExp(`${name}:\\s*([^;}]+)`).exec(block)?.[1]?.trim().toLowerCase();
+}
 
 test('Accent override', () => {
-  expect(accents(main.full)).toEqual({ light: '#e4002b', dark: '#9da8ff' });
-  expect(accents(main.staff)).toEqual({ light: '#e4002b', dark: '#9da8ff' });
+  expect(accents(main.full)).toEqual({ light: '#e4002b', dark: DEFAULT_ACCENTS.dark });
+  expect(accents(main.staff)).toEqual({ light: '#e4002b', dark: DEFAULT_ACCENTS.dark });
+});
+
+// catalogue-site "Override keeps the dark accent".
+test('Override keeps the dark accent', () => {
+  for (const site of [main.full, main.staff]) {
+    expect(resolved(site, '--color-accent', 'light')).toBe('#e4002b');
+    expect(resolved(site, '--color-accent', 'dark')).toBe('#7d8cff');
+  }
 });
 
 test('Broken settings', () => {
   for (const site of [broken.full, broken.staff]) {
-    expect(accents(site)).toEqual({ light: '#000f9f', dark: '#9da8ff' });
+    expect(accents(site)).toEqual(DEFAULT_ACCENTS);
     expect(read(site, 'map/index.html')).toContain('<title>Map | stackledger</title>');
     expect(read(site, 'map/index.html')).not.toContain('Northwind software');
   }
@@ -195,16 +257,18 @@ test('Broken settings', () => {
 // catalogue-site "Site tokens from the design system".
 test('Palette from the design system', () => {
   for (const site of [example.full, example.staff]) {
-    expect(themeVar(site, '--ds-site-light-body').light).toMatch(/^#fff(?:fff)?$/);
-    expect(themeVar(site, '--ds-site-dark-body').light).toBe('#1c1c1c');
+    expect(themeVar(site, '--ds-site-light-body').light).toBe('#f6f3ec');
+    expect(themeVar(site, '--ds-site-dark-body').light).toBe('#121110');
     expect(themeVar(site, '--color-body')).toEqual({ light: 'var(--ds-site-light-body)', dark: 'var(--ds-site-dark-body)' });
-    expect(themeVar(site, '--font-primary').light).toBe('var(--ds-site-font-primary)');
-    expect(themeVar(site, '--font-secondary').light).toBe('var(--ds-site-font-secondary)');
   }
 });
 
 test("Accent stays stackledger's", () => {
-  for (const site of [example.full, example.staff]) expect(accents(site)).toEqual({ light: '#000f9f', dark: '#9da8ff' });
+  for (const site of [example.full, example.staff]) {
+    expect(accents(site)).toEqual(DEFAULT_ACCENTS);
+    expect(systemDark(site, '--color-accent')).toBe(DEFAULT_ACCENTS.dark);
+    expect([resolved(site, '--color-accent', 'light'), resolved(site, '--color-accent', 'dark')]).toEqual(['#3b5bdb', '#7d8cff']);
+  }
 });
 
 // catalogue-site "Brand mark": the header shows the mark before a custom title.
@@ -213,8 +277,8 @@ test('Header mark with a custom title', () => {
     for (const page of ['index.html', 'map/index.html', 'software/editor/index.html']) {
       const html = read(site, page);
       expect(html, page).toMatch(/<a class="navbar-brand" href="[^"]*"><img class="brand-mark themed-light" src="(?:\.\.\/)*favicon\.svg" alt="" width="28" height="28"><img class="brand-mark themed-dark" src="(?:\.\.\/)*brand-mark-dark\.svg" alt="" width="28" height="28">Northwind software<\/a>/);
-      // The two header marks; the home adds the banner (Home banner art).
-      expect([...html.matchAll(/<img\b/g)], page).toHaveLength(page === 'index.html' ? 3 : 2);
+      // The two header marks and the two footer symbols; the home adds the banner (Home banner art).
+      expect([...html.matchAll(/<img\b/g)], page).toHaveLength(page === 'index.html' ? 5 : 4);
     }
   }
 });
@@ -624,17 +688,101 @@ test('Root robots', () => {
   for (const dir of [example.root, example.full, example.staff]) expect(read(dir, 'robots.txt')).toBe('User-agent: *\nDisallow: /\n');
 });
 
+// catalogue-site "Look and theme": the Source families replace Heebo, Signika and Lato.
+const pkg = JSON.parse(read(root, 'package.json')) as { dependencies: Record<string, string> };
+const FONT_PACKAGES = ['@fontsource/source-sans-3', '@fontsource/source-serif-4', '@fontsource/source-code-pro'];
+/** The latin woff2 files of the three packages, as latin1 strings (the encoding tree() reads). */
+const fontsourceFiles = () => FONT_PACKAGES.flatMap(name => {
+  const dir = join(root, 'node_modules', name, 'files');
+  return readdirSync(dir).filter(file => /-latin-\d+-(?:normal|italic)\.woff2$/.test(file)).map(file => readFileSync(join(dir, file), 'latin1'));
+});
+
 test('Lato shipped locally', () => {
   for (const site of [example.full, example.staff]) {
+    for (const [file, content] of tree(site)) {
+      if (/\.(?:woff2?|ttf)$/.test(file)) continue;
+      expect(content, file).not.toMatch(/Heebo|Signika|Lato/);
+    }
+  }
+  for (const name of ['@fontsource/heebo', '@fontsource/signika', '@fontsource/lato']) expect(pkg.dependencies[name], name).toBeUndefined();
+});
+
+test('Source font packages', () => {
+  for (const name of FONT_PACKAGES) expect(pkg.dependencies[name], name).toBe('5.3.1');
+  const shipped = new Set(fontsourceFiles());
+  for (const site of [example.full, example.staff]) {
+    const fonts = [...tree(site)].filter(([file]) => /\.(?:woff2?|ttf|otf)$/.test(file));
+    expect(fonts.length).toBe(7);
+    for (const [file, bytes] of fonts) expect(shipped.has(bytes), file).toBe(true);
+  }
+});
+
+/** The @font-face rules of a site's _astro/fonts.css as family (without its hash), weight, style and file. */
+function faces(site: string): { family: string; weight: string; style: string; url?: string }[] {
+  const css = read(site, '_astro/fonts.css');
+  return [...css.matchAll(/@font-face\{([^}]*)\}/g)].map(match => {
+    const body = match[1]!;
+    const value = (name: string) => new RegExp(`(?:^|;)${name}:([^;]*)`).exec(body)?.[1];
+    return { family: value('font-family')!, weight: value('font-weight')!, style: value('font-style')!, url: /url\("?([^")]+)"?\)/.exec(body)?.[1] };
+  });
+}
+
+// catalogue-site "Font delivery".
+test('Source fonts shipped locally', () => {
+  for (const site of [example.full, example.staff]) {
+    const real = faces(site).filter(face => face.url);
+    const named = real.map(face => `${face.family.replace(/^"|"$/g, '').replace(/-[0-9a-f]{16}$/, '')} ${face.weight} ${face.style}`).sort();
+    expect(named).toEqual(['Source Code Pro 400 normal', 'Source Sans 3 400 normal', 'Source Sans 3 600 normal', 'Source Sans 3 700 normal',
+      'Source Sans 3 900 normal', 'Source Serif 4 700 italic', 'Source Serif 4 700 normal']);
     const files = tree(site);
-    const css = [...files.keys()].filter(file => file.endsWith('.css')).map(file => [file, files.get(file)!] as const);
-    const faces = css.flatMap(([file, content]) => [...content.matchAll(/@font-face\s*\{([^}]*)\}/g)].map(match => [file, match[1]!] as const))
-      .filter(([, body]) => /font-family:\s*["']?Lato["']?/.test(body));
-    expect(faces.map(([, body]) => body.match(/font-weight:\s*(\d+)/)![1]).sort()).toEqual(['400', '700', '900']);
-    for (const [file, body] of faces) {
-      const url = body.match(/url\(\s*["']?([^"')]+)/)![1]!;
-      expect(url).not.toMatch(/^[a-z]+:|^\/\//i);
-      expect(files.has(join(file, '..', url).replace(/\\/g, '/')), url).toBe(true);
+    for (const face of real) expect(files.has(`_astro/${face.url}`), face.url).toBe(true);
+    const preloadFiles = (html: string) => [...html.matchAll(/<link rel="preload" href="([^"]+)" as="font" type="font\/woff2" crossorigin>/g)].map(match => match[1]!.replace(/^(?:\.\.\/)*/, ''));
+    const wanted = real.filter(face => (face.family.startsWith('"Source Sans 3-') && face.weight === '400') || (face.family.startsWith('"Source Serif 4-') && face.weight === '700' && face.style === 'normal'))
+      .map(face => `_astro/${face.url}`).sort();
+    expect(wanted).toHaveLength(2);
+    for (const page of pages(site)) {
+      const html = read(site, page);
+      expect(preloadFiles(html).sort(), page).toEqual(wanted);
+      // No font from another origin: every font URL of the page and of the stylesheet is relative.
+      expect(html, page).not.toMatch(/(?:href|src)="(?:[a-z]+:)?\/\/[^"]*\.(?:woff2?|ttf)/i);
+    }
+    expect(read(site, '_astro/fonts.css')).not.toMatch(/url\("?(?:[a-z]+:|\/)/i);
+  }
+});
+
+test('Font CSS moved to a file', () => {
+  for (const site of [example.full, example.staff]) {
+    const css = read(site, '_astro/fonts.css');
+    const urls = [...css.matchAll(/url\(([^)]*)\)/g)].map(match => match[1]!.replace(/^"|"$/g, ''));
+    expect(urls.length).toBe(7);
+    const files = tree(site);
+    for (const url of urls) {
+      expect(url).toMatch(/^fonts\/[^/]+\.woff2$/);
+      expect(files.has(`_astro/${url}`), url).toBe(true);
+    }
+    for (const page of pages(site)) {
+      const html = read(site, page);
+      expect(html, page).not.toMatch(/<style\b/i);
+      const depth = page.split('/').length - 1;
+      const links = [...html.matchAll(/<link rel="stylesheet" href="([^"]*fonts\.css)">/g)].map(match => match[1]);
+      expect(links, page).toEqual([`${'../'.repeat(depth)}_astro/fonts.css`]);
+      const csp = html.indexOf('http-equiv="Content-Security-Policy"');
+      expect(csp, page).toBeGreaterThan(0);
+      expect(html.indexOf('_astro/fonts.css'), page).toBeGreaterThan(csp);
+      for (const preload of html.matchAll(/<link rel="preload"[^>]*as="font"/g)) expect(preload.index, page).toBeGreaterThan(csp);
+    }
+  }
+  for (const site of [main.full, main.staff]) expect(read(site, 'software/editor/index.html')).toContain('<link rel="stylesheet" href="../../_astro/fonts.css">');
+});
+
+// catalogue-site "Font variables": only _astro/fonts.css defines --font-*.
+test('Font variables only from the Fonts API', () => {
+  for (const site of [example.full, example.staff]) {
+    for (const [file, content] of tree(site)) {
+      if (!file.endsWith('.css')) continue;
+      const defined = [...content.matchAll(/(--font-[a-z-]+)\s*:/g)].map(match => match[1]);
+      if (file === '_astro/fonts.css') expect(defined.sort()).toEqual(['--font-mono', '--font-primary', '--font-secondary']);
+      else expect(defined, file).toEqual([]);
     }
   }
 });
