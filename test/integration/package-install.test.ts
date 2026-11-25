@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { root } from './helpers.js';
 import { cleanCheckout, npm, npmEnv, pack, removeFolder, tempFolder } from './package-helpers.js';
 import { serveTarball, type StandIn } from './registry-stand-in.js';
+import { withoutLockedOptional } from './install-compare.js';
 
 const offline = process.env.STACKLEDGER_OFFLINE === '1';
 if (offline) console.warn('package-install.test.ts skipped: STACKLEDGER_OFFLINE=1 (it needs the npm registry)');
@@ -79,11 +80,13 @@ describe.skipIf(offline)('installed package', () => {
       return flatten(tree.dependencies!['@brunosouzas/stackledger']!).sort();
     });
     expect(listed[0]!.length).toBeGreaterThan(0);
-    expect(listed[1]).toEqual(listed[0]);
 
     const shrinkwrap = JSON.parse(readFileSync(join(root, 'npm-shrinkwrap.json'), 'utf8')) as { packages: Record<string, Locked> };
     const entries = Object.entries(shrinkwrap.packages).filter(([path, entry]) => path !== '' && !entry.link)
       .map(([path, entry]) => ({ id: `${path.replace(/^.*node_modules\//, '')}@${entry.version}`, entry }));
+    // Other platforms' builds (locked optional) come and go between installs (install-compare.ts says why).
+    const lockedOptional = new Set(entries.filter(({ entry }) => entry.optional).map(({ id }) => id));
+    expect(withoutLockedOptional(listed[1]!, lockedOptional)).toEqual(withoutLockedOptional(listed[0]!, lockedOptional));
     const installed = versions(listed[0]!);
     // Every production entry is installed at its locked version; optional ones are other platforms' builds.
     const required = entries.filter(({ entry }) => !entry.dev && !entry.optional && !entry.devOptional);
@@ -98,10 +101,9 @@ describe.skipIf(offline)('installed package', () => {
       const tree = JSON.parse(result.stdout) as Tree & { problems?: string[] };
       // npm 10 can install optional WASM children of platform-incompatible packages and
       // subsequently label them extraneous. They are locked production optionals, not dev leaks.
-      const optional = new Set(entries.filter(({ entry }) => entry.optional).map(({ id }) => id));
       const unexpected = (tree.problems ?? []).filter(problem => {
         const match = /^extraneous: (.+?@[^ ]+) /.exec(problem);
-        return !match || !optional.has(match[1]!);
+        return !match || !lockedOptional.has(match[1]!);
       });
       expect(unexpected).toEqual([]);
     }
